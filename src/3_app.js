@@ -45,7 +45,7 @@ const DEF={
         wander:1,climb:0,stackPct:20,stackGap:1,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Arial',style:'Bold',font:'Arial-BoldMT',size:48,align:'center',pad:24,tracking:0,leading:0,kern:'metrics',caps:'none'},
   anim:{mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'follow',stepEvery:2,appear:'wipe',
-        axis:'x',lazy:true,snap:true,smooth:1.5,tail:24,
+        axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,tail:24,
         sceneCurve:[0,0,1,1],camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zoomOn:true,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
   out:{replace:true,lock:true,fitDur:true,rig:'camera'},
@@ -959,6 +959,24 @@ function invCurve(c){
     const y0=ys[lo],y1=ys[hi]; return (lo+(y1>y0?(p-y0)/(y1-y0):0))/N;
   };
 }
+/* monotone cubic (Fritsch–Butland): smooth through every point, never overshoots between them.
+   flatEnds = zero speed at the first and last point (eases out of the start, into the end) */
+function monoSpline(ts,ys,flatEnds){
+  const n=ts.length; if(n===1) return ()=>ys[0];
+  const d=[], m=new Array(n);
+  for(let i=0;i<n-1;i++) d.push((ys[i+1]-ys[i])/Math.max(1e-9,ts[i+1]-ts[i]));
+  m[0]=flatEnds?0:d[0]; m[n-1]=flatEnds?0:d[n-2];
+  for(let i=1;i<n-1;i++){
+    if(d[i-1]*d[i]<=0) m[i]=0;
+    else{const h0=ts[i]-ts[i-1],h1=ts[i+1]-ts[i],w1=2*h1+h0,w2=h1+2*h0;m[i]=(w1+w2)/(w1/d[i-1]+w2/d[i]);}
+  }
+  return t=>{
+    if(t<=ts[0]) return ys[0]; if(t>=ts[n-1]) return ys[n-1];
+    let lo=0,hi=n-1; while(hi-lo>1){const mid=(lo+hi)>>1; if(ts[mid]<=t) lo=mid; else hi=mid;}
+    const h=ts[hi]-ts[lo], u=(t-ts[lo])/h, u2=u*u, u3=u2*u;
+    return (2*u3-3*u2+1)*ys[lo]+(u3-2*u2+u)*h*m[lo]+(-2*u3+3*u2)*ys[hi]+(u3-u2)*h*m[hi];
+  };
+}
 let planCache={k:'',v:null};
 function plan(G){
   const key=JSON.stringify(D)+'|'+G.W+'|'+G.H;
@@ -1037,12 +1055,27 @@ function computePlan(G){
     }
   }
   const M=Math.max(0,tg.length-1), lag=camOn?Math.max(1,+A.smooth||1.5):0;
-  const den=camOn?(M+lag):Math.max(1,used-1);
-  const Lr=Math.max(1,L-tr0);   // reveals are laid out so even the last one has finished by the scene end
+  // camera modes: the camera trails the newest block by `lagSteps` steps and then eases to rest over `settle` frames,
+  // so the reveals are spaced to leave exactly that much room before the scene ends
+  let step, lagSteps=0, settleF=0, finalF=0;
+  if(camOn){
+    let maxGap=1, prevG=0; for(let g=1;g<used;g++){const a=tg[g-1],b=tg[g];if(Math.abs(a[0]-b[0])>1e-6||Math.abs(a[1]-b[1])>1e-6){maxGap=Math.max(maxGap,g-prevG);prevG=g;}}
+    lagSteps=Math.max(lag,maxGap);
+    const tau=cm==='follow'?Math.max(0,+A.motionBlurF):0;
+    settleF=cm==='follow'?Math.max(Math.round(+A.settle||0),Math.ceil(4*tau),2):0;
+    finalF=(A.extendOn&&A.ending==='spot'&&!manual)?Math.max(1,Math.round(A.finalMove)||30):0;
+    // reveals leave room for: the camera's follow distance (lag steps) + the final framing move + the settle
+    step=(L-finalF-settleF)/Math.max(1,used-1+lagSteps);
+    if(step<1){ // not enough room: shrink the settle first, never below 2 frames
+      settleF=Math.max(2,Math.floor(L-finalF-(used-1+lagSteps)));
+      step=Math.max(.25,(L-finalF-settleF)/Math.max(1,used-1+lagSteps));
+    }
+    step=Math.min(step,(L-tr0)/Math.max(1,used-1));
+  } else step=Math.max(1,L-tr0)/Math.max(1,used-1);
   // reveal times on the linear clock, then re-timed by the scene curve (one at a time, in order)
   const sg=[], Tg=[]; const spread=(used-1)<=L;
   for(let g=0;g<used;g++){
-    const s=Lr*(den>0?Math.min(1,g/den):0); sg.push(s);
+    const s=Math.min(L,step*g); sg.push(s);
     let t=Math.round(W(s)); if(spread&&g>0&&t<=Tg[g-1]) t=Tg[g-1]+1; Tg.push(Math.min(t,startF+L));
   }
   P.seq=seq; P.T=seq.map((b,i)=>Tg[gi[i]]); P.tr=seq.map(()=>tr0); P.ext=seq.filter(b=>b.virtual).length; P.groups=used;
@@ -1086,31 +1119,52 @@ function computePlan(G){
     const sEff=Tg.map(t=>S(t));
     // distinct camera targets in order (pairs / echoes in the same column don't make the camera stall)
     const UT=[]; for(let g=0;g<used;g++){const o=tg[g];const l=UT[UT.length-1];if(!l||Math.abs(l.o[0]-o[0])>1e-6||Math.abs(l.o[1]-o[1])>1e-6)UT.push({s:sEff[g],o});}
-    const last=UT.length-1, n=Math.max(1,+A.smooth||1.5), extra=fin?1:0;
-    const sLast=UT[last].s;
-    // ext[j]: reveal time of target j; past the last one, spread the remaining time to the scene end
-    const ext=j=>{if(j<=last){const i=Math.floor(j),f=j-i;return i+1<=last?UT[i].s+(UT[i+1].s-UT[i].s)*f:UT[i].s;}return sLast+(L-sLast)*(j-last)/(n+extra);};
-    // the camera arrives at target k when target k+n appears → it only ever moves toward blocks already on screen
-    const way=UT.map((u,k)=>({a:ext(k+n),o:u.o}));
-    if(fin) way.push({a:L,o:fin});
-    way[0].a=Math.min(way[0].a,way.length>1?way[1].a:L);
-    const path=s=>{                          // camera on the linear clock
-      if(way.length===1||s<=way[0].a) return way[0].o;
-      for(let k=1;k<way.length;k++){if(s<=way[k].a){const a=way[k-1],b=way[k],f=(s-a.a)/Math.max(1e-6,b.a-a.a);return[a.o[0]+(b.o[0]-a.o[0])*f,a.o[1]+(b.o[1]-a.o[1])*f];}}
-      return way[way.length-1].o;
+    const last=UT.length-1;
+    /* GLIDE CAMERA (real frames)
+       goal(t): a point moving along the revealed targets, `lag` targets behind the newest (never toward an unrevealed one);
+       camera:  goal smoothed by a causal critically-damped kernel (a weighted average of where the goal has been → can't get ahead, no overshoot);
+       end:     blended into the final position over the settle with zero speed, landing exactly at the scene end. */
+    const uT=[], uO=[]; { let prev=null; for(let g=0;g<used;g++){const o=tg[g]; if(!prev||Math.abs(prev[0]-o[0])>1e-6||Math.abs(prev[1]-o[1])>1e-6){uT.push(Tg[g]);uO.push(o);prev=o;}} }
+    if(fin){uO.push(fin);}
+    const nU=uT.length, lastU=nU-1, extraU=fin?1:0, lagU=Math.max(1,+A.smooth||1.5);
+    const tReach=Math.max(uT[lastU]+1,endF-settleF);
+    const prog=t=>{                       // fractional index of the newest revealed target, continuing smoothly after the last one
+      if(t<=uT[0]) return 0;
+      if(t>=uT[lastU]){   // after the last reveal: carry on at the current pace, then ease to a stop (no sudden halt)
+        const Tt=Math.max(1,tReach-uT[lastU]), Dd=lagU+extraU, u=clamp((t-uT[lastU])/Tt,0,1);
+        const v0=lastU>0?1/Math.max(1,uT[lastU]-uT[lastU-1]):Dd/Tt, m=clamp(v0*Tt/Dd,0,3);
+        return lastU+Dd*((u*u*u-2*u*u+u)*m+(3*u*u-2*u*u*u));
+      }
+      let lo=0,hi=lastU; while(hi-lo>1){const m=(lo+hi)>>1; if(uT[m]<=t) lo=m; else hi=m;}
+      return lo+(t-uT[lo])/Math.max(1e-6,uT[hi]-uT[lo]);
     };
+    const along=x=>{x=clamp(x,0,uO.length-1);const i=Math.min(uO.length-2,Math.floor(x)),f=x-i;if(uO.length===1)return uO[0];return[uO[i][0]+(uO[i+1][0]-uO[i][0])*f,uO[i][1]+(uO[i+1][1]-uO[i][1])*f];};
+    const goal=t=>along(prog(t)-lagU);
+    const finalO=uO[uO.length-1];
     let cam=[];
     if(cm==='follow'||cm==='stop'){
       const a=startF, b=endF, N=b-a+1, xs=new Float64Array(N), ys=new Float64Array(N);
-      for(let i=0;i<N;i++){const o=path(S(a+i));xs[i]=o[0];ys[i]=o[1];}
+      // goal sampled at sub-frame resolution, smoothed causally, then blended to rest
+      const tau=Math.max(0,+A.motionBlurF), sub=4, NS=(N-1)*sub+1, gx=new Float64Array(NS), gy=new Float64Array(NS);
+      for(let i=0;i<NS;i++){const o=goal(a+i/sub);gx[i]=o[0];gy[i]=o[1];}
+      let cx=gx, cy=gy;
+      if(tau>0){
+        const R=Math.ceil(10*tau*sub), ker=new Float64Array(R+1); let ks=0;
+        for(let j=0;j<=R;j++){const u=j/(tau*sub);ker[j]=u*Math.exp(-u);ks+=ker[j];}   // critically damped (2nd order) — smooth speed, no overshoot
+        if(ks<=0){ker[0]=1;ks=1;}
+        const conv=src=>{const o=new Float64Array(NS);for(let i=0;i<NS;i++){let acc=0;for(let j=0;j<=R;j++){acc+=src[Math.max(0,i-j)]*ker[j];}o[i]=acc/ks;}return o;};
+        cx=conv(gx); cy=conv(gy);
+      }
+      const sS=Math.max(1,settleF), t0s=endF-sS;
+      for(let i=0;i<N;i++){
+        const t=a+i, j=i*sub; let x=cx[j], y=cy[j];
+        if(t>t0s){const u=clamp((t-t0s)/sS,0,1), w=u*u*u*(u*(u*6-15)+10); x+= (finalO[0]-x)*w; y+=(finalO[1]-y)*w;}  // smootherstep: zero speed at the end
+        xs[i]=x; ys[i]=y;
+      }
       if(cm==='follow'){
-        // soften corners, but only within the extra lag so it still never gets ahead
-        const h=Math.floor(Math.max(0,n-1)*(L/Math.max(1,used))*0.8);
-        let sx=xs, sy=ys;
-        if(h>0){const sm=arr=>{const o=new Float64Array(N),pre=new Float64Array(N+1);for(let i=0;i<N;i++)pre[i+1]=pre[i]+arr[i];
-          for(let i=0;i<N;i++){const w=Math.min(h,i,N-1-i);o[i]=(pre[i+w+1]-pre[i-w])/(2*w+1);}return o;}; sx=sm(xs); sy=sm(ys);}
-        const pts=[]; for(let i=0;i<N;i++) pts.push([a+i,[sx[i],sy[i]]]);
-        cam=simplify(pts,.15).map(p=>[p[0],[r3(p[1][0]),r3(p[1][1])],'l']);
+        // sampled every frame; only near-straight runs are merged (≤0.02px error) so the motion stays exact in AE
+        const pts=[]; for(let i=0;i<N;i++) pts.push([a+i,[xs[i],ys[i]]]);
+        cam=simplify(pts,.02).map(p=>[p[0],[r3(p[1][0]),r3(p[1][1])],'l']);
       } else {
         for(let i=0;i<N;i+=st) cam.push([a+i,[r3(xs[i]),r3(ys[i])],'h']);
         cam.push([b,[r3(xs[N-1]),r3(ys[N-1])],'h']);
@@ -2059,6 +2113,7 @@ function syncInputs(force){
   renderCurves(); renderFontUI(); renderFillFont();
   const en=$('#endNote'); if(en) en.textContent=`Ends on row ${D.anim.endRow}`;
   const lp=$('#chkLoop'); if(lp) lp.checked=U.loop;
+  $$('#camPreset [data-p]').forEach(b=>{const p=b.dataset.p.split(',').map(Number);b.classList.toggle('on',+D.anim.smooth===p[0]&&+D.anim.motionBlurF===p[1]&&+D.anim.settle===p[2]);});
   $$('#endPreset [data-ex]').forEach(b=>b.classList.toggle('on',+b.dataset.ex===+D.anim.endX));
   $$('[data-layer]').forEach(el=>{const v=getP(el.dataset.layer);el.classList.toggle('off',!v||v==='none');});
   const lock=inAE&&D.comp.follow&&U.compLive;
@@ -2194,13 +2249,14 @@ function refresh(){
     const P=plan(G), fps=c.fps||30;
     renderZoomList(P);
     $('#animReadout').innerHTML=P.seq.length?`Preview length <b>${fmtT(P.end,fps)}</b> (${P.end} frames, includes a short hold at the end)${P.zs.length?`<br>Grid goes to ${Math.round(G.R/(P.sMin||1))} rows at its widest`:''}${c.dur*fps<P.end?`<br><span class="warn">Longer than the comp (${fmtT(c.dur*fps,fps)}).</span>${D.out.fitDur?' The comp will be lengthened.':''}`:''}`:'Add some blocks first.';
-    $('#camHead').textContent=D.anim.mode==='push'?'Conveyor':'Camera';
+    $('#camHead').textContent=D.anim.mode==='push'?'· conveyor (grid slides, view stays)':'';
     const sc=$('#scrub'); sc.max=sceneEnd(G); if(U.t!==null) sc.value=U.t;
     $('#tc').textContent=U.t===null?`layout · ${P.end}f`:`${Math.round(U.t)} / ${P.end}f`;
     $('#btnLayoutView').hidden=U.t===null;
   }
   if(STEPS[U.step].id==='build') renderBuildSummary(G);
   render(); renderInsp(); updCtx(); updPos(U.hover); renderCurves(); updPaceTotal(); updRuleNote(G);
+  if(STEPS[U.step].id==='animate') drawSpeedGraph();
   $('#btnRemoveAE').hidden=!inAE;
   autosave();
 }
@@ -2220,13 +2276,13 @@ function play(){
     lastTs=ts;
     if(U.t>=P.end){if($('#chkLoop').checked){U.t=0;lastTs=ts;P={end:sceneEnd(geom())};$('#scrub').max=P.end;}else{U.t=P.end;stopPlay();refresh();return;}}
     $('#scrub').value=U.t; $('#tc').textContent=`${Math.round(U.t)} / ${P.end}f`; $('#btnLayoutView').hidden=false;
-    render(); raf=requestAnimationFrame(tick);
+    render(); if(Math.round(U.t)%3===0) drawSpeedGraph(); raf=requestAnimationFrame(tick);
   };
   raf=requestAnimationFrame(tick);
 }
 function stopPlay(){U.playing=false;cancelAnimationFrame(raf);$('#icoPlay').innerHTML='<path d="M4 2.5v11l9-5.5z"/>';}
 $('#btnPlay').onclick=()=>U.playing?stopPlay():play();
-$('#scrub').addEventListener('input',e=>{stopPlay();U.t=+e.target.value;$('#tc').textContent=`${U.t} / ${e.target.max}f`;$('#btnLayoutView').hidden=false;render();});
+$('#scrub').addEventListener('input',e=>{stopPlay();U.t=+e.target.value;drawSpeedGraph();$('#tc').textContent=`${U.t} / ${e.target.max}f`;$('#btnLayoutView').hidden=false;render();});
 $('#btnLayoutView').onclick=()=>{stopPlay();U.t=null;refresh();};
 
 /* ------------------------------------------------------------------ extend pattern */
@@ -2272,6 +2328,7 @@ $('#paletteEdit').addEventListener('click',e=>{const b=e.target.closest('[data-p
   applySwatch('block.color',D.palette[i]);});
 $('#btnPickEnd').onclick=startPick;
 $('#chkLoop').onchange=e=>{U.loop=e.target.checked;savePrefs();toast(U.loop?'Preview will loop':'Preview plays once');};
+$('#camPreset').addEventListener('click',e=>{const b=e.target.closest('[data-p]');if(!b)return;const p=b.dataset.p.split(',').map(Number);pushHist(true);Object.assign(D.anim,{smooth:p[0],motionBlurF:p[1],settle:p[2]});syncInputs();refresh();});
 $('#endPreset').addEventListener('click',e=>{const b=e.target.closest('[data-ex]');if(!b)return;pushHist(true);D.anim.endX=+b.dataset.ex;syncInputs();refresh();});
 $('#btnResetAnim').onclick=()=>{pushHist(true);const keepZoom=D.anim.zoom;D.anim=clone(DEF.anim);U.t=null;syncInputs(true);refresh();toast('Animation settings reset','',true);};
 $('#btnResizeAll').onclick=resizeAll;
@@ -2369,6 +2426,26 @@ function buildCurves(){
       toast(b.dataset.creset?'Curve reset':`${presets[+b.dataset.cp][0]} applied`,'',true);
     });
   });
+}
+/* camera speed over the scene: a quick visual check of smoothness (flat and round = smooth) */
+function drawSpeedGraph(){
+  const c=$('#speedCv'); if(!c) return; const r=c.getBoundingClientRect(); if(!r.width) return;
+  const dpr=window.devicePixelRatio||1; c.width=Math.round(r.width*dpr); c.height=Math.round(r.height*dpr);
+  const g=c.getContext('2d'); g.scale(dpr,dpr); g.clearRect(0,0,r.width,r.height);
+  const P=plan(geom()), end=sceneEnd(geom()), v=[];
+  for(let f=0;f<end;f++){const a=ev(P.cam,f,[0,0]),b=ev(P.cam,f+1,[0,0]);v.push(Math.hypot(b[0]-a[0],b[1]-a[1]));}
+  const mx=Math.max(1,...v), pad=6, W=r.width-2*pad, H=r.height-2*pad, X=f=>pad+f/Math.max(1,end)*W, Y=val=>pad+H-val/mx*H;
+  // scene span + block reveal ticks
+  g.fillStyle='rgba(255,255,255,.04)'; g.fillRect(X(P.startF),pad,X(P.startF+P.L)-X(P.startF),H);
+  g.strokeStyle='rgba(255,255,255,.12)'; g.lineWidth=1; [...new Set(P.T)].forEach(t=>{g.beginPath();g.moveTo(X(t)+.5,pad+H-4);g.lineTo(X(t)+.5,pad+H);g.stroke();});
+  // speed curve
+  g.beginPath(); v.forEach((val,f)=>{const x=X(f),y=Y(val);f?g.lineTo(x,y):g.moveTo(x,y);});
+  g.strokeStyle='#E84142'; g.lineWidth=1.8; g.stroke();
+  g.lineTo(X(v.length-1),pad+H); g.lineTo(X(0),pad+H); g.closePath(); g.fillStyle='rgba(232,65,66,.12)'; g.fill();
+  if(U.t!=null){g.strokeStyle='#fff';g.beginPath();g.moveTo(X(U.t)+.5,pad);g.lineTo(X(U.t)+.5,pad+H);g.stroke();}
+  // smoothness readout: biggest frame-to-frame change in speed, relative to the peak
+  let jump=0; for(let i=1;i<v.length;i++) jump=Math.max(jump,Math.abs(v[i]-v[i-1]));
+  const n=$('#speedNote'); if(n) n.textContent=P.cam.length?`peak ${Math.round(mx)} px/f · ${jump/mx<.08?'very smooth':jump/mx<.18?'smooth':'abrupt changes — raise Smoothness or soften the scene easing'}`:'camera is still';
 }
 function updPaceTotal(){
   const el=$('#paceNote'); if(!el) return;
@@ -2568,7 +2645,9 @@ const HELP={
   'anim.ease':'How gentle the starts and stops are.','anim.stepEvery':'In stop-motion, how many frames each pose holds (2 = “on twos”).',
   'anim.appear':'How each block comes on: cut, fade, wipe from the left, or scale up.',
   'anim.axis':'Follow blocks sideways only, or up and down too.',
-  'anim.smooth':'How far the camera trails behind the newest block, in steps (at least 1, so it never gets ahead). The camera still arrives exactly when the scene ends.',
+  'anim.smooth':'How many blocks the camera trails behind the newest one (at least 1, so it never moves ahead of what has appeared). Larger = calmer, floatier camera.',
+  'anim.motionBlurF':'Softens changes in camera speed (in frames). Higher = rounder, smoother acceleration; 0 = follows the pace exactly.',
+  'anim.settle':'Frames the camera takes to glide to a complete stop at the end of the scene (never less than about 4× Smoothness). The last reveals are spaced to leave room for it, so nothing gets rushed.',
   'anim.lazy':'The camera holds still until the newest block reaches the middle of the frame.',
   'anim.snap':'The camera aims at whole-square positions so the grid stays aligned with the frame.',
   'out.replace':'Delete the layers from your last build before building again.',
@@ -2659,7 +2738,7 @@ const HELP={
   'text.leading':'Space between lines in pixels. 0 = automatic.',
   'text.tracking':'Even spacing between all letters, in thousandths of an em (same units as After Effects).',
   'anim.ending':'<b>After a number of blocks</b>: set the total under Scene. <b>On a chosen spot</b>: the pattern steers so its last block lands on a square you pick, and the camera frames it where you choose.',
-  'anim.camMove':'<b>Follow</b>: glides along behind the blocks as they appear. <b>Step &amp; settle</b>: after each block appears, the camera eases over to it. Either way it never moves ahead of what has been revealed.',
+  'anim.camMove':'<b>Glide</b>: one continuous, smoothed move that trails the blocks and eases to rest at the end. <b>Step &amp; settle</b>: after each block appears, the camera eases over to it and stops. Either way it never moves ahead of what has appeared.',
   'anim.camCurve':'Easing for each camera move in Step &amp; settle and for the final move to the end row. Dots close together = slow, far apart = fast. Hold Shift or ⌘ while dragging to snap the handle to 0°, 45° or 90°.',
   'anim.revCurve':'Shapes how each individual block wipes, fades or scales on. Independent of scene pacing.'
 };
@@ -2783,16 +2862,100 @@ function exportFile(){
   if(inAE){evalHost('GB_saveDialog('+jsStr(json)+','+jsStr(name)+')').then(r=>{const p=String(r).split('|');if(p[0]==='OK')toast('Saved to '+p.slice(1).join('|'),'ok');else if(p[0]==='ERR')toast(p.slice(1).join('|'),'err');});}
   else download(name,json,'application/json');
 }
-function importText(s){
-  try{const o=JSON.parse(s);const doc=o.doc||o;if(!doc||!doc.grid)throw 0;pushHist();setDoc(doc);if(V.fit)fitView(V.fit);afterDocChange();closeLib();toast('Layout opened','ok',true);}
-  catch(e){toast('That file isn’t a Grid Blocks layout','err');}
+/* the layout travels inside every exported .jsx, between these markers */
+const LAYOUT_BEGIN='// GRIDBLOCKS_LAYOUT_BEGIN', LAYOUT_END='// GRIDBLOCKS_LAYOUT_END';
+function layoutBlock(){return LAYOUT_BEGIN+'\nvar GB_LAYOUT='+JSON.stringify({app:'GridBlocks',v:2,doc:D}).split(LS1).join('\\u2028').split(LS2).join('\\u2029')+';\n'+LAYOUT_END+'\n';}
+/* pull the JSON object that starts at position i (respects strings) */
+function jsonAt(s,i){
+  let depth=0,inStr=false,esc=false;
+  for(let k=i;k<s.length;k++){const ch=s[k];
+    if(inStr){if(esc)esc=false;else if(ch==='\\')esc=true;else if(ch==='"')inStr=false;continue;}
+    if(ch==='"')inStr=true;else if(ch==='{')depth++;else if(ch==='}'){depth--;if(depth===0)return s.slice(i,k+1);}}
+  return null;
+}
+const rgbHex=c=>'#'+(c||[0,0,0]).slice(0,3).map(v=>('0'+Math.round(clamp(+v||0,0,1)*255).toString(16)).slice(-2)).join('').toUpperCase();
+/* best-effort: rebuild an editable layout from an older .jsx build script (no layout inside) */
+function payloadToDoc(d){
+  const doc=clone(DEF), mostly=a=>{const m={};a.forEach(x=>m[x]=(m[x]||0)+1);return Object.keys(m).sort((x,y)=>m[y]-m[x])[0];};
+  doc.comp.w=d.comp.w; doc.comp.h=d.comp.h; doc.comp.fps=d.fps||doc.comp.fps; doc.comp.dur=d.comp.dur||doc.comp.dur;
+  Object.assign(doc.out,{replace:!!d.replace,lock:!!d.lock,fitDur:!!d.fitDur,rig:d.rig||'camera'});
+  doc.look.bgOn=!!d.bg; if(d.bg) doc.look.bg=rgbHex(d.bg.color);
+  doc.look.linesOn=!!d.lines;
+  if(d.lines){doc.look.line=rgbHex(d.lines.color);doc.look.lineW=d.lines.lw||(d.lines.rects&&d.lines.rects[0]?Math.min(d.lines.rects[0][2],d.lines.rects[0][3]):1);}
+  const B=d.blocks||[];
+  // grid: work out the cell pitch from a block, then rows from the comp height
+  if(B.length){const b=B[0], gut=1, p=(b.bh+gut)/b.h; doc.grid.gutter=gut; doc.grid.rows=Math.max(1,Math.round((d.comp.h+gut)/p));}
+  const p=B.length?(B[0].bh+1)/B[0].h:154;
+  doc.look.rulesOn=!!d.rules;
+  if(d.rules){doc.look.rule=rgbHex(d.rules.color);doc.look.ruleW=d.rules.lw||1;doc.look.ruleLayer=d.rules.top?'top':'bottom';doc.look.ruleEvery=Math.max(1,Math.round(d.rules.period/p));}
+  doc.look.cellsMode=d.cells?d.cells.mode:'none'; if(d.cells) doc.look.cell=rgbHex(d.cells.color);
+  if(B.length){const sz=mostly(B.map(b=>b.w+'x'+b.h)).split('x');doc.block.w=+sz[0];doc.block.h=+sz[1];doc.block.color=rgbHex(B[0].color);}
+  let id=1;
+  doc.blocks=B.filter(b=>b.order>0||!d.anim).map(b=>({id:id++,c:b.c-1,r:b.r-1,w:b.w,h:b.h,color:rgbHex(b.color),text:(b.text||'').replace(/\r/g,'\n'),
+    fontSize:b.fontSize||48,textColor:rgbHex(b.textColor||[1,1,1]),align:b.align||'center',pad:b.pad||24,tracking:b.tracking||0,leading:b.leading||0,kern:b.kern||'metrics',font:b.font||'',mo:0,order:0}));
+  // every block from the build is now a real block, so don't keep building on top
+  doc.anim.extendOn=false;
+  // make the off-screen area big enough to hold every block
+  if(doc.blocks.length){
+    const C=2*Math.ceil((doc.comp.w+1)/(2*p));
+    const maxC=Math.max(...doc.blocks.map(b=>b.c+b.w)), minC=Math.min(...doc.blocks.map(b=>b.c));
+    const maxR=Math.max(...doc.blocks.map(b=>b.r+b.h)), minR=Math.min(...doc.blocks.map(b=>b.r));
+    doc.grid.overX=Math.max(doc.grid.overX,maxC-C+2,-minC+2);
+    doc.grid.overY=Math.max(doc.grid.overY,maxR-doc.grid.rows+1,-minR+1);
+  }
+  const fills=[].concat(...B.map(b=>b.fill||[])), ft=fills.find(x=>x.kind==='text');
+  doc.fill.on=fills.length>0;
+  if(ft){doc.fill.size=ft.size;doc.fill.font=ft.font;doc.fill.textColor=rgbHex(ft.color);
+    const fam=fontList().find(f=>f.styles.some(st=>st.ps===ft.font)); if(fam){doc.fill.family=fam.family;doc.fill.style=fam.styles.find(st=>st.ps===ft.font).style;}
+    const m=(ft.expr||'').match(/gbE\*(\d+(?:\.\d+)?)\+0\.000001\);if\(gbN/); if(m) doc.fill.anim.cps=+m[1];}
+  doc.fill.gap.on=!!(d.gaps&&d.gaps.length); if(d.gaps&&d.gaps[0]&&d.gaps[0].color) doc.fill.gap.color=rgbHex(d.gaps[0].color);
+  doc.echo.on=!!(d.echoes&&d.echoes.length);
+  const A=d.anim;
+  if(!A) doc.anim.mode='static';
+  else{
+    doc.anim.mode=/conveyor/.test(A.label)?'push':/reveal/.test(A.label)?'reveal':'camera';
+    const lastCam=(A.camX&&A.camX.length?A.camX:A.cam||[]).slice(-1)[0]; if(lastCam) doc.anim.lenF=Math.max(2,Math.round(lastCam[0]));
+    const z=A.zoomPct&&A.zoomPct.length?A.zoomPct:(A.zoom?A.zoom.keys.map(k=>[k[0],k[1][0],k[2],k[3]]):[]);
+    doc.anim.zoom=[];
+    for(let i=0;i+1<z.length;i+=2){const a=z[i],b=z[i+1],rev=a[1]<b[1],small=rev?a[1]:b[1];
+      doc.anim.zoom.push({on:true,closed:false,rows:Math.round(doc.grid.rows*100/Math.max(1,small)),mode:'frames',f0:a[0],f1:b[0],at:1,off:0,dur:b[0]-a[0],rev,sx:0,sy:0,ex:0,ey:0});}
+    if(z.length&&z[0][3]) doc.anim.zoomCurve=z[0][3];
+  }
+  // transitions
+  ['in','out'].forEach(k=>{const T=doc.trans[k]; T.on=false;});
+  ((d.trans&&d.trans.groups)||[]).forEach(g=>{
+    const T=doc.trans[g.k]; if(!T) return; T.on=true; T.output=g.output;
+    const t0s=g.tiles.map(t=>{const K=t.keys||{};const l=(K.rs&&K.rs.length?K.rs:K.op&&K.op.length?K.op:K.sc)||[[0]];return l[0][0];});
+    const K0=g.tiles[0].keys||{}, l0=(K0.rs&&K0.rs.length?K0.rs:K0.op&&K0.op.length?K0.op:K0.sc)||[[0],[8]];
+    T.len=Math.max(1,(l0[1]?l0[1][0]:8)-l0[0][0]);
+    T.start=Math.min(...t0s); T.dur=Math.max(...t0s)-T.start+T.len; T.atEnd=false;
+    T.appear=K0.rs&&K0.rs.length?'wipe':K0.sc&&K0.sc.length?'scale':(K0.op&&K0.op.length===2&&K0.op[0][2]==='h')?'cut':'fade';
+    T.mode=K0.rs&&K0.rs.length?(K0.rs[0][1][0]>0?'clear':'build'):K0.op&&K0.op.length?(K0.op[0][1]>0?'clear':'build'):'build';
+    if(g.tiles[0].color) T.color=rgbHex(g.tiles[0].color);
+    T.cover=Math.round(g.tiles[0].w+1)%Math.round(p)===0||Math.round(g.tiles[0].w)%Math.round(p)===0;
+  });
+  return doc;
+}
+function importText(s,name){
+  let doc=null, rebuilt=false;
+  try{const o=JSON.parse(s);doc=o.doc||o;}catch(e){
+    // a .jsx: use the layout saved inside it, or rebuild one from the build data
+    const i=s.indexOf('var GB_LAYOUT=');
+    if(i>=0){try{const o=JSON.parse(jsonAt(s,s.indexOf('{',i)));doc=o.doc||o;}catch(e2){}}
+    if(!doc){const j=s.lastIndexOf('GB_build(');if(j>=0){try{doc=payloadToDoc(JSON.parse(jsonAt(s,s.indexOf('{',j))));rebuilt=true;}catch(e3){doc=null;}}}
+  }
+  if(!doc||!doc.grid) return toast('That file isn’t a Grid Blocks layout or build script','err');
+  pushHist(); setDoc(doc); if(V.fit)fitView(V.fit); afterDocChange(); closeLib();
+  toast(rebuilt?'Layout rebuilt from an older build script — check the settings':'Layout opened','ok',true);
 }
 function importFile(){
   if(inAE){evalHost('GB_openDialog()').then(r=>{r=String(r);if(r.indexOf('OK|')===0)importText(r.slice(3));else if(r.indexOf('ERR|')===0)toast(r.slice(4),'err');});}
   else $('#fileIn').click();
 }
-$('#fileIn').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>importText(String(rd.result));rd.readAsText(f);e.target.value='';});
+$('#fileIn').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>importText(String(rd.result),f.name);rd.readAsText(f);e.target.value='';});
 $('#libExport').onclick=exportFile; $('#btnExportFile').onclick=exportFile; $('#libImport').onclick=importFile;
+document.addEventListener('dragover',e=>{if(e.dataTransfer&&Array.from(e.dataTransfer.types||[]).indexOf('Files')>=0)e.preventDefault();});
+document.addEventListener('drop',e=>{const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];if(!f||!/\.(json|jsx)$/i.test(f.name))return;e.preventDefault();const rd=new FileReader();rd.onload=()=>importText(String(rd.result),f.name);rd.readAsText(f);});
 function download(name,text,type){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:type||'text/plain'}));a.download=name;document.body.appendChild(a);a.click();a.remove();
 }
@@ -2957,8 +3120,8 @@ async function build(){
     else toast(p[0]==='ERR'?p.slice(1).join('|'):'After Effects said: '+r,'err');
     detect();
   } else {
-    const code='// Grid Blocks — generated build script\n// After Effects: File › Scripts › Run Script File…\n// Builds into the active comp if it is '+d.comp.w+'×'+d.comp.h+', otherwise makes a new comp.\n\n'
-      +HOST+'\n(function(){var r=GB_build('+json+');alert(r.replace(/^OK\\|/,"").replace(/^ERR\\|/,"Error: "));})();\n';
+    const code='// Grid Blocks — generated build script\n// After Effects: File › Scripts › Run Script File…\n// Builds into the active comp if it is '+d.comp.w+'×'+d.comp.h+', otherwise makes a new comp.\n// Open this file in Grid Blocks (Layouts › Open from file) to keep editing the layout.\n\n'
+      +layoutBlock()+'\n'+HOST+'\n(function(){var r=GB_build('+json+');alert(r.replace(/^OK\\|/,"").replace(/^ERR\\|/,"Error: "));})();\n';
     download(`GridBlocks_${d.comp.w}x${d.comp.h}.jsx`,code);
     toast('Exported. In AE: File › Scripts › Run Script File…','ok');
   }
@@ -2966,7 +3129,7 @@ async function build(){
 $('#btnBuild').onclick=build; $('#btnBuild2').onclick=build;
 $('#btnExportJsx').onclick=()=>{
   const d=payload(), json=JSON.stringify(d).split(LS1).join('\\u2028').split(LS2).join('\\u2029');
-  const code='// Grid Blocks — generated build script\n\n'+HOST+'\n(function(){var r=GB_build('+json+');alert(r.replace(/^OK\\|/,"").replace(/^ERR\\|/,"Error: "));})();\n';
+  const code='// Grid Blocks — generated build script\n// Open this file in Grid Blocks (Layouts › Open from file) to keep editing the layout.\n\n'+layoutBlock()+'\n'+HOST+'\n(function(){var r=GB_build('+json+');alert(r.replace(/^OK\\|/,"").replace(/^ERR\\|/,"Error: "));})();\n';
   evalHost('(function(){var f=new File(Folder.myDocuments.fsName+"/GridBlocks_build.jsx").saveDlg("Save build script");if(!f)return "CANCEL";f.encoding="UTF-8";f.open("w");f.write('+jsStr(code)+');f.close();return "OK|"+f.fsName;})()')
     .then(r=>{r=String(r);if(r.indexOf('OK|')===0)toast('Saved '+r.slice(3),'ok');});
 };

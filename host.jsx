@@ -59,7 +59,7 @@ function GB_saveDialog(s,defName){
 }
 function GB_openDialog(){
   try{
-    var filt=GB_isWin()?"JSON:*.json":function(f){return (f instanceof Folder)||/\.json$/i.test(f.name);};
+    var filt=GB_isWin()?"Grid Blocks layout:*.json;*.jsx":function(f){return (f instanceof Folder)||/\.(json|jsx)$/i.test(f.name);};
     var f=File.openDialog("Open Grid Blocks layout",filt,false);
     if(!f) return "CANCEL";
     f.encoding="UTF-8"; f.open("r"); var s=f.read(); f.close();
