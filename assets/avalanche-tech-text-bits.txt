@@ -1,0 +1,497 @@
+AVALANCHE / BLOCKCHAIN TEXT BITS FOR GRAPHICS
+All hashes, addresses, Node IDs, L1 IDs, block numbers and amounts are randomly generated placeholders, not real transactions.
+The four chain IDs and the endpoints in their sections are real and public.
+
+==================== TRANSACTION HASHES (C-Chain style) ====================
+
+0xb00a4e4b2e577097ff1ce87dc7f966e07d3a32556f26b09758f992ce465df2b4
+0xc02430784571c5434250d625dd79a3300eb3f5b4272fccc953b82f3e4caae9f9
+0xeb9379ab2261033ffe9d637d767005a2a69fec7dba71a6fedc3174da8c36e761
+0x4d309b3c16809e0e991a3a1095168758df35d569acc0e432654323fd5f07cf95
+0xbdb7015ef6984b53fe054d0cc9149ab805180ce5a33ae57b790842a4fd6b065f
+0xa0f645d958084153312aa694bd2ced67ed3fb5a56a200eebfe3ef26666f803a9
+0x3a346cc38271b7aeff8addab2c9b848d0a9c7b978bfb8a8d96a71df6dab1a9a0
+0xf36ba3d3aa303e93fb46ef75265e1551a86909cc2963c8d309217901de89b1c4
+0xec9a72ae43a284c7529adccc684d5eabee86b9292546e7ec0e7965b73ad8c5dd
+0xa84ab17c88bc787ce04e1833c0772d113e1bc9f050ba5ccafa7c26882045d6de
+0x15eb2c782799e4cade8b88ca4b5e4010d0c20c6aae45c43b8e44627905d90b5d
+0x279e2d4682c026b2403621ffef3a4b14fff6ddfa1f8b3126016ac402b1fe7e96
+0x8646cd871ec4892684b85374901e484c735b7ea9ba852bc4b04d859a848247e6
+0x7817612ec5300130de9c0af48106220944fc35accaf59982db65b619dbc0939e
+0x68c1739648643b6e6e3b218aa7bdf57ad103939a5ec040689e22a3e0a93e0288
+0x305ca312d0d7ae606eaee012c1c37982ce28bd8ca5d3237c62ee9dd1b70a8c2b
+0x35c3f8f858ee9168e9e24d1f26be8b3288e49b17ba7813fc364571424bfcd3cc
+0xcf70a72b59d4af698baf820a242a7da94372996a406ee7d912732023b703a934
+0x4cd8edd27fae35980068c61290378741be4464c7ae9f102c330d3f7b5fcb2a2a
+0xbb13f07e580fbfc088978f6f2e2ec61811986543bdf260533ce75642d493702f
+0x3e72288086e2431facc0ae7ae6cd944d8d9af27b5488b8f3100c1fcbe04e2e32
+0x89ddc711d6c788886d95dee47578c5c17aa30cc2a0bc088b1872e2a5a04d1a53
+0x5a0b2669f74b944cac8153bcc3c302bd54e08d31100ed184703e87eb4e87dcdb
+0x4e5071570d93b4d2e0296b25a7d69d2d3957af712cfdb51791c4e847af54556f
+0xd4e129541eda3387ae4df7af2e7ab96a21d2d4f6fe5202d99140ef4465018cab
+
+==================== SHORT TX IDs (truncated, UI style) ====================
+
+0xbbe608…97fa
+0x3c5411…04d6
+0x0c8d2d…6e4a
+0x99097c…2b96
+0xea02bb…d535
+0x022b0a…c976
+0xf7540c…abc8
+0x9f9f42…0e7f
+0x496cab…e8d2
+0x66377a…c111
+0xaf8c6c…df3d
+0x616e16…1ca6
+0x2c11cd…47a5
+0x35d904…5978
+0x03f010…30a9
+0x37f4c3…2938
+0xc63a42…fc4e
+0xcc1556…c0e4
+0x4fafa9…9adc
+0xab2219…9d98
+Tx: EFkxD6…gGM9
+Tx: mXjLHb…Ar1o
+Tx: Qpj1xJ…BsZZ
+Tx: mgwoVS…dGYf
+Tx: QivTKn…di1b
+Tx: C2N35S…pZnH
+Tx: aKQ4DA…tAUr
+Tx: Aubzq9…QYvx
+Tx: tkC7Rg…ykRH
+Tx: E1Hfdj…rTcZ
+
+==================== P-CHAIN / X-CHAIN TX IDs (CB58 style) ====================
+
+C32qPSqqBCMhhZWUoBzxrkEMnKpx8Sgp6acki6EREKV2LAg5E
+ZEcVnkp8nFagiCBZFdFwiQFU16eUHQGAfQHXwaa99ai9WTac3
+uMZfVYLg7nEwidMHtuUzfKsHcWBdcPANevA55MukoVffrvhMi
+CqJ8NXPg32g2TMmg14iQJhR7XfNqobD9YWWV73Wjw1JbHSy1RU
+JSELK1rZ8YsyjmdfnWeuZNozwbYGfRH1FAkUSgpm1hfWiEhkS
+td5dG5fkYXngHbDGZtE4jg4ux2D3Mojcg8aoeqmbix6YLoF1M
+cJ1R4DAdcYqti7QAP2Yg1JB562m6KwXiwbnDMoqopijMb2ACs
+USGQijECtVgyy878eYNbQgWr6F55ScWvke1FfmTB1uqgoKLt5r
+GJAA8WZwYfCvZ7wqVffpTptmX7phVmRVHekfSkER3xXS9Sqni9
+JfmSomCc1cU7bhiMoTKaXbNehFLYtLrPA5V6zj2tKHSQ5sDY8j
+6PveyFcir54jo3YEDQUmUfQ6FXjFHwEqmSTLEeqm2gffzo4shb
+pNGUjrrHcQx9HhDWWTuR1sgtzJgLQJoLAzR1jMUUSJNEiUDcZh
+3ecvg31dypwwLVLfuc4cDHr8j6hFmHovn3Qcx2XUXQJHr5Z2y
+qzs78tsKnPB4aH74kJbeEXZn9HNruYfiR5xqbALGQ4CYcHZfTx
+TSkLE5qJJmFpWDW5fogWtAxvGHumiHBi6BVevEdDGE4J7oMgQH
+
+==================== WALLET ADDRESSES ====================
+
+0xcbd041bdad19c6acb416fc4f3097c3609fe8ae52
+0xb90ff3342c20b63a1881cca946842019212249ba
+0x8833e018cab43f36e486f959716bb11cd15abb83
+0xa79c3791e12c21558cf34bdad8ad8ce593fb854e
+0xdf9953505b8873fcc1b6911dde83daca838fadde
+0xaadbfcf2e9ee00f53d2f27a9f9d19ba885dd640b
+0x25369462a7a6b706faa68c5e7a22c8fd51bb4e99
+0xcb562aeff3717ec9b7c99f74f476cd738c1ac8ea
+0x9f6b528e3e3fa0ec3b8c19d880363b9d4717ca54
+0x55c735f7ffbfdce4cf00a3903f4ea68bf49d7132
+0xdb059c3d13a5427cc6652c3d24ded0db392b9b52
+0xbbb05eb0c32b6549672bf01d1657a9652273364e
+P-avax1y28wnla9672dtt34l46hxv94yg9q8pj5y46ycv
+P-avax1e4lsjf6wxgwf8wfrdpqcem8xcuqrlq334lnhp0
+P-avax1tg0kgjk8fl2ft9ccm7wx79ag6gam6hc45yz6vu
+P-avax14t3ev5avv8uzmylfkewf0n48wts09l7mjdch6d
+P-avax144mlj3rndch4ttqqdrcdmdjs9fjvwcfnwruhs0
+P-avax18ak4waa6dlw8zndyse3vs2qdmlqzf9hygxrult
+X-avax1e7zfej6r9t8ctmhh3lx5ctdzvzxl450ea8n47a
+X-avax12jqaxwg7wxws9gyyxhfxtll24x749ud7f0kg7a
+X-avax1607prsjzvfxdg7tgure9c98hnlf26h6enfu94v
+X-avax19req7cpckdfqps8a3lyqqzevnzj5lels7lxj97
+X-avax1r8n4g55wdxmk2a7pgn526xmrcvvztmgpe530n8
+X-avax1j25d2xwsm8rewsdym0085a4lun0hzhh54xhnhl
+
+==================== VALIDATOR NODE IDs ====================
+
+NodeID-GDjfjWJYzhXTAEqtQBF68q7VdQYM1a9aP
+NodeID-ech9ijaVEsEPRKP6asntq51MebGRwiEUt
+NodeID-a5Go6ER5997EBD5cyF8W12d4CSqoos1mV
+NodeID-B54nfn4cfQujkGJnD2ukPZDfz2DaUd6YZ
+NodeID-Savtpd3QgVqv1KAbxfjPUkV4zQQqaiyax
+NodeID-yZbu45dXuyq9Htf9caFLWsnaN5YnekrMG
+NodeID-p4T7P1QGdQUoETwdyc9xQPLvkreqAVmn1
+NodeID-sLmqwNvNgJz5e4mP31oVhuPrUa4VCnn6W
+NodeID-dRDf92Zg1uvyVTSHAoRxQEpxoCESrZuEp
+NodeID-F19CmtaX2PaYVjEUMqAFFygPMNh5pR2Gm
+NodeID-DKcQn1QmfD14HFhG181N7Ntj9ge2t3RwE
+NodeID-DHVZP21beKvxaYsSfkqhj5Sa6TyP2nqBG
+NodeID-YPieuRKUZsEAAgwWrZN5Siv3AWP875HY3
+NodeID-XhFj98o8jmbUeM5cojpq3ZACCDcZLufBD
+NodeID-WFp3jjEZEo6q9XQiVSAW93xCdBQVMr8b6
+
+==================== BLOCK DATA ====================
+
+BLOCK #70,075,438  |  91 txns  |  1319 ms
+BLOCK #70,269,059  |  75 txns  |  1039 ms
+BLOCK #70,615,881  |  40 txns  |  1399 ms
+BLOCK #70,184,304  |  64 txns  |  310 ms
+BLOCK #69,193,931  |  111 txns  |  306 ms
+BLOCK #69,939,585  |  129 txns  |  293 ms
+BLOCK #70,354,292  |  223 txns  |  578 ms
+BLOCK #68,993,350  |  226 txns  |  1747 ms
+BLOCK #69,783,883  |  74 txns  |  1050 ms
+BLOCK #69,501,609  |  76 txns  |  672 ms
+BLOCK #69,794,064  |  92 txns  |  1278 ms
+BLOCK #68,987,023  |  161 txns  |  933 ms
+BLOCK #68,348,821  |  65 txns  |  1810 ms
+BLOCK #71,561,580  |  227 txns  |  518 ms
+BLOCK #68,999,574  |  151 txns  |  1065 ms
+blockHash: 0x35a0f4d5e761d5914078758f60713de6abb00c9aeac25d9d2f024748c57bb4a6
+blockHash: 0x60137c7c1178fbf5478348dcb98151ccbbff72163a0311dc55525a5df1a2e706
+blockHash: 0xdf1b764b645129bbb6f8c40168da8057d52ea817d3a90f19bcc469423fd2b29b
+blockHash: 0xebe9d96ed415d7f08a21857eca3cd730db9728c06d05e8a77c386af6e2178975
+blockHash: 0x5c49e8deb4d579275171152dd14912b9077552f011102fc86e65c4dbee5d2c0e
+parentHash: 0x7fe985f4d890b4db15386e83028e4d6fcda1e3728f19a61c6910cf4486db6301
+parentHash: 0x4e3b762efcf08a28ef6055c4c28529cfaf4e23f34361a93b7a1eba6eda8878eb
+parentHash: 0xf1447bd791424ce4e7514ae062f3cc46163aebd3d0c7c5649e588e4ff3b4bca4
+stateRoot: 0x45ad3cf2b33d19d0dcdcf6b4e12311453f597c5d4febae61b5d6bafe8d42f9ba
+stateRoot: 0x062b7f175a581cb2796f43ed4c80bab796727fa8ff4e7401882c997945f738a8
+stateRoot: 0xd00348eaff2d0b9b4bb1a7b01db6f1bb98a979a44b645969b34bb12664556ba5
+
+==================== TIMESTAMPS / LOG LINES ====================
+
+[2026-10-09 09:30:00.632] INFO  <P Chain> mempool cleared
+[2026-10-09 09:30:01.443] INFO  <P Chain> state sync complete
+[2026-10-09 09:30:02.047] INFO  <P Chain> peer connected
+[2026-10-09 09:30:02.926] INFO  <P Chain> state sync complete
+[2026-10-09 09:30:03.042] INFO  <X Chain> tx accepted
+[2026-10-09 09:30:03.898] INFO  <X Chain> ICM message delivered
+[2026-10-09 09:30:04.254] INFO  <C Chain> health check: healthy
+[2026-10-09 09:30:04.780] INFO  <C Chain> peer connected
+[2026-10-09 09:30:05.113] INFO  <X Chain> warp signature aggregated
+[2026-10-09 09:30:05.264] INFO  <X Chain> tx accepted
+[2026-10-09 09:30:05.673] INFO  <C Chain> warp signature aggregated
+[2026-10-09 09:30:06.278] INFO  <X Chain> ICM message delivered
+[2026-10-09 09:30:06.653] INFO  <X Chain> consensus finalized
+[2026-10-09 09:30:07.406] INFO  <C Chain> state sync complete
+[2026-10-09 09:30:07.721] INFO  <P Chain> peer connected
+[2026-10-09 09:30:07.811] INFO  <X Chain> block accepted
+[2026-10-09 09:30:08.020] INFO  <P Chain> consensus finalized
+[2026-10-09 09:30:08.543] INFO  <C Chain> health check: healthy
+[2026-10-09 09:30:09.112] INFO  <P Chain> state sync complete
+[2026-10-09 09:30:09.578] INFO  <P Chain> settlement confirmed
+[2026-10-09 09:30:10.093] INFO  <P Chain> bootstrapping complete
+[2026-10-09 09:30:10.257] INFO  <C Chain> peer connected
+[2026-10-09 09:30:10.594] INFO  <P Chain> ICM message delivered
+[2026-10-09 09:30:11.290] INFO  <P Chain> settlement confirmed
+[2026-10-09 09:30:11.648] INFO  <X Chain> tx accepted
+
+==================== GAS / FEES / AMOUNTS ====================
+
+gasUsed: 457,239
+gasUsed: 380,153
+gasUsed: 283,334
+gasUsed: 440,992
+gasUsed: 327,031
+gasUsed: 322,798
+gasUsed: 31,358
+gasUsed: 400,974
+gasUsed: 393,884
+gasUsed: 141,239
+baseFee: 17.81 nAVAX
+baseFee: 18.30 nAVAX
+baseFee: 14.57 nAVAX
+baseFee: 14.07 nAVAX
+baseFee: 19.05 nAVAX
+baseFee: 17.52 nAVAX
+baseFee: 22.09 nAVAX
+baseFee: 6.92 nAVAX
+value: 8,466.8234 AVAX
+value: 5,902.5222 AVAX
+value: 13,672.7802 AVAX
+value: 11,009.1972 AVAX
+value: 11,920.0313 AVAX
+value: 8,856.0369 AVAX
+value: 17,839.6460 AVAX
+value: 21,737.9585 AVAX
+value: 18,648.4473 AVAX
+value: 22,885.9235 AVAX
+fee: < $0.02
+fee: < $0.05
+fee: < $0.02
+fee: < $0.03
+fee: < $0.08
+fee: < $0.07
+fee: < $0.07
+fee: < $0.03
+settled: $55,387,990.90
+settled: $79,007,148.39
+settled: $14,381,215.53
+settled: $27,083,559.75
+settled: $83,788,968.26
+settled: $84,026,322.29
+settled: $39,476,293.15
+settled: $46,144,340.74
+nonce: 68377
+nonce: 29560
+nonce: 99218
+nonce: 9552
+nonce: 50300
+nonce: 44679
+
+==================== STATUS STRINGS ====================
+
+STATUS: FINALIZED
+STATUS: ACCEPTED
+STATUS: PENDING
+STATUS: CONFIRMED
+STATUS: SETTLED
+FINALITY: < 1s
+FINALITY: SUB-SECOND
+UPTIME: 99.99%
+NETWORK: MAINNET
+NETWORK: FUJI TESTNET
+CONSENSUS: SNOWMAN
+VALIDATORS: ACTIVE
+SYNC: 100%
+HEALTH: OK
+CHAIN ID: 43114
+CHAIN ID: 43113 (FUJI)
+EVM COMPATIBLE
+KYC: VERIFIED
+AML: CLEARED
+PERMISSIONED: TRUE
+INTEROP: ENABLED
+SIGNATURE: VALID
+BLS SIGNATURE: AGGREGATED
+SETTLEMENT: T+0
+
+==================== KEY-VALUE / JSON FRAGMENTS ====================
+
+"jsonrpc": "2.0"
+"method": "eth_sendRawTransaction"
+"method": "eth_getBlockByNumber"
+"method": "platform.getCurrentValidators"
+"method": "avm.getTxStatus"
+"method": "info.getNodeID"
+"chainId": "0xa86a"
+"status": "0x1"
+"type": "0x2"
+"confirmations": 1
+"finalized": true
+"blockNumber": "0x2306c1"
+"from": "0xad8c12353b51e443b96cc3b020737e27fb3ef5e8"
+"to": "0x2166b469b8577a87aae4ea4ffcff221021e94372"
+"maxFeePerGas": "25000000000"
+"maxPriorityFeePerGas": "1000000000"
+"weight": 2000000000000
+"delegationFee": "2.0000"
+"uptime": "99.9800"
+"connected": true
+
+==================== RPC / ENDPOINTS ====================
+
+https://api.avax.network/ext/bc/C/rpc
+https://api.avax-test.network/ext/bc/C/rpc
+/ext/bc/P
+/ext/bc/X
+/ext/info
+/ext/health
+wss://api.avax.network/ext/bc/C/ws
+snowtrace.io/tx/0x…
+avalanchego --network-id=mainnet
+avalanchego --network-id=fuji
+
+==================== CHAIN IDs (real, public) ====================
+
+P-Chain ID: 11111111111111111111111111111111LpoYY
+X-Chain ID: 2oYMBNV4eNHyqk2fjjV5nVQLDbtmNJzq5s3qs3Lo6ftnC6FByM
+C-Chain ID: 2q9e4r6Mu3U68nU1fYjgbR6JvwrRx36CohpAX5UQxse55x1Q5
+EVM Chain ID: 43114
+
+==================== L1 / SUBNET IDs (generated) ====================
+
+L1 ID: vVPNM66BrUvFG5TDLLUqMiRDduwhXtx8sitkSu2gzm3i69a2jQ
+L1 ID: EaPtHMt9qP4EN4K6EReAWa6Ey96s7j3p5JcfEtaUQmPp45GnXa
+L1 ID: FGrSXupb5fFNpT5owA49JeDKoowsUCtnQcSe3TxZnJEk8iaVeb
+L1 ID: QWGBYgCVpugFbiPjSW7TEHj2A4j4cCyzcCjK2647SdtkWh8j5q
+L1 ID: 2G4Ltu1E16sRb1tAPvg4AV3hgDfPGDZ3U5m6Zfw9e6U8cnSuC8
+L1 ID: MSUwCQvHAdFz2ZKLHqJVct89DGxveWDqw3XdHdidQvqCTmND73
+blockchainID: 1xmE7upfD1kCyaQ5wC57kiBZJh94T2SjP7eeVX29gK89DD5J5M
+blockchainID: suELdmi7hZsC5x6dCy8Wh5eZbpaiAxKsxAFeX82w5E9RE3xKKa
+blockchainID: 829azG52RofDmKdahJfSJfhVTegyta2kbu26R9pnpG8nnaBkxJ
+blockchainID: hyvBrfTheQ4WSSpr8ht7Bd5xQJ9LBsP4S9BaeCsQskbqDW8jHp
+blockchainID: m5XscF3Ro1DFKGg9T2z1LH1xnsaP7CD81229n6sT3eN4VxTvZp
+blockchainID: Etgi2i2SKMqUmYQSgjEKZWmc61meCEoVmc4AZ4bLM4V6xuiTX7
+
+==================== AVALANCHE TERMS ====================
+
+Avalanche L1
+Avalanche L1s
+Primary Network
+C-Chain
+P-Chain
+X-Chain
+Snowman Consensus
+Avalanche Consensus
+Snowball
+Sub-second finality
+Avalanche Interchain Messaging (ICM)
+Avalanche Warp Messaging
+Interchain Token Transfer (ICTT)
+Teleporter
+AvalancheGo
+Subnet-EVM
+HyperSDK
+Avalanche CLI
+Core Wallet
+Snowtrace
+Validator Manager
+Proof of Stake
+Proof of Authority
+Permissioned L1
+Sovereign L1
+Custom gas token
+Native interoperability
+EVM compatible
+AVAX
+nAVAX
+Fuji Testnet
+Mainnet
+Avalanche9000
+ACP-77
+Builder Hub
+Validator set
+Staking rewards
+Delegation
+BLS public key
+Proof of possession
+
+==================== BLOCKCHAIN / FINANCE JARGON ====================
+
+Onchain settlement
+Atomic settlement
+Tokenized securities
+Tokenized treasuries
+Real-world assets (RWA)
+Stablecoin rails
+Programmable money
+Smart contract
+ERC-20
+ERC-721
+ERC-1155
+Merkle root
+Hash function
+Keccak-256
+secp256k1
+Digital signature
+Public key
+Private key (never shared)
+Multisig
+Account abstraction
+Gas limit
+Mempool
+Nonce
+Block height
+State root
+Light client
+Node
+Full node
+Archive node
+RPC endpoint
+Oracle feed
+Liquidity pool
+Order book
+Custody
+Collateral
+Counterparty risk
+Delivery vs payment (DvP)
+T+0 settlement
+Compliance layer
+KYC / AML
+OFAC screening
+Allowlist
+Audit trail
+Immutable ledger
+Byzantine fault tolerance
+Finality
+Throughput
+Latency
+Interoperability
+Cross-chain message
+
+==================== SHORT PHRASES / TAGS ====================
+
+Technology Built for Business
+Built for production
+Settles in seconds
+Finality in < 1s
+Infrastructure, not hype
+Private. Compliant. Connected.
+Your chain. Your rules.
+From pilot to production
+Connection where valuable, isolation where required
+Predictable performance
+Production-grade reliability
+Live in production
+Global settlement
+Embedded finance
+Institutional grade
+Always on. 24/7/365
+Verifiable by design
+Interoperable by default
+Built to scale
+Build what lasts
+
+==================== BRACKET / TERMINAL TAGS ====================
+
+[OK]
+[ACCEPTED]
+[FINALIZED]
+[SYNCED]
+[VERIFIED]
+[SIGNED]
+[BROADCAST]
+[CONFIRMED]
+[SETTLED]
+[HEALTHY]
+>> submitting tx…
+>> awaiting finality…
+>> finalized in 0.8s
+>> validator set updated
+>> warp message relayed
+$ avalanche blockchain deploy
+$ avalanche node status
+$ cast send --rpc-url $AVAX_RPC
+> eth_chainId → 0xa86a
+> net_version → 43114
+
+==================== NUMBERS / COUNTERS ====================
+
+5,944 TPS
+33,021 TPS
+4,470 TPS
+83,944 TPS
+82,482 TPS
+35,525 TPS
+1,447 TPS
+17,140 TPS
+84,374 TPS
+74,935 TPS
+58,597 TPS
+75,205 TPS
+1,799 validators
+1,641 validators
+1,753 validators
+2,228 validators
+1,739 validators
+1,402 validators
+TVL $0.75B
+TVL $3.41B
+TVL $0.58B
+TVL $0.59B
+TVL $5.82B
+TVL $3.98B
+465 ms
+661 ms
+257 ms
+918 ms
+483 ms
+781 ms

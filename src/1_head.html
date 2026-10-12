@@ -1,0 +1,972 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Grid Blocks</title>
+<style>
+/* Aeonik Fono: uses the installed font, or files in /fonts when hosted */
+@font-face{font-family:'Aeonik Fono';font-style:normal;font-weight:300;font-display:swap;src:local('Aeonik Fono Light'),local('AeonikFono-Light'),url('fonts/AeonikFono-Light.woff2') format('woff2'),url('fonts/AeonikFono-Light.woff') format('woff'),url('fonts/AeonikFono-Light.otf') format('opentype'),url('fonts/AeonikFono-Light.ttf') format('truetype')}
+@font-face{font-family:'Aeonik Fono';font-style:normal;font-weight:400;font-display:swap;src:local('Aeonik Fono Regular'),local('AeonikFono-Regular'),url('fonts/AeonikFono-Regular.woff2') format('woff2'),url('fonts/AeonikFono-Regular.woff') format('woff'),url('fonts/AeonikFono-Regular.otf') format('opentype'),url('fonts/AeonikFono-Regular.ttf') format('truetype')}
+@font-face{font-family:'Aeonik Fono';font-style:normal;font-weight:500;font-display:swap;src:local('Aeonik Fono Medium'),local('AeonikFono-Medium'),url('fonts/AeonikFono-Medium.woff2') format('woff2'),url('fonts/AeonikFono-Medium.woff') format('woff'),url('fonts/AeonikFono-Medium.otf') format('opentype'),url('fonts/AeonikFono-Medium.ttf') format('truetype')}
+@font-face{font-family:'Aeonik Fono';font-style:normal;font-weight:700;font-display:swap;src:local('Aeonik Fono Bold'),local('AeonikFono-Bold'),url('fonts/AeonikFono-Bold.woff2') format('woff2'),url('fonts/AeonikFono-Bold.woff') format('woff'),url('fonts/AeonikFono-Bold.otf') format('opentype'),url('fonts/AeonikFono-Bold.ttf') format('truetype')}
+:root{
+  --bg:#131315;--panel:#1b1b1e;--panel2:#222226;--field:#2a2a2f;--hover:#313137;--line:#2f2f35;--line2:#404047;
+  --text:#ececef;--muted:#9898a1;--dim:#686871;--accent:#E84142;--accent2:#ff5a5b;--accentA:rgba(232,65,66,.16);--ok:#3ecf8e;--warn:#ffb44d;
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font-size:12px;overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-font-smoothing:antialiased}
+svg{flex:none;display:block}
+button{font:inherit}
+.app{display:grid;grid-template-rows:50px minmax(0,1fr);height:100vh}
+
+/* ---------- header ---------- */
+.top{display:flex;align-items:center;gap:6px;padding:0 10px 0 12px;border-bottom:1px solid var(--line);background:var(--panel);min-width:0}
+.logo{display:flex;gap:8px;align-items:center;font-weight:700;font-size:13px;white-space:nowrap;margin-right:6px}
+.logo .mark{width:22px;height:22px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center}
+.steps{display:flex;align-items:center;min-width:0;overflow:hidden}
+.stepbtn{display:flex;align-items:center;gap:7px;height:30px;padding:0 9px 0 5px;border-radius:8px;border:0;background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap}
+.stepbtn:hover{color:var(--text);background:var(--panel2)}
+.stepbtn .n{width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;background:var(--field);border:1px solid var(--line2);color:var(--muted)}
+.stepbtn.on{background:var(--field);color:var(--text)}
+.stepbtn.on .n{background:var(--accent);border-color:var(--accent);color:#fff}
+.stepbtn.done .n{background:#3a3a41;border-color:#3a3a41;color:var(--text)}
+.steps .join{width:8px;height:1px;background:var(--line2);flex:none}
+.chip{display:flex;align-items:center;gap:7px;background:var(--panel2);border:1px solid var(--line);padding:0 10px;height:28px;border-radius:999px;color:var(--muted);white-space:nowrap;overflow:hidden;min-width:0;cursor:default}
+.chip b{color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex:none}
+.dot.live{background:var(--ok);box-shadow:0 0 0 3px rgba(62,207,142,.16)}
+.spacer{flex:1;min-width:4px}
+.vsep{width:1px;height:20px;background:var(--line2);flex:none;margin:0 2px}
+
+/* ---------- buttons ---------- */
+.btn{text-decoration:none;appearance:none;border:1px solid var(--line2);background:var(--panel2);color:var(--text);height:28px;padding:0 10px;border-radius:7px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;flex:none}
+.btn:hover{background:var(--hover)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn.primary:hover{background:var(--accent2);border-color:var(--accent2)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{background:var(--field);color:var(--text)}
+.btn.icon{width:28px;padding:0}
+.btn.wide{width:100%;height:34px}
+.btn.big{height:40px;font-size:13px;width:100%}
+.btn.danger:hover{background:rgba(232,65,66,.16);border-color:var(--accent)}
+.btn:disabled{opacity:.35;cursor:default;transform:none;background:var(--panel2)}
+.btn.primary:disabled{background:var(--accent)}
+.btn.ghost:disabled{background:transparent}
+kbd{font:inherit;font-size:10px;padding:0 4px;line-height:15px;border-radius:4px;background:rgba(255,255,255,.06);border:1px solid var(--line2);color:var(--muted);font-variant-numeric:tabular-nums}
+.btn.primary kbd{background:rgba(0,0,0,.2);border-color:rgba(255,255,255,.28);color:#fff}
+
+/* ---------- layout ---------- */
+main{display:grid;grid-template-columns:320px minmax(0,1fr) 276px;grid-template-areas:"l s i";min-height:0}
+main.noinsp{grid-template-columns:320px minmax(0,1fr)}
+main.noinsp #insp{display:none}
+#left{grid-area:l;display:grid;grid-template-rows:auto minmax(0,1fr) auto;border-right:1px solid var(--line);background:var(--panel);min-height:0}
+.stage{grid-area:s;display:grid;grid-template-rows:minmax(0,1fr) auto 30px;min-width:0;min-height:0;background:#0e0e10}
+#insp{grid-area:i;overflow:auto;border-left:1px solid var(--line);background:var(--panel);padding:10px}
+
+.step-head{padding:16px 16px 12px;border-bottom:1px solid var(--line)}
+.eyebrow{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.step-head h2{margin:4px 0 4px;font-size:16px;font-weight:700;letter-spacing:-.2px}
+.step-head p{margin:0;color:var(--muted);line-height:1.45}
+.step-body{overflow:auto;padding:4px 0 12px}
+.step-foot{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:var(--panel)}
+.step-foot .btn{flex:1}
+.pane{display:none}
+.pane.on{display:block}
+
+.group{padding:12px 16px;display:grid;gap:9px;border-bottom:1px solid var(--line)}
+.group:last-child{border-bottom:0}
+.group-h{display:flex;align-items:center;gap:8px;font-weight:650;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.group-h .tag{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:500;color:var(--dim)}
+.field{display:grid;grid-template-columns:84px minmax(0,1fr);align-items:center;gap:8px}
+.field2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.field2 .field{grid-template-columns:auto minmax(0,1fr)}
+.field3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.field3 .field{grid-template-columns:minmax(0,1fr);gap:4px}
+.field3 .lbl{font-size:10.5px}
+.field3 .num button{display:none}
+.field.stack{grid-template-columns:minmax(0,1fr);gap:5px}
+.field2 .num button{width:18px}
+.lbl{color:var(--muted);white-space:nowrap}
+.scrub{cursor:ew-resize}
+.scrub:hover{color:var(--text)}
+.num{display:flex;align-items:stretch;background:var(--field);border:1px solid var(--line);border-radius:7px;height:28px;overflow:hidden;min-width:0}
+.num:focus-within{border-color:var(--accent)}
+.num button{width:22px;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;flex:none;padding:0}
+.num button:hover{color:var(--text);background:var(--hover)}
+.num input{flex:1;min-width:0;width:100%;border:0;background:transparent;color:var(--text);text-align:center;font:inherit;font-variant-numeric:tabular-nums;outline:none;padding:0}
+.num input:disabled{color:var(--dim)}
+.num .unit{color:var(--dim);display:flex;align-items:center;font-size:10px;padding-right:1px}
+input::-webkit-inner-spin-button,input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.seg{display:flex;flex-wrap:wrap;background:var(--field);border:1px solid var(--line);border-radius:7px;padding:2px;gap:2px;min-width:0}
+.seg button{flex:1 1 auto;min-width:0;border:0;background:transparent;color:var(--muted);height:22px;border-radius:5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg button:hover{color:var(--text)}
+.seg button.on{background:#3b3b42;color:var(--text);box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+.seg.tall button{height:46px;flex-direction:column;gap:4px;font-size:10.5px}
+.text-in,select,textarea{background:var(--field);border:1px solid var(--line);border-radius:7px;height:28px;color:var(--text);padding:0 8px;font:inherit;width:100%;outline:none;-webkit-user-select:text;user-select:text}
+textarea{height:auto;min-height:64px;padding:7px 8px;resize:vertical;line-height:1.35}
+.text-in:focus,select:focus,textarea:focus{border-color:var(--accent)}
+.check{display:flex;align-items:flex-start;gap:8px;color:var(--muted);cursor:pointer;white-space:normal;line-height:1.35}
+.check input{margin-top:1px!important;flex:none}
+.check:hover{color:var(--text)}
+.check input{accent-color:var(--accent);margin:0}
+.note{color:var(--dim);line-height:1.45;font-size:11px}
+.note b{color:var(--muted);font-weight:600}
+.readout{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--muted);line-height:1.6;font-variant-numeric:tabular-nums}
+.readout b{color:var(--text);font-weight:600}
+.warn{color:var(--warn)}
+.row-btns{display:flex;gap:6px}
+.row-btns .btn{flex:1}
+
+/* layer rows */
+.layer{display:grid;grid-template-columns:28px minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px 10px;background:var(--panel2);border:1px solid var(--line);border-radius:9px}
+.layer .ln{font-weight:600}
+.layer .ls{color:var(--dim);font-size:11px;margin-top:1px}
+.layer.off .ln,.layer.off .ls{opacity:.45}
+.layer .extra{grid-column:1/-1;display:grid;gap:8px}
+.switch{position:relative;width:28px;height:16px;flex:none;cursor:pointer;display:block}
+.switch input{opacity:0;position:absolute;left:0;top:0;width:100%;height:100%;margin:0;cursor:pointer}
+.switch span{position:absolute;left:0;top:0;right:0;bottom:0;border-radius:999px;background:#45454c;transition:.15s;pointer-events:none}
+.switch span:after{content:"";position:absolute;width:12px;height:12px;border-radius:50%;background:#fff;top:2px;left:2px;transition:.15s}
+.switch input:checked+span{background:var(--accent)}
+.switch input:checked+span:after{left:14px}
+.colorbtn{width:24px;height:24px;border-radius:6px;border:1px solid rgba(255,255,255,.2);position:relative;overflow:hidden;cursor:pointer;display:block;flex:none}
+.colorbtn input{position:absolute;left:-6px;top:-6px;width:40px;height:40px;opacity:0;cursor:pointer;border:0;padding:0}
+.swatches{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.swatch{width:20px;height:20px;border-radius:5px;border:1px solid rgba(255,255,255,.2);cursor:pointer;padding:0;flex:none}
+.swatch.on{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--text)}
+.swatch.custom{background:conic-gradient(#f33,#fd3,#3f6,#3df,#36f,#f3f,#f33)}
+
+/* size picker */
+.picker{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;padding:8px;background:var(--bg);border:1px solid var(--line);border-radius:9px;cursor:pointer}
+.picker i{display:block;aspect-ratio:1/1;border-radius:3px;background:#2b2b31;transition:background .06s}
+.picker i.h{background:rgba(232,65,66,.45)}
+.picker i.on{background:var(--accent)}
+.pick-label{display:flex;align-items:baseline;gap:8px}
+.pick-label .big{font-size:24px;font-weight:700;letter-spacing:-.4px;font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chipbtn{border:1px solid var(--line2);background:var(--panel2);color:var(--muted);height:24px;padding:0 9px;border-radius:999px;cursor:pointer;font-variant-numeric:tabular-nums}
+.chipbtn:hover{color:var(--text)}
+.chipbtn.on{border-color:var(--accent);color:var(--text);background:var(--accentA)}
+
+/* tool cards & mode cards */
+.toolcards{display:grid;gap:6px}
+.toolcard{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left;padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer}
+.toolcard:hover{border-color:var(--line2)}
+.toolcard.on{border-color:var(--accent);background:var(--accentA)}
+.toolcard .ic{width:30px;height:30px;border-radius:7px;background:var(--field);display:flex;align-items:center;justify-content:center;color:var(--text)}
+.toolcard.on .ic{background:var(--accent);color:#fff}
+.toolcard .t{font-weight:600}
+.toolcard .d{color:var(--dim);font-size:11px;margin-top:1px;white-space:normal;line-height:1.35}
+.modecards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.modecard{display:grid;gap:6px;text-align:left;padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer;align-content:start}
+.modecard:hover{border-color:var(--line2)}
+.modecard.on{border-color:var(--accent);background:var(--accentA)}
+.modecard .t{font-weight:600}
+.modecard .d{color:var(--dim);font-size:10.5px;line-height:1.35}
+.modecard svg{color:var(--muted)}
+.modecard.on svg{color:var(--accent2)}
+
+/* ---------- stage ---------- */
+#wrap{position:relative;min-height:0;overflow:hidden}
+#cv{position:absolute;left:0;top:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
+#cv.t-select{cursor:default}
+#cv.t-hand,#cv.panning{cursor:grab}
+#cv.grabbing{cursor:grabbing}
+#cv.t-erase{cursor:cell}
+#cv.t-order{cursor:pointer}
+.toolbox{position:absolute;left:12px;top:12px;display:flex;flex-direction:column;gap:2px;padding:4px;background:rgba(27,27,30,.92);border:1px solid var(--line2);border-radius:11px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.toolbox button{position:relative;width:34px;height:34px;border-radius:8px;border:0;background:transparent;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.toolbox button:hover{background:var(--field);color:var(--text)}
+.toolbox button.on{background:var(--accent);color:#fff}
+.toolbox button span{position:absolute;right:3px;bottom:2px;font-size:8px;font-weight:700;opacity:.6}
+.toolbox .sepH{height:1px;background:var(--line2);margin:3px 4px}
+.zoombox{position:absolute;right:12px;bottom:12px;display:flex;align-items:center;gap:2px;padding:3px;background:rgba(27,27,30,.92);border:1px solid var(--line2);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.zoombox button{height:26px;min-width:26px;padding:0 7px;border:0;border-radius:7px;background:transparent;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.zoombox button:hover{background:var(--field);color:var(--text)}
+.zoombox .pct{min-width:46px;font-variant-numeric:tabular-nums;color:var(--text)}
+.toolpill{position:absolute;left:12px;bottom:12px;display:flex;align-items:center;gap:8px;padding:6px 12px 6px 8px;background:rgba(27,27,30,.94);border:1px solid var(--line2);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.35);color:var(--text);font-weight:600;pointer-events:none}
+.toolpill .ic{width:24px;height:24px;border-radius:6px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center}
+.toolpill .k{color:var(--muted);font-weight:500}
+.toolpill.pick .ic{background:#2BD98F;color:#000}
+#left,.step-body,.pane,.group{min-width:0;max-width:100%}
+.step-body{overflow-x:hidden}
+.num{min-width:0}
+.ctxbar{position:absolute;left:50%;top:12px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:5px 6px 5px 12px;background:rgba(27,27,30,.94);border:1px solid var(--line2);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.35);white-space:nowrap;max-width:calc(100% - 140px);overflow:hidden}
+.ctxbar .msg{color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.ctxbar .msg b{color:var(--text)}
+.ctxbar .btn{height:26px}
+.ctxbar.quiet{padding-right:12px}
+.timeline{display:flex;align-items:center;gap:10px;padding:8px 12px;border-top:1px solid var(--line);background:var(--panel)}
+.timeline input[type=range]{flex:1;accent-color:var(--accent);min-width:60px}
+.timeline .tc{font-variant-numeric:tabular-nums;color:var(--muted);min-width:96px;text-align:right}
+.status{display:flex;gap:14px;align-items:center;padding:0 12px;color:var(--dim);border-top:1px solid var(--line);font-size:11px;white-space:nowrap;overflow:hidden;background:var(--panel)}
+.status .pos{color:var(--muted);font-variant-numeric:tabular-nums;min-width:84px}
+
+/* ---------- inspector ---------- */
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:12px;display:grid;gap:10px;margin-bottom:10px;align-content:start}
+.card-h{display:flex;align-items:center;gap:8px;font-weight:650;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.card-h .r{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:500}
+.big{font-size:22px;font-weight:700;letter-spacing:-.3px;font-variant-numeric:tabular-nums}
+.big span{font-size:12px;color:var(--muted);font-weight:500;letter-spacing:0}
+.tips{display:grid;gap:8px;color:var(--muted);line-height:1.4}
+.tips div{display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:start}
+.tips kbd{justify-self:start}
+.tabs{display:flex;gap:2px;background:var(--field);border:1px solid var(--line);border-radius:7px;padding:2px}
+.tabs button{flex:1;border:0;background:transparent;color:var(--muted);height:22px;border-radius:5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px}
+.tabs button.on{background:#3b3b42;color:var(--text)}
+.tabs button:disabled{cursor:default;opacity:.55}
+.soon{font-size:8.5px;padding:1px 4px;border-radius:999px;background:#45454c;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.count{background:var(--field);color:var(--text);padding:1px 7px;border-radius:999px;font-size:10px;letter-spacing:0}
+.splits{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+.splits button{height:40px;border:1px solid var(--line2);background:var(--field);border-radius:7px;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:9.5px}
+.splits button:hover{color:var(--text);border-color:var(--muted)}
+.splits button:disabled{opacity:.3;cursor:default}
+.list{display:grid;gap:1px;max-height:340px;overflow:auto;margin:0 -4px}
+.item{display:grid;grid-template-columns:22px 12px minmax(0,1fr) auto;gap:8px;align-items:center;width:100%;padding:6px 8px;border-radius:7px;border:0;background:transparent;color:var(--text);text-align:left;cursor:pointer}
+.item:hover{background:var(--hover)}
+.item.on{background:var(--accentA)}
+.item .ord{color:var(--dim);font-variant-numeric:tabular-nums;font-size:11px}
+.item .sw{width:12px;height:12px;border-radius:3px;border:1px solid rgba(255,255,255,.2)}
+.item .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .dim{color:var(--dim);font-variant-numeric:tabular-nums}
+.summary{display:grid;gap:4px}
+.sumrow{display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:8px;align-items:center;padding:5px 0;color:var(--muted)}
+.sumrow b{color:var(--text);font-weight:600}
+.sumrow .ok{color:var(--ok)}
+.sumrow.off{opacity:.4}
+
+/* ---------- overlays ---------- */
+.toast{position:fixed;bottom:44px;left:50%;transform:translate(-50%,16px);opacity:0;background:#2a2a2f;border:1px solid var(--line2);padding:9px 12px 9px 14px;border-radius:9px;transition:.2s;pointer-events:none;z-index:30;box-shadow:0 10px 30px rgba(0,0,0,.45);max-width:80vw;display:flex;gap:10px;align-items:center}
+.toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast.err{border-color:var(--accent)}
+.toast.ok .dot{background:var(--ok)}
+.toast.err .dot{background:var(--accent)}
+.toast .btn{height:24px}
+.menu{position:fixed;z-index:25;min-width:230px;background:#232327;border:1px solid var(--line2);border-radius:10px;padding:5px;box-shadow:0 14px 40px rgba(0,0,0,.5)}
+.menu button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;height:30px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:var(--text);cursor:pointer;text-align:left}
+.menu button:hover{background:var(--hover)}
+.menu button.danger{color:#ff8a8b}
+.menu button:disabled{opacity:.35;cursor:default;background:transparent}
+.menu .msep{height:1px;background:var(--line2);margin:4px 2px}
+.menu .mh{padding:6px 10px 3px;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);font-weight:650}
+.modal{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:20;display:flex;align-items:center;justify-content:center;padding:16px}
+.sheet{width:min(720px,100%);max-height:100%;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;background:var(--panel);border:1px solid var(--line2);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden}
+.sheet-h{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.sheet-h h3{margin:0;font-size:14px}
+.save-row{display:flex;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.lib{overflow:auto;padding:12px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;align-content:start;min-height:120px}
+.libitem{border:1px solid var(--line);border-radius:10px;background:var(--panel2);overflow:hidden;display:grid}
+.libitem img{width:100%;aspect-ratio:16/9;object-fit:cover;background:#000;display:block;cursor:pointer}
+.libitem .meta{padding:8px 10px;display:grid;gap:2px}
+.libitem .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.libitem .row-btns{padding:0 8px 8px}
+.libitem .row-btns .btn{height:26px}
+.sheet-f{display:flex;gap:8px;align-items:center;padding:12px 16px;border-top:1px solid var(--line);flex-wrap:wrap}
+.empty-lib{grid-column:1/-1;color:var(--dim);text-align:center;padding:30px 0;line-height:1.6}
+
+/* curve editor */
+.curve{display:grid;gap:6px}
+.curve canvas{width:100%;height:150px;background:var(--bg);border:1px solid var(--line);border-radius:9px;cursor:crosshair;touch-action:none;display:block}
+.curve .cv-row{display:flex;flex-wrap:wrap;gap:4px}
+.curve .cv-val{font-variant-numeric:tabular-nums;color:var(--dim);font-size:10.5px}
+.fontrow{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:6px}
+.palette-edit .swatch{position:relative}
+.target-chip{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+/* nothing in the side panels may be wider than the panel */
+#left .group, #insp .card{min-width:0;overflow-wrap:anywhere}
+#left .group > *, #left .field > *, #left .layer > *, #left .extra > *, #insp .card > *, #insp .field > *{min-width:0;max-width:100%}
+#left .btn.wide, #left .row-btns .btn, #left .group > .btn, #insp .row-btns .btn, #insp .card > .btn, #left .target-chip .btn{white-space:normal;height:auto;min-height:28px;padding-top:5px;padding-bottom:5px;line-height:1.25;text-align:center;flex:1 1 auto;min-width:0}
+#left .btn.big{min-height:40px}
+#left .group-h, #insp .card-h{flex-wrap:wrap;row-gap:4px}
+#left .lbl{white-space:normal;line-height:1.25}
+#left .num .unit{white-space:nowrap}
+#left .seg button, #insp .seg button{white-space:normal;line-height:1.2;height:auto;min-height:22px;padding-top:3px;padding-bottom:3px}
+#left .seg.tall button{min-height:46px}
+#left .modecard .d{overflow-wrap:anywhere}
+#left .chipbtn{max-width:100%;white-space:normal;height:auto;min-height:24px}
+#left select, #left .text-in{min-width:0}
+.zcard{display:grid;gap:8px;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);min-width:0}
+.zhead{display:flex;align-items:center;gap:8px;min-width:0}
+.zhead .note{flex:1;min-width:0}
+.backbtn{position:absolute;right:12px;top:12px;display:flex;align-items:center;gap:7px;height:30px;padding:0 12px;border-radius:9px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-weight:600;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.backbtn:hover{background:var(--accent2)}
+.backbtn kbd{background:rgba(0,0,0,.2);border-color:rgba(255,255,255,.3);color:#fff}
+.secreset{margin-left:auto;height:20px!important;min-height:20px!important;padding:0 7px!important;font-size:10.5px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--dim)}
+.group-h .tag + .secreset{margin-left:8px}
+.secreset:hover{color:var(--text)}
+.hswitch{margin-left:8px}
+.group-h .colbtn{width:18px;height:18px;border:0;background:transparent;color:var(--dim);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;margin-left:-4px;border-radius:4px;flex:none}
+.group-h .colbtn:hover{color:var(--text);background:var(--field)}
+.group-h .colbtn svg{transition:transform .15s}
+.group.collapsed .group-h .colbtn svg{transform:rotate(-90deg)}
+.group.collapsed > :not(.group-h){display:none!important}
+.group.collapsed{padding-bottom:10px}
+.group-h{cursor:default}
+.zcard.off{opacity:.55}
+.zcard.closed > :not(.zhead){display:none!important}
+.zhead .chev{width:20px;height:20px;border:0;background:transparent;color:var(--muted);cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;border-radius:4px}
+.zhead .chev:hover{background:var(--field);color:var(--text)}
+.zcard.closed .zhead .chev svg{transform:rotate(-90deg)}
+.zhead .switch{margin-left:auto}
+.zdis{opacity:.45;pointer-events:none}
+.checkgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 10px}
+.num input[type=number]{cursor:ns-resize}
+.num input[type=number]:focus{cursor:text}
+.num input.scrubbing{color:var(--accent2)}
+/* help tips */
+.qm{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;border:1px solid var(--line2);color:var(--dim);font-size:9px;font-weight:700;margin-left:5px;cursor:help;vertical-align:1px;flex:none;line-height:1;text-transform:none;letter-spacing:0}
+.qm:hover{color:var(--text);border-color:var(--muted);background:var(--field)}
+body.nohelp .qm{display:none}
+#btnHelp.on{color:var(--accent2)}
+.tip{position:fixed;z-index:40;max-width:260px;background:#f2f2f4;color:#151517;padding:8px 10px;border-radius:8px;font-size:11.5px;line-height:1.45;box-shadow:0 10px 30px rgba(0,0,0,.45);pointer-events:none;opacity:0;transform:translateY(3px);transition:opacity .12s,transform .12s}
+.tip.show{opacity:1;transform:none}
+.tip b{font-weight:650}
+.zrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 24px;gap:6px;align-items:end}
+.zrow .field{grid-template-columns:minmax(0,1fr);gap:3px}
+.zrow .lbl{font-size:10.5px}
+[hidden]{display:none!important}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#38383e;border-radius:10px;border:3px solid transparent;background-clip:padding-box}
+
+@media (max-width:1280px){ .stepbtn .lbl2{display:none} .stepbtn.on .lbl2{display:inline} }
+@media (max-width:1140px){
+  main,main.noinsp{grid-template-columns:284px minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"l s" "l i"}
+  #insp{border-left:0;border-top:1px solid var(--line);max-height:280px;display:grid;grid-template-columns:1fr 1fr;gap:10px;align-content:start}
+  #insp:empty{display:none}
+  #insp .card{margin:0}
+}
+@media (max-width:860px){ .stepbtn .lbl2,.stepbtn.on .lbl2{display:none} .chip{display:none} }
+@media (max-width:720px){
+  body{overflow:auto}
+  .app{height:auto;min-height:100vh}
+  main,main.noinsp{grid-template-columns:minmax(0,1fr);grid-template-rows:60vh auto auto;grid-template-areas:"s" "l" "i"}
+  #left{border-right:0}
+  .step-body{overflow:visible}
+  #insp{grid-template-columns:1fr;max-height:none}
+  .logo span,.hide-sm{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="logo">
+      <div class="mark"><svg width="12" height="12" viewBox="0 0 12 12" fill="#fff"><rect width="5" height="5"/><rect x="7" width="5" height="5" opacity=".55"/><rect y="7" width="12" height="5"/></svg></div>
+      <span>Grid Blocks</span>
+    </div>
+    <nav class="steps" id="steps"></nav>
+    <div class="spacer"></div>
+    <div class="chip" id="compChip" title="Composition"><span class="dot" id="liveDot"></span><b id="compName">Preview</b><span id="compMeta">1920×1080</span></div>
+    <button class="btn icon ghost" id="btnUndo" title="Undo (⌘Z)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3 2 6l3 3"/><path d="M2 6h7.5a4.5 4.5 0 0 1 0 9H6"/></svg></button>
+    <button class="btn icon ghost" id="btnRedo" title="Redo (⇧⌘Z)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m11 3 3 3-3 3"/><path d="M14 6H6.5a4.5 4.5 0 0 0 0 9H10"/></svg></button>
+    <button class="btn icon ghost" id="btnHelp" title="Show or hide the ? help tips"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M6.2 6.2a1.9 1.9 0 1 1 2.6 1.8c-.5.2-.8.6-.8 1.1v.4"/><circle cx="8" cy="11.6" r=".4" fill="currentColor"/></svg></button>
+    <div class="vsep"></div>
+    <button class="btn ghost" id="btnLib" title="Saved layouts (⌘S to save)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2.5h7.5L13 5v8.5H3z"/><path d="M5.5 2.5v3h4v-3M5.5 13.5v-4h5v4"/></svg><span class="hide-sm">Layouts</span></button>
+    <button class="btn ghost" id="btnClear" title="Clear & reset"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg><span class="hide-sm">Clear</span><svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor"><path d="M1 2.5h6L4 6z"/></svg></button>
+    <a class="btn ghost" id="btnPanel" href="GridBlocks-panel.zip" download hidden title="Download the After Effects panel (installs into AE 2022 or newer)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8m-3-3 3 3 3-3M3 13h10"/></svg><span class="hide-sm">AE panel</span></a>
+    <button class="btn primary" id="btnBuild"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg><span id="buildLabel">Build</span></button>
+  </header>
+
+  <main id="main">
+    <!-- ================= LEFT: step panels ================= -->
+    <section id="left">
+      <div class="step-head"><div class="eyebrow" id="stepEyebrow">Step 1 of 6</div><h2 id="stepTitle">Grid</h2><p id="stepDesc"></p></div>
+      <div class="step-body">
+
+        <!-- 1 GRID -->
+        <div class="pane" data-pane="grid">
+          <div class="group">
+            <div class="group-h">Composition<span class="tag" id="compTag"></span></div>
+            <label class="check" id="followRow"><input type="checkbox" data-bind="comp.follow"> Match the active comp in After Effects</label>
+            <div class="field" id="presetRow"><span class="lbl">Preset</span>
+              <select id="preset">
+                <option value="1920x1080">HD · 1920 × 1080</option>
+                <option value="3840x2160">4K · 3840 × 2160</option>
+                <option value="1280x720">720p · 1280 × 720</option>
+                <option value="1080x1080">Square · 1080 × 1080</option>
+                <option value="1080x1350">Portrait · 1080 × 1350</option>
+                <option value="1080x1920">Vertical · 1080 × 1920</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <div class="field2">
+              <div class="field"><span class="lbl scrub">W</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="comp.w" min="16" max="16000" step="1"><button data-d="1">+</button></div></div>
+              <div class="field"><span class="lbl scrub">H</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="comp.h" min="16" max="16000" step="1"><button data-d="1">+</button></div></div>
+            </div>
+            <div class="note" id="compNote"></div>
+          </div>
+          <div class="group">
+            <div class="group-h">Grid</div>
+            <div class="field"><span class="lbl scrub" title="Drag to scrub">Rows</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="grid.rows" min="1" max="60" step="1"><button data-d="1">+</button></div></div>
+            <div class="field"><span class="lbl scrub">Gutter</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="grid.gutter" min="0" max="400" step="1"><span class="unit">px</span><button data-d="1">+</button></div></div>
+            <div class="field"><span class="lbl scrub">Margin</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="grid.margin" min="0" max="2000" step="1"><span class="unit">px</span><button data-d="1">+</button></div></div>
+            <div class="field"><span class="lbl">Columns</span>
+              <div class="seg" data-seg="grid.colsMode">
+                <button data-v="bleed" title="Fill the width — squares run off both sides">Bleed</button>
+                <button data-v="fit" title="Only whole squares that fit">Fit</button>
+                <button data-v="custom" title="Set a column count">Custom</button>
+              </div>
+            </div>
+            <div class="field" data-show="grid.colsMode=custom"><span class="lbl scrub">Count</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="grid.cols" min="1" max="300" step="1"><button data-d="1">+</button></div></div>
+            <div class="field"><span class="lbl scrub">Shift X</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="grid.offsetX" min="-4000" max="4000" step="1"><span class="unit">px</span><button data-d="1">+</button></div></div>
+            <label class="check"><input type="checkbox" data-bind="grid.snap"> Whole-pixel squares (crisp edges)</label>
+            <div class="readout" id="gridReadout"></div>
+          </div>
+          <div class="group">
+            <div class="group-h">Off-screen area</div>
+            <div class="note">Extra cells beyond the frame, so blocks can sit off screen and slide in.</div>
+            <div class="field2">
+              <div class="field"><span class="lbl scrub" title="Extra columns each side">Cols ±</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="grid.overX" min="0" max="400" step="1"><button data-d="1">+</button></div></div>
+              <div class="field"><span class="lbl scrub" title="Extra rows above & below">Rows ±</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="grid.overY" min="0" max="100" step="1"><button data-d="1">+</button></div></div>
+            </div>
+          </div>
+          <div class="group">
+            <div class="group-h">Look</div>
+            <div class="layer" data-layer="look.bgOn">
+              <label class="switch"><input type="checkbox" data-bind="look.bgOn"><span></span></label>
+              <div><div class="ln">Background</div><div class="ls">Solid layer</div></div>
+              <label class="colorbtn" data-swatch="look.bg"><input type="color" data-bind="look.bg"></label>
+            </div>
+            <div class="layer" data-layer="look.linesOn">
+              <label class="switch"><input type="checkbox" data-bind="look.linesOn"><span></span></label>
+              <div><div class="ln">Grid lines</div><div class="ls">One shape layer, in the gutters</div></div>
+              <label class="colorbtn" data-swatch="look.line"><input type="color" data-bind="look.line"></label>
+              <div class="extra" data-show="look.linesOn=true">
+                <div class="field"><span class="lbl scrub">Weight</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="look.lineW" min="0" max="200" step="1"><span class="unit">px</span><button data-d="1">+</button></div></div>
+                <label class="check"><input type="checkbox" data-bind="look.border"> Outer border lines</label>
+              </div>
+            </div>
+            <div class="layer" data-layer="look.cellsMode">
+              <span style="display:flex;justify-content:center;color:var(--muted)"><svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect width="6" height="6"/><rect x="8" width="6" height="6"/><rect y="8" width="6" height="6"/><rect x="8" y="8" width="6" height="6"/></svg></span>
+              <div><div class="ln">Square tiles</div><div class="ls">Shape-layer squares</div></div>
+              <label class="colorbtn" data-swatch="look.cell"><input type="color" data-bind="look.cell"></label>
+              <div class="extra">
+                <div class="seg" data-seg="look.cellsMode">
+                  <button data-v="none">Off</button>
+                  <button data-v="single" title="All squares in one shape layer">One layer</button>
+                  <button data-v="layers" title="One shape layer per square">Layer each</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="group">
+            <div class="group-h">Column rules</div>
+            <div class="layer" data-layer="look.rulesOn">
+              <label class="switch"><input type="checkbox" data-bind="look.rulesOn"><span></span></label>
+              <div><div class="ln">Vertical rules</div><div class="ls">Lines at column breaks</div></div>
+              <label class="colorbtn" data-swatch="look.rule"><input type="color" data-bind="look.rule"></label>
+              <div class="extra" data-show="look.rulesOn=true">
+                <div class="field2">
+                  <div class="field"><span class="lbl scrub">Every</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="look.ruleEvery" min="1" max="60" step="1"><span class="unit">col</span><button data-d="1">+</button></div></div>
+                  <div class="field"><span class="lbl scrub">From</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="look.ruleStart" min="-60" max="200" step="1"><span class="unit">col</span><button data-d="1">+</button></div></div>
+                </div>
+                <div class="field"><span class="lbl scrub">Weight</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="look.ruleW" min="1" max="200" step="1"><span class="unit">px</span><button data-d="1">+</button></div></div>
+                <div class="field stack"><span class="lbl">Layer</span><div class="seg" data-seg="look.ruleLayer"><button data-v="top">On top of blocks</button><button data-v="bottom">Under blocks</button></div></div>
+                <div class="note" id="ruleNote"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 BLOCK SIZE -->
+        <div class="pane" data-pane="blocks">
+          <div class="group">
+            <div class="group-h">Block size</div>
+            <div class="pick-label"><span class="big" id="pickBig">3 × 1</span><span class="note" id="pickPx"></span></div>
+            <div class="picker" id="picker"></div>
+            <div class="field2">
+              <div class="field"><span class="lbl scrub">W</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="block.w" min="1" max="60" step="1"><button data-d="1">+</button></div></div>
+              <div class="field"><span class="lbl scrub">H</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="block.h" min="1" max="60" step="1"><button data-d="1">+</button></div></div>
+            </div>
+            <div class="chips" id="sizeChips"></div>
+          </div>
+          <div class="group">
+            <div class="group-h">Colours</div>
+            <div class="field stack"><span class="lbl">Main</span><div class="swatches" data-pal="block.color"></div></div>
+            <div class="field stack"><span class="lbl">Second</span><div class="swatches" data-pal="block.color2"></div></div>
+            <div class="field stack"><span class="lbl">Colour mix for new blocks</span>
+              <div class="seg" data-seg="block.mix"><button data-v="single">Main only</button><button data-v="alternate">Alternate</button><button data-v="random">Random mix</button></div></div>
+            <div class="field" data-show="block.mix=random"><span class="lbl scrub">Second</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="block.mixPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
+            <button class="btn wide" id="btnRecolour">Recolour existing blocks with this mix</button>
+          </div>
+          <div class="group">
+            <div class="group-h">Palette</div>
+            <div class="swatches palette-edit" id="paletteEdit"></div>
+            <div class="row-btns"><button class="btn" id="btnPalAdd">+ Add main colour</button><button class="btn ghost" id="btnPalReset">Reset</button></div>
+            <div class="note">These colours appear in every colour picker. Alt-click a colour here to remove it.</div>
+          </div>
+          <div class="group">
+            <label class="check"><input type="checkbox" data-bind="block.sync"> Apply size &amp; colour changes to existing blocks</label>
+            <button class="btn wide" id="btnResizeAll">Resize existing blocks</button>
+            <div class="note">Click the canvas to stamp a block and try the size.</div>
+          </div>
+        </div>
+
+        <!-- 3 LAYOUT -->
+        <div class="pane" data-pane="layout">
+          <div class="group">
+            <div class="group-h">Place by hand</div>
+            <div class="toolcards" id="toolcards"></div>
+          </div>
+          <div class="group">
+            <div class="group-h">Generate from rules<span class="tag" id="sizeTag"></span></div>
+            <div class="seg tall" data-seg="rand.pattern">
+              <button data-v="walk" title="Each block sits next to the last one, same row or one up/down"><svg width="22" height="14" viewBox="0 0 22 14" fill="currentColor"><rect y="6" width="6" height="4"/><rect x="6.5" y="2" width="6" height="4"/><rect x="13" y="6" width="6" height="4"/><rect x="6.5" y="10" width="6" height="4" opacity=".55"/></svg>Walk</button>
+              <button data-v="stairUp" title="Each block steps right and up"><svg width="22" height="14" viewBox="0 0 22 14" fill="currentColor"><rect y="10" width="6" height="4"/><rect x="8" y="5" width="6" height="4"/><rect x="16" width="6" height="4"/></svg>Stairs ↗</button>
+              <button data-v="stairDown" title="Each block steps right and down"><svg width="22" height="14" viewBox="0 0 22 14" fill="currentColor"><rect width="6" height="4"/><rect x="8" y="5" width="6" height="4"/><rect x="16" y="10" width="6" height="4"/></svg>Stairs ↘</button>
+              <button data-v="scatter" title="Random rows, moving left to right"><svg width="22" height="14" viewBox="0 0 22 14" fill="currentColor"><rect y="8" width="6" height="6"/><rect x="8" y="1" width="6" height="6"/><rect x="16" y="6" width="6" height="6"/></svg>Scatter</button>
+              <button data-v="row" title="One row with gaps"><svg width="22" height="14" viewBox="0 0 22 14" fill="currentColor"><rect y="5" width="5" height="4"/><rect x="8" y="5" width="5" height="4"/><rect x="17" y="5" width="5" height="4"/></svg>Row</button>
+            </div>
+            <div class="field"><span class="lbl scrub" title="0 = as many as fit">Count</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.count" min="0" max="300" step="1"><span class="unit" id="countUnit">auto</span><button data-d="1">+</button></div></div>
+            <div data-show="rand.pattern=walk" style="display:grid;gap:9px">
+              <div class="field2">
+                <div class="field"><span class="lbl scrub">Gap</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.gap" min="0" max="40" step="1"><button data-d="1">+</button></div></div>
+                <div class="field"><span class="lbl scrub">Wander</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.wander" min="0" max="4" step="1"><button data-d="1">+</button></div></div>
+              </div>
+              <div class="field"><span class="lbl scrub">Up ↔ down</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.climb" min="-100" max="100" step="10"><span class="unit">%</span><button data-d="1">+</button></div></div>
+              <div class="field2">
+                <div class="field"><span class="lbl scrub">Stairs</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.stairPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
+                <div class="field"><span class="lbl scrub">Jumps</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.jumpPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
+              </div>
+              <label class="check"><input type="checkbox" data-bind="rand.multiCol"> Allow multiple blocks in one column</label>
+              <div class="field2" data-show="rand.multiCol=true">
+                <div class="field"><span class="lbl scrub">Pairs</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.stackPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
+                <div class="field"><span class="lbl scrub">Pair gap</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.stackGap" min="0" max="10" step="1"><button data-d="1">+</button></div></div>
+              </div>
+            </div>
+            <div class="field2" data-show="rand.pattern=stairUp|stairDown">
+              <div class="field"><span class="lbl scrub" title="Empty columns between steps">Gap</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.gap" min="0" max="40" step="1"><button data-d="1">+</button></div></div>
+              <div class="field"><span class="lbl scrub" title="Rows climbed per step">Rise</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.rise" min="0" max="40" step="1"><button data-d="1">+</button></div></div>
+            </div>
+            <div class="field2" data-show="rand.pattern=scatter|row">
+              <div class="field"><span class="lbl scrub" title="Min empty columns between blocks">Gap ≥</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.gapMin" min="0" max="40" step="1"><button data-d="1">+</button></div></div>
+              <div class="field"><span class="lbl scrub" title="Max empty columns between blocks">≤</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.gapMax" min="0" max="40" step="1"><button data-d="1">+</button></div></div>
+            </div>
+            <div class="field"><span class="lbl scrub" title="0 = random">Start row</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.startRow" min="0" max="60" step="1"><span class="unit" id="rowUnit">random</span><button data-d="1">+</button></div></div>
+            <label class="check"><input type="checkbox" data-bind="rand.bleed"> Use partial edge columns</label>
+            <div class="seg" data-seg="rand.mode"><button data-v="replace">Replace blocks</button><button data-v="add">Add to existing</button></div>
+            <div class="row-btns">
+              <button class="btn primary" id="btnGen"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m3 13 7-7M11 2v2M14 5h-2M13.5 2.5 12 4"/></svg>Generate <kbd>G</kbd></button>
+              <button class="btn" id="btnShuffle"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="3"/><circle cx="5.5" cy="5.5" r=".9" fill="currentColor"/><circle cx="10.5" cy="10.5" r=".9" fill="currentColor"/><circle cx="8" cy="8" r=".9" fill="currentColor"/></svg>Shuffle <kbd>R</kbd></button>
+            </div>
+            <div class="note" id="seedNote">Blocks are all the same size and run left to right. After generating, any change here updates the layout straight away.</div>
+          </div>
+          <div class="group">
+            <div class="group-h">Echo</div>
+            <div class="layer" data-layer="echo.on">
+              <label class="switch"><input type="checkbox" data-bind="echo.on"><span></span></label>
+              <div><div class="ln">Echo</div><div class="ls">A styled copy behind each block</div></div>
+              <span></span>
+              <div class="extra" data-show="echo.on=true">
+                <div class="field3">
+                  <div class="field"><span class="lbl scrub">Shift X</span><div class="num"><input type="number" data-bind="echo.dx" min="-60" max="60" step="1"></div></div>
+                  <div class="field"><span class="lbl scrub">Shift Y</span><div class="num"><input type="number" data-bind="echo.dy" min="-60" max="60" step="1"></div></div>
+                  <div class="field"><span class="lbl scrub" title="0 = every block">Last N</span><div class="num"><input type="number" data-bind="echo.last" min="0" max="400" step="1"></div></div>
+                </div>
+                <div class="field"><span class="lbl scrub">Opacity</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="echo.opacity" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
+                <label class="check"><input type="checkbox" data-bind="echo.fill"> Fill</label>
+                <div class="field stack" data-show="echo.fill=true"><span class="lbl">Fill colour</span><div class="swatches" data-pal="echo.color"></div></div>
+                <label class="check"><input type="checkbox" data-bind="echo.stroke"> Stroke</label>
+                <div data-show="echo.stroke=true" style="display:grid;gap:9px">
+                  <div class="field stack"><span class="lbl">Stroke colour</span><div class="swatches" data-pal="echo.scolor"></div></div>
+                  <div class="field"><span class="lbl scrub">Width</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="echo.sw" min="0" max="200" step="1"><span class="unit">px</span><button data-d="1">+</button></div></div>
+                  <div class="field stack"><span class="lbl">Align</span><div class="seg" data-seg="echo.align"><button data-v="inner">Inside</button><button data-v="center">Centre</button><button data-v="outer">Outside</button></div></div>
+                  <label class="check"><input type="checkbox" data-bind="echo.dash"> Dashed</label>
+                  <div class="field2" data-show="echo.dash=true">
+                    <div class="field"><span class="lbl scrub">Dash</span><div class="num"><input type="number" data-bind="echo.dashL" min="1" max="500" step="1"></div></div>
+                    <div class="field"><span class="lbl scrub">Gap</span><div class="num"><input type="number" data-bind="echo.dashG" min="1" max="500" step="1"></div></div>
+                  </div>
+                </div>
+                <div class="field stack"><span class="lbl">Timing</span><div class="seg" data-seg="echo.timing"><button data-v="before">Leads (before)</button><button data-v="with">With block</button><button data-v="after">Trails (after)</button></div></div>
+                <div class="field" data-show="echo.timing=before|after"><span class="lbl scrub">By</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="echo.offset" min="0" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+                <div class="field stack"><span class="lbl">Appears</span><div class="seg" data-seg="echo.appear"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe →</button><button data-v="scale">Scale</button></div></div>
+                <div class="field stack"><span class="lbl">Then</span><div class="seg" data-seg="echo.out"><button data-v="stay">Stays</button><button data-v="fade">Fades out</button><button data-v="cut">Cuts out</button></div></div>
+                <div class="field2" data-show="echo.out=fade|cut">
+                  <div class="field"><span class="lbl scrub">Hold</span><div class="num"><input type="number" data-bind="echo.hold" min="0" max="2000" step="1"></div></div>
+                  <div class="field" data-show="echo.out=fade"><span class="lbl scrub">Fade</span><div class="num"><input type="number" data-bind="echo.outF" min="1" max="600" step="1"></div></div>
+                </div>
+                <label class="check"><input type="checkbox" data-bind="echo.content"> Eligible for content (images / video later)</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4 CONTENT -->
+        <div class="pane" data-pane="content">
+          <div class="group">
+            <div class="group-h">Auto-fill blocks</div>
+            <div class="layer" data-layer="fill.on">
+              <label class="switch"><input type="checkbox" data-bind="fill.on"><span></span></label>
+              <div><div class="ln">Fill blocks with content</div><div class="ls">Blockchain HUD text, counters &amp; patterns</div></div>
+              <span></span>
+            </div>
+            <div data-show="fill.on=true" style="display:grid;gap:9px">
+              <div class="lbl">What can appear</div>
+              <div class="checkgrid"><label class="check"><input type="checkbox" data-bind="fill.mods.kv"> Key / values</label><label class="check"><input type="checkbox" data-bind="fill.mods.status"> Status</label><label class="check"><input type="checkbox" data-bind="fill.mods.hashes"> TO / FROM hashes</label><label class="check"><input type="checkbox" data-bind="fill.mods.block"> Block data</label><label class="check"><input type="checkbox" data-bind="fill.mods.log"> Log lines</label><label class="check"><input type="checkbox" data-bind="fill.mods.counter"> Counters</label><label class="check"><input type="checkbox" data-bind="fill.mods.dev"> Dev text …</label><label class="check"><input type="checkbox" data-bind="fill.mods.barcode"> Barcodes</label><label class="check"><input type="checkbox" data-bind="fill.mods.phrase"> Phrases & tags</label><label class="check"><input type="checkbox" data-bind="fill.mods.term"> Terms</label><label class="check"><input type="checkbox" data-bind="fill.mods.dots"> Dot pattern</label><label class="check"><input type="checkbox" data-bind="fill.mods.ring"> Ring icon</label><label class="check"><input type="checkbox" data-bind="fill.mods.logo"> Avalanche logo</label></div>
+              <div class="field stack"><span class="lbl">Density</span><div class="seg" data-seg="fill.density"><button data-v="light">Light</button><button data-v="medium">Medium</button><button data-v="busy">Busy</button></div></div>
+              <div class="field"><span class="lbl scrub" title="Share of blocks that get text">Blocks with text</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.textPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
+              <div class="field"><span class="lbl scrub" title="Chance a block gets a dot field">Dot fields</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.patternPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
+              <div class="field2">
+                <div class="field"><span class="lbl scrub" title="Chance a block gets a ring or logo">Icons</span><div class="num"><input type="number" data-bind="fill.iconPct" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+                <div class="field"><span class="lbl scrub">Icon size</span><div class="num"><input type="number" data-bind="fill.iconSize" min="8" max="400" step="2"><span class="unit">px</span></div></div>
+              </div>
+              <div class="lbl" style="margin-top:4px">Text</div>
+              <div class="fontrow"><input class="text-in" id="fillFam" list="fontFamilies" placeholder="Mono font family" autocomplete="off" spellcheck="false"><select id="fillStyle"></select></div>
+              <div class="field3">
+                <div class="field"><span class="lbl scrub">Size</span><div class="num"><input type="number" data-bind="fill.size" min="6" max="200" step="1"></div></div>
+                <div class="field"><span class="lbl scrub">Leading</span><div class="num"><input type="number" data-bind="fill.leading" min="80" max="300" step="5"></div></div>
+                <div class="field"><span class="lbl scrub">Dot gap</span><div class="num"><input type="number" data-bind="fill.dotSpacing" min="3" max="60" step="1"></div></div>
+              </div>
+              <div class="field stack"><span class="lbl">Case</span><div class="seg" data-seg="fill.caps"><button data-v="upper">UPPERCASE</button><button data-v="none">As written</button></div></div>
+              <div class="field stack"><span class="lbl">Text on solid blocks</span><div class="swatches" data-pal="fill.textColor"></div></div>
+              <div class="note">Text on outline blocks and echoes uses the block / echo colour.</div>
+              <div class="field2">
+                <div class="field"><span class="lbl scrub" title="Share of blocks drawn as outlines">Outline</span><div class="num"><input type="number" data-bind="fill.outlinePct" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+                <div class="field"><span class="lbl scrub">Stroke</span><div class="num"><input type="number" data-bind="fill.outlineW" min="1" max="40" step="1"><span class="unit">px</span></div></div>
+              </div>
+              <label class="check"><input type="checkbox" data-bind="fill.skipText"> Skip blocks that have my own text</label>
+              <div class="row-btns"><button class="btn" id="btnFillShuffle">Shuffle content</button></div>
+            </div>
+          </div>
+          <div class="group" data-show="fill.on=true">
+            <div class="group-h">Content animation</div>
+            <div class="field stack"><span class="lbl">Comes on</span><div class="seg" data-seg="fill.anim.inMode"><button data-v="type">Type on</button><button data-v="fade">Fade</button><button data-v="cut">Cut</button></div></div>
+            <div class="field2" data-show="fill.anim.inMode=type">
+              <div class="field"><span class="lbl scrub">Speed</span><div class="num"><input type="number" data-bind="fill.anim.cps" min="1" max="400" step="5"><span class="unit">ch/s</span></div></div>
+              <label class="check"><input type="checkbox" data-bind="fill.anim.typeAll"> All text</label>
+            </div>
+            <div class="field" data-show="fill.anim.inMode=fade"><span class="lbl scrub">Fade in</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.anim.inDur" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+            <div class="field2">
+              <div class="field"><span class="lbl scrub" title="Frames after the block appears">Delay</span><div class="num"><input type="number" data-bind="fill.anim.delay" min="0" max="600" step="1"><span class="unit">fr</span></div></div>
+              <div class="field"><span class="lbl scrub" title="Frames between items in a block">Stagger</span><div class="num"><input type="number" data-bind="fill.anim.stagger" min="0" max="120" step="1"><span class="unit">fr</span></div></div>
+            </div>
+            <div class="field stack"><span class="lbl">Goes off</span><div class="seg" data-seg="fill.anim.outMode"><button data-v="stay">Stays</button><button data-v="fade">Fade out</button><button data-v="typeoff">Type off</button><button data-v="cut">Cut</button></div></div>
+            <div class="field2" data-show="fill.anim.outMode=fade|typeoff|cut">
+              <div class="field"><span class="lbl scrub" title="Frames it stays fully on before going">Hold</span><div class="num"><input type="number" data-bind="fill.anim.hold" min="0" max="9999" step="1"><span class="unit">fr</span></div></div>
+              <div class="field" data-show="fill.anim.outMode=fade|typeoff"><span class="lbl scrub" title="Frames it takes to go">Out</span><div class="num"><input type="number" data-bind="fill.anim.outDur" min="1" max="600" step="1"><span class="unit">fr</span></div></div>
+            </div>
+            <label class="check"><input type="checkbox" data-bind="fill.anim.ellipsis"> Animated ellipses on dev text</label>
+            <label class="check"><input type="checkbox" data-bind="fill.anim.count"> Count numbers up</label>
+            <div class="field" data-show="fill.anim.count=true"><span class="lbl scrub">Count for</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.anim.countDur" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+            <label class="check"><input type="checkbox" data-bind="fill.anim.scramble"> Scramble hashes</label>
+            <div data-show="fill.anim.scramble=true" style="display:grid;gap:9px">
+              <div class="seg" data-seg="fill.anim.scrMode"><button data-v="settle">Then settle</button><button data-v="always">Keep changing</button></div>
+              <div class="field2">
+                <div class="field"><span class="lbl scrub">Rate</span><div class="num"><input type="number" data-bind="fill.anim.scrRate" min="1" max="60" step="1"><span class="unit">/s</span></div></div>
+                <div class="field" data-show="fill.anim.scrMode=settle"><span class="lbl scrub">For</span><div class="num"><input type="number" data-bind="fill.anim.scrDur" min="1" max="600" step="1"><span class="unit">fr</span></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="group" data-show="fill.on=true">
+            <div class="group-h">Text between blocks</div>
+            <div class="layer" data-layer="fill.gap.on">
+              <label class="switch"><input type="checkbox" data-bind="fill.gap.on"><span></span></label>
+              <div><div class="ln">Fill empty grid areas</div><div class="ls">Log lines, tags, barcodes &amp; dots in the gaps</div></div>
+              <span></span>
+              <div class="extra" data-show="fill.gap.on=true">
+                <div class="checkgrid"><label class="check"><input type="checkbox" data-bind="fill.gap.mods.log"> Log lines</label><label class="check"><input type="checkbox" data-bind="fill.gap.mods.phrase"> Phrases & tags</label><label class="check"><input type="checkbox" data-bind="fill.gap.mods.barcode"> Barcodes</label><label class="check"><input type="checkbox" data-bind="fill.gap.mods.hashes"> Hashes</label><label class="check"><input type="checkbox" data-bind="fill.gap.mods.dots"> Dot fields</label><label class="check"><input type="checkbox" data-bind="fill.gap.mods.logo"> Avalanche logo</label></div>
+                <div class="field"><span class="lbl scrub" title="Items per 10 columns">Amount</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.gap.amount" min="0" max="30" step="1"><button data-d="1">+</button></div></div>
+                <div class="field stack"><span class="lbl">Colour</span><div class="swatches" data-pal="fill.gap.color"></div></div>
+                <button class="btn" id="btnGapShuffle">Shuffle placement</button>
+              </div>
+            </div>
+          </div>
+          <div class="group">
+            <div class="group-h">How it works</div>
+            <div class="note">Click a block to select it, then type in the panel on the right. <b>Shift-click</b> to style several blocks at once. <b>Double-click</b> a block to jump to its text.</div>
+          </div>
+          <div class="group">
+            <div class="group-h">Default text style</div>
+            <datalist id="fontFamilies"></datalist>
+            <div class="fontrow"><input class="text-in" id="fontFam" list="fontFamilies" placeholder="Font family" autocomplete="off" spellcheck="false"><select id="fontStyle"></select></div>
+            <div class="note" id="fontNote"></div>
+            <div class="field3">
+              <div class="field"><span class="lbl scrub">Size</span><div class="num"><input type="number" data-bind="text.size" min="4" max="1000" step="1"></div></div>
+              <div class="field"><span class="lbl scrub" title="0 = auto">Leading</span><div class="num"><input type="number" data-bind="text.leading" min="0" max="2000" step="1"></div></div>
+              <div class="field"><span class="lbl scrub">Tracking</span><div class="num"><input type="number" data-bind="text.tracking" min="-500" max="2000" step="5"></div></div>
+            </div>
+            <div class="field stack"><span class="lbl">Kerning</span><div class="seg" data-seg="text.kern"><button data-v="metrics">Metrics</button><button data-v="optical">Optical</button><button data-v="none">Off</button></div></div>
+            <div class="field stack"><span class="lbl">Case</span><div class="seg" data-seg="text.caps"><button data-v="none">As typed</button><button data-v="upper">UPPER</button><button data-v="lower">lower</button></div></div>
+            <div class="field"><span class="lbl">Position</span>
+              <div class="seg" data-seg="text.align"><button data-v="tl">Top left</button><button data-v="center">Centre</button><button data-v="bl">Bottom left</button></div></div>
+            <div class="field"><span class="lbl scrub">Padding</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="text.pad" min="0" max="500" step="1"><span class="unit">px</span><button data-d="1">+</button></div></div>
+            <label class="check"><input type="checkbox" id="chkStyleSel" checked> Changes here also restyle the selected blocks</label>
+            <button class="btn wide" id="btnApplyStyle">Apply style to all blocks</button>
+          </div>
+          <div class="group">
+            <div class="group-h">Quick fill</div>
+            <div class="row-btns"><button class="btn" id="btnNumber">Number blocks</button><button class="btn" id="btnClearText">Clear all text</button></div>
+          </div>
+          <div class="group">
+            <div class="group-h">Coming soon</div>
+            <div class="note">Images and video clipped inside blocks.</div>
+          </div>
+        </div>
+
+        <!-- 5 ANIMATE -->
+        <div class="pane" data-pane="animate">
+          <div class="group">
+            <div class="group-h">Style<button class="btn ghost secreset" id="btnResetAnim" title="Put every animation setting back to its default (⌘Z to undo)">↺ Reset all animation</button></div>
+            <div class="modecards" data-seg="anim.mode">
+              <button class="modecard" data-v="static"><svg width="34" height="20" viewBox="0 0 34 20" fill="none" stroke="currentColor"><rect x=".5" y=".5" width="33" height="19" rx="2"/><rect x="5" y="11" width="8" height="4" fill="currentColor" stroke="none"/><rect x="14" y="6" width="8" height="4" fill="currentColor" stroke="none"/></svg><div class="t">Static</div><div class="d">No animation. Just the layout.</div></button>
+              <button class="modecard" data-v="reveal"><svg width="34" height="20" viewBox="0 0 34 20" fill="none" stroke="currentColor"><rect x=".5" y=".5" width="33" height="19" rx="2"/><rect x="4" y="12" width="8" height="4" fill="currentColor" stroke="none"/><rect x="13" y="8" width="8" height="4" fill="currentColor" stroke="none" opacity=".55"/><rect x="22" y="4" width="8" height="4" stroke-dasharray="2 1.5"/></svg><div class="t">Reveal</div><div class="d">Blocks appear one by one. The view stays still.</div></button>
+              <button class="modecard" data-v="camera"><svg width="34" height="20" viewBox="0 0 34 20" fill="none" stroke="currentColor"><rect x=".5" y=".5" width="22" height="19" rx="2"/><path d="M26 10h7m-2.5-2.5L33 10l-2.5 2.5"/><rect x="4" y="12" width="7" height="4" fill="currentColor" stroke="none"/><rect x="12" y="7" width="7" height="4" fill="currentColor" stroke="none"/></svg><div class="t">Camera follow</div><div class="d">Blocks keep building and the view glides along with them.</div></button>
+              <button class="modecard" data-v="push"><svg width="34" height="20" viewBox="0 0 34 20" fill="none" stroke="currentColor"><rect x=".5" y=".5" width="33" height="19" rx="2"/><path d="M9 3H3m2-2L3 3l2 2"/><rect x="2" y="9" width="7" height="4" fill="currentColor" stroke="none" opacity=".45"/><rect x="13" y="9" width="8" height="4" fill="currentColor" stroke="none"/></svg><div class="t">Conveyor</div><div class="d">Grid stays still. New blocks land in the centre and push the rest out.</div></button>
+            </div>
+          </div>
+
+          <div class="group" data-show="anim.mode=reveal|camera|push">
+            <div class="group-h">Keep building</div>
+            <label class="check"><input type="checkbox" data-bind="anim.extendOn"> Keep adding blocks after your layout</label>
+            <div data-show="anim.extendOn=true" style="display:grid;gap:9px">
+              <div class="field stack"><span class="lbl">How</span><div class="seg" data-seg="anim.extendMode"><button data-v="walk">Walk</button><button data-v="repeat">Repeat layout</button><button data-v="continue">Same step</button></div></div>
+              <div class="field stack"><span class="lbl">Ending</span><div class="seg" data-seg="anim.ending"><button data-v="count">Wherever it lands</button><button data-v="spot">On a chosen row</button></div></div>
+              <div class="note">How many blocks is set under <b>Scene</b> below.</div>
+              <div class="field" data-show="anim.ending=spot"><span class="lbl scrub">End row</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endRow" min="1" max="60" step="1"><button data-d="1">+</button></div></div>
+              <div class="target-chip" data-show="anim.ending=spot"><button class="btn" id="btnPickEnd">◎ Pick the row on the canvas</button><span class="note" id="endNote"></span></div>
+              <div class="note" data-show="anim.ending=spot">The end column comes from your grid rules and block count, so spacing never breaks. You choose the row.</div>
+              <div data-show="anim.ending=spot" style="display:grid;gap:9px">
+                <div class="field stack"><span class="lbl">Last block ends up</span><div class="seg" id="endPreset"><button data-ex="-25" title="Just past the left edge">Off left</button><button data-ex="20">Left</button><button data-ex="50">Centre</button><button data-ex="80">Right</button><button data-ex="125" title="Just past the right edge">Off right</button></div></div>
+                <div class="field2">
+                  <div class="field"><span class="lbl scrub" title="0 = left edge, 100 = right edge, below 0 or above 100 = off screen">X</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endX" min="-200" max="300" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
+                  <div class="field"><span class="lbl scrub" title="0 = top, 100 = bottom, outside 0–100 = off screen">Y</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endY" min="-200" max="300" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
+                </div>
+                <div class="field"><span class="lbl scrub">Final move</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.finalMove" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              </div>
+              <label class="check" data-show="anim.extendMode=continue"><input type="checkbox" data-bind="anim.wrap"> Loop back to the bottom row at the top</label>
+              <button class="btn" id="btnBake" title="Turn the extra blocks into normal blocks you can edit">Add extra blocks to the layout</button>
+            </div>
+          </div>
+
+          <div class="group" data-show="anim.mode=reveal|camera|push">
+            <div class="group-h">Order</div>
+            <div class="seg" data-seg="anim.order">
+              <button data-v="ltr" title="Left to right">L→R</button><button data-v="rtl" title="Right to left">R→L</button><button data-v="ttb" title="Top to bottom">T→B</button><button data-v="random" title="Random">Rand</button><button data-v="manual" title="Click blocks with the Order tool">Manual</button>
+            </div>
+            <label class="check"><input type="checkbox" data-bind="anim.groupCol"> Blocks in the same column appear together</label>
+            <div data-show="anim.order=manual" style="display:grid;gap:9px">
+              <div class="note">The canvas zooms out to the whole grid. With the <b>Order</b> tool (O), click blocks in the order they should appear. Dashed blocks are the continuation of your pattern: click one to add it. Click a numbered block again to remove it. <a href="#" id="lnkRestartOrder" style="color:var(--accent2)">Start again</a></div>
+              <div class="field stack"><span class="lbl">Blocks you don’t pick</span><div class="seg" data-seg="anim.unpicked"><button data-v="hidden">Hidden</button><button data-v="visible">Always visible</button></div></div>
+              <div class="field2">
+                <div class="field"><span class="lbl scrub">Rows</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="grid.rows" min="1" max="60" step="1"><button data-d="1">+</button></div></div>
+                <div class="field"><span class="lbl scrub" title="Extra columns each side">Cols ±</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="grid.overX" min="0" max="400" step="1"><button data-d="1">+</button></div></div>
+              </div>
+              <div class="field"><span class="lbl scrub" title="Extra rows above &amp; below">Rows ±</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="grid.overY" min="0" max="100" step="1"><button data-d="1">+</button></div></div>
+            </div>
+            <div class="note" data-show="anim.order=random"><a href="#" id="lnkReshuffleOrder" style="color:var(--accent2)">Shuffle order</a></div>
+          </div>
+
+          <div class="group" data-show="anim.mode=reveal|camera|push">
+            <div class="group-h">Scene</div>
+            <div class="field"><span class="lbl scrub">Frame rate</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="comp.fps" min="1" max="120" step="1"><span class="unit">fps</span><button data-d="1">+</button></div></div>
+            <div class="field"><span class="lbl scrub" title="Negative = the scene is already running when the comp starts">Starts at</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.startF" min="-9999" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+            <div class="field"><span class="lbl scrub">Length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.lenF" min="2" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+            <label class="check"><input type="checkbox" data-bind="anim.toEnd"> Run until the comp ends</label>
+            <div style="display:grid;gap:9px">
+              <div class="field stack"><span class="lbl">Number of blocks</span><div class="seg" data-seg="anim.countMode"><button data-v="fill">Fill the length</button><button data-v="exact">Exact number</button></div></div>
+              <div class="field" data-show="anim.countMode=fill"><span class="lbl scrub" title="Average frames between blocks">One every</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.pace" min="1" max="120" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              <div class="field" data-show="anim.countMode=exact"><span class="lbl scrub">Blocks</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.total" min="1" max="400" step="1"><button data-d="1">+</button></div></div>
+            </div>
+            <div class="readout" id="paceNote"></div>
+            <div class="curve" data-curve="anim.sceneCurve" data-ymin="0" data-ymax="1" data-title="Scene easing · re-times the whole scene: reveals, camera, grid changes"></div>
+            <div class="field stack"><span class="lbl">Motion</span><div class="seg" data-seg="anim.motion"><button data-v="smooth">Smooth</button><button data-v="stop">Stop-motion</button></div></div>
+            <div class="field" data-show="anim.motion=stop"><span class="lbl scrub">Hold</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.stepEvery" min="1" max="60" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+          </div>
+
+          <div class="group" data-show="anim.mode=reveal|camera|push">
+            <div class="group-h">Block reveal</div>
+            <div class="field stack"><span class="lbl">Blocks appear</span>
+              <div class="seg" data-seg="anim.appear"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe →</button><button data-v="scale">Scale</button></div></div>
+            <div class="field"><span class="lbl scrub">Reveal length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.trans" min="1" max="1000" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+            <div class="curve" data-curve="anim.revCurve" data-show="anim.motion=smooth" data-title="Reveal easing · each block"></div>
+          </div>
+
+          <div class="group" data-show="anim.mode=camera|push">
+            <div class="group-h" id="camHead">Camera</div>
+            <div class="field stack"><span class="lbl">Follow</span><div class="seg" data-seg="anim.axis"><button data-v="x">Horizontal</button><button data-v="xy">Horizontal + vertical</button></div></div>
+            <div class="field stack" data-show="anim.motion=smooth"><span class="lbl">Camera move</span><div class="seg" data-seg="anim.camMove"><button data-v="follow">Follow (glide)</button><button data-v="step">Step &amp; settle</button></div></div>
+            <div class="field" data-show="anim.motion=smooth&amp;anim.camMove=follow"><span class="lbl scrub">Glide</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.smooth" min="0.5" max="6" step="0.5"><span class="unit">steps</span><button data-d="1">+</button></div></div>
+            <div class="curve" data-curve="anim.camCurve" data-show="anim.motion=smooth&amp;anim.camMove=step" data-title="Move easing · each step and the final move"></div>
+            <label class="check" data-show="anim.mode=camera"><input type="checkbox" data-bind="anim.lazy"> Wait until blocks reach the centre</label>
+            <label class="check" data-show="anim.camMove=step"><input type="checkbox" data-bind="anim.snap"> Aim at whole cells</label>
+            <div class="note">The camera only moves toward blocks that have already appeared.</div>
+          </div>
+
+          <div class="group" data-show="anim.mode=reveal|camera|push">
+            <div class="group-h">Grid size over time<label class="switch hswitch" title="Turn all grid changes on or off"><input type="checkbox" data-bind="anim.zoomOn"><span></span></label></div>
+            <div id="zoomList" style="display:grid;gap:6px"></div>
+            <button class="btn" id="btnAddZoom">+ Add a grid change</button>
+            <div class="curve" data-curve="anim.zoomCurve" data-title="Grid change easing" hidden></div>
+          </div>
+
+          <div class="group" data-show="anim.mode=reveal|camera|push">
+            <div class="readout" id="animReadout"></div>
+          </div>
+        </div>
+
+        <!-- 5b TRANSITIONS -->
+        <div class="pane" data-pane="transitions">
+          <div class="group">
+            <div class="group-h">How it works</div>
+            <div class="note">Transition blocks tile the whole frame. <b>Clear away</b> starts with the frame covered and reveals your scene; <b>Build up</b> covers it. Choose <b>Matte precomp</b> to get a white precomp you can use as a track matte for other footage. Press ▶ to preview. Green outlines = In, yellow = Out.</div>
+          </div>
+          <div class="group">
+            <div class="group-h">Transition in</div>
+            <div class="layer" data-layer="trans.in.on">
+              <label class="switch"><input type="checkbox" data-bind="trans.in.on"><span></span></label>
+              <div><div class="ln">Transition in</div><div class="ls">Starts covered, then clears to reveal</div></div>
+              <label class="colorbtn" data-swatch="trans.in.color"><input type="color" data-bind="trans.in.color"></label>
+              <div class="extra" data-show="trans.in.on=true">
+                <div class="field stack"><span class="lbl">Blocks</span><div class="seg" data-seg="trans.in.mode"><button data-v="clear">Clear away (reveal)</button><button data-v="build">Build up (cover)</button></div></div>
+                <div class="field"><span class="lbl scrub">Starts at</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="trans.in.start" min="-9999" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+                <div class="field2">
+                  <div class="field"><span class="lbl scrub" title="Frames from the first block to the last">Length</span><div class="num"><input type="number" data-bind="trans.in.dur" min="1" max="9999" step="1"><span class="unit">fr</span></div></div>
+                  <div class="field"><span class="lbl scrub" title="Frames each block takes">Each</span><div class="num"><input type="number" data-bind="trans.in.len" min="1" max="600" step="1"><span class="unit">fr</span></div></div>
+                </div>
+                <div class="field stack"><span class="lbl">Pattern</span><div class="seg" data-seg="trans.in.pattern"><button data-v="sweep">Sweep</button><button data-v="diag">Diagonal</button><button data-v="rows">Rows</button><button data-v="center">Centre out</button><button data-v="random">Random</button></div></div>
+                <div class="field stack"><span class="lbl">Direction</span><div class="seg" data-seg="trans.in.dir"><button data-v="fwd">Forward</button><button data-v="rev">Reverse</button></div></div>
+                <div class="field stack"><span class="lbl">Each block</span><div class="seg" data-seg="trans.in.appear"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe</button><button data-v="scale">Scale</button></div></div>
+                <div class="field2">
+                  <div class="field"><span class="lbl scrub" title="0 = same as your blocks">W</span><div class="num"><input type="number" data-bind="trans.in.w" min="0" max="60" step="1"><span class="unit">cells</span></div></div>
+                  <div class="field"><span class="lbl scrub" title="0 = same as your blocks">H</span><div class="num"><input type="number" data-bind="trans.in.h" min="0" max="60" step="1"><span class="unit">cells</span></div></div>
+                </div>
+                <label class="check"><input type="checkbox" data-bind="trans.in.cover"> Cover the gutters (solid, no grid lines)</label>
+                <div class="field stack"><span class="lbl">Build as</span><div class="seg" data-seg="trans.in.output"><button data-v="blocks">Blocks in the comp</button><button data-v="matte">Matte precomp</button></div></div>
+                <div class="curve" data-curve="trans.in.curve" data-title="Transition in easing"></div>
+                <button class="btn" data-transshuffle="in" data-show="trans.in.pattern=random">Shuffle order</button>
+              </div>
+            </div>
+          </div>
+          <div class="group">
+            <div class="group-h">Transition out</div>
+            <div class="layer" data-layer="trans.out.on">
+              <label class="switch"><input type="checkbox" data-bind="trans.out.on"><span></span></label>
+              <div><div class="ln">Transition out</div><div class="ls">Covers the frame at the end</div></div>
+              <label class="colorbtn" data-swatch="trans.out.color"><input type="color" data-bind="trans.out.color"></label>
+              <div class="extra" data-show="trans.out.on=true">
+                <div class="field stack"><span class="lbl">Blocks</span><div class="seg" data-seg="trans.out.mode"><button data-v="clear">Clear away (reveal)</button><button data-v="build">Build up (cover)</button></div></div>
+                <label class="check"><input type="checkbox" data-bind="trans.out.atEnd"> Finish when the comp ends</label>
+                <div class="field" data-show="trans.out.atEnd=false"><span class="lbl scrub">Starts at</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="trans.out.start" min="-9999" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+                <div class="field2">
+                  <div class="field"><span class="lbl scrub" title="Frames from the first block to the last">Length</span><div class="num"><input type="number" data-bind="trans.out.dur" min="1" max="9999" step="1"><span class="unit">fr</span></div></div>
+                  <div class="field"><span class="lbl scrub" title="Frames each block takes">Each</span><div class="num"><input type="number" data-bind="trans.out.len" min="1" max="600" step="1"><span class="unit">fr</span></div></div>
+                </div>
+                <div class="field stack"><span class="lbl">Pattern</span><div class="seg" data-seg="trans.out.pattern"><button data-v="sweep">Sweep</button><button data-v="diag">Diagonal</button><button data-v="rows">Rows</button><button data-v="center">Centre out</button><button data-v="random">Random</button></div></div>
+                <div class="field stack"><span class="lbl">Direction</span><div class="seg" data-seg="trans.out.dir"><button data-v="fwd">Forward</button><button data-v="rev">Reverse</button></div></div>
+                <div class="field stack"><span class="lbl">Each block</span><div class="seg" data-seg="trans.out.appear"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe</button><button data-v="scale">Scale</button></div></div>
+                <div class="field2">
+                  <div class="field"><span class="lbl scrub" title="0 = same as your blocks">W</span><div class="num"><input type="number" data-bind="trans.out.w" min="0" max="60" step="1"><span class="unit">cells</span></div></div>
+                  <div class="field"><span class="lbl scrub" title="0 = same as your blocks">H</span><div class="num"><input type="number" data-bind="trans.out.h" min="0" max="60" step="1"><span class="unit">cells</span></div></div>
+                </div>
+                <label class="check"><input type="checkbox" data-bind="trans.out.cover"> Cover the gutters (solid, no grid lines)</label>
+                <div class="field stack"><span class="lbl">Build as</span><div class="seg" data-seg="trans.out.output"><button data-v="blocks">Blocks in the comp</button><button data-v="matte">Matte precomp</button></div></div>
+                <div class="curve" data-curve="trans.out.curve" data-title="Transition out easing"></div>
+                <button class="btn" data-transshuffle="out" data-show="trans.out.pattern=random">Shuffle order</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6 BUILD -->
+        <div class="pane" data-pane="build">
+          <div class="group">
+            <div class="group-h">What gets created</div>
+            <div class="summary" id="buildSummary"></div>
+          </div>
+          <div class="group">
+            <div class="group-h">Options</div>
+            <label class="check"><input type="checkbox" data-bind="out.replace"> Replace the previous Grid Blocks build</label>
+            <label class="check"><input type="checkbox" data-bind="out.lock"> Lock background, lines &amp; tiles</label>
+            <label class="check"><input type="checkbox" data-bind="out.fitDur"> Lengthen the comp to fit the animation</label>
+            <div class="field stack"><span class="lbl">Camera</span><div class="seg" data-seg="out.rig"><button data-v="camera">After Effects camera (3D)</button><button data-v="null">2D null rig</button></div></div>
+          </div>
+          <div class="group">
+            <button class="btn primary big" id="btnBuild2"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg><span id="buildLabel2">Build in After Effects</span></button>
+            <div class="row-btns">
+              <button class="btn" id="btnExportJsx" title="Download a script you can run with File › Scripts › Run Script File">Export .jsx</button>
+              <button class="btn danger" id="btnRemoveAE" title="Delete every Grid Blocks layer from the active comp">Remove from comp</button>
+            </div>
+            <div class="note" id="buildNote"></div>
+          </div>
+          <div class="group">
+            <div class="group-h">Save</div>
+            <div class="row-btns"><button class="btn" id="btnSaveLib">Save to layouts</button><button class="btn" id="btnExportFile">Save to file…</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="step-foot">
+        <button class="btn" id="btnBack">← Back</button>
+        <button class="btn primary" id="btnNext">Next →</button>
+      </div>
+    </section>
+
+    <!-- ================= STAGE ================= -->
+    <section class="stage">
+      <div id="wrap">
+        <canvas id="cv"></canvas>
+        <div class="toolbox" id="toolbox"></div>
+        <div class="ctxbar" id="ctxbar"></div>
+        <div class="toolpill" id="toolPill"></div>
+        <button class="backbtn" id="backBtn" hidden title="Back to the frame (F)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3 2 7l4 4"/><path d="M2 7h8a4 4 0 0 1 0 8H8"/></svg>Back to frame <kbd>F</kbd></button>
+        <div class="zoombox">
+          <button id="zFit" title="Back to the frame, centred (F)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3.5" y="4.5" width="9" height="7" rx="1"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg></button>
+          <span style="width:1px;height:16px;background:var(--line2)"></span>
+          <button id="zOut" title="Zoom out (−)">−</button>
+          <button class="pct" id="zPct" title="Fit the frame (F)">100%</button>
+          <button id="zIn" title="Zoom in (+)">+</button>
+          <button id="zAll" title="Show off-screen area (Shift+F)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"/></svg></button>
+        </div>
+      </div>
+      <div class="timeline" id="timeline" hidden>
+        <button class="btn icon" id="btnPlay" title="Play preview (P)"><svg id="icoPlay" width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg></button>
+        <input type="range" id="scrub" min="0" max="100" step="1" value="0">
+        <span class="tc" id="tc">0f</span>
+        <div class="field" style="grid-template-columns:auto 78px;gap:6px" title="Frame the scene starts on. Negative = already running at frame 0"><span class="lbl scrub">Scene starts</span><div class="num"><input type="number" data-bind="anim.startF" min="-9999" max="99999" step="1"><span class="unit">fr</span></div></div>
+        <label class="check" style="align-items:center" title="Play the preview over and over"><input type="checkbox" id="chkLoop" checked> Loop preview</label>
+        <button class="btn ghost" id="btnLayoutView" title="Stop preview and show the full layout">Show layout</button>
+      </div>
+      <div class="status">
+        <span class="pos" id="hPos">—</span>
+        <label class="check"><input type="checkbox" id="chkOrder"> Show order numbers</label>
+        <span class="hide-sm" id="hint"></span>
+      </div>
+    </section>
+
+    <!-- ================= INSPECTOR ================= -->
+    <div id="insp"></div>
+  </main>
+</div>
+
+<div class="modal" id="libModal" hidden>
+  <div class="sheet">
+    <div class="sheet-h"><h3>Layouts</h3><span class="note" id="libWhere"></span><div class="spacer"></div><button class="btn icon ghost" id="libClose" title="Close">✕</button></div>
+    <div class="save-row"><input class="text-in" id="libName" placeholder="Name this layout…" maxlength="60"><button class="btn primary" id="libSave">Save current</button></div>
+    <div class="lib" id="libList"></div>
+    <div class="sheet-f">
+      <button class="btn" id="libExport">Save current to file…</button>
+      <button class="btn" id="libImport">Open from file…</button>
+      <span class="note">Saves the grid, blocks, content and animation together.</span>
+    </div>
+  </div>
+</div>
+<div class="menu" id="clearMenu" hidden>
+  <div class="mh">Clear</div>
+  <button data-clear="sel">Selection <kbd>Esc</kbd></button>
+  <button data-clear="blocks">All blocks</button>
+  <button data-clear="text">All text</button>
+  <button data-clear="order">Manual order</button>
+  <div class="msep"></div>
+  <div class="mh">Reset to defaults</div>
+  <button data-clear="grid">Grid &amp; look</button>
+  <button data-clear="anim">Animation settings</button>
+  <button data-clear="all" class="danger">Everything</button>
+  <div class="msep" data-ae></div>
+  <button data-clear="ae" data-ae class="danger">Remove built layers from comp</button>
+</div>
+<input type="file" id="fileIn" accept=".json,application/json" hidden>
+<div class="tip" id="tip"></div>
+<div class="toast" id="toast"><span class="dot"></span><span id="toastMsg"></span><button class="btn" id="toastBtn" hidden>Undo</button></div>
