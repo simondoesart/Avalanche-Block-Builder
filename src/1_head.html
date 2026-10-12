@@ -317,6 +317,8 @@ textarea{height:auto;min-height:64px;padding:7px 8px;resize:vertical;line-height
 .num input[type=number]{cursor:ns-resize}
 .num input[type=number]:focus{cursor:text}
 .num input.scrubbing{color:var(--accent2)}
+.speedgraph{display:grid;gap:5px}
+.speedgraph canvas{width:100%;height:84px;background:var(--bg);border:1px solid var(--line);border-radius:8px;display:block}
 /* help tips */
 .qm{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;border:1px solid var(--line2);color:var(--dim);font-size:9px;font-weight:700;margin-left:5px;cursor:help;vertical-align:1px;flex:none;line-height:1;text-transform:none;letter-spacing:0}
 .qm:hover{color:var(--text);border-color:var(--muted);background:var(--field)}
@@ -720,12 +722,53 @@ body.nohelp .qm{display:none}
           </div>
 
           <div class="group" data-show="anim.mode=reveal|camera|push">
+            <div class="group-h">Scene</div>
+            <div class="field"><span class="lbl scrub">Frame rate</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="comp.fps" min="1" max="120" step="1"><span class="unit">fps</span><button data-d="1">+</button></div></div>
+            <div class="field"><span class="lbl scrub" title="Negative = the scene is already running when the comp starts">Starts at</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.startF" min="-9999" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+            <div class="field"><span class="lbl scrub">Length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.lenF" min="2" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+            <label class="check"><input type="checkbox" data-bind="anim.toEnd"> Run until the comp ends</label>
+            <div style="display:grid;gap:9px">
+              <div class="field stack"><span class="lbl">Number of blocks</span><div class="seg" data-seg="anim.countMode"><button data-v="fill">Fill the length</button><button data-v="exact">Exact number</button></div></div>
+              <div class="field" data-show="anim.countMode=fill"><span class="lbl scrub" title="Average frames between blocks">One every</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.pace" min="1" max="120" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              <div class="field" data-show="anim.countMode=exact"><span class="lbl scrub">Blocks</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.total" min="1" max="400" step="1"><button data-d="1">+</button></div></div>
+            </div>
+            <div class="readout" id="paceNote"></div>
+            <div class="curve" data-curve="anim.sceneCurve" data-ymin="0" data-ymax="1" data-title="Scene easing · re-times the whole scene: reveals, camera, grid changes"></div>
+            <div class="field stack"><span class="lbl">Motion</span><div class="seg" data-seg="anim.motion"><button data-v="smooth">Smooth</button><button data-v="stop">Stop-motion</button></div></div>
+            <div class="field" data-show="anim.motion=stop"><span class="lbl scrub">Hold</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.stepEvery" min="1" max="60" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+          </div>
+
+          <div class="group" data-show="anim.mode=camera|push">
+            <div class="group-h">Camera<span id="camHead" class="note" style="margin-left:6px;text-transform:none;letter-spacing:0"></span></div>
+            <div class="field stack" data-show="anim.motion=smooth"><span class="lbl">Movement</span><div class="seg" data-seg="anim.camMove"><button data-v="follow">Glide (continuous)</button><button data-v="step">Step &amp; settle</button></div></div>
+            <div class="field stack"><span class="lbl">Follows</span><div class="seg" data-seg="anim.axis"><button data-v="x">Sideways</button><button data-v="xy">Sideways + up/down</button></div></div>
+            <div data-show="anim.motion=smooth&amp;anim.camMove=follow" style="display:grid;gap:9px">
+              <div class="field stack"><span class="lbl">Feel</span><div class="seg" id="camPreset"><button data-p="1,2.5,12" title="Stays close, quick but still eased">Tight</button><button data-p="1.5,4,18" title="The default: smooth and readable">Balanced</button><button data-p="2.5,7,30" title="Trails further behind with long, soft acceleration">Floaty</button><button data-p="3.5,10,48" title="Very slow, cinematic drift">Drift</button></div></div>
+              <div class="field"><span class="lbl scrub" title="How many blocks the camera trails behind the newest one">Follow distance</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.smooth" min="1" max="6" step="0.5"><span class="unit">blocks</span><button data-d="1">+</button></div></div>
+              <div class="field"><span class="lbl scrub" title="Higher = softer changes of speed">Smoothness</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.motionBlurF" min="0" max="12" step="0.5"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              <div class="field"><span class="lbl scrub" title="Frames the camera takes to ease to a stop at the end">Settle</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.settle" min="0" max="240" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+            </div>
+            <div class="curve" data-curve="anim.camCurve" data-show="anim.motion=smooth&amp;anim.camMove=step" data-title="Move easing · each step and the final move"></div>
+            <label class="check" data-show="anim.mode=camera"><input type="checkbox" data-bind="anim.lazy"> Hold still until blocks reach the centre</label>
+            <label class="check" data-show="anim.camMove=step"><input type="checkbox" data-bind="anim.snap"> Aim at whole cells</label>
+            <div class="speedgraph"><div class="lbl">Camera speed <span class="note" id="speedNote"></span></div><canvas id="speedCv"></canvas></div>
+          </div>
+
+          <div class="group" data-show="anim.mode=reveal|camera|push">
+            <div class="group-h">Block reveal</div>
+            <div class="field stack"><span class="lbl">Blocks appear</span>
+              <div class="seg" data-seg="anim.appear"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe →</button><button data-v="scale">Scale</button></div></div>
+            <div class="field"><span class="lbl scrub">Reveal length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.trans" min="1" max="1000" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+            <div class="curve" data-curve="anim.revCurve" data-show="anim.motion=smooth" data-title="Reveal easing · each block"></div>
+          </div>
+
+          <div class="group" data-show="anim.mode=reveal|camera|push">
             <div class="group-h">Keep building</div>
             <label class="check"><input type="checkbox" data-bind="anim.extendOn"> Keep adding blocks after your layout</label>
             <div data-show="anim.extendOn=true" style="display:grid;gap:9px">
               <div class="field stack"><span class="lbl">How</span><div class="seg" data-seg="anim.extendMode"><button data-v="walk">Walk</button><button data-v="repeat">Repeat layout</button><button data-v="continue">Same step</button></div></div>
               <div class="field stack"><span class="lbl">Ending</span><div class="seg" data-seg="anim.ending"><button data-v="count">Wherever it lands</button><button data-v="spot">On a chosen row</button></div></div>
-              <div class="note">How many blocks is set under <b>Scene</b> below.</div>
+              <div class="note">How many blocks is set under <b>Scene</b> above.</div>
               <div class="field" data-show="anim.ending=spot"><span class="lbl scrub">End row</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endRow" min="1" max="60" step="1"><button data-d="1">+</button></div></div>
               <div class="target-chip" data-show="anim.ending=spot"><button class="btn" id="btnPickEnd">◎ Pick the row on the canvas</button><span class="note" id="endNote"></span></div>
               <div class="note" data-show="anim.ending=spot">The end column comes from your grid rules and block count, so spacing never breaks. You choose the row.</div>
@@ -758,42 +801,6 @@ body.nohelp .qm{display:none}
               <div class="field"><span class="lbl scrub" title="Extra rows above &amp; below">Rows ±</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="grid.overY" min="0" max="100" step="1"><button data-d="1">+</button></div></div>
             </div>
             <div class="note" data-show="anim.order=random"><a href="#" id="lnkReshuffleOrder" style="color:var(--accent2)">Shuffle order</a></div>
-          </div>
-
-          <div class="group" data-show="anim.mode=reveal|camera|push">
-            <div class="group-h">Scene</div>
-            <div class="field"><span class="lbl scrub">Frame rate</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="comp.fps" min="1" max="120" step="1"><span class="unit">fps</span><button data-d="1">+</button></div></div>
-            <div class="field"><span class="lbl scrub" title="Negative = the scene is already running when the comp starts">Starts at</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.startF" min="-9999" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-            <div class="field"><span class="lbl scrub">Length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.lenF" min="2" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-            <label class="check"><input type="checkbox" data-bind="anim.toEnd"> Run until the comp ends</label>
-            <div style="display:grid;gap:9px">
-              <div class="field stack"><span class="lbl">Number of blocks</span><div class="seg" data-seg="anim.countMode"><button data-v="fill">Fill the length</button><button data-v="exact">Exact number</button></div></div>
-              <div class="field" data-show="anim.countMode=fill"><span class="lbl scrub" title="Average frames between blocks">One every</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.pace" min="1" max="120" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-              <div class="field" data-show="anim.countMode=exact"><span class="lbl scrub">Blocks</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.total" min="1" max="400" step="1"><button data-d="1">+</button></div></div>
-            </div>
-            <div class="readout" id="paceNote"></div>
-            <div class="curve" data-curve="anim.sceneCurve" data-ymin="0" data-ymax="1" data-title="Scene easing · re-times the whole scene: reveals, camera, grid changes"></div>
-            <div class="field stack"><span class="lbl">Motion</span><div class="seg" data-seg="anim.motion"><button data-v="smooth">Smooth</button><button data-v="stop">Stop-motion</button></div></div>
-            <div class="field" data-show="anim.motion=stop"><span class="lbl scrub">Hold</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.stepEvery" min="1" max="60" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-          </div>
-
-          <div class="group" data-show="anim.mode=reveal|camera|push">
-            <div class="group-h">Block reveal</div>
-            <div class="field stack"><span class="lbl">Blocks appear</span>
-              <div class="seg" data-seg="anim.appear"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe →</button><button data-v="scale">Scale</button></div></div>
-            <div class="field"><span class="lbl scrub">Reveal length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.trans" min="1" max="1000" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-            <div class="curve" data-curve="anim.revCurve" data-show="anim.motion=smooth" data-title="Reveal easing · each block"></div>
-          </div>
-
-          <div class="group" data-show="anim.mode=camera|push">
-            <div class="group-h" id="camHead">Camera</div>
-            <div class="field stack"><span class="lbl">Follow</span><div class="seg" data-seg="anim.axis"><button data-v="x">Horizontal</button><button data-v="xy">Horizontal + vertical</button></div></div>
-            <div class="field stack" data-show="anim.motion=smooth"><span class="lbl">Camera move</span><div class="seg" data-seg="anim.camMove"><button data-v="follow">Follow (glide)</button><button data-v="step">Step &amp; settle</button></div></div>
-            <div class="field" data-show="anim.motion=smooth&amp;anim.camMove=follow"><span class="lbl scrub">Glide</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.smooth" min="0.5" max="6" step="0.5"><span class="unit">steps</span><button data-d="1">+</button></div></div>
-            <div class="curve" data-curve="anim.camCurve" data-show="anim.motion=smooth&amp;anim.camMove=step" data-title="Move easing · each step and the final move"></div>
-            <label class="check" data-show="anim.mode=camera"><input type="checkbox" data-bind="anim.lazy"> Wait until blocks reach the centre</label>
-            <label class="check" data-show="anim.camMove=step"><input type="checkbox" data-bind="anim.snap"> Aim at whole cells</label>
-            <div class="note">The camera only moves toward blocks that have already appeared.</div>
           </div>
 
           <div class="group" data-show="anim.mode=reveal|camera|push">
@@ -948,7 +955,7 @@ body.nohelp .qm{display:none}
     <div class="lib" id="libList"></div>
     <div class="sheet-f">
       <button class="btn" id="libExport">Save current to file…</button>
-      <button class="btn" id="libImport">Open from file…</button>
+      <button class="btn" id="libImport" title="Opens a saved layout (.json) or a Grid Blocks build script (.jsx). You can also drag a file onto the panel.">Open from file…</button>
       <span class="note">Saves the grid, blocks, content and animation together.</span>
     </div>
   </div>
@@ -967,6 +974,6 @@ body.nohelp .qm{display:none}
   <div class="msep" data-ae></div>
   <button data-clear="ae" data-ae class="danger">Remove built layers from comp</button>
 </div>
-<input type="file" id="fileIn" accept=".json,application/json" hidden>
+<input type="file" id="fileIn" accept=".json,.jsx,application/json,text/plain" hidden>
 <div class="tip" id="tip"></div>
 <div class="toast" id="toast"><span class="dot"></span><span id="toastMsg"></span><button class="btn" id="toastBtn" hidden>Undo</button></div>
