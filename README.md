@@ -96,3 +96,6 @@ Typical main comp: `GB · Camera`, `GB · Transition Out`, `GB · Transition In`
 - **Content**: 7 new modules (mempool, validators, latency/TPS, RPC calls, progress bars, consensus, hex stream), a 14-icon line-icon set (node, block, chain, check, speed chevrons, peak, lock, network, signal, target, snow, arrow, plus, bars) built as shape layers in AE, dot size + round/square dots, icons/hex/RPC in the gaps.
 - **Lab** step (experiments, all off by default, each labelled with its status): signal flicker, landing pulse, momentum trails, finality bar, transaction ticker (expression-driven text layer), snow drift (expression-driven shape layer).
 - **Essential / All controls** switch in the step header hides fine-tuning controls so each step is calmer.
+
+## v1.7.1
+Starts from a **blank canvas**: `#1F1F1F` background, 7 rows, bleed, Avalanche brand colours, no blocks, rules, transitions or grid zoom. **Defaults** (top bar) and **Clear › Everything** go back to that. The old starter look lives in **Clear › Load the Avalanche HUD example**.

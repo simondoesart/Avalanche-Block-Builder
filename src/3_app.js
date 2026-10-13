@@ -31,11 +31,11 @@ const DEF={
   comp:{w:1920,h:1080,fps:24,dur:10,follow:true},
   grid:{rows:7,colsMode:'bleed',cols:12,gutter:1,margin:0,offsetX:0,snap:true,overX:8,overY:1},
   look:{bgOn:true,bg:'#1F1F1F',linesOn:false,line:'#2B3133',lineW:1,border:false,cellsMode:'none',cell:'#D9D9D9',
-        rulesOn:true,rule:'#3B484B',ruleW:1,ruleEvery:4,ruleStart:1,ruleLayer:'top'},
+        rulesOn:false,rule:'#3B484B',ruleW:1,ruleEvery:4,ruleStart:1,ruleLayer:'top'},
   block:{w:3,h:1,color:'#E6212F',color2:'#A2AFB2',sync:true,mix:'single',mixPct:25},
   palette:PALETTE.slice(),
-  trans:{in:{on:true,mode:'clear',start:0,atEnd:false,dur:24,pattern:'sweep',dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:true,color:'#E6212F',output:'blocks',seed:3},
-         out:{on:true,mode:'build',start:72,atEnd:false,dur:24,pattern:'sweep',dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:true,color:'#E6212F',output:'blocks',seed:5}},
+  trans:{in:{on:false,mode:'clear',start:0,atEnd:false,dur:24,pattern:'sweep',dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:true,color:'#E6212F',output:'blocks',seed:3},
+         out:{on:false,mode:'build',start:72,atEnd:false,dur:24,pattern:'sweep',dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:true,color:'#E6212F',output:'blocks',seed:5}},
   fill:{on:true,seed:7,density:'medium',family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:8,leading:100,caps:'upper',
         textColor:'#121212',outlinePct:0,outlineW:2,skipText:true,textPct:60,patternPct:40,dotSpacing:8,iconPct:15,iconSize:15,
         mods:{kv:true,status:true,hashes:true,block:true,log:false,counter:true,dev:true,barcode:true,phrase:true,term:true,mempool:true,validator:true,latency:true,rpc:false,progress:true,consensus:true,stream:false,dots:true,ring:false,logo:true,icons:true},
@@ -50,7 +50,7 @@ const DEF={
   anim:{mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'follow',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0,0,1,1],camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
-        zoomOn:true,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
+        zoomOn:false,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
   lab:{flicker:{on:false,frames:8,seed:3},
        pulse:{on:false,scale:1.35,len:18,width:2,color:'#E6212F'},
        trail:{on:false,count:3,length:1.2,len:12,width:2,color:'#A2AFB2'},
@@ -60,8 +60,11 @@ const DEF={
   num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100},
   exit:{on:false,mode:'hold',hold:36,at:0,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
   out:{replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180,folder:true,preGrid:true,preBlocks:true,preTrans:true,shy:true,trim:true,markers:true},
-  blocks:[{"id": 1, "c": 0, "r": 1, "w": 3, "h": 1, "color": "#E6212F"}, {"id": 2, "c": 0, "r": 3, "w": 3, "h": 1, "color": "#E6212F", "stack": true}, {"id": 3, "c": 3, "r": 2, "w": 3, "h": 1, "color": "#E6212F"}, {"id": 4, "c": 6, "r": 3, "w": 3, "h": 1, "color": "#E6212F"}, {"id": 5, "c": 9, "r": 2, "w": 3, "h": 1, "color": "#E6212F"}, {"id": 6, "c": 12, "r": 2, "w": 3, "h": 1, "color": "#E6212F"}]
+  blocks:[]
 };
+/* the Avalanche HUD example (what used to be the default): rules, starter walk, transitions, grid zoom */
+const EXAMPLE={look:{rulesOn:true},trans:{in:{on:true},out:{on:true}},anim:{zoomOn:true},
+  blocks:[{"id": 1, "c": 0, "r": 1, "w": 3, "h": 1, "color": "#E6212F"}, {"id": 2, "c": 0, "r": 3, "w": 3, "h": 1, "color": "#E6212F", "stack": true}, {"id": 3, "c": 3, "r": 2, "w": 3, "h": 1, "color": "#E6212F"}, {"id": 4, "c": 6, "r": 3, "w": 3, "h": 1, "color": "#E6212F"}, {"id": 5, "c": 9, "r": 2, "w": 3, "h": 1, "color": "#E6212F"}, {"id": 6, "c": 12, "r": 2, "w": 3, "h": 1, "color": "#E6212F"}]};
 let D=clone(DEF);
 let uid=1;
 /* UI state (not saved) */
@@ -3216,6 +3219,7 @@ $('#clearMenu').addEventListener('click',e=>{
   else if(k==='grid'){D.grid=clone(DEF.grid);D.look=clone(DEF.look);}
   else if(k==='anim'){D.anim=clone(DEF.anim);U.t=null;}
   else if(k==='all'){resetDefaults(false);return;}
+  else if(k==='example'){loadExample();return;}
   syncInputs(true);syncPalettes();if(V.fit)fitView(V.fit);refresh();
   toast({blocks:'Cleared all blocks',text:'Cleared all text',order:'Cleared manual order',grid:'Grid & look reset',anim:'Animation reset',all:'Started over'}[k],'',true);
 });
@@ -3231,6 +3235,14 @@ function resetDefaults(withHist){
   toast('Back to the default look','⌘Z to undo',true);
 }
 $('#btnDefaults').onclick=()=>resetDefaults();
+function loadExample(){
+  pushHist(); const keep={w:D.comp.w,h:D.comp.h,follow:D.comp.follow};
+  D=merge(clone(DEF),clone(EXAMPLE)); Object.assign(D.comp,keep);
+  D.blocks=EXAMPLE.blocks.map(b=>normBlock(clone(b))); uid=D.blocks.reduce((m,b)=>Math.max(m,b.id),0)+1;
+  U.selIds=[];U.sel=null;U.t=null;U.live=false;planCache.k='';fillCache.clear();
+  syncInputs(true);syncPalettes();renderFontUI();goStep(4);if(V.fit)fitView(V.fit);refresh();
+  toast('Loaded the Avalanche HUD example','⌘Z to undo',true);
+}
 /* Essential / All controls */
 function setAdv(on){U.adv=!!on;document.body.classList.toggle('simple',!U.adv);$$('#advSeg [data-adv-v]').forEach(b=>b.classList.toggle('on',(b.dataset.advV==='1')===U.adv));try{renderCurves();}catch(e){}}
 $('#advSeg').addEventListener('click',e=>{const b=e.target.closest('[data-adv-v]');if(!b)return;setAdv(b.dataset.advV==='1');savePrefs();toast(U.adv?'Showing every control':'Showing the essentials','',true);});
@@ -3336,6 +3348,7 @@ function payloadToDoc(d){
     for(let i=0;i+1<z.length;i+=2){const a=z[i],b=z[i+1],rev=a[1]<b[1],small=rev?a[1]:b[1];
       doc.anim.zoom.push({on:true,closed:false,rows:Math.round(doc.grid.rows*100/Math.max(1,small)),mode:'frames',f0:a[0],f1:b[0],at:1,off:0,dur:b[0]-a[0],rev,sx:0,sy:0,ex:0,ey:0});}
     if(z.length&&z[0][3]) doc.anim.zoomCurve=z[0][3];
+    doc.anim.zoomOn=doc.anim.zoom.length>0;
   }
   // transitions
   ['in','out'].forEach(k=>{const T=doc.trans[k]; T.on=false;});
