@@ -68,3 +68,8 @@ Content step › **Auto-fill blocks**: each block gets a HUD layout built from t
 
 ## New in v1.1
 Avalanche logo as a random element (in blocks and gaps), with icon frequency and size controls (the ring is smaller and rarer by default). Content **comes on** (type on / fade / cut) and **goes off** (stays / fade out / type off / cut) with delay, stagger, hold and length. New **Transitions** step: blocks tile the whole frame and clear away (in) or build up (out), with pattern, direction, easing, block size, cover-the-gutters, and output as blocks or a matte precomp.
+
+## New in v1.3
+**Smoother camera.** Glide follows a point that trails the newest block and is smoothed with a critically-damped filter, so speed builds and fades without kinks and the camera can never get ahead of a revealed block. After the last reveal it keeps its pace and then eases to a complete stop exactly on the last frame (Settle). **Feel** presets (Tight / Balanced / Floaty / Drift) set follow distance, smoothness and settle together; the speed graph shows the result. **Step & settle** now merges bursts of fast reveals into one move and gives each move most of the gap, so it no longer stutters.
+**Motion blur.** Build › Motion blur (on by default, 180° shutter) switches on comp and layer motion blur in AE. The preview shows the same blur (timeline › Motion blur) and plays real frames, like AE.
+**Smaller things.** Each step opens on its own tool; "0 = auto" fields show *auto* / *all*; Camera section has collapse + reset.
