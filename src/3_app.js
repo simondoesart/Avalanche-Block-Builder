@@ -63,7 +63,7 @@ const DEF={
        snow:{on:false,count:90,speed:240,size:2,stretch:6,dir:'left',color:'#EBF0FA',opacity:55,seed:9}},
   num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100},
   timing:{beats:[],markers:[],use:'beats',offset:0,sync:false,sens:1.3,minGap:4,media:null,video:true,videoOpacity:60,sound:true},
-  exit:{on:false,walkHold:24,walkPace:1,walkLen:48,walkFollow:60,trail:6,slide:1.5,mode:'hold',hold:36,at:0,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
+  exit:{on:false,walkHold:24,walkPace:1,walkLen:48,walkFollow:60,trail:3,slide:1.5,mode:'hold',hold:36,at:0,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
   out:{replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180,folder:true,preGrid:true,preBlocks:true,preTrans:true,shy:true,trim:true,markers:true},
   blocks:[]
 };
@@ -1179,8 +1179,16 @@ function computePlan(G){
   const want=A.countMode==='exact'?Math.round(A.total||0):cuesIn?cuesIn:Math.max(1,Math.round(L/Math.max(1,+A.pace||6)));   // synced to sound: one block per cue
   // walk-off: after the build holds, the line keeps walking — extra blocks continue the pattern
   const WO=!!(D.exit&&D.exit.on&&D.exit.mode==='walk'&&!manual&&A.mode!=='static');
-  const pace2=Math.max(1,(+A.pace||6)*Math.max(.1,+D.exit.walkPace||1)), woLen=Math.max(0,Math.round(+D.exit.walkLen||48)), woN=WO?Math.max(1,Math.round(woLen/pace2)):0;
-  const exts=manual?[]:extension(G,base,Math.max(0,want-baseMain)+woN); P.endCol=exts.__endCol; P.endReach=exts.__reach; P.endRowUsed=exts.__endRow;
+  const pace2=Math.max(1,(+A.pace||6)*Math.max(.1,+D.exit.walkPace||1)), woLen=Math.max(0,Math.round(+D.exit.walkLen||48)), woK=Math.max(1,Math.round(+D.exit.trail||6));
+  // blocks while the camera follows + enough for the head to run off frame with its whole trail after the camera lets go
+  const woOff=Math.ceil(.45*G.W/Math.max(1,Math.max(1,D.block.w|0)*G.p))+woK+2;
+  const woN=WO?Math.max(1,Math.round(woLen/pace2))+(A.mode==='camera'||A.mode==='push'?woOff:0):0;
+  const exts=manual?[]:extension(G,base,Math.max(0,want-baseMain)); P.endCol=exts.__endCol; P.endReach=exts.__reach; P.endRowUsed=exts.__endRow;
+  if(WO&&!manual){ // the walk-off continues the pattern from where the build ended (an end row only applies to the build)
+    const sv=A.ending, svOn=A.extendOn; A.ending='count'; A.extendOn=true;
+    const more=extension(G,base.concat(exts),woN); A.ending=sv; A.extendOn=svOn;
+    more.forEach((b,k)=>{b.id=-100000-k; exts.push(b);}); P._woMore=more.length;   // own ids (the build's virtual blocks already use -1, -2, …)
+  }
   let seq=base.concat(exts);
   seq.forEach((b,i)=>{if(b.virtual)b.order=i+1;});
   let gi=[], ng=0;
@@ -1188,7 +1196,7 @@ function computePlan(G){
   else seq.forEach(()=>gi.push(ng++));
   const used=ng;
   // which groups belong to the walk-off (the last woN blocks)
-  const nBuildBlocks=Math.max(1,seq.length-(WO?Math.min(woN,exts.length):0));
+  const nBuildBlocks=Math.max(1,seq.length-(WO?(P._woMore||0):0));
   const usedB=WO?Math.max(1,Math.max(...gi.slice(0,nBuildBlocks))+1):used;
   P.walkFrom=WO?nBuildBlocks:null;
   const CC=(A.camCurve||[0.33,0,0.67,1]).map(Number), RC=(A.revCurve||[0.25,0.1,0.25,1]).map(Number), ZC=(A.zoomCurve||[0.65,0,0.35,1]).map(Number);
@@ -1396,8 +1404,8 @@ function computePlan(G){
         xs[i]=x; ys[i]=y;
       }
       }
-      if(WO&&+D.exit.walkFollow<100){P.relT=Math.round(P.walkT+woLen*clamp(+D.exit.walkFollow||60,0,100)/100);}
-      if((relOn||(WO&&+D.exit.walkFollow<100))&&P.relT>a&&P.relT<b){
+      if(WO){P.relT=Math.round(P.walkT+woLen);}   // walk-off: the camera follows for 'Keeps walking' frames, then lets the line run off
+      if((relOn||WO)&&P.relT>a&&P.relT<b){
         // keep the velocity it has at the release point, then let it bleed away smoothly (no jolt) over relSlow frames
         const i0=P.relT-a, S=Math.max(2,Math.round(+A.relSlow||36));
         const vx=xs[i0]-xs[i0-1], vy=ys[i0]-ys[i0-1], x0=xs[i0], y0=ys[i0];
@@ -2131,9 +2139,17 @@ function exitTimes(P,G,seq,done){
     order.forEach((i,k)=>{out[i]=Math.max(done[i]+1,Math.round(t0+k*stg));});
   } else if(X.mode==='walk'){
     // walk-off: after the hold the line keeps walking; the oldest blocks leave first so only a short trail follows the head
+    // snake: a block leaves when the block K places ahead of it lands, so exactly K follow the head.
+    // At the start of the walk the surplus old blocks peel away quickly, oldest first.
     const tW=P.walkT!=null?P.walkT:Math.round(Math.max(...done)+Math.max(0,+X.walkHold||0)), pc=Math.max(1,(+D.anim.pace||6)*Math.max(.1,+X.walkPace||1));
-    const K=Math.max(1,Math.round(+X.trail||6)), life=K*pc;
-    seq.forEach((b,i)=>{out[i]=Math.max(Math.round(done[i]!=null?done[i]+1:P.T[i]+1),Math.round(Math.max(tW+i*pc*.5,P.T[i]+life)));});
+    const K=Math.max(1,Math.round(+X.trail||6)), n=seq.length, Nb=P.walkFrom!=null?P.walkFrom:n, surplus=Math.max(0,Nb-K), peel=Math.max(8,Math.round(pc*3));
+    const lastT=P.T[n-1];
+    seq.forEach((b,i)=>{
+      let t;
+      if(i<surplus) t=tW+Math.round(i/Math.max(1,surplus)*peel);
+      else t=i+K<n?P.T[i+K]:lastT+(i+K-n+1)*pc;
+      out[i]=Math.max(Math.round(done[i]!=null?done[i]+1:P.T[i]+1),Math.round(Math.max(t,tW)));
+    });
   } else if(X.mode==='behind'){
     // leaves when its right edge passes the exit line (X% of the frame from the left) — blocks trail away behind the camera
     const line=G.W*clamp(+X.line||10,-50,100)/100, maxT=Math.round(P.startF+P.L+600);
@@ -3570,7 +3586,7 @@ const HELP={
   'exit.hold':'How long a block stays fully visible before it starts to leave.',
   'exit.line':'Blocks leave when their right edge passes this line. 0 = left edge of frame, negative = once fully off screen.',
   'exit.at':'When the clear-out starts, in frames relative to the scene end. Negative starts before the scene ends.',
-  'exit.walkLen':'How long the line keeps walking after the hold, in frames. New blocks keep arriving for this long.',
+  'exit.walkLen':'How long the camera travels with the walking line before it lets go. After that the line, with its short trail, carries on and walks off the edge of frame.',
   'exit.walkFollow':'How much of the walk-off the camera follows before it lets go and the line runs off screen. 100% = follows to the end.',
   'exit.trail':'How many blocks stay visible behind the head of the line as it walks off.',
   'look.ruleEnd':'Column rules stay for the whole piece, or fade off when the walk-off starts (or after the scene if there is no walk-off).',

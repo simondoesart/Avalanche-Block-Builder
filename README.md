@@ -127,3 +127,6 @@ Full Aeonik + Aeonik Fono families on the website (21 styles) and the desktop OT
 - **Column rules** controls in Block exit, with **Stay / Fade off** (starts with the walk-off, adjustable start and length; keyed in AE).
 - **Space** = play / pause (hold Space and drag still pans).
 - **Timing › Pace & holds:** block rhythm with a live readout of block count and camera speed, a one-click "pair the camera to the blocks", and every hold (build hold, per-block hold, clear-out, content hold) in one place. Retime also scales the walk-off and rule fade.
+
+## v1.9.2
+Walk-off is now a true "snake": when the walk starts, the surplus older blocks peel away (oldest first) so only the **Trail** follows the head; from then on a block leaves the moment the block *Trail* places ahead of it lands. The camera travels with the line for **Camera follows for** frames, then coasts to a stop — and the line keeps walking until the head and its whole trail have left the frame.
