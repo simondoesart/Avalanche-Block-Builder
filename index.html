@@ -258,6 +258,11 @@ textarea{height:auto;min-height:64px;padding:7px 8px;resize:vertical;line-height
 .sumrow.off{opacity:.4}
 .dope{border-top:1px solid var(--line);background:#121214;height:178px;flex:0 0 auto}
 .dope{position:relative}
+.cvbig-card{background:#1b1b1e;border:1px solid var(--line2);border-radius:12px;padding:12px 14px;width:min(820px,96vw);display:grid;gap:8px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.cvbig-h{display:flex;align-items:center;gap:8px}
+#cvBig{width:100%;height:min(420px,52vh);background:#141417;border-radius:8px;cursor:crosshair;touch-action:none}
+#cvSpeed{width:100%;height:60px;background:#141417;border-radius:8px}
+.cv-pop{margin-left:8px;font-size:10px;padding:1px 7px}
 .aidrawer{position:fixed;top:56px;right:10px;bottom:10px;width:min(400px,calc(100vw - 20px));z-index:24;background:#1b1b1e;border:1px solid var(--line2);border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.55);display:flex;flex-direction:column;overflow:hidden}
 .aidrawer[hidden]{display:none}
 .ai-h{display:flex;align-items:center;gap:8px;padding:10px 10px 8px 14px;border-bottom:1px solid var(--line)}
@@ -1284,6 +1289,12 @@ body.nohelp .qm{display:none}
   </div>
   <div class="ai-in"><textarea id="aiIn" rows="2" placeholder="Ask for a look, a change, or why something's off…"></textarea><button class="btn primary" id="aiSend">Send</button><span class="ai-busy" id="aiBusy" hidden>thinking…</span></div>
 </aside>
+<div class="modal" id="curveModal" hidden><div class="cvbig-card">
+  <div class="cvbig-h"><b id="cvBigTitle">Easing</b><span style="flex:1"></span><button class="btn icon ghost" id="cvBigClose" title="Close (Esc)">✕</button></div>
+  <canvas id="cvBig"></canvas><canvas id="cvSpeed"></canvas>
+  <div class="note" id="cvBigInfo"></div>
+  <div class="cv-row" id="cvBigPresets"></div>
+</div></div>
 <input type="file" id="mediaIn" accept="audio/*,video/*" hidden>
 <input type="file" id="fileIn" accept=".json,.jsx,application/json,text/plain" hidden>
 <div class="tip" id="tip"></div>
@@ -3207,8 +3218,22 @@ function extension(G,base,capOverride){
   return out;
 }
 const curveCache={};
+const isPts=c=>Array.isArray(c)&&c.length>=6&&c.length%2===0;
+function ptsOf(c){const p=[];for(let i=0;i<c.length;i+=2)p.push([+c[i],+c[i+1]]);return p.sort((a,b)=>a[0]-b[0]);}
+/* smooth curve through points (monotone cubic — no overshoot between points) */
+function ptsFn(c){
+  const p=ptsOf(c), n=p.length, dx=[], m=[], tg=new Array(n).fill(0);
+  for(let i=0;i<n-1;i++){dx.push(Math.max(1e-6,p[i+1][0]-p[i][0]));m.push((p[i+1][1]-p[i][1])/dx[i]);}
+  tg[0]=m[0]; tg[n-1]=m[n-2];
+  for(let i=1;i<n-1;i++) tg[i]=(m[i-1]*m[i]<=0)?0:(dx[i-1]+dx[i])/((dx[i-1]+2*dx[i])/m[i-1]+(2*dx[i-1]+dx[i])/m[i]);   // harmonic-mean tangents
+  return u=>{ if(u<=p[0][0]) return p[0][1]; if(u>=p[n-1][0]) return p[n-1][1];
+    let k=0; while(k<n-2&&u>p[k+1][0]) k++;
+    const h=dx[k], s=(u-p[k][0])/h, s2=s*s, s3=s2*s;
+    return (2*s3-3*s2+1)*p[k][1]+(s3-2*s2+s)*h*tg[k]+(-2*s3+3*s2)*p[k+1][1]+(s3-s2)*h*tg[k+1]; };
+}
 function curveFn(c){
   c=c||[0.33,0,0.67,1]; const k=c.join(','); if(curveCache[k]) return curveCache[k];
+  if(isPts(c)) return curveCache[k]=ptsFn(c);
   const x1=c[0],y1=c[1],x2=c[2],y2=c[3];
   const bx=s=>3*(1-s)*(1-s)*s*x1+3*(1-s)*s*s*x2+s*s*s, by=s=>3*(1-s)*(1-s)*s*y1+3*(1-s)*s*s*y2+s*s*s;
   const f=u=>{if(u<=0)return 0;if(u>=1)return 1;let lo=0,hi=1,s=u;for(let i=0;i<24;i++){s=(lo+hi)/2;if(bx(s)<u)lo=s;else hi=s;}return by(s);};
@@ -4204,7 +4229,7 @@ function renderPace(){
 }
 /* the dope sheet: one row per thing that has timing, with handles you can drag */
 const DOPE={rows:['Phases','Camera speed','Blocks','Content','Transitions'],handles:[],drag:null,rowsY:[]};
-function dopeRange(){const G=geom(),fps=D.comp.fps||30;return Math.max(sceneEnd(G),Math.round((D.comp.dur||10)*fps),D.timing&&D.timing.media?Math.round(D.timing.media.dur*fps):0,10);}
+function dopeRange(){if(DOPE.lockN)return DOPE.lockN;const G=geom(),fps=D.comp.fps||30;return Math.max(sceneEnd(G),Math.round((D.comp.dur||10)*fps),D.timing&&D.timing.media?Math.round(D.timing.media.dur*fps):0,10);}
 function drawDope(){
   const c=$('#dopeCv'); if(!c) return; const r=c.getBoundingClientRect(); if(!r.width) return;
   const dpr=window.devicePixelRatio||1; c.width=Math.round(r.width*dpr); c.height=Math.round(r.height*dpr);
@@ -4305,12 +4330,12 @@ function initDope(){
   c.addEventListener('pointerleave',()=>{DOPE.hover=null;if(tip)tip.hidden=true;drawDope();});
   c.addEventListener('pointerdown',e=>{
     const t=dopeHit(e); if(t.x<DOPE.LW) return; c.setPointerCapture&&c.setPointerCapture(e.pointerId);
-    if(t.h){pushHist(true);DOPE.drag=t.h;} else {stopPlay();U.t=Math.round(DOPE.F(t.x));$('#scrub').value=U.t;render();drawDope();DOPE.drag={scrub:true};}
+    if(t.h){pushHist(true);DOPE.drag=t.h;DOPE.lockN=DOPE.N;}   // freeze the time scale while dragging, so the handle tracks the pointer else {stopPlay();U.t=Math.round(DOPE.F(t.x));$('#scrub').value=U.t;render();drawDope();DOPE.drag={scrub:true};}
   });
   c.addEventListener('pointermove',e=>{const d=DOPE.drag;if(!d)return;const r=c.getBoundingClientRect(),f=DOPE.F(e.clientX-r.left);
     if(d.scrub){U.t=Math.round(f);$('#scrub').value=U.t;render();drawDope();return;}
     d.apply(f);planCache.k='';syncInputs();render();drawDope();drawSpeedGraph();if(tip){tip.hidden=false;tip.textContent=`${d.tip} → f${Math.round(f)} (${(f/(D.comp.fps||30)).toFixed(2)}s)`;}});
-  const up=()=>{if(DOPE.drag&&!DOPE.drag.scrub){refresh();}DOPE.drag=null;};
+  const up=()=>{const was=DOPE.drag;DOPE.drag=null;DOPE.lockN=null;if(was&&!was.scrub){refresh();}drawDope();};
   c.addEventListener('pointerup',up); c.addEventListener('pointercancel',up);
 }
 /* when each block leaves (real frames), or null */
@@ -5471,6 +5496,7 @@ document.addEventListener('keydown',e=>{
   if(mod&&kl==='s'){e.preventDefault();openLib(true);return;}
   if(typing){if(k==='Escape')t.blur();return;}
   if(!$('#libModal').hidden){if(k==='Escape')closeLib();return;}
+  if(!$('#curveModal').hidden){if(k==='Escape'){$('#curveModal').hidden=true;refresh();}return;}
   if(k===' '){e.preventDefault();if(!U.space&&!e.repeat){U.space=true;U.spacePanned=false;cv.classList.add('panning');}return;}   // tap = play/pause, hold + drag = pan
   if(mod) return;
   if(kl==='m'||k==='Enter'){if(U.sel){e.preventDefault();mergeSel();}}
@@ -5507,7 +5533,7 @@ function buildCurves(){
     const ymin=scene?+el.dataset.ymin:-0.5, ymax=scene?+el.dataset.ymax:1.5;
     const presets=scene?SCENE_PRESETS:CURVE_PRESETS;
     el._presets=presets;
-    el.innerHTML=`<div class="lbl">${el.dataset.title}</div><canvas></canvas><div class="cv-row">${presets.map((p,i)=>`<button class="chipbtn" data-cp="${i}">${p[0]}</button>`).join('')}<button class="chipbtn" data-creset="1" title="Back to default">↺ Reset</button></div><div class="cv-val"></div>`;
+    el.innerHTML=`<div class="lbl">${el.dataset.title}${scene?'<button class="chipbtn cv-pop" title="Open a big editor where you can add points">⤢ Big editor</button>':''}</div><canvas></canvas><div class="cv-row">${presets.map((p,i)=>`<button class="chipbtn" data-cp="${i}">${p[0]}</button>`).join('')}<button class="chipbtn" data-creset="1" title="Back to default">↺ Reset</button></div><div class="cv-val"></div>`;
     const c=el.querySelector('canvas'); let drag=-1;
     const move=e=>{
       if(drag<0) return; const g=curveGeo(c);
@@ -5523,8 +5549,10 @@ function buildCurves(){
       const cur=getP(path).slice(); cur[drag*2]=r3(x); cur[drag*2+1]=r3(y); setP(path,cur);
       planCache.k=''; drawCurve(el); render(); updPaceTotal();
     };
+    if(scene) c.addEventListener('dblclick',()=>openCurveEditor(path,ymin,ymax,el.dataset.title));
     c.addEventListener('pointerdown',e=>{
       const g=curveGeo(c), cur=getP(path), mx=e.clientX-g.r.left, my=e.clientY-g.r.top;
+      if(isPts(cur)){openCurveEditor(path,ymin,ymax,el.dataset.title);return;}
       const p1=cToPx(g,cur[0],cur[1]), p2=cToPx(g,cur[2],cur[3]);
       drag=Math.hypot(mx-p1[0],my-p1[1])<=Math.hypot(mx-p2[0],my-p2[1])?0:1;
       c.setPointerCapture(e.pointerId); pushHist(true); move(e);
@@ -5532,6 +5560,7 @@ function buildCurves(){
     c.addEventListener('pointermove',move);
     const up=()=>{if(drag>=0){drag=-1;refresh();}};
     c.addEventListener('pointerup',up); c.addEventListener('pointercancel',up);
+    const pop=el.querySelector('.cv-pop'); if(pop) pop.addEventListener('click',()=>openCurveEditor(path,ymin,ymax,el.dataset.title));
     el.querySelector('.cv-row').addEventListener('click',e=>{
       const b=e.target.closest('[data-cp],[data-creset]'); if(!b) return;
       pushHist(true);
@@ -5540,6 +5569,58 @@ function buildCurves(){
       toast(b.dataset.creset?'Curve reset':`${presets[+b.dataset.cp][0]} applied`,'',true);
     });
   });
+}
+/* ---- big curve editor: drag points, click to add, double-click / Alt-click to remove ---- */
+function openCurveEditor(path,ymin,ymax,title){
+  const m=$('#curveModal'), c=$('#cvBig'), sp=$('#cvSpeed'); if(!m) return;
+  $('#cvBigTitle').textContent=title||'Easing';
+  m.hidden=false; let drag=-1, pushed=false;
+  const pts=()=>{const cur=getP(path);if(isPts(cur))return ptsOf(cur);const f=curveFn(cur);return [0,.25,.5,.75,1].map(u=>[u,r3(f(u))]);};
+  const save=p=>{p.sort((a,b)=>a[0]-b[0]);p[0][0]=0;p[p.length-1][0]=1;setP(path,p.reduce((o,q)=>o.concat([r3(q[0]),r3(q[1])]),[]));planCache.k='';};
+  const geo=()=>{const r=c.getBoundingClientRect(),pad=28;return{r,x0:pad,x1:r.width-pad,y0:r.height-pad,y1:pad};};
+  const toPx=(g,u,v)=>[g.x0+(g.x1-g.x0)*u,g.y0+(g.y1-g.y0)*((v-0)/(1-0))];
+  const fromPx=(g,px,py)=>[clamp((px-g.x0)/(g.x1-g.x0),0,1),clamp((py-g.y0)/(g.y1-g.y0),ymin,ymax)];
+  function draw(){
+    const g=geo(),dpr=window.devicePixelRatio||1; c.width=Math.round(g.r.width*dpr); c.height=Math.round(g.r.height*dpr);
+    const x=c.getContext('2d'); x.scale(dpr,dpr); x.clearRect(0,0,g.r.width,g.r.height);
+    x.strokeStyle='#2a2a30'; x.lineWidth=1; for(let i=0;i<=10;i++){const a=toPx(g,i/10,0),b=toPx(g,i/10,1);x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.stroke();const c2=toPx(g,0,i/10),d2=toPx(g,1,i/10);x.beginPath();x.moveTo(c2[0],c2[1]);x.lineTo(d2[0],d2[1]);x.stroke();}
+    x.strokeStyle='#3a3a42'; x.strokeRect(g.x0,g.y1,g.x1-g.x0,g.y0-g.y1);
+    x.fillStyle='#8a8a94'; x.font='11px sans-serif'; x.fillText('time →',g.x1-40,g.y0+18); x.fillText('progress',g.x0-22,g.y1-10);
+    // when blocks land (for the scene curve)
+    if(path==='anim.sceneCurve'){try{const P=plan(geom());x.fillStyle='rgba(255,255,255,.35)';[...new Set(P.T)].forEach(t=>{const u=(t-P.startF)/Math.max(1,P.L);if(u>=0&&u<=1){const q=toPx(g,u,0);x.fillRect(q[0],g.y0-6,1,6);}});}catch(e){}}
+    const cur=getP(path), f=curveFn(cur); x.strokeStyle='#E6212F'; x.lineWidth=2.5; x.beginPath();
+    for(let i=0;i<=200;i++){const u=i/200,p=toPx(g,u,f(u));i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]);} x.stroke();
+    if(isPts(cur)) ptsOf(cur).forEach((q,i)=>{const p=toPx(g,q[0],q[1]);x.fillStyle=i===drag?'#E6212F':'#fff';x.strokeStyle='#E6212F';x.lineWidth=2;x.beginPath();x.arc(p[0],p[1],6,0,7);x.fill();x.stroke();});
+    else {const P1=toPx(g,cur[0],cur[1]),P2=toPx(g,cur[2],cur[3]);x.fillStyle='#fff';[P1,P2].forEach(p=>{x.beginPath();x.arc(p[0],p[1],5,0,7);x.fill();});}
+    // speed (slope) underneath: high = fast
+    const r2=sp.getBoundingClientRect(); sp.width=Math.round(r2.width*dpr); sp.height=Math.round(r2.height*dpr);
+    const y=sp.getContext('2d'); y.scale(dpr,dpr); y.clearRect(0,0,r2.width,r2.height);
+    const v=[]; for(let i=0;i<200;i++){v.push(Math.max(0,(f((i+1)/200)-f(i/200))*200));} const mx=Math.max(1e-6,...v);
+    y.fillStyle='rgba(116,157,211,.45)'; v.forEach((s,i)=>{const hh=s/mx*(r2.height-6);y.fillRect(g.x0+(g.x1-g.x0)*i/200,r2.height-hh,Math.max(1,(g.x1-g.x0)/200+.5),hh);});
+    y.fillStyle='#8a8a94'; y.font='10px sans-serif'; y.fillText('speed',4,12);
+    $('#cvBigInfo').textContent=isPts(cur)?`${ptsOf(cur).length} points · drag to move · click to add · double-click (or Alt-click) a point to remove`:'Click anywhere on the graph to switch to points and add one';
+  }
+  const hit=(g,mx,my)=>{const cur=getP(path);if(!isPts(cur))return -1;let best=-1,bd=12;ptsOf(cur).forEach((q,i)=>{const p=toPx(g,q[0],q[1]);const d=Math.hypot(p[0]-mx,p[1]-my);if(d<bd){bd=d;best=i;}});return best;};
+  c.onpointerdown=e=>{
+    const g=geo(), mx=e.clientX-g.r.left, my=e.clientY-g.r.top; if(!pushed){pushHist(true);pushed=true;}
+    let i=hit(g,mx,my), p=pts();
+    if(i>=0&&(e.altKey)){ if(i>0&&i<p.length-1){p.splice(i,1);save(p);} drag=-1; draw(); refresh(); return; }
+    if(i<0){ const q=fromPx(g,mx,my); p.push([r3(q[0]),r3(q[1])]); save(p); p=pts(); i=p.findIndex(z=>Math.abs(z[0]-q[0])<1e-3); }
+    drag=i; c.setPointerCapture(e.pointerId); draw();
+  };
+  c.onpointermove=e=>{ if(drag<0) return; const g=geo(), q=fromPx(g,e.clientX-g.r.left,e.clientY-g.r.top), p=pts();
+    const lo=drag>0?p[drag-1][0]+.01:0, hi=drag<p.length-1?p[drag+1][0]-.01:1;
+    p[drag]=[drag===0?0:drag===p.length-1?1:clamp(q[0],lo,hi),q[1]]; save(p); draw(); render(); try{drawDope();}catch(x){} };
+  c.onpointerup=()=>{ if(drag>=0){drag=-1;refresh();draw();} };
+  c.ondblclick=e=>{const g=geo(),i=hit(g,e.clientX-g.r.left,e.clientY-g.r.top),p=pts();if(i>0&&i<p.length-1){p.splice(i,1);save(p);draw();refresh();}};
+  $('#cvBigPresets').innerHTML=[['Linear',[0,0,.5,.5,1,1]],['Ease in-out',[0,0,.3,.12,.7,.88,1,1]],['Fast start, long settle',[0,0,.2,.45,.55,.85,1,1]],['Burst, hold, burst',[0,0,.25,.45,.5,.55,.75,.6,1,1]],['Slow build, punch',[0,0,.5,.18,.8,.5,1,1]],['Two-step',[0,0,.3,.5,.55,.52,1,1]]]
+    .map((p,i)=>`<button class="chipbtn" data-bp="${p[1].join(',')}">${p[0]}</button>`).join('')+'<button class="chipbtn" data-bsimple="1" title="Back to a simple two-handle curve">↺ Simple curve</button>';
+  $('#cvBigPresets').onclick=e=>{const b=e.target.closest('[data-bp],[data-bsimple]');if(!b)return;pushHist(true);
+    if(b.dataset.bsimple) setP(path,clone(defOf(path))); else setP(path,b.dataset.bp.split(',').map(Number));
+    planCache.k=''; draw(); refresh();};
+  $('#cvBigClose').onclick=()=>{m.hidden=true;refresh();};
+  m.onclick=e=>{if(e.target===m){m.hidden=true;refresh();}};
+  requestAnimationFrame(draw);
 }
 /* camera speed over the scene: a quick visual check of smoothness (flat and round = smooth) */
 function drawSpeedGraph(){
@@ -5587,6 +5668,13 @@ function drawCurve(el){
   [0,0.25,0.5,0.75,1].forEach(v=>{const a=cToPx(g,v,0),b=cToPx(g,v,1);x.beginPath();x.moveTo(a[0],g.y0+6);x.lineTo(a[0],g.y1-6);x.stroke();});
   [0,1].forEach(v=>{const a=cToPx(g,0,v),b=cToPx(g,1,v);x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.stroke();});
   x.fillStyle='#686871'; x.font='9px Inter,Helvetica,Arial'; x.fillText('time →',g.x1-34,g.y0+11); x.save(); x.translate(g.x0-5,g.y0); x.rotate(-Math.PI/2); x.fillText('value →',0,0); x.restore();
+  if(isPts(cur)){
+    const f=curveFn(cur); x.strokeStyle='#E6212F'; x.lineWidth=2.2; x.beginPath();
+    for(let i=0;i<=120;i++){const u=i/120,p=cToPx(g,u,f(u));i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]);} x.stroke();
+    ptsOf(cur).forEach(q=>{const p=cToPx(g,q[0],q[1]);x.fillStyle='#fff';x.strokeStyle='#E6212F';x.lineWidth=2;x.beginPath();x.arc(p[0],p[1],4,0,7);x.fill();x.stroke();});
+    el.querySelector('.cv-val').textContent=`${ptsOf(cur).length} points · click the graph or “Big editor” to edit`;
+    $$('[data-cp]',el).forEach(b=>b.classList.remove('on')); return;
+  }
   // handles
   const P0=cToPx(g,0,0),P3=cToPx(g,1,1),P1=cToPx(g,cur[0],cur[1]),P2=cToPx(g,cur[2],cur[3]);
   x.strokeStyle='rgba(255,255,255,.35)'; x.beginPath(); x.moveTo(P0[0],P0[1]); x.lineTo(P1[0],P1[1]); x.moveTo(P3[0],P3[1]); x.lineTo(P2[0],P2[1]); x.stroke();

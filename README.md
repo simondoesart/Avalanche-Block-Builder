@@ -136,3 +136,6 @@ Walk-off is now a true "snake": when the walk starts, the surplus older blocks p
 - **Timing** holds everything about *when*: Scene (fps, start, length, number of blocks / pace, easing, motion), **After the build** (Stay · Walk off · Each leaves · Behind camera · Clear out, with their holds), Camera timing (let go), Pace readout + camera pairing, Retime, Sync to sound.
 - **Timeline Phases row:** Build · Hold · Camera follows · Walks off (or Clear-out), each labelled with its duration. Drag the red handles to set the build, the **white handle to set the hold**, the blue one for how long the camera follows.
 - **Last block on time:** with "Follow the easing", every block appears the frame the camera brings it to the reveal line, and build blocks are always in by the end of the scene.
+
+## v2.1 — multi-point scene easing
+**⤢ Big editor** on the Scene easing curve (or double-click the small graph): a large graph where you click to add points, drag them, and double-click / Alt-click to remove them. The curve runs smoothly through the points without overshooting; a speed strip underneath shows fast and slow parts, and tick marks show when blocks land. Presets: Ease in-out, Fast start long settle, Burst-hold-burst, Slow build punch, Two-step; "Simple curve" goes back to the two-handle version.
