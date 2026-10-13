@@ -3,7 +3,14 @@
 SRC="$(cd "$(dirname "$0")" && pwd)"
 DEST="$HOME/Library/Application Support/Adobe/CEP/extensions/GridBlocks"
 mkdir -p "$DEST"
-rsync -a --delete --exclude install.command --exclude README.md --exclude src --exclude build.sh "$SRC/" "$DEST/"
+rsync -a --delete --exclude fonts/desktop --exclude install.command --exclude README.md --exclude src --exclude build.sh "$SRC/" "$DEST/"
+# brand fonts: copy any .otf/.ttf in fonts/ into the user font folder so After Effects can use them
+n=0
+for f in "$SRC"/fonts/desktop/*.otf "$SRC"/fonts/desktop/*.ttf "$SRC"/fonts/*.otf "$SRC"/fonts/*.ttf; do
+  [ -e "$f" ] || continue
+  mkdir -p "$HOME/Library/Fonts"; cp -n "$f" "$HOME/Library/Fonts/" && n=$((n+1))
+done
+[ $n -gt 0 ] && echo "Installed $n brand font file(s) from fonts/ into ~/Library/Fonts"
 for v in 9 10 11 12 13; do defaults write com.adobe.CSXS.$v PlayerDebugMode 1; done
 echo ""
 echo "Installed to: $DEST"

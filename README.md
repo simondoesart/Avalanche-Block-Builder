@@ -99,3 +99,18 @@ Typical main comp: `GB · Camera`, `GB · Transition Out`, `GB · Transition In`
 
 ## v1.7.1
 Starts from a **blank canvas**: `#1F1F1F` background, 7 rows, bleed, Avalanche brand colours, no blocks, rules, transitions or grid zoom. **Defaults** (top bar) and **Clear › Everything** go back to that. The old starter look lives in **Clear › Load the Avalanche HUD example**.
+
+## v1.7.2 — brand fonts
+**Aeonik** (Air → Black) and **Aeonik Fono** (Thin → Black) are built into the font pickers, even when AE's installed-font list doesn't include them. Block text defaults to Aeonik Black; HUD content, numbers and the ticker use Aeonik Fono. The Content step shows **✓ / ✗** for each family (AE: installed fonts; browser: installed locally or present in `fonts/`), and a build warns if AE can't find a font it was asked to use. See `fonts/README.md` for file names; `install.command` copies any `.otf/.ttf` in `fonts/` into `~/Library/Fonts`.
+
+## v1.7.3
+Aeonik web fonts added in `fonts/` (17 static faces + the variable Fono) and wired into the preview; Aeonik upright Regular/Medium/Bold weren't in the web set (see `fonts/README.md`). Content step reorganised into collapsible sub-sections (What appears · How much · Text · Dot grid · Outlines & extras; Comes on · Goes off · Text effects) with **Shuffle content** at the top; Camera split into How it moves · Let go before the end · Speed graph. Open/closed state is remembered.
+
+## New in v1.8 — timing
+- **Timing step** (after Animate) with a **timeline under the canvas**: Sound · Scene (with its easing) · Camera speed · every Block from reveal to exit · Content on/hold/off · Transitions. Drag handles to change the scene start/end, camera let-go, block/content holds, clear-out start and transition in/out; click to scrub.
+- **Retime everything**: ×0.5…×2 or "scene length to N s" / "fit to the comp" stretches the whole piece (scene, reveals, camera, exits, content, transitions, Lab) and keeps every relationship.
+- **Sync to sound**: load audio or video (plays with the preview; video can sit behind the grid), beats are detected automatically (strictness + min gap), and **Snap block reveals to the cues** puts one block on each beat. In the AE panel, **Use the AE timeline** reads comp + audio-layer markers and (optionally) the beat of the first audio layer (via Convert Audio to Keyframes, removed afterwards).
+- **Content animation** is now **Animate on · Hold · Animate off**. Hold can **keep it alive**: numbers tick (block heights climb, % wobble), hashes keep scrambling, letters glitch — at a set rate — in the preview and as AE Source Text expressions.
+
+## v1.8.1 — fonts
+Full Aeonik + Aeonik Fono families on the website (21 styles) and the desktop OTFs in `fonts/desktop/` for After Effects (`install.command` installs them). See `fonts/README.md`.

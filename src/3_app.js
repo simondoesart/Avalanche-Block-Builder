@@ -44,13 +44,13 @@ const DEF={
         textColor:'#121212',outlinePct:0,outlineW:2,skipText:true,textPct:60,patternPct:40,dotSpacing:8,iconPct:15,iconSize:15,
         mods:{kv:true,status:true,hashes:true,block:true,log:false,counter:true,dev:true,barcode:true,phrase:true,term:true,mempool:true,validator:true,latency:true,rpc:false,progress:true,consensus:true,stream:false,dots:true,ring:false,logo:true,icons:true},
         iconSet:{node:true,cube:true,chain:true,check:true,chevrons:true,peak:true,lock:false,network:true,signal:true,target:false,snow:true,arrow:true,plus:false,bars:true},dotSize:2.2,dotShape:'circle',
-        anim:{inMode:'type',inDur:8,outMode:'typeoff',hold:36,outDur:12,typeAll:true,cps:69,ellipsis:true,count:true,countDur:36,scramble:true,scrMode:'settle',scrDur:30,scrRate:12,stagger:4,delay:9},
+        anim:{inMode:'type',inDur:8,outMode:'typeoff',hold:36,outDur:12,typeAll:true,cps:69,ellipsis:true,count:true,countDur:36,scramble:true,scrMode:'settle',scrDur:30,scrRate:12,stagger:4,delay:9,live:false,liveTick:true,liveHash:true,liveGlitch:false,liveRate:6,glitchAmt:15},
         gap:{on:true,amount:3,seed:0,color:'#E6212F',mods:{log:true,phrase:true,barcode:true,hashes:false,dots:true,logo:true,icons:true,stream:false,rpc:false}}},
   echo:{on:false,dx:0,dy:2,last:0,fill:true,color:'#A2AFB2',opacity:100,stroke:false,sw:4,scolor:'#A2AFB2',align:'center',dash:false,dashL:12,dashG:8,content:false,
         timing:'with',offset:6,appear:'fade',out:'stay',hold:12,outF:8},
   rand:{pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
         wander:1,climb:0,stackPct:20,stackGap:1,stairPct:15,jumpPct:5,multiCol:true},
-  text:{family:'Arial',style:'Bold',font:'Arial-BoldMT',size:48,align:'center',pad:24,tracking:0,leading:0,kern:'metrics',caps:'none'},
+  text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,tracking:0,leading:0,kern:'metrics',caps:'none'},
   anim:{mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'follow',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0,0,1,1],camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
@@ -62,7 +62,8 @@ const DEF={
        ticker:{on:false,y:94,size:14,speed:160,color:'#A2AFB2',band:true,bandColor:'#121212'},
        snow:{on:false,count:90,speed:240,size:2,stretch:6,dir:'left',color:'#EBF0FA',opacity:55,seed:9}},
   num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100},
-  exit:{on:false,mode:'hold',hold:36,at:0,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
+  timing:{beats:[],markers:[],use:'beats',offset:0,sync:false,sens:1.3,minGap:4,media:null,video:true,videoOpacity:60,sound:true},
+  exit:{on:false,walkHold:24,walkPace:1,slide:1.5,mode:'hold',hold:36,at:0,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
   out:{replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180,folder:true,preGrid:true,preBlocks:true,preTrans:true,shy:true,trim:true,markers:true},
   blocks:[]
 };
@@ -81,6 +82,7 @@ const STEPS=[
   {id:'layout',name:'Layout',title:'Lay out your blocks',desc:'Place blocks by hand or generate a layout from rules. Drag blocks off screen if you need to.',tools:['select','stamp','draw','erase','paint','hand'],tool:'stamp',insp:true},
   {id:'content',name:'Content',title:'Put things in blocks',desc:'Auto-fill blocks with blockchain HUD content, or select a block and type your own text.',tools:['select','paint','hand'],tool:'select',insp:true},
   {id:'animate',name:'Animate',title:'Order & animate',desc:'Choose the order blocks arrive in and how the view moves.',tools:['select','order','hand'],tool:'select',insp:true},
+  {id:'timing',name:'Timing',title:'Timing',desc:'One place for when everything happens. Drag on the timeline under the canvas, retime the whole piece at once, or sync to sound.',tools:['hand'],tool:'hand',insp:false},
   {id:'transitions',name:'Transitions',title:'Transition in & out',desc:'Blocks that fill the whole frame: clear away at the start, build up at the end. Use them as a matte to bring the scene in and out.',tools:['hand'],tool:'hand',insp:false},
   {id:'lab',name:'Lab',title:'Lab · experiments',desc:'Momentum effects to try out. Each card says how far along it is and whether it builds in After Effects. Press ▶ to preview.',tools:['hand'],tool:'hand',insp:false},
   {id:'build',name:'Build',title:'Build it',desc:'',tools:['select','hand'],tool:'select',insp:true}
@@ -106,7 +108,8 @@ const TOOLS={
 
 /* ------------------------------------------------------------------ fonts */
 const FALLBACK_FONTS=[
-  ['Aeonik Fono',[['Light','AeonikFono-Light'],['Regular','AeonikFono-Regular'],['Medium','AeonikFono-Medium'],['Bold','AeonikFono-Bold']]],
+  ['Aeonik',[['Air','Aeonik-Air'],['Air Italic','Aeonik-AirItalic'],['Thin','Aeonik-Thin'],['Thin Italic','Aeonik-ThinItalic'],['Light','Aeonik-Light'],['Light Italic','Aeonik-LightItalic'],['Regular','Aeonik-Regular'],['Italic','Aeonik-RegularItalic'],['Medium','Aeonik-Medium'],['Medium Italic','Aeonik-MediumItalic'],['Bold','Aeonik-Bold'],['Bold Italic','Aeonik-BoldItalic'],['Black','Aeonik-Black'],['Black Italic','Aeonik-BlackItalic']]],
+  ['Aeonik Fono',[['Air','AeonikFono-Air'],['Thin','AeonikFono-Thin'],['Light','AeonikFono-Light'],['Regular','AeonikFono-Regular'],['Medium','AeonikFono-Medium'],['Bold','AeonikFono-Bold'],['Black','AeonikFono-Black']]],
   ['Arial',[['Regular','ArialMT'],['Bold','Arial-BoldMT'],['Italic','Arial-ItalicMT'],['Bold Italic','Arial-BoldItalicMT'],['Black','Arial-Black']]],
   ['Helvetica Neue',[['Light','HelveticaNeue-Light'],['Regular','HelveticaNeue'],['Medium','HelveticaNeue-Medium'],['Bold','HelveticaNeue-Bold']]],
   ['Inter',[['Light','Inter-Light'],['Regular','Inter-Regular'],['Medium','Inter-Medium'],['SemiBold','Inter-SemiBold'],['Bold','Inter-Bold'],['Black','Inter-Black']]],
@@ -119,7 +122,30 @@ const FALLBACK_FONTS=[
   ['Times New Roman',[['Regular','TimesNewRomanPSMT'],['Bold','TimesNewRomanPS-BoldMT'],['Italic','TimesNewRomanPS-ItalicMT']]],
   ['Courier New',[['Regular','CourierNewPSMT'],['Bold','CourierNewPS-BoldMT']]]
 ].map(f=>({family:f[0],styles:f[1].map(s=>({style:s[0],ps:s[1]}))}));
-function fontList(){return U.fonts||FALLBACK_FONTS;}
+const BRAND_FONTS=['Aeonik','Aeonik Fono'];
+function fontList(){
+  if(!U.fonts) return FALLBACK_FONTS;
+  // the installed list from AE, plus the brand families if they're missing (so they can still be chosen)
+  const have=new Set(U.fonts.map(f=>f.family.toLowerCase()));
+  return FALLBACK_FONTS.filter(f=>BRAND_FONTS.indexOf(f.family)>=0&&!have.has(f.family.toLowerCase())).concat(U.fonts);
+}
+/* are the brand fonts usable? AE: in the installed font list. Browser: installed locally or in /fonts. */
+U.fontState={};
+async function checkBrandFonts(){
+  for(const fam of BRAND_FONTS){
+    let st='unknown';
+    if(inAE){ st=U.fonts?(U.fonts.some(f=>f.family.toLowerCase()===fam.toLowerCase())?'ok':'missing'):'unknown'; }
+    else { try{ const r=await document.fonts.load(`400 16px "${fam}"`); st=r&&r.length?'ok':'missing'; }catch(e){ st='unknown'; } }
+    U.fontState[fam]=st;
+  }
+  renderFontStatus();
+}
+function renderFontStatus(){
+  const s=f=>{const v=U.fontState[f];return v==='ok'?`<b class="ok">✓ ${f}</b>`:v==='missing'?`<b class="no">✗ ${f}</b>`:`${f} ?`;};
+  const miss=BRAND_FONTS.filter(f=>U.fontState[f]==='missing');
+  const tip=miss.length?(inAE?' — not installed on this computer, so After Effects will swap in another font. Install it, restart AE, then reopen the panel.':' — not installed here. The preview uses a stand-in; install the fonts (or drop them in the fonts/ folder) to see them.'):'';
+  $$('[data-fontstatus]').forEach(el=>{el.innerHTML='Brand fonts: '+BRAND_FONTS.map(s).join(' · ')+tip;});
+}
 function parseFonts(tsv){
   const map={};
   String(tsv).split('\n').forEach(l=>{const p=l.split('\t');if(p.length<3||!p[0])return;(map[p[0]]=map[p[0]]||[]).push({style:p[1],ps:p[2]});});
@@ -134,13 +160,13 @@ function pickStyle(fam,want){
 }
 function styleWeight(st){
   st=String(st||'').toLowerCase();
-  if(/thin|hairline/.test(st))return 100; if(/extra ?light|ultra ?light/.test(st))return 200; if(/light/.test(st))return 300;
+  if(/\bair\b/.test(st))return 100; if(/thin|hairline/.test(st))return 150; if(/extra ?light|ultra ?light/.test(st))return 200; if(/light/.test(st))return 300;
   if(/semi ?bold|demi/.test(st))return 600; if(/extra ?bold|ultra ?bold|heavy/.test(st))return 800; if(/black/.test(st))return 900;
   if(/bold/.test(st))return 700; if(/medium/.test(st))return 500; return 400;
 }
 function cssFont(family,style,size){
   const it=/italic|oblique/i.test(style||'')?'italic ':'';
-  return `${it}${styleWeight(style)} ${size}px "${family||'Arial'}", Inter, -apple-system, Helvetica, Arial, sans-serif`;
+  return `${it}${styleWeight(style)} ${size}px "${family||'Aeonik Fono'}", "Aeonik Fono", Inter, -apple-system, Helvetica, Arial, sans-serif`;
 }
 function casedText(b){const t=b.text||'';return b.caps==='upper'?t.toUpperCase():b.caps==='lower'?t.toLowerCase():t;}
 /* draws block text the way After Effects lays it out (tracking in 1/1000 em, leading in px) */
@@ -169,7 +195,7 @@ async function loadFonts(){
   if(!inAE) return;
   const r=String(await evalHost('GB_getFonts()'));
   if(r&&r!=='NONE'&&r.indexOf('EvalScript')<0){U.fonts=parseFonts(r);}
-  renderFontUI();
+  renderFontUI(); checkBrandFonts();
 }
 function renderFontUI(){
   const dl=$('#fontFamilies'); if(dl) dl.innerHTML=fontFamilyOptions();
@@ -495,7 +521,9 @@ function fillTextAt(it,tf,fps){
   if(it.count&&A.count){const c=it.count,u=Math.min(1,el/Math.max(.05,(+A.countDur||36)/fps)),e=u*u*(3-2*u);L[c.line]=c.pre+fmtNum(c.from+(c.to-c.from)*e,c.dec)+c.suf;}
   if(it.scr&&A.scramble&&(A.scrMode==='always'||el<(+A.scrDur||30)/fps)){const k=Math.floor(tf/fps*(+A.scrRate||12));L=L.map((l,i)=>scrambleLine(l,k+i*31));}
   if(it.ell&&A.ellipsis){L[L.length-1]=L[L.length-1]+'.'.repeat(Math.floor(el*4)%4);}
-  let s=L.join('\n'); const full=it.lines.join('\n').length, T=fillTiming(it,full,fps);
+  const full=it.lines.join('\n').length, T=fillTiming(it,full,fps);
+  if(A.live&&el>=T.on&&el<T.off) L=liveLines(it,L,el,T,fps);
+  let s=L.join('\n');
   let a=1;
   if(T.typed){const n=Math.floor(el*(+A.cps||40)+1e-6);if(n<s.length)s=s.slice(0,n);}
   else if(A.inMode==='fade') a=Math.min(1,el/Math.max(1e-3,T.on));
@@ -506,6 +534,18 @@ function fillTextAt(it,tf,fps){
     else a*=1-u;
   }
   return {s,a};
+}
+/* hold: numbers tick, hashes keep scrambling, letters glitch — same rules as the AE expression */
+const GLITCH='#%&*/<>[]=+01';
+function liveLines(it,L,el,T,fps){
+  const A=D.fill.anim, rate=Math.max(.1,+A.liveRate||6), k=Math.floor((el-T.on)*rate);
+  L=L.slice();
+  if(A.liveTick&&it.count&&A.count!==false){const c=it.count, cd=(+A.countDur||36)/fps, kk=Math.max(0,Math.floor((el-Math.max(T.on,cd))*rate));
+    let v=c.to; if(kk>0){ if(c.suf==='%'){const r=rng(kk*131+c.to)();v=Math.max(0,Math.min(100,c.to+Math.round((r-.5)*6)));} else if(c.pre==='#'){v=c.to+kk*2;} else {const r=rng(kk*977+Math.round(c.to))();v=c.to*(1+(r-.5)*.04);} }
+    L[c.line]=c.pre+fmtNum(v,c.dec)+c.suf;}
+  if(A.liveHash&&it.scr){const kk=Math.floor(el*rate);L=L.map((l,i)=>scrambleLine(l,kk*13+i*31));}
+  if(A.liveGlitch&&k>=0){const amt=clamp(+A.glitchAmt||15,1,100)/100;L=L.map((l,i)=>{const r=rng(k*7331+i*97+l.length);if(r()>=amt||!l.length)return l;const p=Math.floor(r()*l.length);return l.slice(0,p)+GLITCH[Math.floor(r()*GLITCH.length)]+l.slice(p+1);});}
+  return L;
 }
 /* opacity factor for shapes (dots, rings, logo) */
 function fillShapeAlpha(it,tf,fps){
@@ -526,6 +566,17 @@ function fillExpr(it,fps){
     e+='if('+(A.scrMode==='always'?'true':'gbE<'+r3((+A.scrDur||30)/fps))+'){seedRandom(Math.floor(time*'+(+A.scrRate||12)+'),true);var gbH="0123456789ABCDEF";\n'+
        'for(var gbI=0;gbI<gbL.length;gbI++){var gbS=gbL[gbI],gbR="";for(var gbJ=0;gbJ<gbS.length;gbJ++){var gbC=gbS.charAt(gbJ);gbR+=/[0-9A-Fa-f]/.test(gbC)?gbH.charAt(Math.floor(random(16))):gbC;}gbL[gbI]=gbR;}}\n';}
   if(it.ell&&A.ellipsis) e+='var gbD=Math.floor(gbE*4)%4;for(var gbK=0;gbK<gbD;gbK++)gbL[gbL.length-1]+=".";\n';
+  if(A.live&&(A.liveTick&&it.count&&A.count!==false||A.liveHash&&it.scr||A.liveGlitch)){
+    const rate=Math.max(.1,+A.liveRate||6);
+    e+='if(gbE>='+r3(T.on)+(isFinite(T.off)?'&&gbE<'+r3(T.off):'')+'){var gbR8='+rate+',gbKk=Math.floor((gbE-'+r3(T.on)+')*gbR8);\n';
+    if(A.liveTick&&it.count&&A.count!==false){const c=it.count, cd=r3(Math.max(T.on,(+A.countDur||36)/fps));
+      e+='var gbT=Math.max(0,Math.floor((gbE-'+cd+')*gbR8));if(gbT>0){seedRandom(gbT*131+7,true);var gbV2='+c.to+';'+
+        (c.suf==='%'?'gbV2=Math.max(0,Math.min(100,'+c.to+'+Math.round((random()-0.5)*6)));':c.pre==='#'?'gbV2='+c.to+'+gbT*2;':'gbV2='+c.to+'*(1+(random()-0.5)*0.04);')+
+        'var gbP2=Math.abs(gbV2).toFixed('+c.dec+').split(".");var gbA2=gbP2[0],gbQ2="";while(gbA2.length>3){gbQ2=","+gbA2.substr(gbA2.length-3)+gbQ2;gbA2=gbA2.substr(0,gbA2.length-3);}gbP2[0]=gbA2+gbQ2;gbL['+c.line+']='+js(c.pre)+'+gbP2.join(".")+'+js(c.suf)+';}\n';}
+    if(A.liveHash&&it.scr) e+='seedRandom(Math.floor(gbE*gbR8)*13+3,true);var gbH2="0123456789ABCDEF";for(var gbI2=0;gbI2<gbL.length;gbI2++){var gbS2=gbL[gbI2],gbX="";for(var gbJ2=0;gbJ2<gbS2.length;gbJ2++){var gbC2=gbS2.charAt(gbJ2);gbX+=/[0-9A-Fa-f]/.test(gbC2)?gbH2.charAt(Math.floor(random(16))):gbC2;}gbL[gbI2]=gbX;}\n';
+    if(A.liveGlitch) e+='var gbG="'+GLITCH+'";for(var gbI3=0;gbI3<gbL.length;gbI3++){seedRandom(gbKk*7331+gbI3*97+11,true);if(random()<'+r3(clamp(+A.glitchAmt||15,1,100)/100)+'&&gbL[gbI3].length){var gbPp=Math.floor(random(gbL[gbI3].length));gbL[gbI3]=gbL[gbI3].substr(0,gbPp)+gbG.charAt(Math.floor(random(gbG.length)))+gbL[gbI3].substr(gbPp+1);}}\n';
+    e+='}\n';
+  }
   e+='gbO=gbL.join("\\r");\n';
   if(T.typed) e+='var gbN=Math.floor(gbE*'+(+A.cps||40)+'+0.000001);if(gbN<gbO.length)gbO=gbO.substr(0,gbN);\n';
   if(T.mode==='cut'&&isFinite(T.off)) e+='if(gbE>='+r3(T.off)+')gbO="";\n';
@@ -693,6 +744,7 @@ const H={u:[],r:[]};
 const snap=()=>JSON.stringify(D);
 function pushHist(keepLive){H.u.push(snap());if(H.u.length>150)H.u.shift();H.r=[];if(!keepLive)U.live=false;updUndo();}
 function setDoc(obj){
+  U._mediaUI=0;
   if(obj&&obj.anim){ // older layouts
     if(obj.anim.motion==='step'){obj.anim.motion='smooth';obj.anim.camMove='step';}
     if(obj.anim.extendFill){obj.anim.ending='fill';}
@@ -714,6 +766,10 @@ function setDoc(obj){
   }
   if(obj&&obj.anim&&obj.anim.endAt&&obj.anim.endRow==null) obj.anim.endRow=(obj.anim.endAt.r|0)+1;
   if(obj&&obj.fill&&obj.fill.anim&&obj.fill.anim.inMode==null&&obj.fill.anim.type!=null) obj.fill.anim.inMode=obj.fill.anim.type?'type':'cut';
+  if(obj&&obj.fill&&obj.fill.anim&&obj.fill.anim.scrMode==='always'){obj.fill.anim.scrMode='settle';obj.fill.anim.live=true;obj.fill.anim.liveHash=true;}
+  const toFono=o=>{if(o&&(!o.family||/^arial/i.test(o.family))){o.family='Aeonik Fono';o.style='Regular';o.font='AeonikFono-Regular';}};
+  if(obj&&obj.text) toFono(obj.text);
+  if(obj&&Array.isArray(obj.blocks)) obj.blocks.forEach(toFono);
   if(obj&&obj.fill&&obj.fill.font==='CourierNewPSMT'){obj.fill.family='Aeonik Fono';obj.fill.style='Regular';obj.fill.font='AeonikFono-Regular';}
   D=merge(clone(DEF),obj);
   if(!Array.isArray(D.palette)||!D.palette.length) D.palette=PALETTE.slice();
@@ -722,7 +778,7 @@ function setDoc(obj){
   U.sel=null;U.selIds=U.selIds.filter(id=>byId(id));
   U.moNext=D.blocks.reduce((m,b)=>Math.max(m,b.mo||0),0)+1;
 }
-function undo(){if(!H.u.length)return;H.r.push(snap());setDoc(JSON.parse(H.u.pop()));U.live=false;afterDocChange();}
+function undo(){U._mediaUI=0;if(!H.u.length)return;H.r.push(snap());setDoc(JSON.parse(H.u.pop()));U.live=false;afterDocChange();}
 function redo(){if(!H.r.length)return;H.u.push(snap());setDoc(JSON.parse(H.r.pop()));U.live=false;afterDocChange();}
 function updUndo(){$('#btnUndo').disabled=!H.u.length;$('#btnRedo').disabled=!H.r.length;}
 function afterDocChange(){syncInputs(true);syncPalettes();refresh();updUndo();}
@@ -1119,7 +1175,8 @@ function computePlan(G){
   P.startF=startF; P.L=L;
   const baseMain=base.filter(b=>!b.echo&&!b.stack).length; P.baseMain=baseMain;
   // how many blocks: fill the length at the chosen pace, or an exact number
-  const want=A.countMode==='exact'?Math.round(A.total||0):Math.max(1,Math.round(L/Math.max(1,+A.pace||6)));
+  const cuesIn=(D.timing&&D.timing.sync)?timingCues().filter(c=>c>=startF&&c<=startF+L).length:0;
+  const want=A.countMode==='exact'?Math.round(A.total||0):cuesIn?cuesIn:Math.max(1,Math.round(L/Math.max(1,+A.pace||6)));   // synced to sound: one block per cue
   const exts=manual?[]:extension(G,base,Math.max(0,want-baseMain)); P.endCol=exts.__endCol; P.endReach=exts.__reach; P.endRowUsed=exts.__endRow;
   let seq=base.concat(exts);
   seq.forEach((b,i)=>{if(b.virtual)b.order=i+1;});
@@ -1192,6 +1249,16 @@ function computePlan(G){
   for(let g=0;g<used;g++){
     const s=Math.min(L,step*g); sg.push(s);
     let t=Math.round(W(s)); if(spread&&g>0&&t<=Tg[g-1]) t=Tg[g-1]+1; Tg.push(Math.min(t,startF+L));
+  }
+  // sync to sound: each reveal moves to the nearest cue (beat / marker), keeping the order
+  const CUES=timingCues();
+  if(D.timing&&D.timing.sync&&CUES.length){
+    let prev=-1e9;
+    for(let g=0;g<used;g++){
+      const want=Tg[g], cand=CUES.filter(c=>c>prev&&c<=startF+L);
+      let best=null; cand.forEach(c=>{if(best==null||Math.abs(c-want)<Math.abs(best-want))best=c;});
+      Tg[g]=best!=null?best:Math.max(want,prev+1); prev=Tg[g];
+    }
   }
   P.seq=seq; P.T=seq.map((b,i)=>Tg[gi[i]]); P.tr=seq.map(()=>tr0); P.ext=seq.filter(b=>b.virtual).length; P.groups=used;
   let lastT=startF+L;
@@ -1532,6 +1599,11 @@ function exitKeys(K,tE,r,X,stop,st,hasText){
   } else if(sty==='scale'){
     if(after(K.sc)){ if(stop){const m=Math.max(1,Math.round(len/st));K.sc.push([tE,[100,100],'h']);steps(m).forEach((u,j)=>K.sc.push([tE+(j+1)*st,[r3(100*(1-u)),r3(100*(1-u))],'h']));}
       else K.sc.push([tE,[100,100],'e',XC],[tE+len,[0,0],'e',XC]); }
+  } else if(sty==='slide'){ // the block keeps travelling: slides onward (or back) and fades away at the end
+    const sgn=X.dir==='back'?-1:1, dist=sgn*r.w*Math.max(.1,+X.slide||1.5);
+    if(after(K.rp)){ if(stop){const m=Math.max(1,Math.round(len/st));K.rp.push([tE,[0,0],'h']);steps(m).forEach((u,j)=>K.rp.push([tE+(j+1)*st,[r3(dist*u),0],'h']));}
+      else K.rp.push([tE,[0,0],'e',XC],[tE+len,[r3(dist),0],'e',XC]); }
+    if(after(K.op)){ const f0=tE+Math.round(len*.55); if(!K.op.length) K.op.push([Math.min(0,tE-1),100,'h']); K.op.push([f0,100,'e',XC],[tE+len,0,'e',XC]); }
   } else { // wipe: the block collapses toward the travel direction ('same') or back where it came from
     const sgn=X.dir==='back'?-1:1;
     if(after(K.rs)&&after(K.rp)){
@@ -1601,6 +1673,190 @@ function drawLabScreen(g,G,t){
     if(T.band){g.fillStyle=T.bandColor;g.fillRect(0,y-sz*.9,G.W,sz*1.8);}
     const x=G.W-((sec*(+T.speed||160))%(w+G.W)); g.fillStyle=T.color; g.textBaseline='middle'; g.fillText(txt,x,y); g.restore();}
 }
+/* ==================================================================== SOUND / MEDIA SYNC */
+function timingCues(){
+  const T=D.timing; if(!T) return [];
+  const off=Math.round(+T.offset||0), src=(T.use==='markers'?T.markers:T.use==='both'?(T.beats||[]).concat(T.markers||[]):T.beats)||[];
+  return [...new Set(src.map(f=>Math.round(f+off)))].sort((x,y)=>x-y);
+}
+/* onsets from a per-frame energy envelope: rises well above the local average, at least minGap frames apart */
+function detectBeats(env,sens,minGap){
+  const n=env.length, out=[], W=12; if(n<3) return out;
+  const flux=env.map((v,i)=>i?Math.max(0,v-env[i-1]):0);
+  for(let i=1;i<n-1;i++){
+    let s=0,s2=0,c=0; for(let j=Math.max(0,i-W);j<=Math.min(n-1,i+W);j++){s+=flux[j];s2+=flux[j]*flux[j];c++;}
+    const m=s/c, sd=Math.sqrt(Math.max(0,s2/c-m*m));
+    if(flux[i]>m+sens*sd&&flux[i]>=flux[i-1]&&flux[i]>=flux[i+1]&&flux[i]>1e-4){
+      if(out.length&&i-out[out.length-1]<minGap){ if(flux[i]>flux[out[out.length-1]]) out[out.length-1]=i; }
+      else out.push(i);
+    }
+  }
+  return out;
+}
+U.media=null;
+async function loadMediaFile(file){
+  if(!file) return; const fps=D.comp.fps||30, url=URL.createObjectURL(file), isV=/^video\//.test(file.type);
+  const el=document.createElement(isV?'video':'audio'); el.src=url; el.preload='auto'; el.muted=false; if(isV){el.playsInline=true;}
+  await new Promise(res=>{el.onloadedmetadata=res;el.onerror=res;});
+  const m={name:file.name,kind:isV?'video':'audio',el,dur:el.duration||0,peaks:null,env:null};
+  U.media=m;
+  try{ // waveform + per-frame energy (needs the audio track)
+    const buf=await file.arrayBuffer(), AC=window.AudioContext||window.webkitAudioContext, ac=new AC(), ab=await ac.decodeAudioData(buf);
+    const ch=ab.getChannelData(0), sr=ab.sampleRate, nF=Math.ceil(ab.duration*fps), env=new Array(nF).fill(0), per=sr/fps;
+    for(let f=0;f<nF;f++){let s=0;const a0=Math.floor(f*per),a1=Math.min(ch.length,Math.floor((f+1)*per));for(let k=a0;k<a1;k+=2)s+=ch[k]*ch[k];env[f]=Math.sqrt(s/Math.max(1,(a1-a0)/2));}
+    const mx=Math.max(1e-6,...env); m.env=env.map(v=>v/mx); m.peaks=m.env; m.dur=ab.duration; try{ac.close();}catch(e){}
+  }catch(e){ m.peaks=null; }
+  pushHist(true); D.timing.media={name:file.name,dur:r3(m.dur),kind:m.kind};
+  if(m.env){D.timing.beats=detectBeats(m.env,+D.timing.sens||1.3,+D.timing.minGap||4);}
+  renderMedia(); refresh(); toast(`Loaded ${file.name}`,m.env?`${D.timing.beats.length} beats found`:'no audio track to analyse',true);
+}
+function reBeat(){ if(U.media&&U.media.env){ pushHist(true); D.timing.beats=detectBeats(U.media.env,+D.timing.sens||1.3,+D.timing.minGap||4); planCache.k=''; renderMedia(); refresh(); } }
+/* preview playback: keep the media in step with the preview clock */
+function mediaSync(playing){
+  const m=U.media; if(!m||!m.el) return; const fps=D.comp.fps||30, t=((U.t||0)-(+D.timing.offset||0))/fps;
+  try{
+    m.el.muted=!D.timing.sound;
+    if(playing){ if(t>=0&&t<m.dur){ if(Math.abs(m.el.currentTime-t)>.08) m.el.currentTime=t; if(m.el.paused) m.el.play().catch(()=>{}); } else if(!m.el.paused) m.el.pause(); }
+    else { if(!m.el.paused) m.el.pause(); if(m.kind==='video'&&t>=0&&t<m.dur) m.el.currentTime=t; }
+  }catch(e){}
+}
+function drawMediaBg(g,G){
+  const m=U.media; if(!m||m.kind!=='video'||!D.timing.video||!m.el||m.el.readyState<2) return;
+  g.save(); g.globalAlpha=clamp(+D.timing.videoOpacity||60,0,100)/100;
+  const vw=m.el.videoWidth||16, vh=m.el.videoHeight||9, s=Math.max(G.W/vw,G.H/vh); g.drawImage(m.el,(G.W-vw*s)/2,(G.H-vh*s)/2,vw*s,vh*s); g.restore();
+}
+/* AE: read the active comp — markers, length, frame rate, and (optionally) the beat of its audio */
+async function readAEComp(analyse){
+  const r=String(await evalHost('GB_readComp('+(analyse?'true':'false')+')'));
+  if(r.indexOf('OK|')!==0){toast(r.replace(/^ERR\|/,''),'','err');return;}
+  let o=null; try{o=JSON.parse(r.slice(3));}catch(e){toast('Could not read the comp','','err');return;}
+  const fps=D.comp.fps||o.fps||30; pushHist(true);
+  D.timing.markers=(o.markers||[]).map(t=>Math.round(t*fps));
+  if(o.amp&&o.amp.length){const mx=Math.max(1e-6,...o.amp);const env=o.amp.map(v=>v/mx);U.media={name:o.audioName||'comp audio',kind:'audio',el:null,dur:o.amp.length/fps,peaks:env,env};D.timing.beats=detectBeats(env,+D.timing.sens||1.3,+D.timing.minGap||4);D.timing.media={name:U.media.name+' (from AE)',dur:r3(U.media.dur),kind:'audio'};}
+  if(!D.timing.beats.length&&D.timing.markers.length) D.timing.use='markers';
+  renderMedia(); refresh();
+  toast(`Read “${o.name}”`,`${D.timing.markers.length} markers${o.amp?` · ${D.timing.beats.length} beats`:''}`,true);
+}
+function renderMedia(){
+  const box=$('#mediaBox'); if(!box) return; const T=D.timing, m=U.media, fps=D.comp.fps||30, cues=timingCues();
+  box.innerHTML=`
+    <div class="row-btns"><button class="btn" id="btnMedia">${m?'Replace':'Load'} audio / video…</button>${inAE?'<button class="btn" id="btnReadAE" title="Comp markers, length, and the beat of the first audio layer">Use the AE timeline</button>':''}</div>
+    ${T.media?`<div class="note"><b style="color:var(--text)">${esc(T.media.name)}</b> · ${(+T.media.dur||0).toFixed(2)}s${m?'':' · reload the file to hear / see it again'}</div>`:'<div class="note">Load a music track, VO or reference cut. It plays with the preview and its beats can drive the reveals.'+(inAE?' In After Effects, “Use the AE timeline” reads your comp’s markers and the beat of its audio.':'')+'</div>'}
+    ${m&&m.kind==='video'?`<label class="check"><input type="checkbox" data-bind="timing.video"> Show the video behind the grid</label><div class="field" data-show="timing.video=true"><span class="lbl scrub">Video</span><div class="num"><input type="number" data-bind="timing.videoOpacity" min="0" max="100" step="5"><span class="unit">%</span></div></div>`:''}
+    ${m&&m.el?'<label class="check"><input type="checkbox" data-bind="timing.sound"> Play sound with the preview</label>':''}
+    <div class="field2"><div class="field"><span class="lbl scrub" title="Shift the media (and its cues) in frames">Offset</span><div class="num"><input type="number" data-bind="timing.offset" min="-99999" max="99999" step="1"><span class="unit">fr</span></div></div>
+      <div class="field"><span class="lbl scrub" title="Higher = only the strongest hits count as beats">Beat strictness</span><div class="num"><input type="number" data-bind="timing.sens" min="0.3" max="4" step="0.1"></div></div></div>
+    <div class="field"><span class="lbl scrub" title="Minimum frames between two beats">Min beat gap</span><div class="num"><input type="number" data-bind="timing.minGap" min="1" max="120" step="1"><span class="unit">fr</span></div></div>
+    <div class="field stack"><span class="lbl">Cues</span><div class="seg" data-seg="timing.use"><button data-v="beats">Beats (${(T.beats||[]).length})</button><button data-v="markers">Markers (${(T.markers||[]).length})</button><button data-v="both">Both</button></div></div>
+    <label class="check"><input type="checkbox" data-bind="timing.sync"${cues.length?'':' disabled'}> Snap block reveals to the cues</label>
+    <div class="row-btns">${T.media?'<button class="btn" id="btnMediaLen" title="Scene runs for the length of the media">Scene = media length</button>':''}${cues.length?'<button class="btn" id="btnClearCues">Clear cues</button>':''}</div>
+    <div class="note">${cues.length?`${cues.length} cues (blue lines on the timeline)${T.sync?' — reveals snap to them':''}.`:'No cues yet.'} ${m&&m.kind==='video'?'':''}</div>`;
+  bindIn(box);
+  const bm=box.querySelector('#btnMedia'); if(bm) bm.onclick=()=>$('#mediaIn').click();
+  const ba=box.querySelector('#btnReadAE'); if(ba) ba.onclick=()=>readAEComp(confirm('Also analyse the beat of the first audio layer? (Adds a temporary keyframe layer, then removes it.)'));
+  const bl=box.querySelector('#btnMediaLen'); if(bl) bl.onclick=()=>{pushHist();D.anim.lenF=Math.max(2,Math.round(D.timing.media.dur*fps)-Math.max(0,D.anim.startF)+(+D.timing.offset||0));D.anim.toEnd=false;syncInputs(true);refresh();};
+  const bc=box.querySelector('#btnClearCues'); if(bc) bc.onclick=()=>{pushHist();D.timing.beats=[];D.timing.markers=[];D.timing.sync=false;renderMedia();refresh();};
+  syncInputs(true);
+}
+
+/* ==================================================================== TIMING: master retime + dope sheet */
+const TIME_PATHS=['anim.startF','anim.lenF','anim.trans','anim.settle','anim.relSlow','anim.finalMove','anim.stepEvery',
+  'trans.in.start','trans.in.dur','trans.in.len','trans.out.start','trans.out.dur','trans.out.len',
+  'exit.hold','exit.at','exit.stagger','exit.len',
+  'fill.anim.delay','fill.anim.stagger','fill.anim.hold','fill.anim.outDur','fill.anim.inDur','fill.anim.countDur','fill.anim.scrDur',
+  'echo.offset','echo.hold','echo.outF',
+  'lab.flicker.frames','lab.pulse.len','lab.trail.len','lab.bar.len'];
+/* stretch every timing in the piece by k (reveal pace follows the scene length); speeds scale the other way */
+function retime(k){
+  if(!(k>0)||Math.abs(k-1)<1e-4) return;
+  pushHist();
+  TIME_PATHS.forEach(p=>{const v=getP(p); if(typeof v==='number'&&isFinite(v)) setP(p,p==='anim.lenF'||p==='trans.in.dur'||p==='trans.out.dur'?Math.max(2,Math.round(v*k)):Math.round(v*k));});
+  D.anim.pace=Math.max(1,Math.round((+D.anim.pace||5)*k));
+  D.fill.anim.cps=Math.max(1,Math.round((+D.fill.anim.cps||40)/k));
+  D.fill.anim.liveRate=Math.max(.5,Math.round((+D.fill.anim.liveRate||6)/k*2)/2);
+  (D.anim.zoom||[]).forEach(z=>{['f0','f1','dur','off'].forEach(f=>{if(typeof z[f]==='number')z[f]=Math.round(z[f]*k);});});
+  if(D.lab&&D.lab.ticker) D.lab.ticker.speed=Math.round((+D.lab.ticker.speed||160)/k);
+  if(D.timing&&Array.isArray(D.timing.beats)) {} // beats are real-time cues, they don't stretch
+  planCache.k=''; fillCache.clear(); syncInputs(true); refresh();
+  const fps=D.comp.fps||30; toast(`Retimed ×${(+k).toFixed(2)} — scene is now ${D.anim.lenF}f (${(D.anim.lenF/fps).toFixed(2)}s)`,'⌘Z to undo',true);
+}
+/* the dope sheet: one row per thing that has timing, with handles you can drag */
+const DOPE={rows:['Scene','Camera','Blocks','Content','Transitions'],handles:[],drag:null};
+function dopeRange(){const G=geom(),fps=D.comp.fps||30;return Math.max(sceneEnd(G),Math.round((D.comp.dur||10)*fps),D.timing&&D.timing.media?Math.round(D.timing.media.dur*fps):0,10);}
+function drawDope(){
+  const c=$('#dopeCv'); if(!c) return; const r=c.getBoundingClientRect(); if(!r.width) return;
+  const dpr=window.devicePixelRatio||1; c.width=Math.round(r.width*dpr); c.height=Math.round(r.height*dpr);
+  const g=c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,r.width,r.height);
+  const G=geom(), P=plan(G), fps=D.comp.fps||30, N=dopeRange(), LW=84, W=r.width-LW-10, X=f=>LW+f/N*W, F=x=>clamp((x-LW)/W*N,0,N);
+  const media=U.media&&U.media.peaks, rows=(media?['Sound']:[]).concat(DOPE.rows), RH=Math.max(16,(r.height-22)/rows.length), Y=i=>20+i*RH;
+  DOPE.X=X; DOPE.F=F; DOPE.handles=[]; DOPE.LW=LW;
+  const H=(x,y0,y1,cur,apply,tip)=>DOPE.handles.push({x,y0,y1,cur,apply,tip});
+  // ruler
+  g.fillStyle='#16161a'; g.fillRect(0,0,r.width,18); g.font='10px sans-serif'; g.fillStyle='#8a8a94'; g.textBaseline='middle';
+  const stepS=N/fps>20?5:N/fps>8?2:N/fps>3?1:.5;
+  for(let s=0;s*fps<=N;s+=stepS){const x=X(s*fps);g.fillRect(x,12,1,6);g.fillText(s+'s',x+3,8);}
+  g.fillStyle='rgba(255,255,255,.06)'; g.fillRect(X(Math.round((D.comp.dur||10)*fps)),18,1,r.height);
+  // cue marks (beats / AE markers)
+  rows.forEach((name,i)=>{const y=Y(i); g.fillStyle=i%2?'rgba(255,255,255,.015)':'rgba(255,255,255,.035)'; g.fillRect(0,y,r.width,RH); g.fillStyle='#9898a1'; g.font='11px sans-serif'; g.fillText(name,8,y+RH/2);});
+  let row=0;
+  const bar=(f0,f1,y,col,h)=>{g.fillStyle=col;g.fillRect(X(f0),y+(RH-h)/2,Math.max(1,X(f1)-X(f0)),h);};
+  const knob=(f,y,col)=>{g.fillStyle=col;g.fillRect(X(f)-2,y+3,4,RH-6);};
+  // sound
+  if(media){const y=Y(row++), pk=U.media.peaks, d=U.media.dur*fps, off=+(D.timing.offset||0); g.fillStyle='rgba(162,175,178,.55)';
+    for(let px=LW;px<LW+W;px++){const f=F(px)-off; if(f<0||f>d) continue; const v=pk[Math.min(pk.length-1,Math.floor(f/d*pk.length))]||0; g.fillRect(px,y+RH/2-v*RH*.45,1,Math.max(1,v*RH*.9));}}
+  // scene
+  {const y=Y(row++), s0=P.startF, s1=P.startF+P.L; bar(s0,s1,y,'rgba(230,33,47,.35)',RH-8);
+   const sc=curveFn(D.anim.sceneCurve||[0,0,1,1]); g.strokeStyle='rgba(255,255,255,.5)'; g.lineWidth=1; g.beginPath();
+   for(let k=0;k<=40;k++){const u=k/40, xx=X(s0+(s1-s0)*u), yy=y+RH-4-(RH-8)*sc(u); k?g.lineTo(xx,yy):g.moveTo(xx,yy);} g.stroke();
+   g.fillStyle='rgba(255,255,255,.75)'; [...new Set(P.T)].forEach(t=>g.fillRect(X(t),y+RH-6,1,4));
+   knob(s0,y,'#E6212F'); knob(s1,y,'#E6212F');
+   H(X(s0),y,y+RH,'ew-resize',f=>{const e=D.anim.startF+D.anim.lenF;D.anim.startF=Math.round(f);D.anim.lenF=Math.max(2,e-D.anim.startF);},'scene start');
+   H(X(s1),y,y+RH,'ew-resize',f=>{D.anim.lenF=Math.max(2,Math.round(f-D.anim.startF));D.anim.toEnd=false;},'scene end');}
+  // camera speed + let go
+  {const y=Y(row++); if(P.cam.length){const v=[];let mx=1;for(let f=0;f<N;f++){const a=ev(P.cam,f,[0,0]),b=ev(P.cam,f+1,[0,0]);const s=Math.hypot(b[0]-a[0],b[1]-a[1]);v.push(s);mx=Math.max(mx,s);}
+     g.fillStyle='rgba(116,157,211,.45)'; v.forEach((s,f)=>{const hh=s/mx*(RH-6);g.fillRect(X(f),y+RH-3-hh,Math.max(1,X(f+1)-X(f)),hh);});}
+   else {g.fillStyle='#686871';g.fillText('camera is still',LW+6,y+RH/2);}
+   if(D.anim.relOn&&P.relT!=null){knob(P.relT,y,'#749DD3'); g.fillStyle='#C5CFF5'; g.fillText('let go',X(P.relT)+5,y+8);
+     H(X(P.relT),y,y+RH,'ew-resize',f=>{D.anim.relAt=clamp(Math.round((f-D.anim.startF)/Math.max(1,D.anim.lenF)*100),5,99);},'let go');}}
+  // blocks: one thin line per block, reveal → exit
+  {const y=Y(row++), n=P.seq.length||1, lh=Math.max(1,Math.min(3,(RH-6)/n));
+   P.seq.forEach((b,i)=>{const t0=P.T[i], t1=P.exitT&&P.exitT[i]!=null?P.exitT[i]+(+D.exit.len||8):N; g.fillStyle=b.color; g.globalAlpha=.85; g.fillRect(X(t0),y+3+(i%Math.max(1,Math.floor((RH-6)/lh)))*lh,Math.max(1,X(t1)-X(t0)),Math.max(1,lh-.3));}); g.globalAlpha=1;
+   if(D.exit.on&&D.exit.mode==='end'&&P.exitT){const t=Math.min(...P.exitT.filter(v=>v!=null)); if(isFinite(t)){knob(t,y,'#FF7F7B'); H(X(t),y,y+RH,'ew-resize',f=>{D.exit.at=Math.round(f-(D.anim.startF+D.anim.lenF));},'clear-out start');}}
+   if(D.exit.on&&D.exit.mode==='walk'&&P.exitT&&P.exitT.length){const t=Math.min(...P.exitT.filter(v=>v!=null)); const last=Math.max(...(P.done||P.T)); if(isFinite(t)){knob(t,y,'#FF7F7B'); H(X(t),y,y+RH,'ew-resize',f=>{D.exit.walkHold=Math.max(0,Math.round(f-last));},'walk-off start');}}
+   if(D.exit.on&&D.exit.mode==='hold'&&P.exitT&&P.exitT[0]!=null){const t=P.exitT[0]; knob(t,y,'#FF7F7B'); const d0=(P.done||[])[0]||P.T[0]; H(X(t),y,y+RH,'ew-resize',f=>{D.exit.hold=Math.max(1,Math.round(f-d0));},'block hold');}}
+  // content: on / hold / off for the first block that has content
+  {const y=Y(row++); const b=P.seq[0], A=D.fill.anim;
+   if(D.fill.on&&b&&P.fillBase[b.id]!=null){const t0=P.fillBase[b.id], T0=fillTiming({kind:'text',type:true,t0},24,fps), on=t0+T0.on*fps, off=isFinite(T0.off)?t0+T0.off*fps:N, end=isFinite(T0.off)?off+T0.outLen*fps:N;
+     bar(t0,on,y,'rgba(230,33,47,.6)',RH-10); bar(on,off,y,A.live?'rgba(116,157,211,.55)':'rgba(255,255,255,.18)',RH-10); if(isFinite(T0.off)) bar(off,end,y,'rgba(255,127,123,.55)',RH-10);
+     g.fillStyle='#ececef'; g.font='10px sans-serif'; if(X(off)-X(on)>40) g.fillText(A.live?'hold · live':'hold',X(on)+4,y+RH/2);
+     if(isFinite(T0.off)){knob(off,y,'#FF7F7B'); H(X(off),y,y+RH,'ew-resize',f=>{A.hold=Math.max(0,Math.round(f-on));},'content hold');}}
+   else {g.fillStyle='#686871';g.fillText(D.fill.on?'no content yet':'auto-fill is off',LW+6,y+RH/2);}}
+  // transitions
+  {const y=Y(row++), TP=transP(G); if(TP.groups.length){TP.groups.forEach(gr=>{bar(gr.start,gr.start+gr.dur,y,gr.k==='in'?'rgba(43,217,143,.45)':'rgba(255,194,26,.45)',RH-8);
+       const T=D.trans[gr.k]; knob(gr.start,y,'#ececef'); knob(gr.start+gr.dur,y,'#ececef');
+       H(X(gr.start),y,y+RH,'ew-resize',f=>{const e=T.start+T.dur;T.atEnd=false;T.start=Math.round(f);T.dur=Math.max(2,e-T.start);},gr.k+' start');
+       H(X(gr.start+gr.dur),y,y+RH,'ew-resize',f=>{T.atEnd=false;T.dur=Math.max(2,Math.round(f-T.start));},gr.k+' end');});}
+   else {g.fillStyle='#686871';g.fillText('transitions are off',LW+6,y+RH/2);}}
+  // cues (beats / markers) on top of the tracks
+  const cues=timingCues(); g.fillStyle=D.timing&&D.timing.sync?'rgba(116,157,211,.7)':'rgba(116,157,211,.35)'; cues.forEach(f=>{g.fillRect(X(f),18,1,r.height-18);});
+  // playhead
+  if(U.t!=null){g.fillStyle='#fff';g.fillRect(X(U.t),0,1,r.height);}
+}
+function dopeHit(e){const c=$('#dopeCv'),r=c.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+  let best=null;DOPE.handles.forEach(h=>{const d=Math.abs(h.x-x);if(y>=h.y0&&y<=h.y1&&d<=7&&(!best||d<best.d))best=Object.assign({d},h);});return {x,y,h:best};}
+function initDope(){
+  const c=$('#dopeCv'); if(!c||!c.addEventListener) return;
+  c.addEventListener('pointermove',e=>{if(DOPE.drag)return;const t=dopeHit(e);c.style.cursor=t.h?t.h.cur:(t.x>DOPE.LW?'text':'default');c.title=t.h?'Drag: '+t.h.tip:'Click to move the playhead';});
+  c.addEventListener('pointerdown',e=>{
+    const t=dopeHit(e); if(t.x<DOPE.LW) return; c.setPointerCapture&&c.setPointerCapture(e.pointerId);
+    if(t.h){pushHist(true);DOPE.drag=t.h;} else {stopPlay();U.t=Math.round(DOPE.F(t.x));$('#scrub').value=U.t;render();drawDope();DOPE.drag={scrub:true};}
+  });
+  c.addEventListener('pointermove',e=>{const d=DOPE.drag;if(!d)return;const r=c.getBoundingClientRect(),f=DOPE.F(e.clientX-r.left);
+    if(d.scrub){U.t=Math.round(f);$('#scrub').value=U.t;render();drawDope();return;}
+    d.apply(f);planCache.k='';syncInputs();render();drawDope();drawSpeedGraph();});
+  const up=()=>{if(DOPE.drag&&!DOPE.drag.scrub){refresh();}DOPE.drag=null;};
+  c.addEventListener('pointerup',up); c.addEventListener('pointercancel',up);
+}
 /* when each block leaves (real frames), or null */
 function exitTimes(P,G,seq,done){
   const X=D.exit; if(!X||!X.on||!seq.length) return null;
@@ -1610,6 +1866,11 @@ function exitTimes(P,G,seq,done){
     const t0=Math.round(P.startF+P.L+(+X.at||0)), stg=Math.max(0,+X.stagger||0);
     const order=seq.map((b,i)=>i); if(X.order==='reverse') order.reverse();
     order.forEach((i,k)=>{out[i]=Math.max(done[i]+1,Math.round(t0+k*stg));});
+  } else if(X.mode==='walk'){
+    // the whole build holds, then walks off in the order (and rhythm) it walked on
+    const last=Math.max(...done.map((d,i)=>d!=null?d:P.T[i])), t0=Math.round(last+Math.max(0,+X.walkHold||0)), k=Math.max(.05,+X.walkPace||1);
+    const T0=P.T[0], T1=P.T[P.T.length-1];
+    seq.forEach((b,i)=>{out[i]=Math.round(t0+(X.order==='reverse'?(T1-P.T[i]):(P.T[i]-T0))*k);});
   } else if(X.mode==='behind'){
     // leaves when its right edge passes the exit line (X% of the frame from the left) — blocks trail away behind the camera
     const line=G.W*clamp(+X.line||10,-50,100)/100, maxT=Math.round(P.startF+P.L+600);
@@ -1622,11 +1883,11 @@ function exitTimes(P,G,seq,done){
   }
   return out;
 }
-function animActive(){const sid=STEPS[U.step].id;return ((sid==='animate'||sid==='lab')&&D.anim.mode!=='static'||sid==='transitions')&&U.t!==null;}
+function animActive(){const sid=STEPS[U.step].id;return ((sid==='animate'||sid==='lab'||sid==='timing')&&D.anim.mode!=='static'||sid==='transitions')&&U.t!==null;}
 /* current preview state: null (editing), ghost (animate step, layout view), or live (scrubbing/playing) */
 function animState(G){
   const sid=STEPS[U.step].id;
-  if(!(((sid==='animate'||sid==='lab')&&D.anim.mode!=='static')||(sid==='transitions'&&(D.anim.mode!=='static'||transOn())))) return null;
+  if(!(((sid==='animate'||sid==='lab'||sid==='timing')&&D.anim.mode!=='static')||(sid==='transitions'&&(D.anim.mode!=='static'||transOn())))) return null;
   const P=plan(G);
   if(U.t===null) return {P,live:false,t:0,off:[0,0],s:1,pan:[0,0]};
   return {P,live:true,t:U.t,off:ev(P.cam,U.t,[0,0]),s:ev(P.zs,U.t,100)/100,pan:ev(P.pan,U.t,[0,0])};
@@ -1638,6 +1899,7 @@ const V={sc:1,ox:0,oy:0,cw:0,ch:0,dpr:1,fit:'comp'};
 let checker=null;
 function makeChecker(){const c=document.createElement('canvas');c.width=c.height=16;const x=c.getContext('2d');x.fillStyle='#28282c';x.fillRect(0,0,16,16);x.fillStyle='#202023';x.fillRect(0,0,8,8);x.fillRect(8,8,8,8);checker=ctx.createPattern(c,'repeat');}
 function resize(){
+  try{if(!$('#dope').hidden)drawDope();}catch(e){}
   const r=wrap.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
   V.cw=r.width;V.ch=r.height;V.dpr=dpr;
   cv.width=Math.max(1,Math.round(r.width*dpr));cv.height=Math.max(1,Math.round(r.height*dpr));
@@ -1821,6 +2083,7 @@ function drawWorld(g,G,o){
   const vb=viewBounds(), ext=extBounds(G);
   const bgR=(live&&(camMode||s!==1))?vb:ext;
   if(D.look.bgOn){g.fillStyle=D.look.bg;g.fillRect(bgR.x,bgR.y,bgR.w,bgR.h);}
+  if(o.inside) drawMediaBg(g,G);
   else if(o.inside){g.save();g.fillStyle=checker||'#222';g.scale(1/sc,1/sc);g.fillRect(0,0,G.W*sc,G.H*sc);g.restore();}
   const pan=live?A.pan:[0,0];
   g.save(); zoomXf(g,G,s,pan);
@@ -2384,6 +2647,8 @@ function onChange(path){
   if(path==='comp.follow'&&D.comp.follow) detect();
   if(path.indexOf('grid.')===0||path.indexOf('comp.')===0){if(V.fit)fitView(V.fit);}
   if(path.indexOf('fill.')===0) fillCache.clear();
+  if(path==='timing.sens'||path==='timing.minGap') reBeat();
+  if(path==='timing.use'||path==='timing.offset') {planCache.k='';renderMedia();}
   if(path==='anim.zoomOn'){planCache.k='';$('#zoomList').innerHTML='';}
   if(path==='anim.mode'||path==='anim.order'){reorder();}
   if(path==='anim.order'&&D.anim.order==='manual'){U.t=null;stopPlay();U.tool='order';fitView('all');toast('Manual order: the whole grid is shown. Click blocks in the order they should appear.');}
@@ -2399,7 +2664,9 @@ function onChange(path){
   refresh();
 }
 buildModUI();
-$$('[data-bind]').forEach(el=>{
+function bindIn(root){
+$$('[data-bind]',root).forEach(el=>{
+  if(el._gbBound) return; el._gbBound=true;
   el.addEventListener('input',()=>{
     const p=el.dataset.bind;
     let v=el.type==='checkbox'?el.checked:el.type==='number'?parseFloat(el.value):el.value;
@@ -2412,11 +2679,13 @@ $$('[data-bind]').forEach(el=>{
   el.addEventListener('change',()=>{U.editing=null;if(el.type==='number')syncInputs(true);});
   el.addEventListener('blur',()=>{U.editing=null;});
 });
-$$('[data-seg]').forEach(seg=>seg.addEventListener('click',e=>{
+$$('[data-seg]',root).forEach(seg=>{ if(seg._gbBound) return; seg._gbBound=true; seg.addEventListener('click',e=>{
   const b=e.target.closest('button[data-v]'); if(!b) return;
   if(getP(seg.dataset.seg)===b.dataset.v) return;
   pushHist(true); setP(seg.dataset.seg,b.dataset.v); onChange(seg.dataset.seg);
-}));
+});});
+}
+bindIn(document);
 document.addEventListener('click',e=>{
   const b=e.target.closest('.num button[data-d]'); if(!b) return;
   const inp=b.parentElement.querySelector('input'); if(!inp||inp.disabled) return;
@@ -2539,7 +2808,8 @@ function renderStepUI(){
   cv.className='t-'+U.tool+(U.space?' panning':'')+(U.drag&&(U.drag.type==='move'||U.drag.type==='pan')?' grabbing':'');
   // tool cards in layout pane
   $('#toolcards').innerHTML=['select','stamp','draw','erase'].map(t=>`<button class="toolcard${U.tool===t?' on':''}" data-tool="${t}"><span class="ic">${ICON[t]}</span><span><div class="t">${TOOLS[t].name}</div><div class="d">${TOOLS[t].desc}</div></span><kbd>${TOOLS[t].key}</kbd></button>`).join('');
-  $('#timeline').hidden=!(((st.id==='animate'||st.id==='lab')&&D.anim.mode!=='static')||st.id==='transitions');
+  $('#timeline').hidden=!(((st.id==='animate'||st.id==='lab'||st.id==='timing')&&D.anim.mode!=='static')||st.id==='transitions');
+  $('#dope').hidden=st.id!=='timing'; if(st.id==='timing'){ drawDope(); if(!U._mediaUI){U._mediaUI=1;renderMedia();} const rt=$('#retimeTarget'); if(rt&&document.activeElement!==rt) rt.value=+(D.anim.lenF/(D.comp.fps||30)).toFixed(2); }
   $('#hint').textContent=st.id==='grid'?'Scroll to pan · ⌘/Ctrl + scroll or pinch to zoom':TOOLS[U.tool].desc;
 }
 document.addEventListener('click',e=>{const b=e.target.closest('[data-tool]');if(b)setTool(b.dataset.tool);});
@@ -2635,7 +2905,7 @@ function refresh(){
 let raf=0, lastTs=0;
 function play(){
   if(D.anim.mode==='static') return toast('Pick an animation style first');
-  if(['animate','transitions','lab'].indexOf(STEPS[U.step].id)<0) goStep(4);
+  if(['animate','transitions','lab','timing'].indexOf(STEPS[U.step].id)<0) goStep(4);
   let P=plan(geom()); if(!P.seq.length&&!transOn()) return toast('Add some blocks first'); P={seq:P.seq,end:sceneEnd(geom())};
   if(U.t===null||U.t>=P.end) U.t=0;
   U.playing=true; lastTs=0; $('#icoPlay').innerHTML='<path d="M4 2.5h3v11H4zM9 2.5h3v11H9z"/>';
@@ -2646,13 +2916,13 @@ function play(){
     lastTs=ts;
     if(U.t>=P.end){if($('#chkLoop').checked){U.t=0;lastTs=ts;P={end:sceneEnd(geom())};$('#scrub').max=P.end;}else{U.t=P.end;stopPlay();refresh();return;}}
     $('#scrub').value=U.t; $('#tc').textContent=`${Math.round(U.t)} / ${P.end}f`; $('#btnLayoutView').hidden=false;
-    render(); if(Math.round(U.t)%3===0) drawSpeedGraph(); raf=requestAnimationFrame(tick);
+    mediaSync(true); render(); if(Math.round(U.t)%3===0) drawSpeedGraph(); if(!$('#dope').hidden) drawDope(); raf=requestAnimationFrame(tick);
   };
   raf=requestAnimationFrame(tick);
 }
-function stopPlay(){U.playing=false;cancelAnimationFrame(raf);$('#icoPlay').innerHTML='<path d="M4 2.5v11l9-5.5z"/>';}
+function stopPlay(){U.playing=false;cancelAnimationFrame(raf);mediaSync(false);$('#icoPlay').innerHTML='<path d="M4 2.5v11l9-5.5z"/>';}
 $('#btnPlay').onclick=()=>U.playing?stopPlay():play();
-$('#scrub').addEventListener('input',e=>{stopPlay();U.t=+e.target.value;drawSpeedGraph();$('#tc').textContent=`${U.t} / ${e.target.max}f`;$('#btnLayoutView').hidden=false;render();});
+$('#scrub').addEventListener('input',e=>{stopPlay();U.t=+e.target.value;mediaSync(false);drawSpeedGraph();if(!$('#dope').hidden)drawDope();$('#tc').textContent=`${U.t} / ${e.target.max}f`;$('#btnLayoutView').hidden=false;render();});
 $('#btnLayoutView').onclick=()=>{stopPlay();U.t=null;refresh();};
 
 /* ------------------------------------------------------------------ extend pattern */
@@ -3027,10 +3297,13 @@ const HELP={
   'anim.relOn':'The camera follows for the first part of the scene, then stops chasing and coasts to a halt (keeping its speed and letting it bleed away), while new blocks keep arriving and run off the edge of frame. Great for overlays that “keep going”.',
   'anim.relAt':'Where in the scene the camera lets go, as % of the scene length.',
   'anim.relSlow':'How many frames the camera takes to coast to a stop after letting go. Longer = more drift.',
-  'exit.mode':'After a hold: every block leaves a fixed time after it appeared, so a trail of blocks travels with the camera. Behind the camera: a block leaves once it has slid past the exit line. All at the end: the whole build clears out, one block after another.',
+  'exit.mode':'After a hold: every block leaves a fixed time after it appeared, so a trail of blocks travels with the camera. Walk off: once the build is complete it holds, then leaves block by block in the same order and rhythm it arrived — the line walks off. Behind the camera: a block leaves once it has slid past the exit line. All at the end: the whole build clears out, one block after another.',
   'exit.hold':'How long a block stays fully visible before it starts to leave.',
   'exit.line':'Blocks leave when their right edge passes this line. 0 = left edge of frame, negative = once fully off screen.',
   'exit.at':'When the clear-out starts, in frames relative to the scene end. Negative starts before the scene ends.',
+  'exit.walkHold':'How long the finished build holds before the first block walks off.',
+  'exit.walkPace':'Rhythm of the walk-off compared with the walk-on. 1 = same rhythm, 0.5 = twice as fast, 2 = half speed.',
+  'exit.slide':'How far a block slides as it leaves, in block widths.',
   'exit.stagger':'Frames between one block leaving and the next.',
   'exit.style':'How a block disappears. Wipe collapses it sideways; the other options match the reveal styles.',
   'exit.dir':'Onward collapses toward the direction of travel (keeps the momentum); Back collapses toward where it came from.',
@@ -3045,6 +3318,12 @@ const HELP={
   'fill.dotSize':'Dot diameter in pixels (dot grids inside blocks and in the gaps).',
   'fill.dotShape':'Round dots or square pixels.',
   'fill.mods.icons':'Line icons from the icon set below (nodes, blocks, chains, momentum chevrons, peaks, snowflakes…), placed in open space like the logo.',
+  'fill.anim.live':'While content is fully on, keep it moving a little — numbers tick, hashes re-scramble, letters glitch — so the HUD feels live. Built as Source Text expressions in AE.',
+  'fill.anim.liveTick':'Counters drift after counting up: block heights keep climbing, percentages wobble by a point or two, other values jitter slightly.',
+  'fill.anim.liveHash':'Hex characters keep re-scrambling for as long as the text holds.',
+  'fill.anim.liveGlitch':'Now and then a character flips to a glyph (#%&*/<>[]=+01) for one update.',
+  'fill.anim.liveRate':'How many times per second the live text updates.',
+  'fill.anim.glitchAmt':'Chance a line glitches on each update.',
   'anim.settle':'Frames the camera takes to glide to a complete stop at the end of the scene (never less than about 4× Smoothness). The last reveals are spaced to leave room for it, so nothing gets rushed.',
   'anim.lazy':'The camera holds still until the newest block reaches the middle of the frame.',
   'anim.snap':'The camera aims at whole-square positions so the grid stays aligned with the frame.',
@@ -3193,7 +3472,7 @@ document.addEventListener('mouseout',e=>{const q=e.target.closest&&e.target.clos
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.qm')){e.preventDefault();e.stopPropagation();}},true);
 function setHelp(on){U.help=on;document.body.classList.toggle('nohelp',!on);$('#btnHelp').classList.toggle('on',on);$('#btnHelp').title=on?'Hide the ? help tips':'Show ? help tips next to each setting';}
 $('#btnHelp').onclick=()=>{setHelp(!U.help);toast(U.help?'Help tips on: hover any ?':'Help tips hidden');savePrefs();};
-function savePrefs(){const pr=JSON.stringify({help:U.help,loop:U.loop,mb:U.mbPrev!==false,adv:!!U.adv,collapsed:U.collapsed||{}});webSet('prefs',pr);if(inAE)evalHost('GB_writeText("prefs.json",'+jsStr(pr)+')');}
+function savePrefs(){const pr=JSON.stringify({help:U.help,loop:U.loop,mb:U.mbPrev!==false,adv:!!U.adv,subs:U.subs||{},collapsed:U.collapsed||{}});webSet('prefs',pr);if(inAE)evalHost('GB_writeText("prefs.json",'+jsStr(pr)+')');}
 
 /* ------------------------------------------------------------------ toast */
 let tt=0;
@@ -3239,6 +3518,16 @@ function resetDefaults(withHist){
   toast('Back to the default look','⌘Z to undo',true);
 }
 $('#btnDefaults').onclick=()=>resetDefaults();
+initDope();
+$('#mediaIn').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(f)loadMediaFile(f);e.target.value='';});
+$$('[data-retime]').forEach(b=>b.addEventListener('click',()=>retime(+b.dataset.retime)));
+$('#btnRetimeTo').onclick=()=>{const fps=D.comp.fps||30,tgt=Math.round((+$('#retimeTarget').value||0)*fps);if(tgt>1)retime(tgt/Math.max(1,D.anim.lenF));};
+$('#btnRetimeComp').onclick=()=>{const fps=D.comp.fps||30,tgt=Math.round((D.comp.dur||10)*fps)-Math.max(0,D.anim.startF);if(tgt>1)retime(tgt/Math.max(1,D.anim.lenF));};
+/* collapsible sub-sections: remember what's open, redraw canvases that were hidden */
+U.subs=U.subs||{};
+document.addEventListener('toggle',e=>{const d=e.target; if(!d||!d.matches||!d.matches('details.sub')) return;
+  U.subs[d.dataset.sub]=d.open; savePrefs(); if(d.open){try{renderCurves();}catch(x){} if(d.querySelector('#speedCv')) drawSpeedGraph();}},true);
+function applySubs(){$$('details.sub').forEach(d=>{const v=U.subs[d.dataset.sub]; if(v!=null) d.open=!!v;});}
 function loadExample(){
   pushHist(); const keep={w:D.comp.w,h:D.comp.h,follow:D.comp.follow};
   D=merge(clone(DEF),clone(EXAMPLE)); Object.assign(D.comp,keep);
@@ -3459,7 +3748,7 @@ function payload(){
     if(it.kind==='dots') return {kind:'dots',sq:!!it.sq,rects:it.rects.map(f=>({x:r3(f.x),y:r3(f.y),cols:f.cols,rows:f.rows})),sp:it.sp,d:r3(it.d),color:hexRgb(it.color),t0:r3(Math.max(0,t0)/fps),opx:fillOpacityExpr(t,fps,false)};
     if(it.kind==='ring') return {kind:'ring',cx:r3(it.cx),cy:r3(it.cy),r:r3(it.r),w:r3(it.w),color:hexRgb(it.color),t0:r3(Math.max(0,t0)/fps),opx:fillOpacityExpr(t,fps,false)};
     if(it.kind==='logo') return {kind:'logo',x:r3(it.x),y:r3(it.y),s:r3(it.s),paths:AVAX_AE,color:hexRgb(it.color),t0:r3(Math.max(0,t0)/fps),opx:fillOpacityExpr(t,fps,false)};
-    const animd=t.tEnd!=null||(F.anim.inMode==='type'&&(it.type||F.anim.typeAll))||(F.anim.count&&it.count)||(F.anim.scramble&&it.scr)||(F.anim.ellipsis&&it.ell)||t0>0||F.anim.outMode==='cut'||F.anim.outMode==='typeoff';
+    const animd=t.tEnd!=null||(F.anim.live&&(F.anim.liveGlitch||(F.anim.liveTick&&it.count)||(F.anim.liveHash&&it.scr)))||(F.anim.inMode==='type'&&(it.type||F.anim.typeAll))||(F.anim.count&&it.count)||(F.anim.scramble&&it.scr)||(F.anim.ellipsis&&it.ell)||t0>0||F.anim.outMode==='cut'||F.anim.outMode==='typeoff';
     return {kind:'text',t0:r3(Math.max(0,t0)/fps),text:it.lines.join('\r'),x:r3(it.x),y:r3(it.y),align:it.align,size:met.size,leading:r3(met.lh),font:F.font,color:hexRgb(it.color),expr:animd?fillExpr(t,fps):null,opx:fillOpacityExpr(t,fps,true)};
   };
   const blockFill=(b,rect,base,isEcho,tEnd)=>{
@@ -3515,6 +3804,7 @@ function payload(){
       tiles:TP.tiles.filter(t=>t.g===g.k).map(t=>({x:r3(t.x),y:r3(t.y),w:r3(t.w),h:r3(t.h),color:hexRgb(t.color),keys:t.K}))}))};})():null,
     org:orgPayload(P,animOn,G),
     lab:labPayload(P,G,animOn),
+    fontsUsed:fontsUsed(),
     anim:animOn?Object.assign({label:labels[A.mode]+(zoomOn?' + grid zoom':''),camName:A.mode==='camera'?'GB · Camera':'GB · Conveyor',
       cam:P.cam.map(rel), needCam:P.cam.length>0||zoomOn,
       wrap:camMode?{px:r3(G.p),py:(A.axis==='xy'||zoomOn)?r3(G.p):0,cx:zoomOn?CX:0,cy:zoomOn?CY:0}:null,
@@ -3522,6 +3812,7 @@ function payload(){
       pan:P.pan.length?P.pan:null},camRig||{}):null
   };
 }
+function fontsUsed(){const s={};if(D.fill.on)s[D.fill.font]=D.fill.family;D.blocks.forEach(b=>{if(b.text&&b.font)s[b.font]=b.family||b.font;});if(D.num&&D.num.on)s[D.fill.font]=D.fill.family;return Object.keys(s).filter(Boolean).map(k=>[k,s[k]]);}
 /* lab → AE-ready description */
 function labPayload(P,G,animOn){
   if(!animOn||!P.lab) return null;
@@ -3664,7 +3955,7 @@ async function init(){
     registerKeys();
     await evalHost(HOST);
     await libLoad();
-    try{const pr=JSON.parse(await evalHost('GB_readText("prefs.json")')||'{}');if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.mb===false)U.mbPrev=false;if(pr.adv)setAdv(true);if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
+    try{const pr=JSON.parse(await evalHost('GB_readText("prefs.json")')||'{}');if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.mb===false)U.mbPrev=false;if(pr.adv)setAdv(true);if(pr.subs){U.subs=pr.subs;applySubs();}if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
     try{
       const s=await evalHost('GB_readText("autosave.json")');
       if(s){const o=JSON.parse(s);if(o&&o.doc){setDoc(o.doc);U.step=clamp(o.step|0,0,STEPS.length-1);U.tool=STEPS[U.step].tool;}}
@@ -3679,7 +3970,7 @@ async function init(){
     if(inWeb){
       await libLoad();
       try{const o=JSON.parse(webGet('autosave')||'null');if(o&&o.doc){setDoc(o.doc);U.step=clamp(o.step|0,0,STEPS.length-1);}}catch(e){}
-      try{const pr=JSON.parse(webGet('prefs')||'{}');if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.mb===false)U.mbPrev=false;if(pr.adv)setAdv(true);if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
+      try{const pr=JSON.parse(webGet('prefs')||'{}');if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.mb===false)U.mbPrev=false;if(pr.adv)setAdv(true);if(pr.subs){U.subs=pr.subs;applySubs();}if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
       const dl=$('#btnPanel'); if(dl) dl.hidden=false;
     }
     $('#compNote').textContent='In the browser, pick a size here. Inside After Effects the panel reads your comp automatically.';
@@ -3689,7 +3980,8 @@ async function init(){
   if(window.ResizeObserver) new ResizeObserver(resize).observe(wrap); else window.addEventListener('resize',resize);
   resize(); fitView('comp'); refresh();
   // redraw once web fonts (Aeonik Fono) have loaded so text measures correctly
-  try{if(document.fonts&&document.fonts.load){document.fonts.load("400 14px 'Aeonik Fono'").then(()=>{fontCW={};fillCache.clear();refresh();});}}catch(e){}
+  try{if(document.fonts&&document.fonts.load){Promise.all([document.fonts.load("400 14px 'Aeonik Fono'"),document.fonts.load("900 14px 'Aeonik'")]).then(()=>{fontCW={};fillCache.clear();refresh();});}}catch(e){}
+  if(!inAE) checkBrandFonts(); else renderFontStatus();
 }
 init();
 })();
