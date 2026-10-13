@@ -11,7 +11,9 @@ const inWeb=!inAE&&typeof location!=='undefined'&&/^https?:$/.test(location.prot
 const webGet=k=>{if(!inWeb)return null;try{return localStorage.getItem('gridblocks.'+k);}catch(e){return null;}};
 const webSet=(k,v)=>{if(!inWeb)return;try{localStorage.setItem('gridblocks.'+k,v);}catch(e){}};
 const HOST=$('#host-src').textContent;
-const PALETTE=['#FF0000','#E84142','#FFFFFF','#D9D9D9','#111111','#2B6BFF','#FFC21A','#2BD98F'];
+/* Avalanche brand palette (2026): red is the accent; slate, darks and blue support it */
+const PALETTE=['#E6212F','#FF394A','#B20F2A','#820419','#A2AFB2','#3B484B','#EBF0FA','#1F1F1F','#121212','#0061E2','#749DD3','#C5CFF5'];
+const BRAND={red:'#E6212F',slate:'#A2AFB2',steel:'#3B484B',bg:'#1F1F1F',dark:'#121212',light:'#EBF0FA',blue:'#0061E2'};
 const clone=o=>JSON.parse(JSON.stringify(o));
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -28,28 +30,37 @@ const DEF={
   v:4,
   comp:{w:1920,h:1080,fps:24,dur:10,follow:true},
   grid:{rows:7,colsMode:'bleed',cols:12,gutter:1,margin:0,offsetX:0,snap:true,overX:8,overY:1},
-  look:{bgOn:true,bg:'#1F1F1F',linesOn:false,line:'#333333',lineW:1,border:false,cellsMode:'none',cell:'#D9D9D9',
-        rulesOn:true,rule:'#424242',ruleW:1,ruleEvery:4,ruleStart:1,ruleLayer:'top'},
-  block:{w:3,h:1,color:'#FF0000',color2:'#FFFFFF',sync:true,mix:'single',mixPct:25},
+  look:{bgOn:true,bg:'#1F1F1F',linesOn:false,line:'#2B3133',lineW:1,border:false,cellsMode:'none',cell:'#D9D9D9',
+        rulesOn:true,rule:'#3B484B',ruleW:1,ruleEvery:4,ruleStart:1,ruleLayer:'top'},
+  block:{w:3,h:1,color:'#E6212F',color2:'#A2AFB2',sync:true,mix:'single',mixPct:25},
   palette:PALETTE.slice(),
-  trans:{in:{on:true,mode:'clear',start:0,atEnd:false,dur:24,pattern:'sweep',dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:true,color:'#FF0000',output:'blocks',seed:3},
-         out:{on:true,mode:'build',start:72,atEnd:false,dur:24,pattern:'sweep',dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:true,color:'#FF0000',output:'blocks',seed:5}},
+  trans:{in:{on:true,mode:'clear',start:0,atEnd:false,dur:24,pattern:'sweep',dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:true,color:'#E6212F',output:'blocks',seed:3},
+         out:{on:true,mode:'build',start:72,atEnd:false,dur:24,pattern:'sweep',dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:true,color:'#E6212F',output:'blocks',seed:5}},
   fill:{on:true,seed:7,density:'medium',family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:8,leading:100,caps:'upper',
-        textColor:'#111111',outlinePct:0,outlineW:2,skipText:true,textPct:60,patternPct:40,dotSpacing:8,iconPct:15,iconSize:15,
-        mods:{kv:true,status:true,hashes:true,block:true,log:false,counter:true,dev:true,barcode:true,phrase:true,term:true,dots:true,ring:true,logo:true},
+        textColor:'#121212',outlinePct:0,outlineW:2,skipText:true,textPct:60,patternPct:40,dotSpacing:8,iconPct:15,iconSize:15,
+        mods:{kv:true,status:true,hashes:true,block:true,log:false,counter:true,dev:true,barcode:true,phrase:true,term:true,mempool:true,validator:true,latency:true,rpc:false,progress:true,consensus:true,stream:false,dots:true,ring:false,logo:true,icons:true},
+        iconSet:{node:true,cube:true,chain:true,check:true,chevrons:true,peak:true,lock:false,network:true,signal:true,target:false,snow:true,arrow:true,plus:false,bars:true},dotSize:2.2,dotShape:'circle',
         anim:{inMode:'type',inDur:8,outMode:'typeoff',hold:36,outDur:12,typeAll:true,cps:69,ellipsis:true,count:true,countDur:36,scramble:true,scrMode:'settle',scrDur:30,scrRate:12,stagger:4,delay:9},
-        gap:{on:true,amount:3,seed:0,color:'#FF0000',mods:{log:true,phrase:true,barcode:true,hashes:false,dots:true,logo:true}}},
-  echo:{on:false,dx:0,dy:2,last:0,fill:true,color:'#FFFFFF',opacity:100,stroke:false,sw:4,scolor:'#FFFFFF',align:'center',dash:false,dashL:12,dashG:8,content:false,
+        gap:{on:true,amount:3,seed:0,color:'#E6212F',mods:{log:true,phrase:true,barcode:true,hashes:false,dots:true,logo:true,icons:true,stream:false,rpc:false}}},
+  echo:{on:false,dx:0,dy:2,last:0,fill:true,color:'#A2AFB2',opacity:100,stroke:false,sw:4,scolor:'#A2AFB2',align:'center',dash:false,dashL:12,dashG:8,content:false,
         timing:'with',offset:6,appear:'fade',out:'stay',hold:12,outF:8},
   rand:{pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
         wander:1,climb:0,stackPct:20,stackGap:1,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Arial',style:'Bold',font:'Arial-BoldMT',size:48,align:'center',pad:24,tracking:0,leading:0,kern:'metrics',caps:'none'},
   anim:{mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'follow',stepEvery:2,appear:'wipe',
-        axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,tail:24,
+        axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0,0,1,1],camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zoomOn:true,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
-  out:{replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180},
-  blocks:[{"id": 1, "c": 0, "r": 1, "w": 3, "h": 1, "color": "#FF0000"}, {"id": 2, "c": 0, "r": 3, "w": 3, "h": 1, "color": "#FF0000", "stack": true}, {"id": 3, "c": 3, "r": 2, "w": 3, "h": 1, "color": "#FF0000"}, {"id": 4, "c": 6, "r": 3, "w": 3, "h": 1, "color": "#FF0000"}, {"id": 5, "c": 9, "r": 2, "w": 3, "h": 1, "color": "#FF0000"}, {"id": 6, "c": 12, "r": 2, "w": 3, "h": 1, "color": "#FF0000"}]
+  lab:{flicker:{on:false,frames:8,seed:3},
+       pulse:{on:false,scale:1.35,len:18,width:2,color:'#E6212F'},
+       trail:{on:false,count:3,length:1.2,len:12,width:2,color:'#A2AFB2'},
+       bar:{on:false,height:3,len:24,color:'#121212'},
+       ticker:{on:false,y:94,size:14,speed:160,color:'#A2AFB2',band:true,bandColor:'#121212'},
+       snow:{on:false,count:90,speed:240,size:2,stretch:6,dir:'left',color:'#EBF0FA',opacity:55,seed:9}},
+  num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100},
+  exit:{on:false,mode:'hold',hold:36,at:0,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
+  out:{replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180,folder:true,preGrid:true,preBlocks:true,preTrans:true,shy:true,trim:true,markers:true},
+  blocks:[{"id": 1, "c": 0, "r": 1, "w": 3, "h": 1, "color": "#E6212F"}, {"id": 2, "c": 0, "r": 3, "w": 3, "h": 1, "color": "#E6212F", "stack": true}, {"id": 3, "c": 3, "r": 2, "w": 3, "h": 1, "color": "#E6212F"}, {"id": 4, "c": 6, "r": 3, "w": 3, "h": 1, "color": "#E6212F"}, {"id": 5, "c": 9, "r": 2, "w": 3, "h": 1, "color": "#E6212F"}, {"id": 6, "c": 12, "r": 2, "w": 3, "h": 1, "color": "#E6212F"}]
 };
 let D=clone(DEF);
 let uid=1;
@@ -64,6 +75,7 @@ const STEPS=[
   {id:'content',name:'Content',title:'Put things in blocks',desc:'Auto-fill blocks with blockchain HUD content, or select a block and type your own text.',tools:['select','paint','hand'],tool:'select',insp:true},
   {id:'animate',name:'Animate',title:'Order & animate',desc:'Choose the order blocks arrive in and how the view moves.',tools:['select','order','hand'],tool:'select',insp:true},
   {id:'transitions',name:'Transitions',title:'Transition in & out',desc:'Blocks that fill the whole frame: clear away at the start, build up at the end. Use them as a matte to bring the scene in and out.',tools:['hand'],tool:'hand',insp:false},
+  {id:'lab',name:'Lab',title:'Lab · experiments',desc:'Momentum effects to try out. Each card says how far along it is and whether it builds in After Effects. Press ▶ to preview.',tools:['hand'],tool:'hand',insp:false},
   {id:'build',name:'Build',title:'Build it',desc:'',tools:['select','hand'],tool:'select',insp:true}
 ];
 const ICON={
@@ -177,9 +189,42 @@ const BITS={"hashes": ["0xb00a4e4b2e577097ff1ce87dc7f966e07d3a32556f26b09758f992
 const DEV_LINES=['INITIALIZING','BLASTING OFF','SYNCING VALIDATORS','AWAITING FINALITY','COMPILING','BOOTSTRAPPING','BROADCASTING TX','AGGREGATING SIGNATURES','RELAYING WARP MESSAGE','DEPLOYING L1','CONNECTING PEERS','VERIFYING PROOF','STRAPPING IN','WARMING UP NODES'];
 const FILL_MODULES=[
   ['kv','Key / values'],['status','Status'],['hashes','TO / FROM hashes'],['block','Block data'],['log','Log lines'],
-  ['counter','Counters'],['dev','Dev text …'],['barcode','Barcodes'],['phrase','Phrases & tags'],['term','Terms'],['dots','Dot pattern'],['ring','Ring icon'],['logo','Avalanche logo']
+  ['counter','Counters'],['dev','Dev text …'],['barcode','Barcodes'],['phrase','Phrases & tags'],['term','Terms'],
+  ['mempool','Mempool'],['validator','Validators'],['latency','Latency / TPS'],['rpc','RPC calls'],['progress','Progress bars'],['consensus','Consensus'],['stream','Hex stream'],
+  ['dots','Dot pattern'],['ring','Ring icon'],['logo','Avalanche logo'],['icons','Icon set']
 ];
-const GAP_MODULES=[['log','Log lines'],['phrase','Phrases & tags'],['barcode','Barcodes'],['hashes','Hashes'],['dots','Dot fields'],['logo','Avalanche logo']];
+/* icon set: original line icons in a 1×1 box. p = polyline (closed?), c = circle, r = rect; f = filled */
+const ICONS={
+  node:{name:'Node',prims:[{t:'p',pts:[[.5,.04],[.9,.27],[.9,.73],[.5,.96],[.1,.73],[.1,.27]],closed:true},{t:'c',cx:.5,cy:.5,r:.12,f:true}]},
+  cube:{name:'Block',prims:[{t:'p',pts:[[.5,.06],[.92,.28],[.92,.72],[.5,.94],[.08,.72],[.08,.28]],closed:true},{t:'p',pts:[[.08,.28],[.5,.5],[.92,.28]]},{t:'p',pts:[[.5,.5],[.5,.94]]}]},
+  chain:{name:'Chain',prims:[{t:'r',x:.04,y:.32,w:.52,h:.36,rr:.18},{t:'r',x:.44,y:.32,w:.52,h:.36,rr:.18}]},
+  check:{name:'Check',prims:[{t:'c',cx:.5,cy:.5,r:.44},{t:'p',pts:[[.3,.52],[.45,.66],[.72,.36]]}]},
+  chevrons:{name:'Speed',prims:[{t:'p',pts:[[.06,.2],[.26,.5],[.06,.8]]},{t:'p',pts:[[.37,.2],[.57,.5],[.37,.8]]},{t:'p',pts:[[.68,.2],[.88,.5],[.68,.8]]}]},
+  peak:{name:'Peak',prims:[{t:'p',pts:[[.02,.86],[.36,.26],[.52,.54],[.66,.36],[.98,.86]],closed:true}]},
+  lock:{name:'Lock',prims:[{t:'r',x:.18,y:.44,w:.64,h:.5},{t:'p',pts:[[.3,.44],[.3,.28],[.36,.14],[.5,.08],[.64,.14],[.7,.28],[.7,.44]]},{t:'c',cx:.5,cy:.66,r:.06,f:true}]},
+  network:{name:'Network',prims:[{t:'p',pts:[[.18,.22],[.5,.5],[.84,.2]]},{t:'p',pts:[[.5,.5],[.24,.84]]},{t:'p',pts:[[.5,.5],[.8,.8]]},{t:'c',cx:.18,cy:.22,r:.09,f:true},{t:'c',cx:.84,cy:.2,r:.09,f:true},{t:'c',cx:.24,cy:.84,r:.09,f:true},{t:'c',cx:.8,cy:.8,r:.09,f:true},{t:'c',cx:.5,cy:.5,r:.12,f:true}]},
+  signal:{name:'Signal',prims:[{t:'r',x:.06,y:.68,w:.14,h:.26,f:true},{t:'r',x:.3,y:.5,w:.14,h:.44,f:true},{t:'r',x:.54,y:.3,w:.14,h:.64,f:true},{t:'r',x:.78,y:.08,w:.14,h:.86,f:true}]},
+  target:{name:'Target',prims:[{t:'c',cx:.5,cy:.5,r:.36},{t:'p',pts:[[.5,0],[.5,.3]]},{t:'p',pts:[[.5,.7],[.5,1]]},{t:'p',pts:[[0,.5],[.3,.5]]},{t:'p',pts:[[.7,.5],[1,.5]]},{t:'c',cx:.5,cy:.5,r:.05,f:true}]},
+  snow:{name:'Snow',prims:[0,60,120].map(a=>{const r=a*Math.PI/180,dx=Math.cos(r)*.46,dy=Math.sin(r)*.46;return {t:'p',pts:[[.5-dx,.5-dy],[.5+dx,.5+dy]]};}).concat([0,60,120,180,240,300].map(a=>{const r=a*Math.PI/180,cx=.5+Math.cos(r)*.32,cy=.5+Math.sin(r)*.32,o=.1;return {t:'p',pts:[[cx+Math.cos(r+2.3)*o,cy+Math.sin(r+2.3)*o],[cx,cy],[cx+Math.cos(r-2.3)*o,cy+Math.sin(r-2.3)*o]]};}))},
+  arrow:{name:'Arrow',prims:[{t:'p',pts:[[.04,.5],[.94,.5]]},{t:'p',pts:[[.7,.26],[.94,.5],[.7,.74]]}]},
+  plus:{name:'Plus',prims:[{t:'p',pts:[[.5,.12],[.5,.88]]},{t:'p',pts:[[.12,.5],[.88,.5]]}]},
+  bars:{name:'Bars',prims:[{t:'r',x:.04,y:.14,w:.92,h:.12,f:true},{t:'r',x:.04,y:.38,w:.66,h:.12,f:true},{t:'r',x:.04,y:.62,w:.8,h:.12,f:true},{t:'r',x:.04,y:.86,w:.42,h:.1,f:true}]}
+};
+const ICON_KEYS=Object.keys(ICONS);
+/* icon → canvas */
+function drawIcon(g,name,x,y,s,color){
+  const I=ICONS[name]; if(!I) return; const lw=Math.max(1,s*.07);
+  g.save(); g.lineWidth=lw; g.lineJoin='round'; g.lineCap='round'; g.strokeStyle=color; g.fillStyle=color;
+  I.prims.forEach(p=>{
+    g.beginPath();
+    if(p.t==='c'){g.arc(x+p.cx*s,y+p.cy*s,p.r*s,0,7);}
+    else if(p.t==='r'){const rr=(p.rr||0)*s;if(rr&&g.roundRect)g.roundRect(x+p.x*s,y+p.y*s,p.w*s,p.h*s,rr);else g.rect(x+p.x*s,y+p.y*s,p.w*s,p.h*s);}
+    else {p.pts.forEach((q,i)=>i?g.lineTo(x+q[0]*s,y+q[1]*s):g.moveTo(x+q[0]*s,y+q[1]*s)); if(p.closed) g.closePath();}
+    p.f?g.fill():g.stroke();
+  });
+  g.restore();
+}
+const GAP_MODULES=[['log','Log lines'],['phrase','Phrases & tags'],['barcode','Barcodes'],['hashes','Hashes'],['dots','Dot fields'],['logo','Avalanche logo'],['icons','Icons'],['stream','Hex stream'],['rpc','RPC calls']];
 /* Avalanche logo (24×22 viewBox) */
 const AVAX_LOGO={w:24,h:22,d:['M15.0399 21.1035H23.0791C23.7889 21.1035 24.2319 20.3358 23.877 19.7214L19.8574 12.7601C19.5025 12.1457 18.6165 12.1457 18.2616 12.7601L14.242 19.7214C13.8871 20.3358 14.3313 21.1035 15.0399 21.1035Z',
   'M16.0454 6.15766L12.7416 0.433646C12.4084 -0.144549 11.5719 -0.144549 11.2387 0.433646L0.128698 19.6783C-0.237049 20.312 0.220437 21.1026 0.950726 21.1026H7.56678C8.27172 21.1026 8.92354 20.726 9.27601 20.1152L16.0454 8.38957C16.4449 7.69911 16.4449 6.84811 16.0454 6.15645V6.15766Z']};
@@ -205,6 +250,7 @@ function svgToAE(d){
 }
 const AVAX_AE=AVAX_LOGO.d.map(svgToAE).reduce((a,b)=>a.concat(b),[]);
 let avaxPath2D=null;
+const dotD=sp=>Math.max(.5,Math.min(sp*.95,+D.fill.dotSize>0?+D.fill.dotSize:sp*.28));
 function pickR(rnd,a){return a[Math.floor(rnd()*a.length)];}
 function hexR(rnd,n){let s='';for(let i=0;i<n;i++)s+='0123456789abcdef'[Math.floor(rnd()*16)];return s;}
 function fillHash(a,b){let x=((a|0)*2654435761^((b|0)+0x9e3779b9))>>>0;x^=x>>>15;x=Math.imul(x,2246822519)>>>0;x^=x>>>13;return x>>>0;}
@@ -263,6 +309,36 @@ function buildModule(mod,slot,rnd,met,color){
       if(rnd()<.45) return [T(['****** '+fillCase(pickR(rnd,['STRAP IN','LIVE IN PRODUCTION','BUILT TO SCALE','SETTLES IN SECONDS','FINALITY < 1S','ALWAYS ON']))+' ******'],slot.ax)];
       return [T([pickR(rnd,BITS.tags.filter(s=>/^\[/.test(s))),pickR(rnd,BITS.phrases)].slice(0,rows),slot.ax,{type:true})];
     }
+    case 'mempool':{
+      const n=Math.round(200+rnd()*4800), bar=Math.max(4,Math.min(cols-12,18)), k=Math.floor(bar*(.3+rnd()*.6));
+      return [T(['MEMPOOL','|'.repeat(k)+'.'.repeat(bar-k)+' '+n.toLocaleString('en-US')+' TX'],slot.ax,{count:{line:1,from:0,to:n,dec:0,pre:'|'.repeat(k)+'.'.repeat(bar-k)+' ',suf:' TX'}})];
+    }
+    case 'validator':{
+      const id='NODEID-'+hexR(rnd,6).toUpperCase()+'…'+hexR(rnd,4).toUpperCase(), up=(99+rnd()*.99).toFixed(2);
+      return [T(['VALIDATOR '+(rnd()<.5?'ONLINE':'ACTIVE'),id,'UPTIME '+up+'%'].slice(0,Math.max(1,rows)),slot.ax,{scr:true})];
+    }
+    case 'latency':{
+      const p50=(0.3+rnd()*.4).toFixed(2), p99=(0.8+rnd()*.6).toFixed(2), tps=Math.round(900+rnd()*4100);
+      if(rnd()<.5) return [T(['TPS',tps.toLocaleString('en-US')],slot.ax,{count:{line:1,from:0,to:tps,dec:0,pre:'',suf:''}})];
+      return [T(['P50 '+p50+'S','P99 '+p99+'S'],slot.ax)];
+    }
+    case 'rpc':{
+      const m=pickR(rnd,['ETH_GETBLOCKBYNUMBER','ETH_SENDRAWTRANSACTION','ETH_CALL','AVAX.GETUTXOS','PLATFORM.GETCURRENTVALIDATORS','ETH_GETLOGS','ETH_CHAINID']);
+      return [T(['> POST /EXT/BC/C/RPC','{"METHOD":"'+m+'"}','200 OK · '+Math.round(8+rnd()*60)+'MS'].slice(0,Math.max(1,rows)),slot.ax,{type:true})];
+    }
+    case 'progress':{
+      const pct=Math.round(35+rnd()*65), bar=Math.max(6,Math.min(cols-6,20)), k=Math.round(bar*pct/100);
+      const lab=pickR(rnd,['SYNCING','FINALIZING','BOOTSTRAPPING','INDEXING','VERIFYING']);
+      return [T([lab,'['+'#'.repeat(k)+'.'.repeat(bar-k)+'] '+pct+'%'],slot.ax,{count:{line:1,from:0,to:pct,dec:0,pre:'['+'#'.repeat(k)+'.'.repeat(bar-k)+'] ',suf:'%'}})];
+    }
+    case 'consensus':{
+      return [T([pickR(rnd,['SNOWMAN','SNOWBALL']),'K=20 A=15 B=20','QUERY '+Math.round(1+rnd()*9)+'/20 OK'].slice(0,Math.max(1,rows)),slot.ax,{type:true})];
+    }
+    case 'stream':{
+      const n=Math.min(rows,3), w=Math.max(4,Math.floor((cols+1)/3)), L=[];
+      for(let i=0;i<n;i++){const o=[];for(let j=0;j<w;j++)o.push(hexR(rnd,2).toUpperCase());L.push(o.join(' '));}
+      return [T(L,slot.ax,{scr:true})];
+    }
     case 'term':{
       const a=pickR(rnd,BITS.terms), b=pickR(rnd,BITS.rpc.filter(s=>s.length<20));
       if(cols<18) return [T([a],slot.ax)];
@@ -291,19 +367,20 @@ function fillItems(G,b,rect,isEcho){
   if(!mods.length) return [];
   const solid=!isEcho&&!isOutline(b);
   const color=isEcho?(D.echo.stroke?D.echo.scolor:D.echo.color):solid?F.textColor:b.color;
-  const key=[b.id,b.fillSeed||0,rect.w|0,rect.h|0,isEcho?1:0,color,JSON.stringify(F)].join('|');
+  const key=[b.id,b.fillSeed||0,rect.w|0,rect.h|0,isEcho?1:0,color,JSON.stringify(F),!isEcho&&numOn(b)?JSON.stringify(D.num):''].join('|');
   const hit=fillCache.get(key); if(hit) return hit;
   const rnd=rng(fillHash(b.id+(isEcho?77777:0),(F.seed|0)+(b.fillSeed||0)*131));
   const met=fillMetrics(), pad=Math.max(8,Math.min(28,Math.min(rect.w,rect.h)*.08));
   const W=rect.w-2*pad, H=rect.h-2*pad; if(W<met.cw*5||H<met.lh) {fillCache.set(key,[]);return [];}
   const two=W>met.cw*30, tall=H>met.lh*6;
-  const slots=[{x:0,y:0,w:two?W*.46:W,h:tall?H*.45:H,ax:'l',ay:'t'}];
-  if(two) slots.push({x:W*.54,y:0,w:W*.46,h:tall?H*.45:H,ax:'r',ay:'t'});
+  const nb=!isEcho&&numOn(b)?numLayout(rect,numStr(88)):null, nW=nb?nb.w+met.cw*2:0;
+  const slots=[{x:0,y:0,w:two?W*.46:Math.max(0,W-nW),h:tall?H*.45:H,ax:'l',ay:'t'}];
+  if(two&&!nb) slots.push({x:W*.54,y:0,w:W*.46,h:tall?H*.45:H,ax:'r',ay:'t'});
   if(tall){slots.push({x:0,y:H*.55,w:two?W*.46:W,h:H*.45,ax:'l',ay:'b'}); if(two) slots.push({x:W*.54,y:H*.55,w:W*.46,h:H*.45,ax:'r',ay:'b'});}
   const want={light:2,medium:3,busy:4}[F.density]||3;
   // only a share of blocks get text (the rest can be pure pattern)
   const hasText=(fillHash(b.id+(isEcho?77777:0),(F.seed|0)+23+(b.fillSeed||0))%100)<(F.textPct==null?100:+F.textPct);
-  const textMods=hasText?mods.filter(m=>m!=='dots'&&m!=='ring'&&m!=='logo'):[];
+  const textMods=hasText?mods.filter(m=>m!=='dots'&&m!=='ring'&&m!=='logo'&&m!=='icons'):[];
   const order=slots.map((s,i)=>i).sort(()=>rnd()-.5).slice(0,Math.min(want,slots.length));
   let items=[], idx=0;
   order.sort((a,b)=>a-b).forEach(si=>{
@@ -317,21 +394,24 @@ function fillItems(G,b,rect,isEcho){
   // place text into the block
   items.forEach(it=>{it.x+=rect.x+pad;it.y+=rect.y+pad;if(it.kind==='text'&&it.ay==='b'){it.y=rect.y+rect.h-pad-it.lines.length*met.lh;}});
   // an icon (ring / Avalanche logo) in the largest open space — its own frequency and size
-  const icons=mods.filter(m=>m==='ring'||m==='logo'), isz=Math.max(8,+F.iconSize||28);
+  const setOn=ICON_KEYS.filter(k=>!F.iconSet||F.iconSet[k]!==false);
+  const icons=mods.filter(m=>m==='ring'||m==='logo').concat(mods.indexOf('icons')>=0?setOn.map(k=>'i:'+k):[]), isz=Math.max(8,+F.iconSize||28);
   if(icons.length&&rnd()<(F.iconPct==null?15:+F.iconPct)/100){
-    const free0=freeRects(rect.x+pad,rect.y+pad,W,H,Math.max(3,+F.dotSpacing||8),items,met);
+    const avoid=nb?items.concat([{kind:'box',x:nb.x-nb.w,y:nb.y,w:nb.w,h:nb.h}]):items;
+    const free0=freeRects(rect.x+pad,rect.y+pad,W,H,Math.max(3,+F.dotSpacing||8),avoid,met);
     const big=free0.filter(f=>f.w>=isz&&f.h>=isz).sort((a,c)=>c.w*c.h-a.w*a.h)[0];
     if(big){
       const ic=pickR(rnd,icons), cx=big.x+big.w/2, cy=big.y+big.h/2;
       if(ic==='ring') items.push({kind:'ring',cx,cy,r:isz/2,w:Math.max(1.2,isz*.06),color,slot:idx++});
+      else if(ic.indexOf('i:')===0) items.push({kind:'icon',name:ic.slice(2),x:cx-isz/2,y:cy-isz/2,w:isz,h:isz,s:isz,color,slot:idx++});
       else items.push({kind:'logo',x:cx-isz*AVAX_LOGO.w/AVAX_LOGO.h/2,y:cy-isz/2,s:isz/AVAX_LOGO.h,color,slot:idx++});
     }
   }
   // a dot field in all the space the text and icon don't use
   if(mods.indexOf('dots')>=0&&rnd()<(F.patternPct==null?40:+F.patternPct)/100){
-    const sp=Math.max(3,+F.dotSpacing||8), d=Math.max(1,sp*.28);
-    const free=freeRects(rect.x+pad,rect.y+pad,W,H,sp,items,met);
-    if(free.length) items.push({kind:'dots',rects:free.map(f=>({x:f.x,y:f.y,cols:f.cols,rows:f.rows})),sp,d,color,slot:idx++});
+    const sp=Math.max(3,+F.dotSpacing||8), d=dotD(sp);
+    const free=freeRects(rect.x+pad,rect.y+pad,W,H,sp,nb?items.concat([{kind:'box',x:nb.x-nb.w,y:nb.y,w:nb.w,h:nb.h}]):items,met);
+    if(free.length) items.push({kind:'dots',rects:free.map(f=>({x:f.x,y:f.y,cols:f.cols,rows:f.rows})),sp,d,sq:F.dotShape==='square',color,slot:idx++});
   }
   fillCache.set(key,items); if(fillCache.size>4000) fillCache.clear();
   return items;
@@ -345,6 +425,7 @@ function freeRects(x0,y0,W,H,sp,items,met){
     if(it.kind==='text'){const w=Math.max(...it.lines.map(l=>l.length))*met.cw;bx0=(it.align==='r'?it.x-w:it.x)-m;bx1=(it.align==='r'?it.x:it.x+w)+m;by0=it.y-m;by1=it.y+it.lines.length*met.lh+m;}
     else if(it.kind==='ring'){bx0=it.cx-it.r-m;bx1=it.cx+it.r+m;by0=it.cy-it.r-m;by1=it.cy+it.r+m;}
     else if(it.kind==='logo'){bx0=it.x-m;bx1=it.x+AVAX_LOGO.w*it.s+m;by0=it.y-m;by1=it.y+AVAX_LOGO.h*it.s+m;}
+    else if(it.kind==='box'||it.kind==='icon'){bx0=it.x-m;bx1=it.x+it.w+m;by0=it.y-m;by1=it.y+it.h+m;}
     else return;
     for(let r=0;r<rows;r++){const y=y0+r*sp; if(y<by0||y>by1) continue;
       for(let c=0;c<cols;c++){const x=x0+c*sp; if(x>=bx0&&x<=bx1) used[r*cols+c]=1;}}
@@ -376,8 +457,9 @@ function gapItems(G,list){
     if(!free) continue;
     for(let x=c;x<c+wc;x++)for(let y=r;y<r+hc;y++) occ.add(x+','+y);
     const q=cellRect(G,c,r,wc,hc), pad=Math.max(8,G.s*.1), color=Gp.color||D.block.color;
+    if(m==='icons'){const isz=Math.min(Math.max(8,+F.iconSize||28),q.h-pad*2),on=ICON_KEYS.filter(k=>!F.iconSet||F.iconSet[k]!==false);if(on.length){out.push({kind:'icon',name:pickR(rnd,on),x:q.x+pad,y:q.y+pad,w:isz,h:isz,s:isz,color,col:c,slot:0});k++;}continue;}
     if(m==='logo'){const isz=Math.min(Math.max(8,+F.iconSize||28),q.h-pad*2);out.push({kind:'logo',x:q.x+pad,y:q.y+pad,s:isz/AVAX_LOGO.h,color,col:c,slot:0});k++;continue;}
-    if(m==='dots'){const sp=Math.max(3,+F.dotSpacing||8);out.push({kind:'dots',rects:[{x:q.x+pad*.5,y:q.y+pad*.5,cols:Math.max(1,Math.floor((q.w-pad)/sp)+1),rows:Math.max(1,Math.floor((q.h-pad)/sp)+1)}],sp,d:Math.max(1,sp*.28),color,col:c,slot:0});k++;continue;}
+    if(m==='dots'){const sp=Math.max(3,+F.dotSpacing||8);out.push({kind:'dots',rects:[{x:q.x+pad*.5,y:q.y+pad*.5,cols:Math.max(1,Math.floor((q.w-pad)/sp)+1),rows:Math.max(1,Math.floor((q.h-pad)/sp)+1)}],sp,d:dotD(sp),sq:D.fill.dotShape==='square',color,col:c,slot:0});k++;continue;}
     const its=buildModule(m==='hashes'?'hashes':m,{x:q.x+pad,y:q.y+pad,w:q.w-2*pad,h:q.h-2*pad,ax:'l',ay:'t'},rnd,met,color);
     its.forEach(it=>{it.col=c;it.slot=0;out.push(it);}); k++;
   }
@@ -390,9 +472,13 @@ function scrambleLine(s,k){const r=rng(k*7919+s.length);return s.replace(/[0-9A-
 function fillTiming(it,fullLen,fps){
   const A=D.fill.anim, typed=it.kind==='text'&&A.inMode==='type'&&(it.type||A.typeAll);
   const on=typed?fullLen/Math.max(1,+A.cps||40):A.inMode==='fade'?Math.max(1,+A.inDur||8)/fps:0;
-  const off=A.outMode==='stay'?Infinity:on+Math.max(0,+A.hold||0)/fps;
-  const outLen=A.outMode==='cut'?0:Math.max(1,+A.outDur||10)/fps;
-  return {typed,on,off,outLen};
+  let mode=A.outMode, off=mode==='stay'?Infinity:on+Math.max(0,+A.hold||0)/fps;
+  let outLen=mode==='cut'?0:Math.max(1,+A.outDur||10)/fps;
+  if(it.tEnd!=null&&isFinite(it.tEnd)){   // its block leaves at tEnd: the content is gone by then
+    if(mode==='stay'){mode='fade';outLen=Math.max(1,+A.outDur||10)/fps;}
+    off=Math.min(off,Math.max(0,(it.tEnd-it.t0)/fps-outLen));
+  }
+  return {typed,on,off,outLen,mode};
 }
 /* text + opacity at frame tf (same maths as the AE expressions) — null = not visible */
 function fillTextAt(it,tf,fps){
@@ -407,9 +493,9 @@ function fillTextAt(it,tf,fps){
   if(T.typed){const n=Math.floor(el*(+A.cps||40)+1e-6);if(n<s.length)s=s.slice(0,n);}
   else if(A.inMode==='fade') a=Math.min(1,el/Math.max(1e-3,T.on));
   if(el>=T.off){
-    if(A.outMode==='cut') return null;
+    if(T.mode==='cut') return null;
     const u=(el-T.off)/T.outLen; if(u>=1) return null;
-    if(A.outMode==='typeoff') s=s.slice(0,Math.floor(s.length*(1-u)+1e-6));
+    if(T.mode==='typeoff') s=s.slice(0,Math.floor(s.length*(1-u)+1e-6));
     else a*=1-u;
   }
   return {s,a};
@@ -418,7 +504,7 @@ function fillTextAt(it,tf,fps){
 function fillShapeAlpha(it,tf,fps){
   const A=D.fill.anim, el=(tf-it.t0)/fps; if(el<0) return 0;
   const T=fillTiming(it,0,fps); let a=A.inMode==='fade'?Math.min(1,el/Math.max(1e-3,T.on)):1;
-  if(el>=T.off){if(A.outMode==='cut')return 0;const u=(el-T.off)/T.outLen;if(u>=1)return 0;a*=1-u;}
+  if(el>=T.off){if(T.mode==='cut')return 0;const u=(el-T.off)/T.outLen;if(u>=1)return 0;a*=1-u;}
   return a;
 }
 /* AE Source Text expression (ES3-safe; works in both expression engines) */
@@ -435,15 +521,15 @@ function fillExpr(it,fps){
   if(it.ell&&A.ellipsis) e+='var gbD=Math.floor(gbE*4)%4;for(var gbK=0;gbK<gbD;gbK++)gbL[gbL.length-1]+=".";\n';
   e+='gbO=gbL.join("\\r");\n';
   if(T.typed) e+='var gbN=Math.floor(gbE*'+(+A.cps||40)+'+0.000001);if(gbN<gbO.length)gbO=gbO.substr(0,gbN);\n';
-  if(A.outMode==='cut'&&isFinite(T.off)) e+='if(gbE>='+r3(T.off)+')gbO="";\n';
-  if(A.outMode==='typeoff'&&isFinite(T.off)) e+='if(gbE>='+r3(T.off)+'){var gbW=Math.max(0,1-(gbE-'+r3(T.off)+')/'+r3(T.outLen)+');gbO=gbO.substr(0,Math.floor(gbO.length*gbW+0.000001));}\n';
+  if(T.mode==='cut'&&isFinite(T.off)) e+='if(gbE>='+r3(T.off)+')gbO="";\n';
+  if(T.mode==='typeoff'&&isFinite(T.off)) e+='if(gbE>='+r3(T.off)+'){var gbW=Math.max(0,1-(gbE-'+r3(T.off)+')/'+r3(T.outLen)+');gbO=gbO.substr(0,Math.floor(gbO.length*gbW+0.000001));}\n';
   e+='}\ngbO;';
   return e;
 }
 /* AE Opacity expression for fades in / out (text and shapes); null if not needed */
 function fillOpacityExpr(it,fps,isText){
   const A=D.fill.anim, T=fillTiming(it,isText?it.lines.join('\r').length:0,fps), t0=r3(it.t0/fps);
-  const fadeIn=A.inMode==='fade', fadeOut=isFinite(T.off)&&(A.outMode==='fade'||(!isText&&A.outMode==='typeoff')), cutOut=!isText&&isFinite(T.off)&&A.outMode==='cut';
+  const fadeIn=A.inMode==='fade', fadeOut=isFinite(T.off)&&(T.mode==='fade'||(!isText&&T.mode==='typeoff')), cutOut=!isText&&isFinite(T.off)&&T.mode==='cut';
   if(!fadeIn&&!fadeOut&&!cutOut) return null;
   let e='var gbE=time-'+t0+';var gbA=gbE<0?0:1;\n';
   if(fadeIn) e+='if(gbE>=0)gbA=Math.min(1,gbE/'+r3(Math.max(1e-3,T.on))+');\n';
@@ -538,6 +624,24 @@ function normBlock(b){
   return n;
 }
 const bname=b=>b.name||('Block '+String(b.order).padStart(2,'0'));
+/* ---- block numbers (top-right corner) ---- */
+const numOn=b=>!!(D.num&&!b.echo&&(b.num===true||(b.num!==false&&D.num.on)));
+function numStr(n){
+  const N=D.num||{}, v=Math.max(0,Math.round((+N.start||1)-1+n)), p=k=>String(v).padStart(k,'0');
+  switch(N.fmt){case '1':return String(v);case '001':return p(3);case '#01':return '#'+p(2);case 'BLK 001':return 'BLK '+p(3);case 'height':return '#'+v.toLocaleString('en-US');default:return p(2);}
+}
+/* where the number sits: right-aligned at the block's top-right, inside the content padding */
+function numLayout(rect,str){
+  const N=D.num, size=Math.max(4,+N.size||12), pad=Math.max(8,Math.min(28,Math.min(rect.w,rect.h)*.08)), cw=size*(fillMetrics().cw/Math.max(1,fillMetrics().size));
+  return {x:rect.x+rect.w-pad,y:rect.y+pad,size,w:str.length*cw,h:size*1.15,pad};
+}
+/* number for each block: its place in the reveal sequence (animated) or in the layout order (static) */
+function blockNumbers(G){
+  const m={};
+  if(D.anim.mode!=='static'){const P=plan(G);let n=0;P.seq.forEach(b=>{if(!b.echo)m[b.id]=++n;});(P.statics||[]).forEach(b=>{if(m[b.id]==null)m[b.id]=++n;});}
+  else{let n=0;ordered(G).forEach(b=>{m[b.id]=++n;});}
+  return m;
+}
 function hash(n,seed){let x=(n*2654435761+seed*97531)>>>0;x^=x>>>15;x=Math.imul(x,2246822519)>>>0;x^=x>>>13;return x;}
 function sortedForOrder(list){
   const a=list.slice(), o=D.anim.order;
@@ -1058,7 +1162,11 @@ function computePlan(G){
   // camera modes: the camera trails the newest block by `lagSteps` steps and then eases to rest over `settle` frames,
   // so the reveals are spaced to leave exactly that much room before the scene ends
   let step, lagSteps=0, settleF=0, finalF=0;
-  if(camOn){
+  // camera release: follow for the first relAt% of the scene, then coast to a stop while the blocks keep building past
+  const relOn=camOn&&A.relOn&&(cm==='follow'||cm==='stop')&&!(A.extendOn&&A.ending==='spot')&&clamp(+A.relAt||85,5,100)<100;
+  P.relT=relOn?Math.round(startF+L*clamp(+A.relAt||85,5,100)/100):null;
+  if(relOn){ step=Math.max(.25,(L-tr0)/Math.max(1,used-1)); }
+  else if(camOn){
     let maxGap=1, prevG=0; for(let g=1;g<used;g++){const a=tg[g-1],b=tg[g];if(Math.abs(a[0]-b[0])>1e-6||Math.abs(a[1]-b[1])>1e-6){maxGap=Math.max(maxGap,g-prevG);prevG=g;}}
     lagSteps=Math.max(lag,maxGap);
     const tau=cm==='follow'?Math.max(0,+A.motionBlurF):0;
@@ -1161,6 +1269,15 @@ function computePlan(G){
         if(t>t0s){const u=clamp((t-t0s)/sS,0,1), w=u*u*u*(u*(u*6-15)+10); x+= (finalO[0]-x)*w; y+=(finalO[1]-y)*w;}  // smootherstep: zero speed at the end
         xs[i]=x; ys[i]=y;
       }
+      if(relOn&&P.relT>a&&P.relT<b){
+        // keep the velocity it has at the release point, then let it bleed away smoothly (no jolt) over relSlow frames
+        const i0=P.relT-a, S=Math.max(2,Math.round(+A.relSlow||36));
+        const vx=xs[i0]-xs[i0-1], vy=ys[i0]-ys[i0-1], x0=xs[i0], y0=ys[i0];
+        for(let i=i0+1;i<N;i++){
+          const u=Math.min(1,(i-i0)/S), f=S*(u-u*u*u+u*u*u*u/2);   // ∫(1-3u²+2u³): speed eases from v0 to 0
+          xs[i]=x0+vx*f; ys[i]=y0+vy*f;
+        }
+      }
       if(cm==='follow'){
         // sampled every frame; only near-straight runs are merged (≤0.02px error) so the motion stays exact in AE
         const pts=[]; for(let i=0;i<N;i++) pts.push([a+i,[xs[i],ys[i]]]);
@@ -1196,8 +1313,9 @@ function computePlan(G){
       const xl=G.W*(1-band), xr=G.W*band, yt=G.H*(1-bandY), yb=G.H*bandY;
       const scrAt=(t,px,py)=>{const off=ev(P.cam,t,[0,0]),s=ev(P.zs,t,100)/100,pn=ev(P.pan,t,[0,0]);return [G.W/2+s*(px+off[0]-G.W/2)+pn[0],G.H/2+s*(py+off[1]-G.H/2)+pn[1]];};
       const tMax=Math.min(endF-1,Math.floor(W(L-Math.max(1,tr0))));   // a delayed reveal still finishes by the scene end
-      let prev=-1e9;
+      let prev=-1e9; const T0=P.T.slice();
       seq.forEach((b,i)=>{
+        if(P.relT!=null&&P.T[i]>=P.relT){ const gap=i>0?Math.max(0,T0[i]-T0[i-1]):0; P.T[i]=Math.min(tMax,Math.max(P.T[i],prev+gap)); prev=P.T[i]; return; }   // after the release: keep the schedule's rhythm
         const r=cellRect(G,b.c,b.r,b.w,b.h), px=r.x+r.w/2, py=r.y+r.h/2;
         let t=Math.max(P.T[i], A.revealOrder!==false?prev:-1e9), hit=false;
         // first frame its centre is inside the zone (or crosses it between frames); if it never gets there,
@@ -1248,9 +1366,36 @@ function computePlan(G){
       else if(A.appear==='wipe') K.top=done>0?[[0,0,'h'],[done,100,'h']]:[];
     }
     ['op','sc','rs','rp','top'].forEach(k=>{K[k]=clip0(K[k]); if(K[k].length===1&&!(tR>0)) K[k]=[];});
-    P.tracks[b.id]=K;
+    P.tracks[b.id]=K; P.done=P.done||[]; P.done[i]=done;
     lastT=Math.max(lastT,done);
   });
+  // exits (un-reveal): appended after the reveal, in real frames
+  P.exitT=exitTimes(P,G,seq,P.done||[]);
+  if(P.exitT){
+    seq.forEach((b,i)=>{const tE=P.exitT[i]; if(tE==null) return; const K=P.tracks[b.id], r=cellRect(G,b.c,b.r,b.w,b.h);
+      const fin=exitKeys(K,tE,r,D.exit,stop,st,!!b.text); lastT=Math.max(lastT,fin); });
+  }
+  // block numbers: visible with the block; with a wipe they wait until the wipe has reached the corner
+  seq.forEach((b,i)=>{
+    const K=P.tracks[b.id]; if(!K) return; const done=(P.done||[])[i]||P.T[i], tE=P.exitT?P.exitT[i]:null, X=D.exit;
+    let nk=[];
+    if(A.appear==='wipe') nk=done>0?[[Math.min(0,done-1),0,'h'],[done,100,'h']]:[];
+    else if(A.appear==='cut') nk=K.op.filter(k=>k[2]==='h'&&(tE==null||k[0]<tE)).map(k=>k.slice());
+    else if(A.appear==='fade') nk=K.op.filter(k=>tE==null||k[0]<tE).map(k=>k.slice());
+    if(tE!=null){
+      if(X.style==='fade'&&!stop){const XC=(X.curve||[0.5,0,0.75,0]).map(Number);nk.push([tE,100,'e',XC],[tE+Math.max(1,+X.len||8),0,'e',XC]);}
+      else if(X.style==='wipe'&&X.dir!=='back') nk.push([tE+Math.max(1,+X.len||8)-1,0,'h']);
+      else { if(!nk.length) nk.push([Math.min(0,tE-1),100,'h']); nk.push([tE,0,'h']); }
+    }
+    K.num=clip0(nk); if(K.num.length===1&&!(P.T[i]>0)&&tE==null) K.num=[];
+  });
+  P.lab=labPlan(P,G,seq,stop,st);
+  // every track: time-sorted, one key per frame (a later key at the same frame wins)
+  const tidy=tr=>{if(!tr||tr.length<2)return tr;const s=tr.map((k,i)=>[k,i]).sort((x,y)=>x[0][0]-y[0][0]||x[1]-y[1]).map(x=>x[0]);const o=[];s.forEach(k=>{if(o.length&&Math.abs(o[o.length-1][0]-k[0])<1e-6)o[o.length-1]=k;else o.push(k);});return o;};
+  Object.values(P.tracks).forEach(K=>Object.keys(K).forEach(k=>{K[k]=tidy(K[k]);}));
+  P.echo.forEach(e=>Object.keys(e.K).forEach(k=>{e.K[k]=tidy(e.K[k]);}));
+  P.lab.pulses.concat(P.lab.trails,P.lab.bars).forEach(x=>Object.keys(x.K).forEach(k=>{x.K[k]=tidy(x.K[k]);}));
+  if(P.lab.end) lastT=Math.max(lastT,P.lab.end);
   // echoes: a styled copy behind each block, appearing with, before (lead) or after (trail) it
   if(D.echo.on){
     const E=D.echo, op=clamp(+E.opacity||0,0,100)/100;
@@ -1268,19 +1413,21 @@ function computePlan(G){
         lastT=Math.max(lastT,tOut+Math.max(1,Math.round(+E.outF||1)));
       }
       ['op','sc','rs','rp'].forEach(k=>{K[k]=clip0(K[k]); if(K[k].length===1&&!(te>0)&&!(k==='op'&&E.out!=='stay')) K[k]=[];});
+      if(P.exitT&&D.exit.echo!==false&&E.out==='stay'){const tE=P.exitT[i]; if(tE!=null){exitKeys(K,tE,r,D.exit,stop,st,false); lastT=Math.max(lastT,tE+(+D.exit.len||8));}}
       P.echo.push({id:'e'+b.id,src:b,rect:r,K});
       lastT=Math.max(lastT,te+tr0);
     });
   }
   // content (auto-fill) starts once each block has finished appearing
-  P.fillBase={};
+  P.fillBase={}; P.fillEnd={};
   if(D.fill.on){
     const dl=Math.max(0,Math.round(+D.fill.anim.delay||0));
     seq.forEach((b,i)=>{P.fillBase[b.id]=P.T[i]+tr0+dl;});
+    if(P.exitT&&D.exit.content!==false){seq.forEach((b,i)=>{if(P.exitT[i]!=null){P.fillEnd[b.id]=P.exitT[i];P.fillEnd['e'+b.id]=P.exitT[i];}});}
     P.echo.forEach(e=>{const i=seq.indexOf(e.src);P.fillBase[e.id]=(e.K.op.length?e.K.op[0][0]:P.T[i])+tr0+dl;});
     if(D.fill.gap.on){
       const gl=gapItems(G,seq).map(it=>Object.assign({},it));
-      gl.forEach(it=>{let best=null;seq.forEach((b,i)=>{const d=Math.abs(b.c-it.col);if(!best||d<best.d)best={d,t:P.T[i]};});it.t0=(best?best.t:0)+tr0+dl;});
+      gl.forEach(it=>{let best=null;seq.forEach((b,i)=>{const d=Math.abs(b.c-it.col);if(!best||d<best.d)best={d,t:P.T[i],e:P.exitT&&D.exit.content!==false?P.exitT[i]:null};});it.t0=(best?best.t:0)+tr0+dl;if(best&&best.e!=null)it.tEnd=best.e;});
       P.gaps=gl;
     }
   }
@@ -1366,11 +1513,113 @@ function revealKeys(appear,t0,tr,r,cellsW,G,stop,st,RC){
   }
   return K;
 }
-function animActive(){const sid=STEPS[U.step].id;return (sid==='animate'&&D.anim.mode!=='static'||sid==='transitions')&&U.t!==null;}
+/* exit (un-reveal): append keys that take a fully shown block away at tE. r = rect of the block. */
+function exitKeys(K,tE,r,X,stop,st,hasText){
+  const len=Math.max(1,Math.round(+X.len||8)), XC=(X.curve||[0.5,0,0.75,0]).map(Number), sty=X.style||'fade';
+  const after=(tr)=>!tr.length||tr[tr.length-1][0]<tE;
+  const steps=m=>{const o=[];for(let j=1;j<=m;j++)o.push(j/m);return o;};
+  if(sty==='cut'){ if(after(K.op)){ if(!K.op.length) K.op.push([Math.min(tE-1,0),100,'h']); K.op.push([tE,0,'h']); } }
+  else if(sty==='fade'){
+    if(after(K.op)){ if(stop){const m=Math.max(1,Math.round(len/st));K.op.push([tE,100,'h']);steps(m).forEach((u,j)=>K.op.push([tE+(j+1)*st,r3(100*(1-u)),'h']));}
+      else K.op.push([tE,100,'e',XC],[tE+len,0,'e',XC]); }
+  } else if(sty==='scale'){
+    if(after(K.sc)){ if(stop){const m=Math.max(1,Math.round(len/st));K.sc.push([tE,[100,100],'h']);steps(m).forEach((u,j)=>K.sc.push([tE+(j+1)*st,[r3(100*(1-u)),r3(100*(1-u))],'h']));}
+      else K.sc.push([tE,[100,100],'e',XC],[tE+len,[0,0],'e',XC]); }
+  } else { // wipe: the block collapses toward the travel direction ('same') or back where it came from
+    const sgn=X.dir==='back'?-1:1;
+    if(after(K.rs)&&after(K.rp)){
+      if(stop){const m=Math.max(1,Math.round(len/st));K.rs.push([tE,[r3(r.w),r3(r.h)],'h']);K.rp.push([tE,[0,0],'h']);
+        steps(m).forEach((u,j)=>{K.rs.push([tE+(j+1)*st,[r3(r.w*(1-u)),r3(r.h)],'h']);K.rp.push([tE+(j+1)*st,[r3(sgn*r.w*u/2),0],'h']);});}
+      else { K.rs.push([tE,[r3(r.w),r3(r.h)],'e',XC],[tE+len,[0,r3(r.h)],'e',XC]); K.rp.push([tE,[0,0],'e',XC],[tE+len,[r3(sgn*r.w/2),0],'e',XC]); }
+    }
+  }
+  if(hasText){ // the block's own text goes when the exit starts (or fades with it)
+    if(sty==='fade'&&!stop) K.top.push([tE,100,'e',XC],[tE+len,0,'e',XC]);
+    else { if(!K.top.length) K.top.push([Math.min(tE-1,0),100,'h']); K.top.push([tE,0,'h']); }
+  }
+  return tE+(sty==='cut'?0:len);
+}
+/* ---- LAB: experimental momentum effects. Everything is keyed in real frames, same keys drive preview + AE ---- */
+const EO=[0.16,0.84,0.3,1];   // fast attack, soft settle
+function labPlan(P,G,seq,stop,st){
+  const LB=D.lab||{}, out={pulses:[],trails:[],bars:[],end:0}; if(D.anim.mode==='static') return out;
+  const hid=t=>Math.min(0,t-1);
+  seq.forEach((b,i)=>{
+    if(b.echo) return;
+    const K=P.tracks[b.id], r=cellRect(G,b.c,b.r,b.w,b.h), tR=P.T[i], done=(P.done||[])[i]||tR, tE=P.exitT?P.exitT[i]:null;
+    // flicker: the block stutters on like a bad signal before it holds
+    if(LB.flicker&&LB.flicker.on&&K){
+      const F=Math.max(2,Math.round(+LB.flicker.frames||8)), rnd=rng(fillHash(b.id,(+LB.flicker.seed||3)*977)), keep=K.op.filter(k=>k[0]>done+F);
+      const fk=[[hid(tR),0,'h']]; let v=1; for(let f=0;f<F;f++){fk.push([tR+f,v?100:Math.round(rnd()*25),'h']); v=rnd()<(f<F/2?.55:.75)?1:0;} fk.push([tR+F,100,'h']);
+      K.op=clip0(fk.concat(keep)); if(D.anim.appear==='fade') K.top=K.op.slice();
+    }
+    if(LB.pulse&&LB.pulse.on){ const L=Math.max(2,Math.round(+LB.pulse.len||18)), t0=Math.round(done), S=Math.max(1,+LB.pulse.scale||1.35)*100;
+      out.pulses.push({id:b.id,r,t0,len:L,K:{op:clip0([[hid(t0),0,'h'],[t0,100,'e',EO],[t0+L,0,'e',EO]]),sc:clip0([[t0,[100,100],'e',EO],[t0+L,[r3(S),r3(S*(1+(S/100-1)*r.w/Math.max(1,r.h)*.0))],'e',EO]])}}); out.end=Math.max(out.end,t0+L); }
+    if(LB.trail&&LB.trail.on){ const L=Math.max(2,Math.round(+LB.trail.len||12)), t0=Math.round(tR), n=Math.max(1,Math.round(+LB.trail.count||3)), len=r.w*Math.max(.1,+LB.trail.length||1.2), gap=Math.max(2,G.gut*2), lw=Math.max(1,+LB.trail.width||2);
+      const lines=[]; for(let k=0;k<n;k++){const y=r.y+r.h*(k+1)/(n+1), f=1-.25*((k*7+b.id)%3); lines.push([r3(r.x-gap-len*f),r3(y-lw/2),r3(len*f),lw]);}
+      out.trails.push({id:b.id,r,t0,len:L,anchor:[r3(r.x-gap),r3(r.y+r.h/2)],lines,K:{op:clip0([[hid(t0),0,'h'],[t0,100,'e',EO],[t0+L,0,'e',EO]]),sc:clip0([[t0,[100,100],'e',EO],[t0+L,[0,100],'e',EO]])}}); out.end=Math.max(out.end,t0+L); }
+    if(LB.bar&&LB.bar.on){ const L=Math.max(2,Math.round(+LB.bar.len||24)), t0=Math.round(done), h=Math.max(1,+LB.bar.height||3), pad=Math.max(8,Math.min(28,Math.min(r.w,r.h)*.08));
+      const opk=[[hid(t0),0,'h'],[t0,100,'h']]; if(tE!=null) opk.push([tE,0,'h']);
+      out.bars.push({id:b.id,r,t0,len:L,x:r3(r.x+pad),y:r3(r.y+r.h-pad-h),w:r3(r.w-2*pad),h,K:{op:clip0(opk),sc:clip0([[t0,[0,100],'e',[0.65,0,0.35,1]],[t0+L,[100,100],'e',[0.65,0,0.35,1]]])}}); out.end=Math.max(out.end,t0+L); }
+  });
+  return out;
+}
+/* screen-space lab layers (ticker + snow) at frame t */
+function tickerText(){const s=[];const r=rng(4242);for(let i=0;i<14;i++){s.push(pickR(r,BITS.shortTx)+'  '+pickR(r,BITS.status));s.push(pickR(r,BITS.blocks.filter(x=>/^BLOCK/.test(x))).replace(/\s+/g,' '));}return fillCase(s.join('   ///   '));}
+function snowParts(G){const S=D.lab.snow, r=rng(fillHash(77,(+S.seed||9))), n=Math.max(1,Math.min(400,Math.round(+S.count||90))), o=[];
+  for(let i=0;i<n;i++) o.push({x0:r()*G.W,y0:r()*G.H,v:(+S.speed||240)*(.45+r()*.9),s:Math.max(.5,(+S.size||2)*(.5+r())),ph:r()*6.28,amp:4+r()*10});
+  return o;}
+function drawLabWorld(g,L,t,dx,dy,alpha){
+  if(!L) return; const LB=D.lab;
+  g.save();
+  L.trails.forEach(T=>{const op=ev(T.K.op,t,0)/100, sx=ev(T.K.sc,t,[100,100])[0]/100; if(op<=0.002||sx<=0.002) return;
+    g.globalAlpha=alpha*op; g.fillStyle=LB.trail.color; const ax=T.anchor[0]+dx;
+    T.lines.forEach(l=>{const w=l[2]*sx; g.fillRect(ax-w,l[1]+dy,w,l[3]);});});
+  L.pulses.forEach(Pp=>{const op=ev(Pp.K.op,t,0)/100, s=ev(Pp.K.sc,t,[100,100])[0]/100; if(op<=0.002) return;
+    const r=Pp.r, cx=r.x+r.w/2+dx, cy=r.y+r.h/2+dy, lw=Math.max(.5,+LB.pulse.width||2);
+    g.globalAlpha=alpha*op; g.strokeStyle=LB.pulse.color; g.lineWidth=lw; g.strokeRect(cx-r.w*s/2,cy-r.h*s/2,r.w*s,r.h*s);});
+  L.bars.forEach(B=>{const op=ev(B.K.op,t,0)/100, sx=ev(B.K.sc,t,[0,100])[0]/100; if(op<=0.002||sx<=0.002) return;
+    g.globalAlpha=alpha*op; g.fillStyle=LB.bar.color; g.fillRect(B.x+dx,B.y+dy,B.w*sx,B.h);});
+  g.restore();
+}
+const labScreenOn=()=>!!(D.lab&&((D.lab.ticker&&D.lab.ticker.on)||(D.lab.snow&&D.lab.snow.on)));
+function drawLabScreen(g,G,t){
+  const LB=D.lab||{}, fps=D.comp.fps||30, sec=(t||0)/fps;
+  if(LB.snow&&LB.snow.on){const S=LB.snow, Wd=G.W+40, dir=S.dir==='right'?1:-1, k=Math.max(1,+S.stretch||1);
+    g.save(); g.globalAlpha=clamp(+S.opacity||55,0,100)/100; g.fillStyle=S.color;
+    snowParts(G).forEach(p=>{let x=p.x0+dir*p.v*sec; x=((x%Wd)+Wd)%Wd-20; const y=p.y0+Math.sin(sec*.9+p.ph)*p.amp; g.fillRect(x-p.s*k/2,y-p.s/2,p.s*k,p.s);});
+    g.restore();}
+  if(LB.ticker&&LB.ticker.on){const T=LB.ticker, sz=Math.max(6,+T.size||14), y=G.H*clamp(+T.y||94,0,100)/100, txt=tickerText();
+    g.save(); g.font=cssFont(D.fill.family,D.fill.style,sz); const w=g.measureText(txt).width;
+    if(T.band){g.fillStyle=T.bandColor;g.fillRect(0,y-sz*.9,G.W,sz*1.8);}
+    const x=G.W-((sec*(+T.speed||160))%(w+G.W)); g.fillStyle=T.color; g.textBaseline='middle'; g.fillText(txt,x,y); g.restore();}
+}
+/* when each block leaves (real frames), or null */
+function exitTimes(P,G,seq,done){
+  const X=D.exit; if(!X||!X.on||!seq.length) return null;
+  const out=new Array(seq.length).fill(null), fps=D.comp.fps||30;
+  if(X.mode==='hold'){ seq.forEach((b,i)=>{out[i]=Math.round(done[i]+Math.max(1,+X.hold||0));}); }
+  else if(X.mode==='end'){
+    const t0=Math.round(P.startF+P.L+(+X.at||0)), stg=Math.max(0,+X.stagger||0);
+    const order=seq.map((b,i)=>i); if(X.order==='reverse') order.reverse();
+    order.forEach((i,k)=>{out[i]=Math.max(done[i]+1,Math.round(t0+k*stg));});
+  } else if(X.mode==='behind'){
+    // leaves when its right edge passes the exit line (X% of the frame from the left) — blocks trail away behind the camera
+    const line=G.W*clamp(+X.line||10,-50,100)/100, maxT=Math.round(P.startF+P.L+600);
+    seq.forEach((b,i)=>{
+      const r=cellRect(G,b.c,b.r,b.w,b.h); let t=Math.ceil(done[i]), hit=null;
+      for(;t<=maxT;t++){const off=ev(P.cam,t,[0,0]),s=ev(P.zs,t,100)/100,pn=ev(P.pan,t,[0,0]);const xr=G.W/2+s*(r.x+r.w+off[0]-G.W/2)+pn[0];if(xr<line){hit=t;break;}
+        if(P.cam.length&&t>P.cam[P.cam.length-1][0]+1&&t>(P.zs.length?P.zs[P.zs.length-1][0]:0)) break;}
+      out[i]=hit;
+    });
+  }
+  return out;
+}
+function animActive(){const sid=STEPS[U.step].id;return ((sid==='animate'||sid==='lab')&&D.anim.mode!=='static'||sid==='transitions')&&U.t!==null;}
 /* current preview state: null (editing), ghost (animate step, layout view), or live (scrubbing/playing) */
 function animState(G){
   const sid=STEPS[U.step].id;
-  if(!((sid==='animate'&&D.anim.mode!=='static')||(sid==='transitions'&&(D.anim.mode!=='static'||transOn())))) return null;
+  if(!(((sid==='animate'||sid==='lab')&&D.anim.mode!=='static')||(sid==='transitions'&&(D.anim.mode!=='static'||transOn())))) return null;
   const P=plan(G);
   if(U.t===null) return {P,live:false,t:0,off:[0,0],s:1,pan:[0,0]};
   return {P,live:true,t:U.t,off:ev(P.cam,U.t,[0,0]),s:ev(P.zs,U.t,100)/100,pan:ev(P.pan,U.t,[0,0])};
@@ -1447,6 +1696,8 @@ function renderFrame(target,overlays){
   drawWorld(ctx,G,{alpha:1,sc,A,inside:true});
   ctx.restore();
   ctx.globalAlpha=1;
+  // lab: ticker + momentum particles, in screen space
+  if(A&&A.live&&labScreenOn()){ctx.save();ctx.beginPath();ctx.rect(0,0,G.W,G.H);ctx.clip();drawLabScreen(ctx,G,A.t);ctx.restore();}
   // transitions sit on top, in screen space (not affected by the camera)
   if(transOn()&&(A&&A.live||STEPS[U.step].id==='transitions')){
     const TP=transP(G); ctx.save(); ctx.beginPath(); ctx.rect(0,0,G.W,G.H); ctx.clip();
@@ -1485,7 +1736,17 @@ function drawBlock(g,G,b,o,dx,dy,st,ghost){
   else {g.fillStyle=b.color; g.fillRect(x,y,w,h);}
   if(o.inside&&!ghost&&D.fill.on){
     const items=fillItems(G,b,q,false);
-    if(items.length){g.save();g.beginPath();g.rect(x,y,w,h);g.clip();drawFillItems(g,items,dx,dy,o.fillT!=null&&o.fillBase?o.fillBase[b.id]:null,o.fillT,o.alpha*st.op);g.restore();}
+    if(items.length){g.save();g.beginPath();g.rect(x,y,w,h);g.clip();drawFillItems(g,items,dx,dy,o.fillT!=null&&o.fillBase?o.fillBase[b.id]:null,o.fillT,o.alpha*st.op,o.fillEnd?o.fillEnd[b.id]:undefined);g.restore();}
+  }
+  if(o.inside&&!ghost&&o.nums&&o.nums[b.id]!=null&&numOn(b)){
+    const K=o.tracks?o.tracks[b.id]:null, na=K&&K.num&&K.num.length?ev(K.num,o.fillT,100)/100:1;
+    if(na>0){
+      const str=numStr(o.nums[b.id]), L=numLayout({x:q.x+dx,y:q.y+dy,w:q.w,h:q.h},str);
+      g.save(); g.beginPath(); g.rect(x,y,w,h); g.clip();
+      g.globalAlpha=o.alpha*st.op*na*clamp(+D.num.opacity||100,0,100)/100; g.fillStyle=D.num.color;
+      g.font=cssFont(D.fill.family,D.fill.style,L.size); g.textBaseline='top'; g.textAlign='right'; g.fillText(str,L.x,L.y);
+      g.restore();
+    }
   }
   if(ghost){g.globalAlpha=o.alpha*.8;g.setLineDash([5/o.sc,4/o.sc]);g.lineWidth=1.2/o.sc;g.strokeStyle='#fff';g.strokeRect(x,y,w,h);g.setLineDash([]);}
   if(b.text&&o.inside&&st.tp>0&&!ghost){
@@ -1495,14 +1756,14 @@ function drawBlock(g,G,b,o,dx,dy,st,ghost){
   }
   g.restore();
 }
-function drawFillItems(g,items,dx,dy,base,tf,alpha){
+function drawFillItems(g,items,dx,dy,base,tf,alpha,tEnd){
   const met=fillMetrics(), fps=D.comp.fps||30, F=D.fill;
   g.save(); g.globalAlpha=alpha;
   items.forEach(it=>{
     const t0=base!=null?base+(it.slot||0)*Math.max(0,+F.anim.stagger||0):null;
     if(t0!=null&&tf<t0) return;
     g.fillStyle=it.color; g.strokeStyle=it.color;
-    if(it.kind!=='text'&&t0!=null){const sa=fillShapeAlpha(Object.assign({},it,{t0}),tf,fps);if(sa<=0)return;g.globalAlpha=alpha*sa;} else g.globalAlpha=alpha;
+    if(it.kind!=='text'&&t0!=null){const sa=fillShapeAlpha(Object.assign({},it,{t0,tEnd}),tf,fps);if(sa<=0)return;g.globalAlpha=alpha*sa;} else g.globalAlpha=alpha;
     if(it.kind==='logo'){
       if(!avaxPath2D&&typeof Path2D!=='undefined') avaxPath2D=AVAX_LOGO.d.map(d=>new Path2D(d));
       if(avaxPath2D){g.save();g.translate(it.x+dx,it.y+dy);g.scale(it.s,it.s);avaxPath2D.forEach(p=>g.fill(p));g.restore();}
@@ -1510,9 +1771,11 @@ function drawFillItems(g,items,dx,dy,base,tf,alpha){
     }
     if(it.kind==='dots'){
       const d=it.d;
-      it.rects.forEach(f=>{for(let r=0;r<f.rows;r++)for(let c=0;c<f.cols;c++){g.beginPath();g.arc(f.x+dx+c*it.sp,f.y+dy+r*it.sp,d/2,0,7);g.fill();}});
+      if(it.sq) it.rects.forEach(f=>{for(let r=0;r<f.rows;r++)for(let c=0;c<f.cols;c++)g.fillRect(f.x+dx+c*it.sp-d/2,f.y+dy+r*it.sp-d/2,d,d);});
+      else it.rects.forEach(f=>{for(let r=0;r<f.rows;r++)for(let c=0;c<f.cols;c++){g.beginPath();g.arc(f.x+dx+c*it.sp,f.y+dy+r*it.sp,d/2,0,7);g.fill();}});
       return;
     }
+    if(it.kind==='icon'){drawIcon(g,it.name,it.x+dx,it.y+dy,it.s,it.color);return;}
     if(it.kind==='ring'){
       g.lineWidth=it.w; g.beginPath(); g.arc(it.cx+dx,it.cy+dy,it.r,0,7); g.stroke();
       g.beginPath(); g.arc(it.cx+dx,it.cy+dy,it.r*.32,0,7); g.stroke();
@@ -1520,7 +1783,7 @@ function drawFillItems(g,items,dx,dy,base,tf,alpha){
       g.beginPath(); g.arc(it.cx+dx,it.cy+dy,it.r,Math.PI,0); g.closePath(); g.globalAlpha=alpha*.9; g.fill(); g.globalAlpha=alpha;
       return;
     }
-    const res=t0!=null?fillTextAt(Object.assign({},it,{t0}),tf,fps):{s:it.lines.join('\n'),a:1};
+    const res=t0!=null?fillTextAt(Object.assign({},it,{t0,tEnd}),tf,fps):{s:it.lines.join('\n'),a:1};
     if(!res||!res.s||res.a<=0) return;
     g.globalAlpha=alpha*res.a; const txt=res.s;
     g.font=cssFont(F.family,F.style,met.size); g.textBaseline='top'; g.textAlign=it.align==='r'?'right':'left';
@@ -1537,7 +1800,7 @@ function drawEcho(g,r,st,o,dx,dy,ghost){
   g.save(); g.globalAlpha=o.alpha*st.op*(ghost?.4:1);
   g.translate(cx,cy); g.scale(st.sx,st.sy); g.translate(-cx,-cy);
   if(E.fill){g.fillStyle=E.color;g.fillRect(x,y,w,h);}
-  if(E.content&&D.fill.on&&!ghost&&o.inside&&st.src){const items=fillItems(geom(),st.src,r,true);if(items.length){g.save();g.beginPath();g.rect(x,y,w,h);g.clip();drawFillItems(g,items,dx,dy,o.fillT!=null&&o.fillBase?o.fillBase['e'+st.src.id]:null,o.fillT,o.alpha*st.op);g.restore();}}
+  if(E.content&&D.fill.on&&!ghost&&o.inside&&st.src){const items=fillItems(geom(),st.src,r,true);if(items.length){g.save();g.beginPath();g.rect(x,y,w,h);g.clip();drawFillItems(g,items,dx,dy,o.fillT!=null&&o.fillBase?o.fillBase['e'+st.src.id]:null,o.fillT,o.alpha*st.op,o.fillEnd?o.fillEnd['e'+st.src.id]:undefined);g.restore();}}
   if(E.stroke&&+E.sw>0){
     g.strokeStyle=E.scolor; g.lineWidth=+E.sw; g.setLineDash(E.dash?[Math.max(1,+E.dashL||1),Math.max(1,+E.dashG||1)]:[]);
     g.strokeRect(x,y,w,h); g.setLineDash([]);
@@ -1581,12 +1844,13 @@ function drawWorld(g,G,o){
   g.restore();
   if(D.look.ruleLayer!=='top') drawRules();
   // content timing for the preview
-  o.fillT=live?A.t:null; o.fillBase=A&&A.P?A.P.fillBase:null;
+  o.fillT=live?A.t:null; o.fillBase=A&&A.P?A.P.fillBase:null; o.fillEnd=live&&A.P?A.P.fillEnd:null; o.tracks=live&&A.P?A.P.tracks:null; o.nums=D.num&&(D.num.on||D.blocks.some(b=>b.num))?blockNumbers(G):null;
   // echoes (behind everything else), then blocks
   if(live){
     A.P.echo.forEach(e=>{const st=blockState(e.K,A.t,e.rect);st.src=e.src;drawEcho(g,e.rect,st,o,off[0],off[1]);});
     A.P.statics.forEach(b=>drawBlock(g,G,b,o,off[0],off[1],null,false));
     A.P.seq.forEach(b=>{const q=cellRect(G,b.c,b.r,b.w,b.h);drawBlock(g,G,b,o,off[0],off[1],blockState(A.P.tracks[b.id],A.t,q),false);});
+    drawLabWorld(g,A.P.lab,A.t,off[0],off[1],o.alpha);
   } else {
     const realB=D.blocks.filter(b=>valid(b,G));
     if(D.echo.on) echoTargets(A?A.P.seq:realB).forEach(b=>{const r=echoRect(G,b);drawEcho(g,r,null,o,0,0,b.virtual);});
@@ -1597,7 +1861,7 @@ function drawWorld(g,G,o){
   // text in the gaps between blocks
   if(D.fill.on&&D.fill.gap.on&&o.inside){
     const gl=A&&A.P&&A.P.gaps?A.P.gaps:gapItems(G,D.blocks.filter(b=>valid(b,G)));
-    gl.forEach(it=>drawFillItems(g,[it],live?off[0]:0,live?off[1]:0,live&&it.t0!=null?it.t0-(it.slot||0)*Math.max(0,+D.fill.anim.stagger||0):null,live?A.t:null,o.alpha));
+    gl.forEach(it=>drawFillItems(g,[it],live?off[0]:0,live?off[1]:0,live&&it.t0!=null?it.t0-(it.slot||0)*Math.max(0,+D.fill.anim.stagger||0):null,live?A.t:null,o.alpha,live?it.tEnd:undefined));
   }
   if(D.look.ruleLayer==='top') drawRules();
   g.restore();
@@ -1631,7 +1895,7 @@ function drawOverlays(G,A){
       ctx.lineWidth=1.5/sc; ctx.setLineDash(ok?[]:[5/sc,4/sc]); ctx.strokeStyle=ok?'rgba(255,255,255,.85)':'#ffb44d'; ctx.strokeRect(q.x,q.y,q.w,q.h); ctx.setLineDash([]);
       if(STEPS[U.step].id==='blocks') pill(`${b.w} × ${b.h}  ·  ${Math.round(q.w)} × ${Math.round(q.h)} px`,q.x+q.w/2,q.y-14/sc,sc,'rgba(0,0,0,.8)','#fff',true);
     } else if((tool==='select'||tool==='draw'||tool==='erase')&&!blockAt(h.c,h.r)){
-      const q=cellRect(G,h.c,h.r); ctx.fillStyle='rgba(232,65,66,.18)'; ctx.fillRect(q.x,q.y,q.w,q.h);
+      const q=cellRect(G,h.c,h.r); ctx.fillStyle='rgba(230,33,47,.18)'; ctx.fillRect(q.x,q.y,q.w,q.h);
     }
   }
   if(U.sel&&!live){
@@ -1886,6 +2150,24 @@ function swatchHTML(cur,key){
   return (D.palette||PALETTE).map(c=>`<button class="swatch${c.toLowerCase()===String(cur).toLowerCase()?' on':''}" style="background:${c}" data-sw="${key}" data-c="${c}" title="${c}"></button>`).join('')
    +`<label class="colorbtn swatch custom" title="Pick any colour" style="width:20px;height:20px"><input type="color" data-swc="${key}" value="${/^#[0-9a-f]{6}$/i.test(cur)?cur:'#ff0000'}"></label>`;
 }
+/* content module checkboxes + icon set, generated from the lists */
+function iconSVG(name){
+  const I=ICONS[name]; if(!I) return ''; const s=24, lw=1.7;
+  return `<svg viewBox="-2 -2 28 28" fill="none" stroke="currentColor" stroke-width="${lw}" stroke-linecap="round" stroke-linejoin="round">${I.prims.map(p=>{
+    const f=p.f?' fill="currentColor" stroke="none"':'';
+    if(p.t==='c') return `<circle cx="${p.cx*s}" cy="${p.cy*s}" r="${p.r*s}"${f}/>`;
+    if(p.t==='r') return `<rect x="${p.x*s}" y="${p.y*s}" width="${p.w*s}" height="${p.h*s}" rx="${(p.rr||0)*s}"${f}/>`;
+    return `<${p.closed?'polygon':'polyline'} points="${p.pts.map(q=>(q[0]*s).toFixed(2)+','+(q[1]*s).toFixed(2)).join(' ')}"${f}/>`;}).join('')}</svg>`;
+}
+function buildModUI(){
+  const gfx=['dots','ring','logo','icons'], ck=(key,label)=>`<label class="check"><input type="checkbox" data-bind="${key}"> ${label}</label>`;
+  const t=$('#modGridText'), g=$('#modGridGfx'), gp=$('#modGridGap'), is=$('#iconSet');
+  if(t) t.innerHTML=FILL_MODULES.filter(m=>gfx.indexOf(m[0])<0).map(m=>ck('fill.mods.'+m[0],m[1])).join('');
+  if(g) g.innerHTML=FILL_MODULES.filter(m=>gfx.indexOf(m[0])>=0).map(m=>ck('fill.mods.'+m[0],m[1])).join('');
+  if(gp) gp.innerHTML=GAP_MODULES.map(m=>ck('fill.gap.mods.'+m[0],m[1])).join('');
+  if(is) is.innerHTML=ICON_KEYS.map(k=>`<button data-icon="${k}" title="${ICONS[k].name}">${iconSVG(k)}<span>${ICONS[k].name}</span></button>`).join('');
+}
+function syncIconSet(){$$('#iconSet [data-icon]').forEach(b=>b.classList.toggle('on',!D.fill.iconSet||D.fill.iconSet[b.dataset.icon]!==false));}
 function syncPalettes(){
   $$('[data-pal]').forEach(el=>{el.innerHTML=swatchHTML(getP(el.dataset.pal),el.dataset.pal);});
   const pe=$('#paletteEdit'); if(pe) pe.innerHTML=(D.palette||[]).map((c,i)=>`<button class="swatch" style="background:${c}" data-pal-i="${i}" title="${c} — click to use, Alt-click to remove"></button>`).join('');
@@ -1893,8 +2175,8 @@ function syncPalettes(){
 let swPushed=null;
 function applySwatch(key,c,fromPicker){
   c=c.toUpperCase();
-  if(!fromPicker||swPushed!==key){pushHist(key.indexOf('block.')===0||key.indexOf('echo.')===0||key.indexOf('fill.')===0||key.indexOf('trans.')===0);swPushed=fromPicker?key:null;}
-  if(key.indexOf('echo.')===0||key.indexOf('fill.')===0||key.indexOf('trans.')===0){ setP(key,c); fillCache.clear(); if(!fromPicker) syncPalettes(); syncInputs(); render(); return; }
+  if(!fromPicker||swPushed!==key){pushHist(key.indexOf('block.')===0||key.indexOf('echo.')===0||key.indexOf('fill.')===0||key.indexOf('trans.')===0||key.indexOf('num.')===0||key.indexOf('lab.')===0);swPushed=fromPicker?key:null;}
+  if(key.indexOf('echo.')===0||key.indexOf('fill.')===0||key.indexOf('trans.')===0||key.indexOf('num.')===0||key.indexOf('lab.')===0){ setP(key,c); fillCache.clear(); if(!fromPicker) syncPalettes(); syncInputs(); render(); return; }
   if(key==='block.color'||key==='block.color2'){
     const old=getP(key); setP(key,c);
     const sync=U.live||D.block.sync;
@@ -1988,6 +2270,7 @@ function cardContent(b){
     <div class="tabs"><button class="on">Text</button><button disabled>Image <span class="soon">soon</span></button><button disabled>Video <span class="soon">soon</span></button></div>
     <textarea data-f="text" placeholder="Type to add a text layer inside this block…">${esc(b.text)}</textarea>
     ${D.fill.on?`<div class="row-btns"><label class="check" style="flex:1"><input type="checkbox" data-bfill="1"${b.noFill?'':' checked'}> Auto-fill this block</label><button class="btn" data-act="reroll" title="New random content for this block">↻ Re-roll</button></div>`:''}
+    <label class="check"><input type="checkbox" data-bnum="1"${numOn(b)?' checked':''}> Block number in the top-right${b.num!=null?' <a href="#" data-act="numreset" class="note">(use default)</a>':''}</label>
     ${typeControls(b)}
     <div class="field stack"><span class="lbl">Block colour</span><div class="swatches">${swatchHTML(b.color,'sel.color')}</div></div>
   </div>`;
@@ -2061,6 +2344,7 @@ $('#insp').addEventListener('input',e=>{
   t.style.color=''; Object.assign(b,n); render();
 });
 $('#insp').addEventListener('change',e=>{
+  if(e.target.dataset&&e.target.dataset.bnum){pushHist();selBlocks().forEach(b=>b.num=e.target.checked);fillCache.clear();refresh();return;}
   if(e.target.dataset&&e.target.dataset.bfill){pushHist();selBlocks().forEach(b=>b.noFill=!e.target.checked);fillCache.clear();refresh();return;}
   const tf=e.target.dataset&&e.target.dataset.tf;
   if(tf){const sel=selBlocks();if(!sel.length)return;pushHist();
@@ -2079,6 +2363,7 @@ $('#insp').addEventListener('click',e=>{
   const seg=t.closest('[data-bseg]');
   if(seg&&t.dataset.v){pushHist();selBlocks().forEach(b=>b[seg.dataset.bseg]=t.dataset.v);refresh();return;}
   const a=t.dataset.act;
+  if(a==='numreset'){pushHist();selBlocks().forEach(b=>{delete b.num;});fillCache.clear();refresh();return;}
   if(a==='reroll'){pushHist();selBlocks().forEach(b=>b.fillSeed=(b.fillSeed||0)+1);fillCache.clear();refresh();return;}
   if(a==='samecol'){const c=(selBlocks()[0]||{}).color;select(D.blocks.filter(b=>b.color===c).map(b=>b.id));refresh();return;}
   if(a==='alt'){pushHist();selBlocks().sort((x,y)=>x.order-y.order).forEach((b,i)=>{const c=i%2?D.block.color2:D.block.color;const auto=b.textColor===contrast(b.color);b.color=c;if(auto)b.textColor=contrast(c);});refresh();return;}
@@ -2106,6 +2391,7 @@ function onChange(path){
   }
   refresh();
 }
+buildModUI();
 $$('[data-bind]').forEach(el=>{
   el.addEventListener('input',()=>{
     const p=el.dataset.bind;
@@ -2190,6 +2476,7 @@ function syncInputs(force){
   const lp=$('#chkLoop'); if(lp) lp.checked=U.loop;
   const mbx=$('#chkMB'); if(mbx){mbx.checked=U.mbPrev!==false; mbx.parentElement.hidden=!D.out.mb||D.anim.mode==='static';}
   $$('#camPreset [data-p]').forEach(b=>{const p=b.dataset.p.split(',').map(Number);b.classList.toggle('on',+D.anim.smooth===p[0]&&+D.anim.motionBlurF===p[1]&&+D.anim.settle===p[2]);});
+  syncIconSet();
   $$('#zonePreset [data-z]').forEach(b=>b.classList.toggle('on',+b.dataset.z===+D.anim.revealX));
   $$('#endPreset [data-ex]').forEach(b=>b.classList.toggle('on',+b.dataset.ex===+D.anim.endX));
   $$('[data-layer]').forEach(el=>{const v=getP(el.dataset.layer);el.classList.toggle('off',!v||v==='none');});
@@ -2245,7 +2532,7 @@ function renderStepUI(){
   cv.className='t-'+U.tool+(U.space?' panning':'')+(U.drag&&(U.drag.type==='move'||U.drag.type==='pan')?' grabbing':'');
   // tool cards in layout pane
   $('#toolcards').innerHTML=['select','stamp','draw','erase'].map(t=>`<button class="toolcard${U.tool===t?' on':''}" data-tool="${t}"><span class="ic">${ICON[t]}</span><span><div class="t">${TOOLS[t].name}</div><div class="d">${TOOLS[t].desc}</div></span><kbd>${TOOLS[t].key}</kbd></button>`).join('');
-  $('#timeline').hidden=!((st.id==='animate'&&D.anim.mode!=='static')||st.id==='transitions');
+  $('#timeline').hidden=!(((st.id==='animate'||st.id==='lab')&&D.anim.mode!=='static')||st.id==='transitions');
   $('#hint').textContent=st.id==='grid'?'Scroll to pan · ⌘/Ctrl + scroll or pinch to zoom':TOOLS[U.tool].desc;
 }
 document.addEventListener('click',e=>{const b=e.target.closest('[data-tool]');if(b)setTool(b.dataset.tool);});
@@ -2341,7 +2628,7 @@ function refresh(){
 let raf=0, lastTs=0;
 function play(){
   if(D.anim.mode==='static') return toast('Pick an animation style first');
-  if(STEPS[U.step].id!=='animate'&&STEPS[U.step].id!=='transitions') goStep(4);
+  if(['animate','transitions','lab'].indexOf(STEPS[U.step].id)<0) goStep(4);
   let P=plan(geom()); if(!P.seq.length&&!transOn()) return toast('Add some blocks first'); P={seq:P.seq,end:sceneEnd(geom())};
   if(U.t===null||U.t>=P.end) U.t=0;
   U.playing=true; lastTs=0; $('#icoPlay').innerHTML='<path d="M4 2.5h3v11H4zM9 2.5h3v11H9z"/>';
@@ -2405,6 +2692,7 @@ $('#paletteEdit').addEventListener('click',e=>{const b=e.target.closest('[data-p
 $('#btnPickEnd').onclick=startPick;
 $('#chkMB').onchange=e=>{U.mbPrev=e.target.checked;savePrefs();render();};
 $('#chkLoop').onchange=e=>{U.loop=e.target.checked;savePrefs();toast(U.loop?'Preview will loop':'Preview plays once');};
+$('#iconSet').addEventListener('click',e=>{const b=e.target.closest('[data-icon]');if(!b)return;pushHist(true);D.fill.iconSet=D.fill.iconSet||{};const k=b.dataset.icon;D.fill.iconSet[k]=D.fill.iconSet[k]===false;fillCache.clear();syncIconSet();refresh();});
 $('#camPreset').addEventListener('click',e=>{const b=e.target.closest('[data-p]');if(!b)return;const p=b.dataset.p.split(',').map(Number);pushHist(true);Object.assign(D.anim,{smooth:p[0],motionBlurF:p[1],settle:p[2]});syncInputs();refresh();});
 $('#zonePreset').addEventListener('click',e=>{const b=e.target.closest('[data-z]');if(!b)return;pushHist(true);D.anim.revealX=+b.dataset.z;syncInputs();refresh();});
 $('#endPreset').addEventListener('click',e=>{const b=e.target.closest('[data-ex]');if(!b)return;pushHist(true);D.anim.endX=+b.dataset.ex;syncInputs();refresh();});
@@ -2518,8 +2806,9 @@ function drawSpeedGraph(){
   g.strokeStyle='rgba(255,255,255,.12)'; g.lineWidth=1; [...new Set(P.T)].forEach(t=>{g.beginPath();g.moveTo(X(t)+.5,pad+H-4);g.lineTo(X(t)+.5,pad+H);g.stroke();});
   // speed curve
   g.beginPath(); v.forEach((val,f)=>{const x=X(f),y=Y(val);f?g.lineTo(x,y):g.moveTo(x,y);});
-  g.strokeStyle='#E84142'; g.lineWidth=1.8; g.stroke();
-  g.lineTo(X(v.length-1),pad+H); g.lineTo(X(0),pad+H); g.closePath(); g.fillStyle='rgba(232,65,66,.12)'; g.fill();
+  g.strokeStyle='#E6212F'; g.lineWidth=1.8; g.stroke();
+  g.lineTo(X(v.length-1),pad+H); g.lineTo(X(0),pad+H); g.closePath(); g.fillStyle='rgba(230,33,47,.12)'; g.fill();
+  if(P.relT!=null){g.save();g.setLineDash([3,3]);g.strokeStyle='rgba(116,157,211,.8)';g.beginPath();g.moveTo(X(P.relT)+.5,pad);g.lineTo(X(P.relT)+.5,pad+H);g.stroke();g.restore();g.fillStyle='rgba(116,157,211,.9)';g.font='9px sans-serif';g.fillText('let go',X(P.relT)+3,pad+9);}
   if(U.t!=null){g.strokeStyle='#fff';g.beginPath();g.moveTo(X(U.t)+.5,pad);g.lineTo(X(U.t)+.5,pad+H);g.stroke();}
   // smoothness readout: biggest frame-to-frame change in speed, relative to the peak
   let jump=0; for(let i=1;i<v.length;i++) jump=Math.max(jump,Math.abs(v[i]-v[i-1]));
@@ -2554,11 +2843,11 @@ function drawCurve(el){
   const P0=cToPx(g,0,0),P3=cToPx(g,1,1),P1=cToPx(g,cur[0],cur[1]),P2=cToPx(g,cur[2],cur[3]);
   x.strokeStyle='rgba(255,255,255,.35)'; x.beginPath(); x.moveTo(P0[0],P0[1]); x.lineTo(P1[0],P1[1]); x.moveTo(P3[0],P3[1]); x.lineTo(P2[0],P2[1]); x.stroke();
   // curve
-  x.strokeStyle='#E84142'; x.lineWidth=2.2; x.beginPath(); x.moveTo(P0[0],P0[1]); x.bezierCurveTo(P1[0],P1[1],P2[0],P2[1],P3[0],P3[1]); x.stroke();
+  x.strokeStyle='#E6212F'; x.lineWidth=2.2; x.beginPath(); x.moveTo(P0[0],P0[1]); x.bezierCurveTo(P1[0],P1[1],P2[0],P2[1],P3[0],P3[1]); x.stroke();
   // speed dots (equal time steps) — closer dots = slower
   const f=curveFn(cur); x.fillStyle='rgba(255,255,255,.55)';
   for(let i=0;i<=16;i++){const u=i/16,p=cToPx(g,u,f(u));x.beginPath();x.arc(p[0],p[1],1.4,0,7);x.fill();}
-  [P1,P2].forEach(p=>{x.fillStyle='#fff';x.strokeStyle='#E84142';x.lineWidth=2;x.beginPath();x.arc(p[0],p[1],5,0,7);x.fill();x.stroke();});
+  [P1,P2].forEach(p=>{x.fillStyle='#fff';x.strokeStyle='#E6212F';x.lineWidth=2;x.beginPath();x.arc(p[0],p[1],5,0,7);x.fill();x.stroke();});
   el.querySelector('.cv-val').textContent=`cubic-bezier(${cur.map(v=>+(+v).toFixed(2)).join(', ')}) · drag the dots · hold Shift or ⌘ to snap to 0/45/90°`;
   const pr=el._presets||CURVE_PRESETS;
   $$('[data-cp]',el).forEach(b=>{const pc=pr[+b.dataset.cp][1];b.classList.toggle('on',pc.every((v,i)=>Math.abs(v-cur[i])<1e-3));});
@@ -2728,12 +3017,40 @@ const HELP={
   'anim.revealWhen':'Ahead of the camera: blocks appear on their schedule and the camera follows them in (they can pop in off to the side or off screen). When the camera arrives: each block waits until the camera has carried it into the reveal zone, so you always see it appear.',
   'anim.revealX':'Width of the reveal zone, centred in the frame. A block appears once its centre is inside. 50% = only at the centre line, 100% = anywhere on screen.',
   'anim.revealY':'Height of the reveal zone (when the camera also follows up/down).',
+  'anim.relOn':'The camera follows for the first part of the scene, then stops chasing and coasts to a halt (keeping its speed and letting it bleed away), while new blocks keep arriving and run off the edge of frame. Great for overlays that “keep going”.',
+  'anim.relAt':'Where in the scene the camera lets go, as % of the scene length.',
+  'anim.relSlow':'How many frames the camera takes to coast to a stop after letting go. Longer = more drift.',
+  'exit.mode':'After a hold: every block leaves a fixed time after it appeared, so a trail of blocks travels with the camera. Behind the camera: a block leaves once it has slid past the exit line. All at the end: the whole build clears out, one block after another.',
+  'exit.hold':'How long a block stays fully visible before it starts to leave.',
+  'exit.line':'Blocks leave when their right edge passes this line. 0 = left edge of frame, negative = once fully off screen.',
+  'exit.at':'When the clear-out starts, in frames relative to the scene end. Negative starts before the scene ends.',
+  'exit.stagger':'Frames between one block leaving and the next.',
+  'exit.style':'How a block disappears. Wipe collapses it sideways; the other options match the reveal styles.',
+  'exit.dir':'Onward collapses toward the direction of travel (keeps the momentum); Back collapses toward where it came from.',
+  'exit.len':'How long each exit takes.',
+  'exit.content':'The text, dots and icons on a block finish leaving by the time the block does (using the content “goes off” style, or a fade if content normally stays).',
+  'exit.echo':'Echo copies leave with their block.',
+  'num.on':'Adds a number layer to every block, right-aligned in its top-right corner (its own text layer in AE, parented to the block). Auto-fill content keeps clear of it.',
+  'num.fmt':'How the number is written. #4,812,337 reads like a block height — set Start at to a big number.',
+  'num.start':'The number of the first block in the reveal order.',
+  'num.size':'Number size in pixels (uses the content font).',
+  'num.opacity':'Number opacity.',
+  'fill.dotSize':'Dot diameter in pixels (dot grids inside blocks and in the gaps).',
+  'fill.dotShape':'Round dots or square pixels.',
+  'fill.mods.icons':'Line icons from the icon set below (nodes, blocks, chains, momentum chevrons, peaks, snowflakes…), placed in open space like the logo.',
   'anim.settle':'Frames the camera takes to glide to a complete stop at the end of the scene (never less than about 4× Smoothness). The last reveals are spaced to leave room for it, so nothing gets rushed.',
   'anim.lazy':'The camera holds still until the newest block reaches the middle of the frame.',
   'anim.snap':'The camera aims at whole-square positions so the grid stays aligned with the frame.',
   'out.replace':'Delete the layers from your last build before building again.',
   'out.lock':'Lock the background, lines and tiles so you don’t move them by accident.',
   'out.fitDur':'If the animation is longer than the comp, make the comp longer.',
+  'out.preGrid':'Puts the tiles, grid lines and column rules (and their wrap helper) in one “GB · Grid” precomp. With the AE camera it is collapsed + 3D, so the main camera still moves it.',
+  'out.preBlocks':'Puts every block, its text and content, echoes and gap content in one “GB · Blocks” precomp. Open it to tweak a block; the main comp stays short.',
+  'out.preTrans':'Each transition (in / out) becomes its own precomp instead of dozens of tiles in your comp. Matte transitions are always precomps.',
+  'out.folder':'Files the precomps and the background solid under Grid Blocks › your comp name in the Project panel. Rebuilding cleans up the old ones.',
+  'out.shy':'Marks the wrap and framing helper nulls as shy and turns on “hide shy layers”, so the timeline shows only what you animate.',
+  'out.trim':'Starts each block, echo and content layer (and transition precomp) where it first appears, so the timeline reads as a staircase.',
+  'out.markers':'Adds comp markers for the scene start/end and each transition, named “GB · …”. Rebuilding replaces them.',
   'out.mb':'Turns on motion blur for the comp and every moving Grid Blocks layer, so fast camera moves read as smooth streaks instead of strobing. Strongly recommended for camera follow.',
   'out.mbAngle':'How long the virtual shutter stays open. 180° looks natural; 90° is crisper; 270–360° gives long, dreamy streaks.',
   'anim.startF':'Frame the scene starts on. Use a negative number to start the comp part-way through: blocks that would already be on screen are there at frame 0, and the camera is already moving.',
@@ -2869,7 +3186,7 @@ document.addEventListener('mouseout',e=>{const q=e.target.closest&&e.target.clos
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.qm')){e.preventDefault();e.stopPropagation();}},true);
 function setHelp(on){U.help=on;document.body.classList.toggle('nohelp',!on);$('#btnHelp').classList.toggle('on',on);$('#btnHelp').title=on?'Hide the ? help tips':'Show ? help tips next to each setting';}
 $('#btnHelp').onclick=()=>{setHelp(!U.help);toast(U.help?'Help tips on: hover any ?':'Help tips hidden');savePrefs();};
-function savePrefs(){const pr=JSON.stringify({help:U.help,loop:U.loop,mb:U.mbPrev!==false,collapsed:U.collapsed||{}});webSet('prefs',pr);if(inAE)evalHost('GB_writeText("prefs.json",'+jsStr(pr)+')');}
+function savePrefs(){const pr=JSON.stringify({help:U.help,loop:U.loop,mb:U.mbPrev!==false,adv:!!U.adv,collapsed:U.collapsed||{}});webSet('prefs',pr);if(inAE)evalHost('GB_writeText("prefs.json",'+jsStr(pr)+')');}
 
 /* ------------------------------------------------------------------ toast */
 let tt=0;
@@ -2898,10 +3215,26 @@ $('#clearMenu').addEventListener('click',e=>{
   else if(k==='order'){D.blocks.forEach(x=>x.mo=0);U.moNext=1;if(D.anim.order==='manual')D.anim.order='ltr';}
   else if(k==='grid'){D.grid=clone(DEF.grid);D.look=clone(DEF.look);}
   else if(k==='anim'){D.anim=clone(DEF.anim);U.t=null;}
-  else if(k==='all'){const keepComp=D.comp;D=clone(DEF);D.comp=keepComp;U.selIds=[];U.t=null;U.live=false;goStep(0);}
+  else if(k==='all'){resetDefaults(false);return;}
   syncInputs(true);syncPalettes();if(V.fit)fitView(V.fit);refresh();
   toast({blocks:'Cleared all blocks',text:'Cleared all text',order:'Cleared manual order',grid:'Grid & look reset',anim:'Animation reset',all:'Started over'}[k],'',true);
 });
+
+/* back to the default look (Avalanche brand), keeping the comp size. One undo step. */
+function resetDefaults(withHist){
+  if(withHist!==false) pushHist();
+  const keep={w:D.comp.w,h:D.comp.h,follow:D.comp.follow};
+  D=clone(DEF); Object.assign(D.comp,keep);
+  D.blocks=D.blocks.map(b=>normBlock(b)); uid=D.blocks.reduce((m,b)=>Math.max(m,b.id),0)+1;
+  U.selIds=[];U.sel=null;U.t=null;U.live=false;planCache.k='';
+  syncInputs(true);syncPalettes();renderFontUI();goStep(0);if(V.fit)fitView(V.fit);refresh();
+  toast('Back to the default look','⌘Z to undo',true);
+}
+$('#btnDefaults').onclick=()=>resetDefaults();
+/* Essential / All controls */
+function setAdv(on){U.adv=!!on;document.body.classList.toggle('simple',!U.adv);$$('#advSeg [data-adv-v]').forEach(b=>b.classList.toggle('on',(b.dataset.advV==='1')===U.adv));try{renderCurves();}catch(e){}}
+$('#advSeg').addEventListener('click',e=>{const b=e.target.closest('[data-adv-v]');if(!b)return;setAdv(b.dataset.advV==='1');savePrefs();toast(U.adv?'Showing every control':'Showing the essentials','',true);});
+setAdv(false);
 
 /* ------------------------------------------------------------------ library + files */
 function libLoad(){
@@ -3092,31 +3425,34 @@ function payload(){
       mode:zoomOn?'strokes':'rects', rects:zoomOn?null:rr,
       segs:zoomOn?rr.map(a=>[r3(a[0]+a[2]/2),a[1],r3(a[0]+a[2]/2),r3(a[1]+a[3])]):null};
   }
+  const NUMS=blockNumbers(G);
   const blocks=P.seq.map(b=>{
     const q=cellRect(G,b.c,b.r,b.w,b.h);
     return{name:bname(b),order:b.order,c:b.c+1,r:b.r+1,w:b.w,h:b.h,x:r3(q.x),y:r3(q.y),bw:r3(q.w),bh:r3(q.h),
       color:hexRgb(b.color),text:casedText(b).replace(/\n/g,'\r'),fontSize:b.fontSize,textColor:hexRgb(b.textColor),align:b.align,pad:b.pad,
       font:b.font||'',tracking:+b.tracking||0,leading:+b.leading||0,kern:b.kern||'metrics',
-      keys:animOn?P.tracks[b.id]:null};
+      num:numOn(b)?(()=>{const s=numStr(NUMS[b.id]||0),q2=cellRect(G,b.c,b.r,b.w,b.h),L=numLayout(q2,s);return {text:s,x:r3(L.x),y:r3(L.y),size:L.size,color:hexRgb(D.num.color),font:D.fill.font,opacity:clamp(+D.num.opacity||100,0,100),keys:animOn&&P.tracks[b.id]&&P.tracks[b.id].num&&P.tracks[b.id].num.length?P.tracks[b.id].num.map(k=>[k[0],r3(k[1]*clamp(+D.num.opacity||100,0,100)/100),k[2],k[3]]):null};})():null,
+      keys:animOn?P.tracks[b.id]:null, tIn:animOn?Math.round(P.T[P.seq.indexOf(b)]):null, tOut:exitEnd(P,P.seq.indexOf(b),animOn)};
   });
   // ---- content: auto-fill items → AE-ready descriptions
   const F=D.fill, met=fillMetrics();
-  const payItem=(it,t0)=>{
-    const t=Object.assign({},it,{t0});
-    if(it.kind==='dots') return {kind:'dots',rects:it.rects.map(f=>({x:r3(f.x),y:r3(f.y),cols:f.cols,rows:f.rows})),sp:it.sp,d:r3(it.d),color:hexRgb(it.color),t0:r3(Math.max(0,t0)/fps),opx:fillOpacityExpr(t,fps,false)};
+  const payItem=(it,t0,tEnd)=>{
+    const t=Object.assign({},it,{t0}); if(tEnd!=null) t.tEnd=tEnd;
+    if(it.kind==='icon') return {kind:'icon',name:it.name,label:(ICONS[it.name]||{}).name||it.name,x:r3(it.x),y:r3(it.y),s:r3(it.s),prims:(ICONS[it.name]||{prims:[]}).prims,lw:r3(Math.max(1,it.s*.07)),color:hexRgb(it.color),t0:r3(Math.max(0,t0)/fps),opx:fillOpacityExpr(t,fps,false)};
+    if(it.kind==='dots') return {kind:'dots',sq:!!it.sq,rects:it.rects.map(f=>({x:r3(f.x),y:r3(f.y),cols:f.cols,rows:f.rows})),sp:it.sp,d:r3(it.d),color:hexRgb(it.color),t0:r3(Math.max(0,t0)/fps),opx:fillOpacityExpr(t,fps,false)};
     if(it.kind==='ring') return {kind:'ring',cx:r3(it.cx),cy:r3(it.cy),r:r3(it.r),w:r3(it.w),color:hexRgb(it.color),t0:r3(Math.max(0,t0)/fps),opx:fillOpacityExpr(t,fps,false)};
     if(it.kind==='logo') return {kind:'logo',x:r3(it.x),y:r3(it.y),s:r3(it.s),paths:AVAX_AE,color:hexRgb(it.color),t0:r3(Math.max(0,t0)/fps),opx:fillOpacityExpr(t,fps,false)};
-    const animd=(F.anim.inMode==='type'&&(it.type||F.anim.typeAll))||(F.anim.count&&it.count)||(F.anim.scramble&&it.scr)||(F.anim.ellipsis&&it.ell)||t0>0||F.anim.outMode==='cut'||F.anim.outMode==='typeoff';
-    return {kind:'text',text:it.lines.join('\r'),x:r3(it.x),y:r3(it.y),align:it.align,size:met.size,leading:r3(met.lh),font:F.font,color:hexRgb(it.color),expr:animd?fillExpr(t,fps):null,opx:fillOpacityExpr(t,fps,true)};
+    const animd=t.tEnd!=null||(F.anim.inMode==='type'&&(it.type||F.anim.typeAll))||(F.anim.count&&it.count)||(F.anim.scramble&&it.scr)||(F.anim.ellipsis&&it.ell)||t0>0||F.anim.outMode==='cut'||F.anim.outMode==='typeoff';
+    return {kind:'text',t0:r3(Math.max(0,t0)/fps),text:it.lines.join('\r'),x:r3(it.x),y:r3(it.y),align:it.align,size:met.size,leading:r3(met.lh),font:F.font,color:hexRgb(it.color),expr:animd?fillExpr(t,fps):null,opx:fillOpacityExpr(t,fps,true)};
   };
-  const blockFill=(b,rect,base,isEcho)=>{
+  const blockFill=(b,rect,base,isEcho,tEnd)=>{
     if(!F.on) return null;
     const st=Math.max(0,+F.anim.stagger||0);
-    const its=fillItems(G,b,rect,isEcho).map(it=>payItem(it,base==null?(it.slot||0)*st:base+(it.slot||0)*st));
+    const its=fillItems(G,b,rect,isEcho).map(it=>payItem(it,base==null?(it.slot||0)*st:base+(it.slot||0)*st,tEnd));
     return its.length?its:null;
   };
   blocks.forEach((pb,i)=>{const b=P.seq[i]; if(!b) return; const q=cellRect(G,b.c,b.r,b.w,b.h);
-    pb.fill=blockFill(b,q,animOn?P.fillBase[b.id]:null,false);
+    pb.fill=blockFill(b,q,animOn?P.fillBase[b.id]:null,false,animOn&&P.fillEnd?P.fillEnd[b.id]:null);
     if(isOutline(b)) pb.outline={w:+F.outlineW||2};
   });
   // manual order: blocks you didn't pick but chose to keep visible
@@ -3129,13 +3465,13 @@ function payload(){
     echoes=src.map(e=>({name:bname(e.b)+' · Echo',x:r3(e.r.x),y:r3(e.r.y),w:r3(e.r.w),h:r3(e.r.h),
       fill:E.fill?hexRgb(E.color):null, opacity:clamp(+E.opacity||0,0,100),
       stroke:E.stroke&&+E.sw>0?{w:+E.sw,color:hexRgb(E.scolor),dash:E.dash?[Math.max(1,+E.dashL||1),Math.max(1,+E.dashG||1)]:null}:null,
-      content:!!E.content, keys:e.K,
-      fill:E.content?blockFill(e.b,e.r,animOn?P.fillBase['e'+e.b.id]:null,true):null}));
+      content:!!E.content, keys:e.K, tOut:exitEnd(P,P.seq.indexOf(e.b),animOn), tIn:e.K&&e.K.op&&e.K.op.length?Math.round(e.K.op[0][0]):null,
+      fill:E.content?blockFill(e.b,e.r,animOn?P.fillBase['e'+e.b.id]:null,true,animOn&&P.fillEnd?P.fillEnd['e'+e.b.id]:null):null}));
   }
   let gaps=null;
   if(F.on&&F.gap.on){
     const gl=animOn&&P.gaps?P.gaps:gapItems(G,(animOn?P.seq:D.blocks.filter(b=>valid(b,G)))).map(it=>Object.assign({},it,{t0:0}));
-    gaps=gl.map(it=>payItem(it,it.t0||0));
+    gaps=gl.map(it=>payItem(it,it.t0||0,it.tEnd));
   }
   const endSec=animOn?P.end/fps:0;
   const labels={reveal:'reveal animation',camera:'camera-follow animation',push:'conveyor animation'};
@@ -3158,7 +3494,10 @@ function payload(){
     bg:D.look.bgOn?{color:hexRgb(D.look.bg)}:null,
     cells, lines, rules, echoes, blocks, gaps,
     trans:transOn()?(()=>{const TP=transP(G);return {groups:TP.groups.map(g=>({k:g.k,output:g.output,name:g.k==='in'?'GB · Transition In':'GB · Transition Out',
+      vis:transVis(TP,g.k),
       tiles:TP.tiles.filter(t=>t.g===g.k).map(t=>({x:r3(t.x),y:r3(t.y),w:r3(t.w),h:r3(t.h),color:hexRgb(t.color),keys:t.K}))}))};})():null,
+    org:orgPayload(P,animOn,G),
+    lab:labPayload(P,G,animOn),
     anim:animOn?Object.assign({label:labels[A.mode]+(zoomOn?' + grid zoom':''),camName:A.mode==='camera'?'GB · Camera':'GB · Conveyor',
       cam:P.cam.map(rel), needCam:P.cam.length>0||zoomOn,
       wrap:camMode?{px:r3(G.p),py:(A.axis==='xy'||zoomOn)?r3(G.p):0,cx:zoomOn?CX:0,cy:zoomOn?CY:0}:null,
@@ -3166,22 +3505,70 @@ function payload(){
       pan:P.pan.length?P.pan:null},camRig||{}):null
   };
 }
+/* lab → AE-ready description */
+function labPayload(P,G,animOn){
+  if(!animOn||!P.lab) return null;
+  const LB=D.lab, L=P.lab, bi={}; P.seq.forEach((b,i)=>{bi[b.id]=i;});
+  const o={
+    pulses:L.pulses.map(p=>({bi:bi[p.id],cx:r3(p.r.x+p.r.w/2),cy:r3(p.r.y+p.r.h/2),w:r3(p.r.w),h:r3(p.r.h),lw:+LB.pulse.width||2,color:hexRgb(LB.pulse.color),keys:p.K,t0:p.t0,t1:p.t0+p.len})),
+    trails:L.trails.map(t=>({bi:bi[t.id],anchor:t.anchor,lines:t.lines,color:hexRgb(LB.trail.color),keys:t.K,t0:t.t0,t1:t.t0+t.len})),
+    bars:L.bars.map(b=>({bi:bi[b.id],x:b.x,y:b.y,w:b.w,h:b.h,color:hexRgb(LB.bar.color),keys:b.K,t0:b.t0})),
+    ticker:LB.ticker&&LB.ticker.on?{text:tickerText(),y:r3(G.H*clamp(+LB.ticker.y||94,0,100)/100),size:Math.max(6,+LB.ticker.size||14),speed:+LB.ticker.speed||160,color:hexRgb(LB.ticker.color),band:!!LB.ticker.band,bandColor:hexRgb(LB.ticker.bandColor),font:D.fill.font}:null,
+    snow:LB.snow&&LB.snow.on?{parts:snowParts(G).map(p=>[r3(p.x0),r3(p.y0),r3(p.v),r3(p.s),r3(p.ph),r3(p.amp)]),dir:LB.snow.dir==='right'?1:-1,stretch:Math.max(1,+LB.snow.stretch||1),color:hexRgb(LB.snow.color),opacity:clamp(+LB.snow.opacity||55,0,100)}:null
+  };
+  return (o.pulses.length||o.trails.length||o.bars.length||o.ticker||o.snow)?o:null;
+}
+/* frame a block has completely left (exit on), for trimming in AE */
+function exitEnd(P,i,animOn){
+  if(!animOn||!P.exitT||i<0||P.exitT[i]==null) return null;
+  return Math.ceil(P.exitT[i]+(D.exit.style==='cut'?0:Math.max(1,+D.exit.len||8))+1);
+}
+/* first and last frame any tile of a transition group is visible (to trim its precomp) */
+function transVis(TP,k){
+  const tiles=TP.tiles.filter(t=>t.g===k); if(!tiles.length) return null;
+  const end=Math.ceil(TP.end||0)+2; let a=null,b=null;
+  for(let f=0;f<=end;f++){
+    if(tiles.some(t=>{const st=blockState(t.K,f,{x:t.x,y:t.y,w:t.w,h:t.h});return st.op>0.001&&st.w>0.01&&st.sx>0.001;})){if(a===null)a=f;b=f;}
+  }
+  return a===null?null:[a,b];
+}
+/* project / timeline tidiness for the AE build */
+function orgPayload(P,animOn,G){
+  const O=D.out, mk=[];
+  if(O.markers){
+    if(animOn){mk.push([P.startF,'Scene start',0]); mk.push([P.startF+P.L,'Scene end',0]);}
+    if(transOn()){const TP=transP(G); TP.groups.forEach(g=>{const v=transVis(TP,g.k); if(v) mk.push([v[0],g.k==='in'?'Transition in':'Transition out',v[1]-v[0]]);});}
+  }
+  return {folder:!!O.folder, preGrid:!!O.preGrid, preBlocks:!!O.preBlocks, preTrans:!!O.preTrans, shy:!!O.shy, trim:!!O.trim, markers:mk.filter(m=>m[0]>=0)};
+}
 function renderBuildSummary(G){
-  const d=payload(), row=(on,name,detail)=>`<div class="sumrow${on?'':' off'}"><span class="${on?'ok':''}">${on?'✓':'–'}</span><span><b>${name}</b></span><span>${detail}</span></div>`;
+  const d=payload(), o=d.org||{}, cam3=d.rig==='camera', canPre=cam3||!d.anim;
+  const preG=o.preGrid&&canPre, preB=o.preBlocks&&canPre, compName=inAE&&U.compLive?U.aeName:d.comp.name;
   const cells=d.cells?d.cells.rects.length:0;
-  $('#buildSummary').innerHTML=
-    row(!!d.bg,'Background','solid')+
-    row(!!d.lines,'Grid lines',d.lines?`${(d.lines.rects||d.lines.segs).length} lines · 1 layer`:'off')+
-    row(cells>0,'Square tiles',cells?(d.cells.mode==='single'?`${cells} · 1 layer`:`${cells} layers`):'off')+
-    row(!!d.rules,'Column rules',d.rules?`${(d.rules.rects||d.rules.segs).length} lines · ${d.rules.top?'on top':'under blocks'}`:'off')+
-    row(!!(d.echoes&&d.echoes.length),'Echoes',d.echoes&&d.echoes.length?`${d.echoes.length} layers`:'off')+
-    row(!!(d.blocks.some(b=>b.fill)||d.gaps),'Content',`${d.blocks.reduce((n,b)=>n+(b.fill?b.fill.length:0),0)+(d.echoes||[]).reduce((n,e)=>n+(e.fill?e.fill.length:0),0)} in blocks${d.gaps?` · ${d.gaps.length} in gaps`:''}`)+
-    row(!!d.trans,'Transitions',d.trans?d.trans.groups.map(g=>`${g.k} (${g.tiles.length}${g.output==='matte'?' · matte precomp':''})`).join(', '):'off')+
-    row(d.blocks.length>0,'Blocks',`${d.blocks.length} layer${d.blocks.length===1?'':'s'}`)+
-    row(d.blocks.some(b=>b.text),'Text',`${d.blocks.filter(b=>b.text).length} layers`)+
-    row(d.blocks.some(b=>b.order>0)&&!!d.anim,'Animation',d.anim?d.anim.label:'static')+
-    row(true,'Camera',d.rig==='camera'?'AE camera · 3D layers':'2D null rig')+
-    row(!!d.mb,'Motion blur',d.mb?`${d.mb.angle}° shutter`:'off');
+  const nFill=d.blocks.reduce((n,b)=>n+(b.fill?b.fill.length:0),0)+(d.echoes||[]).reduce((n,e)=>n+(e.fill?e.fill.length:0),0);
+  const nGap=d.gaps?d.gaps.length:0, nEcho=d.echoes?d.echoes.length:0, nText=d.blocks.filter(b=>b.text).length;
+  const gridBits=[cells?(d.cells.mode==='single'?'tiles':cells+' tiles'):'',d.lines?'grid lines':'',d.rules&&!d.rules.top?'column rules':''].filter(Boolean);
+  const blockBits=[d.blocks.length?d.blocks.length+' blocks':'',nText?nText+' text':'',nEcho?nEcho+' echoes':'',nFill+nGap?(nFill+nGap)+' content':'',d.rules&&d.rules.top?'column rules':''].filter(Boolean);
+  const gridLayers=(cells?(d.cells.mode==='single'?1:cells):0)+(d.lines?1:0)+(d.rules&&!d.rules.top?1:0);
+  const blockLayers=d.blocks.length+nText+nEcho+nFill+nGap+(d.rules&&d.rules.top?1:0);
+  const li=(icon,name,detail,cls)=>`<div class="tl ${cls||''}"><span class="ti">${icon}</span><span class="tn">${esc(name)}</span><span class="td">${detail||''}</span></div>`;
+  const PC='▣', LY='▭', CM='◉', NL='◇';
+  const rows=[];
+  if(cam3) rows.push(li(CM,'GB · Camera',d.anim?d.anim.label:'still','cam'));
+  else if(d.anim) rows.push(li(NL,d.anim.camName||'GB · Rig',d.anim.label,'cam'));
+  if(d.trans) d.trans.groups.slice().reverse().forEach(g=>{
+    const pre=g.output==='matte'||o.preTrans;
+    rows.push(pre?li(PC,g.name+(g.output==='matte'?' (matte)':''),`precomp · ${g.tiles.length} tiles`,'pre'):li(LY,g.name.replace('GB · ','')+' tiles',`${g.tiles.length} layers`,''));
+  });
+  if(blockBits.length) rows.push(preB?li(PC,'GB · Blocks','precomp · '+blockBits.join(', '),'pre'):li(LY,'Blocks & content',`${blockLayers} layers in this comp`,'warn'));
+  if(gridBits.length) rows.push(preG?li(PC,'GB · Grid','precomp · '+gridBits.join(', '),'pre'):li(LY,'Grid',`${gridLayers} layer${gridLayers===1?'':'s'} in this comp`,gridLayers>20?'warn':''));
+  if(d.bg) rows.push(li(LY,'GB · Background','solid',''));
+  const mainCount=rows.length;
+  const proj=o.folder?`<div class="tl"><span class="ti">📁</span><span class="tn">Grid Blocks</span></div><div class="tl ind"><span class="ti">📁</span><span class="tn">${esc(compName)}</span><span class="td">${[preG&&gridBits.length?'grid':'',preB&&blockBits.length?'blocks':'',d.trans&&(o.preTrans||d.trans.groups.some(g=>g.output==='matte'))?'transitions':'',d.bg?'solid':''].filter(Boolean).join(', ')}</span></div>`:'<div class="note">Precomps and solids go wherever After Effects puts them.</div>';
+  const extras=[d.mb?`motion blur ${d.mb.angle}°`:'',o.shy?'helpers shy':'',o.trim?'layers trimmed':'',o.markers&&o.markers.length?o.markers.length+' markers':'',cam3?'3D camera':'2D null rig'].filter(Boolean);
+  $('#buildSummary').innerHTML=`<div class="tree-h">Timeline · ${esc(compName)} <span class="note">${mainCount} layer${mainCount===1?'':'s'}</span></div><div class="tree">${rows.join('')}</div>
+    <div class="tree-h">Project panel</div><div class="tree">${proj}</div>
+    <div class="note">${extras.join(' · ')}${!canPre&&(o.preGrid||o.preBlocks)?'<br><span class="warn">Grid and block precomps need the After Effects camera rig.</span>':''}</div>`;
   $('#buildLabel2').textContent=inAE?'Build in After Effects':'Export .jsx for After Effects';
   $('#btnExportJsx').hidden=!inAE;
   $('#buildNote').innerHTML=inAE
@@ -3260,7 +3647,7 @@ async function init(){
     registerKeys();
     await evalHost(HOST);
     await libLoad();
-    try{const pr=JSON.parse(await evalHost('GB_readText("prefs.json")')||'{}');if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.mb===false)U.mbPrev=false;if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
+    try{const pr=JSON.parse(await evalHost('GB_readText("prefs.json")')||'{}');if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.mb===false)U.mbPrev=false;if(pr.adv)setAdv(true);if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
     try{
       const s=await evalHost('GB_readText("autosave.json")');
       if(s){const o=JSON.parse(s);if(o&&o.doc){setDoc(o.doc);U.step=clamp(o.step|0,0,STEPS.length-1);U.tool=STEPS[U.step].tool;}}
@@ -3275,7 +3662,7 @@ async function init(){
     if(inWeb){
       await libLoad();
       try{const o=JSON.parse(webGet('autosave')||'null');if(o&&o.doc){setDoc(o.doc);U.step=clamp(o.step|0,0,STEPS.length-1);}}catch(e){}
-      try{const pr=JSON.parse(webGet('prefs')||'{}');if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.mb===false)U.mbPrev=false;if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
+      try{const pr=JSON.parse(webGet('prefs')||'{}');if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.mb===false)U.mbPrev=false;if(pr.adv)setAdv(true);if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
       const dl=$('#btnPanel'); if(dl) dl.hidden=false;
     }
     $('#compNote').textContent='In the browser, pick a size here. Inside After Effects the panel reads your comp automatically.';
