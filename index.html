@@ -849,22 +849,8 @@ body.nohelp .qm{display:none}
           </div>
 
           <div class="group" data-show="anim.mode=reveal|camera|push">
-            <div class="group-h">Scene</div>
-            <div class="field"><span class="lbl scrub">Frame rate</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="comp.fps" min="1" max="120" step="1"><span class="unit">fps</span><button data-d="1">+</button></div></div>
-            <div data-adv class="field"><span class="lbl scrub" title="Negative = the scene is already running when the comp starts">Starts at</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.startF" min="-9999" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-            <div class="field"><span class="lbl scrub">Length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.lenF" min="2" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-            <label data-adv class="check"><input type="checkbox" data-bind="anim.toEnd"> Run until the comp ends</label>
-            <div style="display:grid;gap:9px">
-              <div class="field stack"><span class="lbl">Number of blocks</span><div class="seg" data-seg="anim.countMode"><button data-v="fill">Fill the length</button><button data-v="exact">Exact number</button></div></div>
-              <div class="field" data-show="anim.countMode=fill"><span class="lbl scrub" title="Average frames between blocks">One every</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.pace" min="1" max="120" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-              <div class="field" data-show="anim.countMode=exact"><span class="lbl scrub">Blocks</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.total" min="1" max="400" step="1"><button data-d="1">+</button></div></div>
-            </div>
-            <div class="readout" id="paceNote"></div>
-            <div class="curve" data-curve="anim.sceneCurve" data-ymin="0" data-ymax="1" data-title="Scene easing · re-times the whole scene: reveals, camera, grid changes"></div>
-            <div data-adv class="field stack"><span class="lbl">Motion</span><div class="seg" data-seg="anim.motion"><button data-v="smooth">Smooth</button><button data-v="stop">Stop-motion</button></div></div>
-            <div class="field" data-show="anim.motion=stop"><span class="lbl scrub">Hold</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.stepEvery" min="1" max="60" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+            <div class="note">⏱ Scene length, pace, easing, holds and what happens after the build all live in <a href="#" data-goto="timing" style="color:var(--accent2)"><b>Timing</b></a>. This step is about where the blocks go and how they appear and leave.</div>
           </div>
-
           <div class="group" data-show="anim.mode=camera|push">
             <div class="group-h">Camera<span id="camHead" class="note" style="margin-left:6px;text-transform:none;letter-spacing:0"></span></div>
             <details class="sub" data-sub="cam-move" open><summary>How it moves <span class="note">movement, feel</span></summary><div class="subbody">
@@ -879,15 +865,6 @@ body.nohelp .qm{display:none}
               <div class="curve" data-curve="anim.camCurve" data-show="anim.motion=smooth&amp;anim.camMove=step" data-title="Move easing · each step and the final move"></div>
               <label data-adv class="check" data-show="anim.mode=camera"><input type="checkbox" data-bind="anim.lazy"> Hold still until blocks reach the centre</label>
               <label class="check" data-show="anim.camMove=step"><input type="checkbox" data-bind="anim.snap"> Aim at whole cells</label>
-            </div></details>
-            <details class="sub" data-sub="cam-letgo" data-show="anim.motion=smooth&amp;anim.camMove=follow|curve"><summary>Let go before the end <span class="note">coast to a stop</span></summary><div class="subbody">
-              <div data-show="anim.motion=smooth&amp;anim.camMove=follow" style="display:grid;gap:9px">
-                <label class="check"><input type="checkbox" data-bind="anim.relOn"> On — camera coasts to a stop, blocks keep going past</label>
-                <div class="field2" data-show="anim.relOn=true">
-                  <div class="field"><span class="lbl scrub" title="How far through the scene the camera stops following">Let go at</span><div class="num"><input type="number" data-bind="anim.relAt" min="5" max="100" step="1"><span class="unit">%</span></div></div>
-                  <div class="field"><span class="lbl scrub" title="Frames the camera takes to coast to a stop">Coast</span><div class="num"><input type="number" data-bind="anim.relSlow" min="2" max="600" step="1"><span class="unit">fr</span></div></div>
-                </div>
-              </div>
             </div></details>
             <details class="sub" data-sub="cam-graph" open><summary>Speed graph</summary><div class="subbody">
               <div class="speedgraph"><div class="lbl">Camera speed <span class="note" id="speedNote"></span></div><canvas id="speedCv"></canvas></div>
@@ -912,24 +889,10 @@ body.nohelp .qm{display:none}
           </div>
 
           <div class="group" data-show="anim.mode=reveal|camera|push">
-            <div class="group-h">Block exit<label class="switch hswitch" title="Blocks leave again (great for overlays)"><input type="checkbox" data-bind="exit.on"><span></span></label></div>
-            <div class="note" data-show="exit.on=false">Off: blocks stay once they’ve appeared. Turn on to un-reveal them — handy when this is an overlay.</div>
+            <div class="group-h">Block exit</div>
+            <div class="note" data-show="exit.on=false">Blocks stay once they’ve appeared. Choose what happens after the build in <a href="#" data-goto="timing" style="color:var(--accent2)">Timing › After the build</a>; this section then sets <i>how</i> they leave.</div>
+            <div class="note" data-show="exit.on=true">When they leave is set in <a href="#" data-goto="timing" style="color:var(--accent2)">Timing › After the build</a>.</div>
             <div data-show="exit.on=true" style="display:grid;gap:9px">
-              <div class="field stack"><span class="lbl">When they leave</span><div class="seg" data-seg="exit.mode"><button data-v="hold" title="Each block leaves a set time after it appeared — a moving trail">After a hold</button><button data-v="walk" title="The finished build holds, then walks off in the order it walked on">Walk off</button><button data-v="behind" title="Each block leaves once the camera has carried it past the exit line">Behind camera</button><button data-v="end" title="Everything clears out at the end, one after another">All at end</button></div></div>
-              <div class="field" data-show="exit.mode=hold"><span class="lbl scrub" title="Frames a block stays fully visible before leaving">Stays for</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.hold" min="0" max="2000" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-              <div data-show="exit.mode=walk" style="display:grid;gap:9px">
-                <div class="note">The build finishes and holds, then the line <b>keeps walking</b>: the oldest blocks peel away so only a short trail follows the head, the camera picks up and travels with it, then lets go — and the line with its trail walks off the edge of frame.</div>
-                <div class="field2"><div class="field"><span class="lbl scrub" title="Frames the finished build holds before walking on">Hold</span><div class="num"><input type="number" data-bind="exit.walkHold" min="0" max="2000" step="1"><span class="unit">fr</span></div></div><div class="field"><span class="lbl scrub" title="How long the camera keeps following the line before it lets go and the line walks off screen">Camera follows for</span><div class="num"><input type="number" data-bind="exit.walkLen" min="6" max="5000" step="1"><span class="unit">fr</span></div></div></div>
-                <div class="field2"><div class="field"><span class="lbl scrub" title="Blocks left visible behind the head">Trail</span><div class="num"><input type="number" data-bind="exit.trail" min="1" max="60" step="1"><span class="unit">blocks</span></div></div><div class="field"><span class="lbl scrub" title="1 = same rhythm as the build; 0.5 = twice as fast">Pace</span><div class="num"><input type="number" data-bind="exit.walkPace" min="0.1" max="5" step="0.1"><span class="unit">×</span></div></div></div>
-              </div>
-              <div class="field" data-show="exit.mode=behind"><span class="lbl scrub" title="A block leaves when its right edge passes this line (% of the frame width from the left)">Exit line</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.line" min="-50" max="100" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
-              <div data-show="exit.mode=end" style="display:grid;gap:9px">
-                <div class="field2">
-                  <div class="field"><span class="lbl scrub" title="Frames after the scene end (negative = before)">Starts</span><div class="num"><input type="number" data-bind="exit.at" min="-2000" max="2000" step="1"><span class="unit">fr</span></div></div>
-                  <div class="field"><span class="lbl scrub" title="Frames between one block leaving and the next">Stagger</span><div class="num"><input type="number" data-bind="exit.stagger" min="0" max="120" step="1"><span class="unit">fr</span></div></div>
-                </div>
-                <div class="field stack"><span class="lbl">Order</span><div class="seg" data-seg="exit.order"><button data-v="same">First in, first out</button><button data-v="reverse">Last in, first out</button></div></div>
-              </div>
               <div class="field stack"><span class="lbl">How they leave</span><div class="seg" data-seg="exit.style"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe</button><button data-v="slide" title="Keeps travelling: slides on and fades out">Slide</button><button data-v="scale">Scale</button></div></div>
               <div class="field stack" data-show="exit.style=wipe|slide"><span class="lbl">Direction</span><div class="seg" data-seg="exit.dir"><button data-v="same" title="Collapses toward the direction of travel — keeps the momentum">Onward →</button><button data-v="back" title="Collapses back where it came from">← Back</button></div></div>
               <div class="field" data-show="exit.style=slide"><span class="lbl scrub" title="Slide distance in block widths">Slide</span><div class="num"><input type="number" data-bind="exit.slide" min="0.1" max="20" step="0.1"><span class="unit">× block</span></div></div>
@@ -1005,34 +968,63 @@ body.nohelp .qm{display:none}
         <!-- 5b TRANSITIONS -->
         <!-- 5b TIMING -->
         <div class="pane" data-pane="timing">
-          <div class="group">
-            <div class="group-h">Reading the timeline</div>
-            <div class="note">Time runs left → right under the canvas. <b>Hover anything</b> for a plain-English readout; <b>drag the handles</b> to change timings; click to scrub.</div>
-            <div class="legend">
-              <div><i style="background:rgba(230,33,47,.55)"></i><b>Scene</b> when blocks are revealed; the white line is the easing, ticks are reveals</div>
-              <div><i style="background:rgba(116,157,211,.6)"></i><b>Camera speed</b> taller = faster</div>
-              <div><i style="background:#E6212F"></i><b>Blocks</b> one line per block, from appearing to leaving</div>
-              <div><i style="background:linear-gradient(90deg,rgba(230,33,47,.7) 0 33%,rgba(255,255,255,.25) 33% 66%,rgba(255,127,123,.7) 66%)"></i><b>Content</b> animate on · hold · animate off</div>
-              <div><i style="background:linear-gradient(90deg,rgba(43,217,143,.6) 0 50%,rgba(255,194,26,.6) 50%)"></i><b>Transitions</b> in · out</div>
-              <div><i style="background:#749DD3;width:2px"></i><b>Cues</b> beats / markers from sound</div>
-              <div><i class="knobi"></i><b>Handles</b> drag these</div>
+          <div class="group" data-show="anim.mode=reveal|camera|push">
+            <div class="group-h">Scene</div>
+            <div class="note">When the build happens. The <b>Build</b> bar on the timeline is this scene: drag its ends.</div>
+            <div class="field"><span class="lbl scrub">Frame rate</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="comp.fps" min="1" max="120" step="1"><span class="unit">fps</span><button data-d="1">+</button></div></div>
+            <div data-adv class="field"><span class="lbl scrub" title="Negative = the scene is already running when the comp starts">Starts at</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.startF" min="-9999" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+            <div class="field"><span class="lbl scrub">Length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.lenF" min="2" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+            <label data-adv class="check"><input type="checkbox" data-bind="anim.toEnd"> Run until the comp ends</label>
+            <div style="display:grid;gap:9px">
+              <div class="field stack"><span class="lbl">Number of blocks</span><div class="seg" data-seg="anim.countMode"><button data-v="fill">Fill the length</button><button data-v="exact">Exact number</button></div></div>
+              <div class="field" data-show="anim.countMode=fill"><span class="lbl scrub" title="Average frames between blocks">One every</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.pace" min="1" max="120" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              <div class="field" data-show="anim.countMode=exact"><span class="lbl scrub">Blocks</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.total" min="1" max="400" step="1"><button data-d="1">+</button></div></div>
+            </div>
+            <div class="readout" id="paceNote"></div>
+            <div class="curve" data-curve="anim.sceneCurve" data-ymin="0" data-ymax="1" data-title="Scene easing · re-times the whole scene: reveals, camera, grid changes"></div>
+            <div data-adv class="field stack"><span class="lbl">Motion</span><div class="seg" data-seg="anim.motion"><button data-v="smooth">Smooth</button><button data-v="stop">Stop-motion</button></div></div>
+            <div class="field" data-show="anim.motion=stop"><span class="lbl scrub">Hold</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.stepEvery" min="1" max="60" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+          </div>
+
+          <div class="group" data-show="anim.mode=reveal|camera|push">
+            <div class="group-h">After the build</div>
+            <div class="seg" id="afterSeg"><button data-after="stay" title="Blocks stay once they land">Stay</button><button data-after="walk" title="Hold, then the line keeps walking off frame with a short trail">Walk off</button><button data-after="hold" title="Each block leaves a set time after it landed">Each leaves</button><button data-after="behind" title="Each block leaves once the camera has carried it past the exit line">Behind camera</button><button data-after="end" title="Everything clears out at the end">Clear out</button></div>
+            <div class="note" data-show="exit.on=false">Blocks stay. On the timeline the <b>Hold</b> bar runs to the end of the piece.</div>
+            <div data-show="exit.on=true" style="display:grid;gap:9px">
+              <div class="field stack" hidden><span class="lbl">When they leave</span><div class="seg" data-seg="exit.mode"><button data-v="hold" title="Each block leaves a set time after it appeared — a moving trail">After a hold</button><button data-v="walk" title="The finished build holds, then walks off in the order it walked on">Walk off</button><button data-v="behind" title="Each block leaves once the camera has carried it past the exit line">Behind camera</button><button data-v="end" title="Everything clears out at the end, one after another">All at end</button></div></div>
+              <div class="field" data-show="exit.mode=hold"><span class="lbl scrub" title="Frames a block stays fully visible before leaving">Stays for</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.hold" min="0" max="2000" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              <div data-show="exit.mode=walk" style="display:grid;gap:9px">
+                <div class="note">The build finishes and holds, then the line <b>keeps walking</b>: the oldest blocks peel away so only a short trail follows the head, the camera picks up and travels with it, then lets go — and the line with its trail walks off the edge of frame.</div>
+                <div class="field2"><div class="field"><span class="lbl scrub" title="Frames the finished build holds before walking on">Hold</span><div class="num"><input type="number" data-bind="exit.walkHold" min="0" max="2000" step="1"><span class="unit">fr</span></div></div><div class="field"><span class="lbl scrub" title="How long the camera keeps following the line before it lets go and the line walks off screen">Camera follows for</span><div class="num"><input type="number" data-bind="exit.walkLen" min="6" max="5000" step="1"><span class="unit">fr</span></div></div></div>
+                <div class="field2"><div class="field"><span class="lbl scrub" title="Blocks left visible behind the head">Trail</span><div class="num"><input type="number" data-bind="exit.trail" min="1" max="60" step="1"><span class="unit">blocks</span></div></div><div class="field"><span class="lbl scrub" title="1 = same rhythm as the build; 0.5 = twice as fast">Pace</span><div class="num"><input type="number" data-bind="exit.walkPace" min="0.1" max="5" step="0.1"><span class="unit">×</span></div></div></div>
+              </div>
+              <div class="field" data-show="exit.mode=behind"><span class="lbl scrub" title="A block leaves when its right edge passes this line (% of the frame width from the left)">Exit line</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.line" min="-50" max="100" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
+              <div data-show="exit.mode=end" style="display:grid;gap:9px">
+                <div class="field2">
+                  <div class="field"><span class="lbl scrub" title="Frames after the scene end (negative = before)">Starts</span><div class="num"><input type="number" data-bind="exit.at" min="-2000" max="2000" step="1"><span class="unit">fr</span></div></div>
+                  <div class="field"><span class="lbl scrub" title="Frames between one block leaving and the next">Stagger</span><div class="num"><input type="number" data-bind="exit.stagger" min="0" max="120" step="1"><span class="unit">fr</span></div></div>
+                </div>
+                <div class="field stack"><span class="lbl">Order</span><div class="seg" data-seg="exit.order"><button data-v="same">First in, first out</button><button data-v="reverse">Last in, first out</button></div></div>
+              </div>
             </div>
           </div>
+          <div class="group" data-show="anim.mode=camera|push">
+            <div class="group-h">Camera timing</div>
+            <div class="note" data-show="exit.mode=walk">With Walk off, the camera follows the walking line for <b>Camera follows for</b>, then lets it run off.</div>
+            <details class="sub" data-sub="cam-letgo" open data-show="anim.motion=smooth&amp;anim.camMove=follow|curve"><summary>Let go before the end <span class="note">coast to a stop</span></summary><div class="subbody">
+              <div data-show="anim.motion=smooth&amp;anim.camMove=follow" style="display:grid;gap:9px">
+                <label class="check"><input type="checkbox" data-bind="anim.relOn"> On — camera coasts to a stop, blocks keep going past</label>
+                <div class="field2" data-show="anim.relOn=true">
+                  <div class="field"><span class="lbl scrub" title="How far through the scene the camera stops following">Let go at</span><div class="num"><input type="number" data-bind="anim.relAt" min="5" max="100" step="1"><span class="unit">%</span></div></div>
+                  <div class="field"><span class="lbl scrub" title="Frames the camera takes to coast to a stop">Coast</span><div class="num"><input type="number" data-bind="anim.relSlow" min="2" max="600" step="1"><span class="unit">fr</span></div></div>
+                </div>
+              </div>
+            </div></details>
+          </div>
           <div class="group">
-            <div class="group-h">Pace &amp; holds</div>
-            <div class="note">The <b>rhythm</b> is how often a new block lands. With the camera paired, its speed comes straight from it: blocks every fewer frames → the camera travels faster.</div>
-            <div class="field" data-show="anim.countMode=fill"><span class="lbl scrub" title="Frames between one block landing and the next">Block every</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.pace" min="1" max="240" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-            <div class="field" data-show="anim.countMode=exact"><span class="lbl scrub" title="Exact number of blocks over the scene">Blocks</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.total" min="1" max="400" step="1"><button data-d="1">+</button></div></div>
+            <div class="group-h">Pace</div>
             <div class="readout" id="paceRead"></div>
             <div id="camPair"></div>
-            <div class="lbl" style="margin-top:4px">Holds</div>
-            <div data-show="exit.on=false" class="note">Blocks stay once they land. <a href="#" id="lnkWalkOn" style="color:var(--accent2)">Make the line walk off after a hold</a></div>
-            <div data-show="exit.on=true" style="display:grid;gap:9px">
-              <div class="field" data-show="exit.mode=walk"><span class="lbl scrub" title="How long the finished build holds before walking off">Build holds</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.walkHold" min="0" max="2000" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-              <div class="field" data-show="exit.mode=hold"><span class="lbl scrub" title="How long each block stays before it leaves">Each block stays</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.hold" min="1" max="9999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-              <div class="field" data-show="exit.mode=end"><span class="lbl scrub" title="Frames after the scene end (negative = before)">Clear-out starts</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.at" min="-2000" max="2000" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-              <div class="field2" data-show="exit.mode=walk"><div class="field"><span class="lbl scrub" title="How long the camera follows the walking line before it lets go">Camera follows for</span><div class="num"><input type="number" data-bind="exit.walkLen" min="6" max="5000" step="1"><span class="unit">fr</span></div></div><div class="field"><span class="lbl scrub" title="">Trail</span><div class="num"><input type="number" data-bind="exit.trail" min="1" max="60" step="1"><span class="unit">blocks</span></div></div></div>
-            </div>
             <div class="field" data-show="fill.anim.outMode=fade|typeoff|cut"><span class="lbl scrub" title="How long content stays fully on before animating off">Content holds</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.anim.hold" min="0" max="9999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
           </div>
           <div class="group">
@@ -1043,12 +1035,17 @@ body.nohelp .qm{display:none}
             <button class="btn" id="btnRetimeComp" title="Stretch the scene so it ends with the comp">Fit the scene to the comp length</button>
           </div>
           <div class="group">
-            <div class="group-h">Shortcuts <span class="note" style="text-transform:none;letter-spacing:0;margin-left:6px">the same settings as in Animate / Content</span></div>
-            <details class="sub" data-sub="t-scene"><summary>Scene length &amp; easing</summary><div class="subbody">
-            <div class="field2"><div class="field"><span class="lbl scrub" title="">Starts</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.startF" min="-9999" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div><div class="field"><span class="lbl scrub" title="">Length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.lenF" min="2" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div></div>
-            <div class="curve" data-curve="anim.sceneCurve" data-ymin="0" data-ymax="1" data-title="Scene easing · the pace of the whole build"></div>
-            </div></details>
-
+            <div class="group-h">Reading the timeline</div>
+            <div class="note">Time runs left → right under the canvas. <b>Hover anything</b> for a plain-English readout; <b>drag the handles</b> to change timings; click to scrub.</div>
+            <div class="legend">
+              <div><i style="background:linear-gradient(90deg,rgba(230,33,47,.55) 0 40%,rgba(236,236,239,.3) 40% 65%,rgba(116,157,211,.6) 65%)"></i><b>Phases</b> Build (blocks landing) · Hold · Camera follows · Walks off — drag the handles between them</div>
+              <div><i style="background:rgba(116,157,211,.6)"></i><b>Camera speed</b> taller = faster</div>
+              <div><i style="background:#E6212F"></i><b>Blocks</b> one line per block, from appearing to leaving</div>
+              <div><i style="background:linear-gradient(90deg,rgba(230,33,47,.7) 0 33%,rgba(255,255,255,.25) 33% 66%,rgba(255,127,123,.7) 66%)"></i><b>Content</b> animate on · hold · animate off</div>
+              <div><i style="background:linear-gradient(90deg,rgba(43,217,143,.6) 0 50%,rgba(255,194,26,.6) 50%)"></i><b>Transitions</b> in · out</div>
+              <div><i style="background:#749DD3;width:2px"></i><b>Cues</b> beats / markers from sound</div>
+              <div><i class="knobi"></i><b>Handles</b> drag these</div>
+            </div>
           </div>
           <div class="group">
             <div class="group-h">Sync to sound</div>
@@ -3625,16 +3622,18 @@ function computePlan(G){
       const band=A.revealWhen==='arrive'?clamp(+A.revealX||70,50,120)/100:1, bandY=A.axis==='xy'?(A.revealWhen==='arrive'?clamp(+A.revealY||100,50,120)/100:1):1e6;
       const xl=G.W*(1-band), xr=G.W*band, yt=G.H*(1-bandY), yb=G.H*bandY;
       const scrAt=(t,px,py)=>{const off=ev(P.cam,t,[0,0]),s=ev(P.zs,t,100)/100,pn=ev(P.pan,t,[0,0]);return [G.W/2+s*(px+off[0]-G.W/2)+pn[0],G.H/2+s*(py+off[1]-G.H/2)+pn[1]];};
-      const tMax=WO?endF-1:Math.min(endF-1,Math.floor(W(L-Math.max(1,tr0))));
+      const tBuild=Math.min(endF-1,Math.floor(W(L-Math.max(1,tr0))));   // build blocks are all in by the scene end
       let prev=-1e9;
       seq.forEach((b,i)=>{
+        const walk=P.walkFrom!=null&&i>=P.walkFrom, tMax=walk?endF-1:tBuild;
+        if(walk&&P.relT!=null&&P.T[i]>=P.relT){ P.T[i]=Math.max(P.T[i],prev); prev=P.T[i]; return; }   // after the camera lets go: keep the walk's rhythm
         const r=cellRect(G,b.c,b.r,b.w,b.h), px=r.x+r.w/2, py=r.y+r.h/2;
-        const win=(x0,x1,y0,y1)=>{let tIn=null,tOut=null;for(let t=startF;t<=tMax;t++){const q=scrAt(t,px,py),inz=q[0]>=x0&&q[0]<=x1&&q[1]>=y0&&q[1]<=y1; if(inz&&tIn==null)tIn=t; if(!inz&&tIn!=null){tOut=t;break;}}return [tIn,tOut];};
-        let [tIn,tOut]=win(xl,xr,yt,yb);
-        if(tIn==null) [tIn,tOut]=win(G.W*.02,G.W*.98,-1e6,1e6);   // never reaches the zone (e.g. already past it at the start): any time it's on screen
-        let t=P.T[i];
-        if(tIn!=null){ t=Math.max(tIn,Math.min(t,(tOut!=null?tOut:tMax+1)-1)); }
-        if(P.relT!=null&&P.T[i]>=P.relT) t=P.T[i];        // after the camera lets go: keep the schedule
+        // the camera carries each block onto the reveal line: it appears the frame it gets there
+        // on its schedule if it's in the reveal zone then; otherwise the first frame the camera has it in the zone
+        const inZ=t=>{const q=scrAt(t,px,py);return q[0]>=xl&&q[0]<=xr*1.015+2&&q[1]>=yt&&q[1]<=yb;};
+        const lo=Math.max(startF,Math.round(prev)), sched=Math.max(lo,P.T[i]);
+        let t=sched;
+        if(!(sched<=tMax&&inZ(sched))){ let found=null; for(let k=lo;k<=tMax;k++){ if(inZ(k)){found=k;break;} } if(found!=null) t=found; }
         t=Math.min(tMax,Math.max(t,prev)); P.T[i]=Math.round(t); prev=P.T[i];
       });
     } else
@@ -4204,7 +4203,7 @@ function renderPace(){
     } else cp.innerHTML=''; }
 }
 /* the dope sheet: one row per thing that has timing, with handles you can drag */
-const DOPE={rows:['Scene','Camera speed','Blocks','Content','Transitions'],handles:[],drag:null,rowsY:[]};
+const DOPE={rows:['Phases','Camera speed','Blocks','Content','Transitions'],handles:[],drag:null,rowsY:[]};
 function dopeRange(){const G=geom(),fps=D.comp.fps||30;return Math.max(sceneEnd(G),Math.round((D.comp.dur||10)*fps),D.timing&&D.timing.media?Math.round(D.timing.media.dur*fps):0,10);}
 function drawDope(){
   const c=$('#dopeCv'); if(!c) return; const r=c.getBoundingClientRect(); if(!r.width) return;
@@ -4228,14 +4227,25 @@ function drawDope(){
   // sound
   if(media){const y=Y(row++), pk=U.media.peaks, d=U.media.dur*fps, off=+(D.timing.offset||0); g.fillStyle='rgba(162,175,178,.55)';
     for(let px=LW;px<LW+W;px++){const f=F(px)-off; if(f<0||f>d) continue; const v=pk[Math.min(pk.length-1,Math.floor(f/d*pk.length))]||0; g.fillRect(px,y+RH/2-v*RH*.45,1,Math.max(1,v*RH*.9));}}
-  // scene
-  {const y=Y(row++), s0=P.startF, s1=P.startF+P.L; bar(s0,s1,y,'rgba(230,33,47,.35)',RH-8);
-   const sc=curveFn(D.anim.sceneCurve||[0,0,1,1]); g.strokeStyle='rgba(255,255,255,.5)'; g.lineWidth=1; g.beginPath();
+  // phases: Build · Hold · Camera follows · Walks off  (or Build · Hold · Clear-out)
+  {const y=Y(row++), s0=P.startF, s1=P.startF+P.L, X2=D.exit, fpsR=fps;
+   const lastReveal=Math.max(...P.T.slice(0,P.walkFrom!=null?P.walkFrom:P.T.length)), buildDone=Math.max(s1,lastReveal+(+D.anim.trans||1));
+   const seg=(f0,f1,col,label)=>{if(f1<=f0)return;bar(f0,f1,y,col,RH-6);const w=X(f1)-X(f0);if(w>34){g.fillStyle='#ececef';g.font='600 10px sans-serif';const t=`${label} ${((f1-f0)/fpsR).toFixed(1)}s`;g.fillText(w>g.measureText(t).width+10?t:label,X(f0)+5,y+RH/2);}};
+   seg(s0,s1,'rgba(230,33,47,.45)','Build');
+   const sc=curveFn(D.anim.sceneCurve||[0,0,1,1]); g.strokeStyle='rgba(255,255,255,.35)'; g.lineWidth=1; g.beginPath();
    for(let k=0;k<=40;k++){const u=k/40, xx=X(s0+(s1-s0)*u), yy=y+RH-4-(RH-8)*sc(u); k?g.lineTo(xx,yy):g.moveTo(xx,yy);} g.stroke();
-   g.fillStyle='rgba(255,255,255,.75)'; [...new Set(P.T)].forEach(t=>g.fillRect(X(t),y+RH-6,1,4));
+   g.fillStyle='rgba(255,255,255,.8)'; [...new Set(P.T)].forEach(t=>g.fillRect(X(t),y+RH-6,1,4));
+   let holdEnd=N, holdKnob=null;
+   if(X2.on&&X2.mode==='walk'&&P.walkT!=null){holdEnd=P.walkT; holdKnob=f=>{X2.walkHold=Math.max(0,Math.round(f-(P.walkT-(+X2.walkHold||0))));};}
+   else if(X2.on&&X2.mode==='end'&&P.exitT&&P.exitT.length){holdEnd=Math.min(...P.exitT.filter(v=>v!=null)); holdKnob=f=>{X2.at=Math.round(f-(D.anim.startF+D.anim.lenF));};}
+   seg(s1,holdEnd,'rgba(236,236,239,.16)',X2.on&&X2.mode==='hold'?`Each block stays ${X2.hold}f`:'Hold');
+   if(X2.on&&X2.mode==='walk'&&P.walkT!=null){const rel=P.relT!=null?P.relT:P.walkT; seg(P.walkT,rel,'rgba(116,157,211,.45)','Camera follows'); seg(rel,N,'rgba(116,157,211,.18)','Walks off');
+     knob(rel,y,'#749DD3'); H(X(rel),y,y+RH,'ew-resize',f=>{X2.walkLen=Math.max(6,Math.round(f-P.walkT));},'how long the camera follows');}
+   else if(X2.on&&X2.mode==='end'&&isFinite(holdEnd)) seg(holdEnd,N,'rgba(255,127,123,.25)','Clear-out');
    knob(s0,y,'#E6212F'); knob(s1,y,'#E6212F');
    H(X(s0),y,y+RH,'ew-resize',f=>{const e=D.anim.startF+D.anim.lenF;D.anim.startF=Math.round(f);D.anim.lenF=Math.max(2,e-D.anim.startF);},'scene start');
-   H(X(s1),y,y+RH,'ew-resize',f=>{D.anim.lenF=Math.max(2,Math.round(f-D.anim.startF));D.anim.toEnd=false;},'scene end');}
+   H(X(s1),y,y+RH,'ew-resize',f=>{D.anim.lenF=Math.max(2,Math.round(f-D.anim.startF));D.anim.toEnd=false;},'build length');
+   if(holdKnob&&isFinite(holdEnd)){knob(holdEnd,y,'#FFFFFF'); H(X(holdEnd),y,y+RH,'ew-resize',holdKnob,'hold');}}
   // camera speed + let go
   {const y=Y(row++); if(P.cam.length){const v=[];let mx=1;for(let f=0;f<N;f++){const a=ev(P.cam,f,[0,0]),b=ev(P.cam,f+1,[0,0]);const s=Math.hypot(b[0]-a[0],b[1]-a[1]);v.push(s);mx=Math.max(mx,s);}
      g.fillStyle='rgba(116,157,211,.45)'; v.forEach((s,f)=>{const hh=s/mx*(RH-6);g.fillRect(X(f),y+RH-3-hh,Math.max(1,X(f+1)-X(f)),hh);});}
@@ -4275,7 +4285,7 @@ function dopeInfo(x,y){
   const sec=v=>`f${Math.round(v)} (${(v/fps).toFixed(2)}s)`;
   switch(row.name){
     case 'Sound': return `${tc} — sound${D.timing.media?' · '+D.timing.media.name:''}. Blue lines are beats / markers.`;
-    case 'Scene': return `${tc} — scene ${sec(P.startF)} → ${sec(P.startF+P.L)}. The line inside is the easing; ticks are reveals. Drag the red ends to move or resize.`;
+    case 'Phases': return `${tc} — Build ${sec(P.startF)} → ${sec(P.startF+P.L)} (line = easing, ticks = blocks landing), then Hold${D.exit.on&&D.exit.mode==='walk'?' → camera follows the walking line → it walks off':D.exit.on&&D.exit.mode==='end'?' → clear-out':''}. Drag the red ends to set the build, the white handle to set the hold${D.exit.on&&D.exit.mode==='walk'?', the blue handle for how long the camera follows':''}.`;
     case 'Camera speed': {let s=0;if(P.cam.length){const a=ev(P.cam,f,[0,0]),b=ev(P.cam,f+1,[0,0]);s=Math.hypot(b[0]-a[0],b[1]-a[1]);}return `${tc} — camera moving ${Math.round(s)} px/frame${P.relT!=null?` · lets go at ${sec(P.relT)} (drag the blue handle)`:''}`;}
     case 'Blocks': {let best=null;P.seq.forEach((b,i)=>{const t0=P.T[i],t1=P.exitT&&P.exitT[i]!=null?P.exitT[i]:null;if(f>=t0&&(t1==null||f<=t1+(+D.exit.len||8)))best={b,t0,t1};});
       const on=P.seq.filter((b,i)=>f>=P.T[i]&&!(P.exitT&&P.exitT[i]!=null&&f>P.exitT[i]+(+D.exit.len||8))).length;
@@ -5208,6 +5218,7 @@ function syncInputs(force){
   const mbx=$('#chkMB'); if(mbx){mbx.checked=U.mbPrev!==false; mbx.parentElement.hidden=!D.out.mb||D.anim.mode==='static';}
   $$('#camPreset [data-p]').forEach(b=>{const p=b.dataset.p.split(',').map(Number);b.classList.toggle('on',+D.anim.smooth===p[0]&&+D.anim.motionBlurF===p[1]&&+D.anim.settle===p[2]);});
   syncIconSet();
+  $$('#afterSeg [data-after]').forEach(b=>b.classList.toggle('on',D.exit.on?b.dataset.after===D.exit.mode:b.dataset.after==='stay'));
   $$('#zonePreset [data-z]').forEach(b=>b.classList.toggle('on',+b.dataset.z===+D.anim.revealX));
   $$('#endPreset [data-ex]').forEach(b=>b.classList.toggle('on',+b.dataset.ex===+D.anim.endX));
   $$('[data-layer]').forEach(el=>{const v=getP(el.dataset.layer);el.classList.toggle('off',!v||v==='none');});
@@ -5556,8 +5567,8 @@ function updPaceTotal(){
   if(D.anim.mode==='static'){el.textContent='';return;}
   const P=plan(geom()), fps=D.comp.fps||30, n=P.groups;
   const sec=f=>`f${f} (${+(f/fps).toFixed(2)}s)`;
-  const total=P.seq.filter(b=>!b.echo&&!b.stack).length;
-  el.innerHTML=n?`<b>${total}</b> blocks${P.ext?` (${P.baseMain} in your layout + ${total-P.baseMain} more)`:''} over <b>${sec(P.L)}</b> · about one every <b>${Math.max(1,Math.round(P.L/Math.max(1,n)))}</b> frames<br>Scene runs ${sec(P.startF)} → ${sec(P.startF+P.L)}${P.startF<0?' · already running at frame 0':''}${D.anim.ending==='spot'&&P.endReach===false?'<br><span class="warn">That row is too far to reach with this many blocks — the pattern gets as close as it can. Raise Wander or add blocks.</span>':''}${D.anim.order==='manual'?`<br>Manual: <b>${P.seq.length}</b> picked block${P.seq.length===1?'':'s'} animate${P.unpicked.length?`, ${P.unpicked.length} ${D.anim.unpicked==='visible'?'stay visible':'stay hidden'}`:''}.`:''}${D.anim.countMode==='exact'&&D.anim.total<P.baseMain&&D.anim.ending==='count'?'<br><span class="warn">Your layout has more blocks than this, so all of them are used.</span>':''}`:'Add some blocks first.';
+  const total=(P.walkFrom!=null?P.seq.slice(0,P.walkFrom):P.seq).filter(b=>!b.echo&&!b.stack).length;
+  el.innerHTML=n?`<b>${total}</b> blocks${P.ext?` (${P.baseMain} in your layout + ${total-P.baseMain} more)`:''} over <b>${sec(P.L)}</b> · about one every <b>${Math.max(1,Math.round(P.L/Math.max(1,total)))}</b> frames${P.walkFrom!=null?` · then ${P.seq.length-P.walkFrom} more walk off`:""}<br>Scene runs ${sec(P.startF)} → ${sec(P.startF+P.L)}${P.startF<0?' · already running at frame 0':''}${D.anim.ending==='spot'&&P.endReach===false?'<br><span class="warn">That row is too far to reach with this many blocks — the pattern gets as close as it can. Raise Wander or add blocks.</span>':''}${D.anim.order==='manual'?`<br>Manual: <b>${P.seq.length}</b> picked block${P.seq.length===1?'':'s'} animate${P.unpicked.length?`, ${P.unpicked.length} ${D.anim.unpicked==='visible'?'stay visible':'stay hidden'}`:''}.`:''}${D.anim.countMode==='exact'&&D.anim.total<P.baseMain&&D.anim.ending==='count'?'<br><span class="warn">Your layout has more blocks than this, so all of them are used.</span>':''}`:'Add some blocks first.';
 }
 function updRuleNote(G){
   const el=$('#ruleNote'); if(!el) return;
@@ -5985,7 +5996,10 @@ function resetDefaults(withHist){
 }
 $('#btnDefaults').onclick=()=>resetDefaults();
 initDope();
-$('#lnkWalkOn').onclick=e=>{e.preventDefault();pushHist();Object.assign(D.exit,{on:true,mode:'walk'});syncInputs(true);refresh();};
+document.addEventListener('click',e=>{const l=e.target.closest('[data-goto]');if(!l)return;e.preventDefault();const i=STEPS.findIndex(s=>s.id===l.dataset.goto);if(i>=0)goStep(i);});
+$('#afterSeg').addEventListener('click',e=>{const b=e.target.closest('[data-after]');if(!b)return;const v=b.dataset.after;pushHist();
+  if(v==='stay') D.exit.on=false; else Object.assign(D.exit,{on:true,mode:v});
+  planCache.k='';syncInputs(true);refresh();});
 aiInit();
 $('#mediaIn').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(f)loadMediaFile(f);e.target.value='';});
 $$('[data-retime]').forEach(b=>b.addEventListener('click',()=>retime(+b.dataset.retime)));

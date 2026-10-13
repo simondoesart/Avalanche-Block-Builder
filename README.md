@@ -130,3 +130,9 @@ Full Aeonik + Aeonik Fono families on the website (21 styles) and the desktop OT
 
 ## v1.9.2
 Walk-off is now a true "snake": when the walk starts, the surplus older blocks peel away (oldest first) so only the **Trail** follows the head; from then on a block leaves the moment the block *Trail* places ahead of it lands. The camera travels with the line for **Camera follows for** frames, then coasts to a stop — and the line keeps walking until the head and its whole trail have left the frame.
+
+## v2.0 — Timing owns the timing
+- **Animate** is now just where blocks go and how they appear / leave (style, camera movement, reveal, exit style, keep building, order, grid size). A note links to Timing.
+- **Timing** holds everything about *when*: Scene (fps, start, length, number of blocks / pace, easing, motion), **After the build** (Stay · Walk off · Each leaves · Behind camera · Clear out, with their holds), Camera timing (let go), Pace readout + camera pairing, Retime, Sync to sound.
+- **Timeline Phases row:** Build · Hold · Camera follows · Walks off (or Clear-out), each labelled with its duration. Drag the red handles to set the build, the **white handle to set the hold**, the blue one for how long the camera follows.
+- **Last block on time:** with "Follow the easing", every block appears the frame the camera brings it to the reveal line, and build blocks are always in by the end of the scene.
