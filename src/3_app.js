@@ -51,7 +51,7 @@ const DEF={
   rand:{pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
         wander:1,climb:0,stackPct:20,stackGap:1,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,tracking:0,leading:0,kern:'metrics',caps:'none'},
-  anim:{seed:0,skip:[],mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
+  anim:{seed:0,skip:[],cutAt:null,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.45,0,0.55,1],camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zoomOn:false,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
@@ -1235,10 +1235,10 @@ function computePlan(G){
   let gi=[], ng=0;
   if(A.groupCol){const m={};seq.forEach(b=>{if(!(b.c in m))m[b.c]=ng++;gi.push(m[b.c]);});}
   else seq.forEach(()=>gi.push(ng++));
-  const used=ng;
+  let used=ng;
   // which groups belong to the walk-off (the last woN blocks)
   const nBuildBlocks=Math.max(1,seq.length-(WO?(P._woMore||0):0));
-  const usedB=WO?Math.max(1,Math.max(...gi.slice(0,nBuildBlocks))+1):used;
+  let usedB=WO?Math.max(1,Math.max(...gi.slice(0,nBuildBlocks))+1):used;
   P.walkFrom=WO?nBuildBlocks:null;
   const CC=(A.camCurve||[0.33,0,0.67,1]).map(Number), RC=(A.revCurve||[0.25,0.1,0.25,1]).map(Number), ZC=(A.zoomCurve||[0.65,0,0.35,1]).map(Number);
   const camOn=(A.mode==='camera'||A.mode==='push');
@@ -1309,6 +1309,22 @@ function computePlan(G){
     }
     const s=Math.min(L,step*g); sg.push(s);
     let t=Math.round(W(s)); if(spread&&g>0&&t<=Tg[g-1]) t=Tg[g-1]+1; Tg.push(Math.min(t,startF+L));
+  }
+  // drop the late blocks: everything in the build landing after cutAt goes, the rest keep their timing exactly
+  const cutAt=A.cutAt!=null&&A.cutAt!==''?+A.cutAt:null; P.cutAt=null;
+  if(cutAt!=null&&isFinite(cutAt)){
+    let gCut=usedB; for(let g=1;g<usedB;g++){ if(Tg[g]>cutAt){gCut=g;break;} }
+    const k=usedB-gCut;
+    if(k>0){
+      const nseq=[], ngi=[]; seq.forEach((b,i)=>{const g=gi[i]; if(g>=gCut&&g<usedB) return; nseq.push(b); ngi.push(g>=usedB?g-k:g);});
+      seq=nseq; gi=ngi; Tg.splice(gCut,k); sg.splice(gCut,k); if(camOn){tg.splice(gCut,k); P.offs.splice(gCut,k);}
+      used-=k; usedB=gCut; P.cutAt=cutAt; P.cutN=k;
+      if(WO){ // the walk-off starts from the new last block
+        const tW=Tg[usedB-1]+tr0+Math.max(0,Math.round(+D.exit.walkHold||0));
+        for(let g=usedB;g<used;g++){Tg[g]=Math.round(tW+(g-usedB)*pace2); sg[g]=S(Tg[g]);}
+        P.walkFrom=seq.findIndex((b,i)=>gi[i]>=usedB); if(P.walkFrom<0) P.walkFrom=seq.length;
+      }
+    }
   }
   P.walkT=WO?Tg[usedB-1]+tr0+Math.max(0,Math.round(+D.exit.walkHold||0)):null;
   P.walkEnd=WO?Tg[used-1]+tr0:null;
@@ -2131,8 +2147,8 @@ function drawDope(){
    // last-block handle: drag left to drop the late blocks at the end of the build
    const nb=P.walkFrom!=null?P.walkFrom:P.seq.length, lastI=nb-1;
    if(lastI>=0){const tl=P.T[lastI]; knob(tl,y,'#FFC21A'); H(X(tl),y,y+RH,'ew-resize',f=>{
-       const keep=P.T.slice(0,nb).filter(t=>t<=f).length, mains=P.seq.slice(0,Math.max(1,keep)).filter(b=>!b.echo&&!b.stack).length;
-       D.anim.countMode='exact'; D.anim.total=Math.max(1,mains);},'last block (drag left to drop late blocks)');}
+       D.anim.cutAt=Math.max(P.T[0]+1,Math.round(f));},'end of the build (drag left to drop late blocks; they keep their timing)');
+     if(P.cutAt!=null){g.fillStyle='rgba(255,194,26,.12)';g.fillRect(X(tl)+4,y,Math.max(0,X(P.startF+P.L)-X(tl)-4),RH);g.fillStyle='#FFC21A';g.font='10px sans-serif';if(X(P.startF+P.L)-X(tl)>60)g.fillText(`${P.cutN} dropped`,X(tl)+8,y+RH/2);}}
    if(D.exit.on&&D.exit.mode==='end'&&P.exitT){const t=Math.min(...P.exitT.filter(v=>v!=null)); if(isFinite(t)){knob(t,y,'#FF7F7B'); H(X(t),y,y+RH,'ew-resize',f=>{D.exit.at=Math.round(f-(D.anim.startF+D.anim.lenF));},'clear-out start');}}
    if(D.exit.on&&D.exit.mode==='walk'&&P.exitT&&P.exitT.length){const t=Math.min(...P.exitT.filter(v=>v!=null)); const last=Math.max(...(P.done||P.T)); if(isFinite(t)){knob(t,y,'#FF7F7B'); H(X(t),y,y+RH,'ew-resize',f=>{D.exit.walkHold=Math.max(0,Math.round(f-last));},'walk-off start');}}
    if(D.exit.on&&D.exit.mode==='hold'&&P.exitT&&P.exitT[0]!=null){const t=P.exitT[0]; knob(t,y,'#FF7F7B'); const d0=(P.done||[])[0]||P.T[0]; H(X(t),y,y+RH,'ew-resize',f=>{D.exit.hold=Math.max(1,Math.round(f-d0));},'block hold');}}
@@ -3114,7 +3130,7 @@ function syncInputs(force){
   const mbx=$('#chkMB'); if(mbx){mbx.checked=U.mbPrev!==false; mbx.parentElement.hidden=!D.out.mb||D.anim.mode==='static';}
   $$('#camPreset [data-p]').forEach(b=>{const p=b.dataset.p.split(',').map(Number);b.classList.toggle('on',+D.anim.smooth===p[0]&&+D.anim.motionBlurF===p[1]&&+D.anim.settle===p[2]);});
   syncIconSet();
-  {const ub=$('#btnUnskip'); if(ub) ub.hidden=!(D.anim.skip&&D.anim.skip.length);}
+  {const ub=$('#btnUnskip'); if(ub) ub.hidden=!((D.anim.skip&&D.anim.skip.length)||D.anim.cutAt!=null);}
   $$('#afterSeg [data-after]').forEach(b=>b.classList.toggle('on',D.exit.on?b.dataset.after===D.exit.mode:b.dataset.after==='stay'));
   $$('#zonePreset [data-z]').forEach(b=>b.classList.toggle('on',+b.dataset.z===+D.anim.revealX));
   $$('#endPreset [data-ex]').forEach(b=>b.classList.toggle('on',+b.dataset.ex===+D.anim.endX));
@@ -4012,7 +4028,7 @@ $('#btnDefaults').onclick=()=>resetDefaults();
 initDope();
 const animSeed=()=>{pushHist();D.anim.seed=(D.anim.seed|0)+1;D.anim.skip=[];planCache.k='';refresh();toast('New walk — same layout','',true);};
 $('#btnAnimSeed').onclick=animSeed; $('#btnAnimSeed2').onclick=animSeed;
-$('#btnUnskip').onclick=()=>{pushHist();D.anim.skip=[];planCache.k='';refresh();};
+$('#btnUnskip').onclick=()=>{pushHist();D.anim.skip=[];D.anim.cutAt=null;planCache.k='';refresh();};
 $('#cvPlay').onclick=()=>{U.playing?stopPlay():play();};
 document.addEventListener('click',e=>{const l=e.target.closest('[data-goto]');if(!l)return;e.preventDefault();const i=STEPS.findIndex(s=>s.id===l.dataset.goto);if(i>=0)goStep(i);});
 $('#afterSeg').addEventListener('click',e=>{const b=e.target.closest('[data-after]');if(!b)return;const v=b.dataset.after;pushHist();
