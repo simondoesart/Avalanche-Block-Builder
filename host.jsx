@@ -233,26 +233,66 @@ function GB_keys(prop,list,fps){
 
 /* ---------- clear ---------- */
 function GB_clear(comp){
-  var n=0, pre=[];
-  for(var i=comp.numLayers;i>=1;i--){
+  var n=0, pre=[], src=[], i, j;
+  for(i=comp.numLayers;i>=1;i--){
     var l=comp.layer(i);
     if(l.comment && l.comment.indexOf("GridBlocks")===0){
-      if(l.comment.indexOf("precomp")>0){try{if(l.source)pre.push(l.source);}catch(eS){}}
-      l.locked=false;l.remove();n++;
+      try{if(l.source){ if(l.comment.indexOf("precomp")>0) pre.push(l.source); else src.push(l.source); }}catch(eS){}
+      l.locked=false; l.remove(); n++;
     }
   }
-  for(var j=0;j<pre.length;j++){try{if(pre[j].usedIn.length===0)pre[j].remove();}catch(eR){}}
+  // precomps (and anything inside them), then solids nobody uses any more
+  for(j=0;j<pre.length;j++){try{if(pre[j].usedIn.length===0){GB_clearInner(pre[j],src);pre[j].remove();}}catch(eR){}}
+  for(j=0;j<src.length;j++){try{if(src[j].usedIn.length===0&&src[j].mainSource&&(src[j].mainSource instanceof SolidSource))src[j].remove();}catch(eR2){}}
+  // our comp markers
+  try{
+    var mk=comp.markerProperty;
+    for(i=mk.numKeys;i>=1;i--){var mv=mk.keyValue(i); if(mv&&String(mv.comment).indexOf("GB · ")===0) mk.removeKey(i);}
+  }catch(eM){}
   return n;
 }
-/* full-frame transition blocks: in this comp (2D, on top) or inside a matte precomp */
-function GB_trans(comp,d,fps){
+function GB_clearInner(c,src){
+  for(var i=c.numLayers;i>=1;i--){var l=c.layer(i);try{if(l.source&&!(l.source instanceof CompItem))src.push(l.source);}catch(e){} l.locked=false;}
+}
+/* ---------- project tidiness ---------- */
+function GB_folder(name,parent){
+  var items=app.project.items, i;
+  for(i=1;i<=items.length;i++){var it=items[i]; if((it instanceof FolderItem)&&it.name==name&&it.parentFolder&&it.parentFolder.id==(parent||app.project.rootFolder).id) return it;}
+  var f=items.addFolder(name); if(parent) f.parentFolder=parent; return f;
+}
+function GB_compNameUsed(name,except){
+  var items=app.project.items;
+  for(var i=1;i<=items.length;i++){var it=items[i]; if((it instanceof CompItem)&&(!except||it.id!=except.id)&&it.name==name) return true;}
+  return false;
+}
+function GB_uniqueName(name){
+  if(!GB_compNameUsed(name)) return name;
+  for(var k=2;k<999;k++) if(!GB_compNameUsed(name+" "+k)) return name+" "+k;
+  return name;
+}
+/* a precomp the same size/length as the main comp, placed in it as one layer.
+   With the AE camera rig it's collapsed + 3D, so the 3D layers inside still use the main comp's camera. */
+function GB_precomp(main,name,folder,collapse3D,tag,label){
+  var pc=app.project.items.addComp(GB_uniqueName(name),main.width,main.height,main.pixelAspect,main.duration,main.frameRate);
+  try{pc.bgColor=main.bgColor;}catch(eB){}
+  if(folder) pc.parentFolder=folder;
+  var L=main.layers.add(pc);
+  L.comment="GridBlocks:precomp|"+tag; L.label=label||0;
+  if(collapse3D){ try{L.collapseTransformation=true;}catch(eC){} try{L.threeDLayer=true;}catch(e3){} }
+  return {comp:pc,layer:L};
+}
+function GB_trans(comp,d,fps,org,folder,comps){
   var T=d.trans, n=0; if(!T) return 0;
   for(var g=0;g<T.groups.length;g++){
-    var G=T.groups[g], target=comp, pre=null;
-    if(G.output=="matte"){pre=app.project.items.addComp(G.name,comp.width,comp.height,comp.pixelAspect,comp.duration,comp.frameRate);target=pre;}
+    var G=T.groups[g], target=comp, pre=null, matte=G.output=="matte", lab=G.k=="in"?9:14;
+    if(matte||org.preTrans){
+      pre=GB_precomp(comp,(G.k=="in"?"GB Transition In":"GB Transition Out")+(matte?" (matte)":"")+" · "+comp.name,folder,false,"trans",lab);
+      pre.layer.name=G.name+(matte?" (matte)":"");
+      target=pre.comp; comps.push(target);
+    }
     for(var i=0;i<G.tiles.length;i++){
-      var t=G.tiles[i], L=GB_box(target,(G.k=="in"?"In ":"Out ")+(i+1),t.x,t.y,t.w,t.h,t.color,0);
-      L.comment="GridBlocks:trans"; L.label=G.k=="in"?9:14;
+      var t=G.tiles[i], L=GB_box(target,(G.k=="in"?"In ":"Out ")+GB_pad3(i+1),t.x,t.y,t.w,t.h,t.color,0);
+      L.comment="GridBlocks:trans"; L.label=lab;
       var k=t.keys;
       if(k){
         GB_keys(GB_xf(L).property("ADBE Opacity"),k.op,fps);
@@ -265,10 +305,14 @@ function GB_trans(comp,d,fps){
       }
       n++;
     }
-    if(pre){var PL=comp.layers.add(pre);PL.name=G.name+" (matte)";PL.comment="GridBlocks:trans|precomp";PL.label=G.k=="in"?9:14;}
+    // trim the precomp layer to when the transition is on screen
+    if(pre&&org.trim&&G.vis){
+      try{ if(G.vis[0]>0) pre.layer.inPoint=G.vis[0]/fps; if(G.vis[1]+1<comp.duration*fps) pre.layer.outPoint=(G.vis[1]+1)/fps; }catch(eT){}
+    }
   }
   return n;
 }
+function GB_pad3(n){n=String(n);while(n.length<2)n="0"+n;return n;}
 function GB_clearActive(){
   var c=app.project.activeItem;
   if(!(c && c instanceof CompItem)) return "ERR|No active comp";
@@ -320,6 +364,26 @@ function GB_fillText(comp,it){
   if(it.expr){try{p.expression=it.expr;}catch(eX){}}
   T.name=(it.text.split("\r")[0]).substr(0,28);
   T.comment="GridBlocks:fill"; T.label=11;
+  if(it.t0>0) T.inPoint=it.t0;
+  return T;
+}
+/* block number: right-aligned in the block's top-right corner, parented to the block */
+var d_fps_hack=30;
+function GB_numText(comp,B,b){
+  var n=b.num, T=comp.layers.addText(n.text);
+  var p=T.property("ADBE Text Properties").property("ADBE Text Document"), td=p.value;
+  try{td.resetCharStyle();}catch(e1){}
+  try{td.resetParagraphStyle();}catch(e2){}
+  if(n.font){try{td.font=n.font;}catch(eF){}}
+  td.fontSize=n.size; td.applyFill=true; td.fillColor=n.color; td.applyStroke=false;
+  td.justification=ParagraphJustification.RIGHT_JUSTIFY;
+  p.setValue(td);
+  var r=T.sourceRectAtTime(0,false);
+  GB_xf(T).property("ADBE Anchor Point").setValue([r.left+r.width,r.top]);
+  GB_xf(T).property("ADBE Position").setValue([n.x,n.y]);
+  if(n.keys&&n.keys.length) GB_keys(GB_xf(T).property("ADBE Opacity"),n.keys,d_fps_hack);
+  else if(n.opacity<100) GB_xf(T).property("ADBE Opacity").setValue(n.opacity);
+  T.parent=B; T.name=b.name+" · Number"; T.comment="GridBlocks:num"; T.label=1;
   return T;
 }
 function GB_dots(comp,it){
@@ -330,9 +394,10 @@ function GB_dots(comp,it){
     var f=it.rects[i];
     var g=root.addProperty("ADBE Vector Group"); g.name="Dots "+(i+1);
     var c=root.property(root.numProperties).property("ADBE Vectors Group");
-    var el=c.addProperty("ADBE Vector Shape - Ellipse");
+    if(it.sq){var rq=c.addProperty("ADBE Vector Shape - Rect"); rq.property("ADBE Vector Rect Size").setValue([it.d,it.d]); rq.property("ADBE Vector Rect Position").setValue([f.x,f.y]);}
+    else{var el=c.addProperty("ADBE Vector Shape - Ellipse");
     el.property("ADBE Vector Ellipse Size").setValue([it.d,it.d]);
-    el.property("ADBE Vector Ellipse Position").setValue([f.x,f.y]);
+    el.property("ADBE Vector Ellipse Position").setValue([f.x,f.y]);}
     c=root.property(root.numProperties).property("ADBE Vectors Group");
     var fl=c.addProperty("ADBE Vector Graphic - Fill"); fl.property("ADBE Vector Fill Color").setValue(it.color);
     c=root.property(root.numProperties).property("ADBE Vectors Group");
@@ -349,6 +414,92 @@ function GB_dots(comp,it){
   L.comment="GridBlocks:fill"; L.label=11;
   if(it.t0>0) L.inPoint=it.t0;
   return L;
+}
+/* line icon from the icon set: one group per primitive (path / ellipse / rect), stroked or filled */
+function GB_icon(comp,it){
+  var L=comp.layers.addShape(); L.name="Icon · "+(it.label||it.name);
+  var root=L.property("ADBE Root Vectors Group"), s=it.s, i, j;
+  for(i=0;i<it.prims.length;i++){
+    var p=it.prims[i];
+    root.addProperty("ADBE Vector Group");
+    var c=root.property(root.numProperties).property("ADBE Vectors Group");
+    if(p.t=="c"){var e=c.addProperty("ADBE Vector Shape - Ellipse"); e.property("ADBE Vector Ellipse Size").setValue([p.r*2*s,p.r*2*s]); e.property("ADBE Vector Ellipse Position").setValue([p.cx*s,p.cy*s]);}
+    else if(p.t=="r"){var rr=c.addProperty("ADBE Vector Shape - Rect"); rr.property("ADBE Vector Rect Size").setValue([p.w*s,p.h*s]); rr.property("ADBE Vector Rect Position").setValue([(p.x+p.w/2)*s,(p.y+p.h/2)*s]); if(p.rr) rr.property("ADBE Vector Rect Roundness").setValue(p.rr*s);}
+    else{var sh=new Shape(), vv=[], tz=[]; for(j=0;j<p.pts.length;j++){vv.push([p.pts[j][0]*s,p.pts[j][1]*s]);tz.push([0,0]);}
+      sh.vertices=vv; sh.inTangents=tz; sh.outTangents=tz; sh.closed=!!p.closed;
+      c.addProperty("ADBE Vector Shape - Group").property("ADBE Vector Shape").setValue(sh);}
+    c=root.property(root.numProperties).property("ADBE Vectors Group");
+    if(p.f){var fl=c.addProperty("ADBE Vector Graphic - Fill"); fl.property("ADBE Vector Fill Color").setValue(it.color);}
+    else{var st=c.addProperty("ADBE Vector Graphic - Stroke"); st.property("ADBE Vector Stroke Color").setValue(it.color); st.property("ADBE Vector Stroke Width").setValue(it.lw);
+      try{st.property("ADBE Vector Stroke Line Cap").setValue(2);st.property("ADBE Vector Stroke Line Join").setValue(2);}catch(eC){}}
+  }
+  GB_xf(L).property("ADBE Anchor Point").setValue([0,0]);
+  GB_xf(L).property("ADBE Position").setValue([it.x,it.y]);
+  L.comment="GridBlocks:fill"; L.label=11;
+  if(it.t0>0) L.inPoint=it.t0;
+  return L;
+}
+/* ---- LAB layers ---- */
+function GB_labWorld(comp,lab,blocks,blockLayers,fps,org,main){
+  var n=0, i, j, L, c;
+  function trim(Lr,t0,t1){ if(org.trim){ try{ if(t0>0) Lr.inPoint=t0/fps; if(t1!=null&&t1/fps<main.duration&&t1/fps>Lr.inPoint) Lr.outPoint=t1/fps; }catch(e){} } }
+  for(i=0;i<lab.trails.length;i++){
+    var t=lab.trails[i]; L=comp.layers.addShape(); L.name=(blockLayers[t.bi]?blockLayers[t.bi].name+" · ":"")+"Trail";
+    var root=L.property("ADBE Root Vectors Group"); root.addProperty("ADBE Vector Group"); c=root.property(1).property("ADBE Vectors Group");
+    for(j=0;j<t.lines.length;j++){var q=t.lines[j], rr=c.addProperty("ADBE Vector Shape - Rect"); rr.property("ADBE Vector Rect Size").setValue([q[2],q[3]]); rr.property("ADBE Vector Rect Position").setValue([q[0]-t.anchor[0]+q[2]/2,q[1]-t.anchor[1]+q[3]/2]);}
+    c.addProperty("ADBE Vector Graphic - Fill").property("ADBE Vector Fill Color").setValue(t.color);
+    GB_xf(L).property("ADBE Anchor Point").setValue([0,0]); GB_xf(L).property("ADBE Position").setValue(t.anchor);
+    L.comment="GridBlocks:lab"; L.label=6; blocks.push({L:L,T:null,b:{keys:t.keys}}); trim(L,t.t0,t.t1); n++;
+  }
+  for(i=0;i<lab.pulses.length;i++){
+    var p=lab.pulses[i]; L=GB_shapeLayer(comp,(blockLayers[p.bi]?blockLayers[p.bi].name+" · ":"")+"Pulse","Pulse");
+    GB_addRect(L,p.w,p.h,0,0);
+    var st=GB_contents(L).addProperty("ADBE Vector Graphic - Stroke"); st.property("ADBE Vector Stroke Color").setValue(p.color); st.property("ADBE Vector Stroke Width").setValue(p.lw);
+    GB_xf(L).property("ADBE Anchor Point").setValue([0,0]); GB_xf(L).property("ADBE Position").setValue([p.cx,p.cy]);
+    L.comment="GridBlocks:lab"; L.label=6; blocks.push({L:L,T:null,b:{keys:p.keys}}); trim(L,p.t0,p.t1); n++;
+  }
+  for(i=0;i<lab.bars.length;i++){
+    var b=lab.bars[i]; L=GB_shapeLayer(comp,(blockLayers[b.bi]?blockLayers[b.bi].name+" · ":"")+"Finality bar","Bar");
+    GB_addRect(L,b.w,b.h,b.w/2,0); GB_fill(L,b.color);
+    GB_xf(L).property("ADBE Anchor Point").setValue([0,0]); GB_xf(L).property("ADBE Position").setValue([b.x,b.y+b.h/2]);
+    if(blockLayers[b.bi]) L.parent=blockLayers[b.bi];
+    L.comment="GridBlocks:lab"; L.label=6; blocks.push({L:L,T:null,b:{keys:b.keys}}); trim(L,b.t0,null); n++;
+  }
+  return n;
+}
+function GB_labScreen(main,lab,fps){
+  var L;
+  if(lab.snow){
+    var S=lab.snow; L=main.layers.addShape(); L.name="GB · Snow drift";
+    var root=L.property("ADBE Root Vectors Group");
+    for(var i=0;i<S.parts.length;i++){
+      var p=S.parts[i]; root.addProperty("ADBE Vector Group"); var g=root.property(root.numProperties);
+      var c=g.property("ADBE Vectors Group"); var rr=c.addProperty("ADBE Vector Shape - Rect"); rr.property("ADBE Vector Rect Size").setValue([p[3]*S.stretch,p[3]]);
+      c.addProperty("ADBE Vector Graphic - Fill").property("ADBE Vector Fill Color").setValue(S.color);
+      g.property("ADBE Vector Transform Group").property("ADBE Vector Position").expression=
+        'var W=thisComp.width+40;var x='+p[0]+'+('+S.dir+')*'+p[2]+'*time;x=((x%W)+W)%W-20;['+'x,'+p[1]+'+Math.sin(time*0.9+'+p[4]+')*'+p[5]+']';
+    }
+    GB_xf(L).property("ADBE Anchor Point").setValue([0,0]); GB_xf(L).property("ADBE Position").setValue([0,0]);
+    GB_xf(L).property("ADBE Opacity").setValue(S.opacity);
+    L.comment="GridBlocks:lab"; L.label=6;
+  }
+  if(lab.ticker){
+    var T=lab.ticker;
+    if(T.band){ L=main.layers.addShape(); L.name="GB · Ticker band"; var root2=L.property("ADBE Root Vectors Group"); root2.addProperty("ADBE Vector Group");
+      var c2=root2.property(1).property("ADBE Vectors Group"); var r2=c2.addProperty("ADBE Vector Shape - Rect"); r2.property("ADBE Vector Rect Size").setValue([main.width,T.size*1.8]); r2.property("ADBE Vector Rect Position").setValue([main.width/2,T.y]);
+      c2.addProperty("ADBE Vector Graphic - Fill").property("ADBE Vector Fill Color").setValue(T.bandColor);
+      GB_xf(L).property("ADBE Anchor Point").setValue([0,0]); GB_xf(L).property("ADBE Position").setValue([0,0]); L.comment="GridBlocks:lab"; L.label=6; }
+    var X=main.layers.addText(T.text);
+    var tp=X.property("ADBE Text Properties").property("ADBE Text Document"), td=tp.value;
+    try{td.resetCharStyle();}catch(e1){} try{td.resetParagraphStyle();}catch(e2){}
+    if(T.font){try{td.font=T.font;}catch(eF){}}
+    td.fontSize=T.size; td.applyFill=true; td.fillColor=T.color; td.applyStroke=false; td.justification=ParagraphJustification.LEFT_JUSTIFY; tp.setValue(td);
+    var r=X.sourceRectAtTime(0,false);
+    GB_xf(X).property("ADBE Anchor Point").setValue([r.left,r.top+r.height/2]);
+    GB_xf(X).property("ADBE Position").setValue([main.width,T.y]);
+    GB_xf(X).property("ADBE Position").expression='var w=sourceRectAtTime(0,false).width;var W=thisComp.width;\n[W-((time*'+T.speed+')%(w+W)),value[1]]';
+    X.name="GB · Ticker"; X.comment="GridBlocks:lab"; X.label=6;
+  }
 }
 function GB_ring(comp,it){
   var L=GB_shapeLayer(comp,"Ring icon","Ring");
@@ -391,11 +542,13 @@ function GB_fillItems(comp,items,parent,list){
       if(it.kind=="dots") L=GB_dots(comp,it);
       else if(it.kind=="ring") L=GB_ring(comp,it);
       else if(it.kind=="logo") L=GB_logo(comp,it);
+      else if(it.kind=="icon") L=GB_icon(comp,it);
       else L=GB_fillText(comp,it);
     }catch(eI){L=null;}
     if(L){
       if(it.opx){try{GB_xf(L).property("ADBE Opacity").expression=it.opx;}catch(eO){}}
-      if(parent) L.parent=parent; list.push(L);
+      if(parent){ L.parent=parent; L.name=parent.name+" · "+L.name; }
+      list.push(L);
     }
   }
 }
@@ -430,106 +583,150 @@ function GB_blockKeys(blocks,fps){
 }
 function GB_build(d){
   var comp, made=false, out=[], i, L;
+  var org=d.org||{folder:false,preGrid:false,preBlocks:false,preTrans:false,shy:false,trim:false,markers:null};
   app.beginUndoGroup("Grid Blocks: Build");
   try{
     comp=app.project.activeItem;
     if(!(comp && comp instanceof CompItem) || comp.width!=d.comp.w || comp.height!=d.comp.h){
-      comp=app.project.items.addComp(d.comp.name||"Grid Blocks",d.comp.w,d.comp.h,1,Math.max(1,d.comp.dur||10),d.fps||30);
+      comp=app.project.items.addComp(GB_uniqueName(d.comp.name||"Grid Blocks"),d.comp.w,d.comp.h,1,Math.max(1,d.comp.dur||10),d.fps||30);
       comp.openInViewer(); made=true;
     }
     if(d.fitDur && d.comp.dur && comp.duration<d.comp.dur) comp.duration=d.comp.dur;
     if(d.replace) GB_clear(comp);
-    var locks=[], gridKids=[], linesL=null, rulesL=null;
+    var main=comp, fps=d.fps||comp.frameRate, A=d.anim;
+    var cam3=(d.rig=="camera");
+    // precomps need every link inside them to stay inside them: fine with the AE camera rig (or no animation);
+    // the 2D null rig parents the grid and blocks to shared nulls, so it stays flat
+    var canPre=cam3||!A;
+    var preGrid=org.preGrid&&canPre, preBlocks=org.preBlocks&&canPre;
+    var camRefMain='thisComp.layer("GB · Camera")', camRefPre='comp("'+GB_esc(main.name)+'").layer("GB · Camera")';
+    if((preGrid||preBlocks)&&GB_compNameUsed(main.name,main)){ preGrid=false; preBlocks=false; out.push("(precomps skipped: another comp is also called “"+main.name+"”)"); }
 
-    if(d.bg){
-      L=comp.layers.addSolid(d.bg.color,"GB · Background",comp.width,comp.height,comp.pixelAspect,comp.duration);
-      L.comment="GridBlocks:bg"; L.label=0; locks.push(L); out.push("background");
+    // project panel: Grid Blocks / <comp name>
+    var folder=null;
+    if(org.folder){
+      var root=GB_folder("Grid Blocks",null);
+      folder=GB_folder(main.name,root);
+      if(made) main.parentFolder=root;
     }
+    var comps=[main], locks=[], gridKids=[], linesL=null, rulesL=null, shy=[];
+    function inFolder(L){ if(folder){try{if(L.source&&!(L.source instanceof CompItem))L.source.parentFolder=folder;}catch(eF){}} }
+
+    /* ---- background (always in the main comp, 2D) ---- */
+    if(d.bg){
+      L=main.layers.addSolid(d.bg.color,"GB · Background",main.width,main.height,main.pixelAspect,main.duration);
+      L.comment="GridBlocks:bg"; L.label=0; locks.push(L); inFolder(L); out.push("background");
+    }
+
+    /* ---- grid: tiles, lines, column rules (under) ---- */
+    var gridC=main, gridPre=null;
+    if(preGrid&&(d.cells||d.lines||(d.rules&&!d.rules.top))){
+      gridPre=GB_precomp(main,"GB Grid · "+main.name,folder,cam3,"grid",15);
+      gridPre.layer.name="GB · Grid"; gridC=gridPre.comp; comps.push(gridC); locks.push(gridPre.layer);
+    }
+    var camRefG=gridC===main?camRefMain:camRefPre;
     if(d.cells){
       if(d.cells.mode=="single"){
-        L=GB_multi(comp,"GB · Tiles",d.cells.rects,d.cells.color);
-        L.comment="GridBlocks:cells"; L.label=0; locks.push(L); gridKids.push(L);
+        L=GB_multi(gridC,"GB · Tiles",d.cells.rects,d.cells.color);
+        L.comment="GridBlocks:cells"; L.label=15; locks.push(L); gridKids.push(L);
       }else{
         for(i=0;i<d.cells.rects.length;i++){
           var q=d.cells.rects[i];
-          L=GB_box(comp,"GB · Tile C"+q[4]+" R"+q[5],q[0],q[1],q[2],q[3],d.cells.color);
-          L.comment="GridBlocks:cell"; L.label=0; locks.push(L); gridKids.push(L);
+          L=GB_box(gridC,"GB · Tile C"+q[4]+" R"+q[5],q[0],q[1],q[2],q[3],d.cells.color);
+          L.comment="GridBlocks:cell"; L.label=15; locks.push(L); gridKids.push(L);
         }
       }
       out.push(d.cells.rects.length+" tiles");
     }
     if(d.lines){
       if(d.lines.mode=="strokes"){
-        L=GB_strokes(comp,"GB · Grid Lines",d.lines.segs,d.lines.color,d.lines.lw,
+        L=GB_strokes(gridC,"GB · Grid Lines",d.lines.segs,d.lines.color,d.lines.lw,
           'var z=1;try{z=thisComp.layer("GB · Zoom").transform.scale[0]/100;}catch(e){}\n'+d.lines.lw+'/Math.max(z,0.01)');
       }else if(d.lines.rects.length){
-        L=GB_multi(comp,"GB · Grid Lines",d.lines.rects,d.lines.color);
+        L=GB_multi(gridC,"GB · Grid Lines",d.lines.rects,d.lines.color);
       }else L=null;
-      if(L){L.comment="GridBlocks:lines"; L.label=0; locks.push(L); gridKids.push(L); out.push("grid lines"); linesL=L;}
+      if(L){L.comment="GridBlocks:lines"; L.label=15; locks.push(L); gridKids.push(L); out.push("grid lines"); linesL=L;}
     }
-    if(d.rules && !d.rules.top){rulesL=GB_mkRules(comp,d.rules); if(rulesL){locks.push(rulesL);out.push("column rules");}}
+    var rulesC=gridC;
+    if(d.rules && !d.rules.top){rulesL=GB_mkRules(gridC,d.rules); if(rulesL){locks.push(rulesL);out.push("column rules");}}
 
-    var blocks=[];
-    var fillLayers=[];
-    if(d.echoes){for(i=0;i<d.echoes.length;i++){var EL=GB_echoBox(comp,d.echoes[i]);blocks.push({L:EL,T:null,b:{keys:d.echoes[i].keys}});GB_fillItems(comp,d.echoes[i].fill,EL,fillLayers);}}
+    /* ---- blocks, echoes, content ---- */
+    var blockC=main, blockPre=null;
+    if(preBlocks&&(d.blocks.length||(d.echoes&&d.echoes.length)||d.gaps)){
+      blockPre=GB_precomp(main,"GB Blocks · "+main.name,folder,cam3,"blocks",1);
+      blockPre.layer.name="GB · Blocks"; blockC=blockPre.comp; comps.push(blockC);
+    }
+    var camRefB=blockC===main?camRefMain:camRefPre;
+    var blocks=[], fillLayers=[], blockLayers=[];
+    function trimTo(Lr,t){ if(org.trim&&t>0){try{Lr.inPoint=Math.min(main.duration-1/fps,t/fps);}catch(eT){}} }
+    function trimOut(Lr,t){ if(org.trim&&t!=null&&t/fps<main.duration){try{if(t/fps>Lr.inPoint)Lr.outPoint=t/fps;}catch(eT2){}} }
+    if(d.echoes){for(i=0;i<d.echoes.length;i++){
+      var e=d.echoes[i], EL=GB_echoBox(blockC,e); EL.label=4;
+      blocks.push({L:EL,T:null,b:{keys:e.keys}});
+      if(e.tIn!=null) trimTo(EL,e.tIn);
+      var f0e=fillLayers.length; GB_fillItems(blockC,e.fill,EL,fillLayers);
+      if(e.tOut!=null){trimOut(EL,e.tOut); for(var fe=f0e;fe<fillLayers.length;fe++) trimOut(fillLayers[fe],e.tOut);}
+    }}
     var nEcho=blocks.length;
     for(i=0;i<d.blocks.length;i++){
       var b=d.blocks[i];
-      var B=GB_box(comp,b.name,b.x,b.y,b.bw,b.bh,b.color,b.outline?b.outline.w:0);
+      var B=GB_box(blockC,b.name,b.x,b.y,b.bw,b.bh,b.color,b.outline?b.outline.w:0);
       B.comment="GridBlocks:block|order="+b.order+"|c="+b.c+"|r="+b.r+"|w="+b.w+"|h="+b.h;
       B.label=1;
-      var T=b.text?GB_text(comp,B,b):null;
-      blocks.push({L:B,T:T,b:b});
-      GB_fillItems(comp,b.fill,B,fillLayers);
+      var T=b.text?GB_text(blockC,B,b):null;
+      if(T) T.label=1;
+      var NT=null; if(b.num){ d_fps_hack=fps; NT=GB_numText(blockC,B,b); fillLayers.push(NT); }
+      blocks.push({L:B,T:T,b:b}); blockLayers.push(B);
+      if(b.tIn!=null){trimTo(B,b.tIn); if(T) trimTo(T,b.tIn); if(NT) trimTo(NT,b.tIn);}
+      var f0=fillLayers.length; GB_fillItems(blockC,b.fill,B,fillLayers);
+      if(b.tOut!=null){trimOut(B,b.tOut); if(T) trimOut(T,b.tOut); if(NT) trimOut(NT,b.tOut); for(var fb=f0;fb<fillLayers.length;fb++) trimOut(fillLayers[fb],b.tOut);}
     }
     if(d.blocks.length) out.push(d.blocks.length+(d.blocks.length==1?" block":" blocks"));
     if(nEcho) out.push(nEcho+(nEcho==1?" echo":" echoes"));
     var gapLayers=[];
-    if(d.gaps){GB_fillItems(comp,d.gaps,null,gapLayers); for(i=0;i<gapLayers.length;i++) blocks.push({L:gapLayers[i],T:null,b:{keys:null}});}
+    if(d.gaps){GB_fillItems(blockC,d.gaps,null,gapLayers); for(i=0;i<gapLayers.length;i++){gapLayers[i].name="Gap · "+gapLayers[i].name; blocks.push({L:gapLayers[i],T:null,b:{keys:null}});}}
     if(fillLayers.length||gapLayers.length) out.push((fillLayers.length+gapLayers.length)+" content layers");
-    if(d.rules && d.rules.top){rulesL=GB_mkRules(comp,d.rules); if(rulesL){locks.push(rulesL);out.push("column rules on top");}}
+    if(d.lab){var nl=GB_labWorld(blockC,d.lab,blocks,blockLayers,fps,org,main); if(nl) out.push(nl+" lab layers");}
+    if(d.rules && d.rules.top){rulesC=blockC; rulesL=GB_mkRules(blockC,d.rules); if(rulesL){locks.push(rulesL);out.push("column rules on top");}}
+    var camRefR=rulesC===main?camRefMain:camRefPre;
 
-    var A=d.anim, fps=d.fps||comp.frameRate, cam=null, wrap=null, zoom=null, conv=null;
-    if(d.rig=="camera"){
+    var cam=null, wrap=null, zoom=null, conv=null;
+    if(cam3){
       /* ---- real After Effects camera: everything except the background becomes 3D ---- */
       for(i=0;i<gridKids.length;i++) gridKids[i].threeDLayer=true;
       if(rulesL) rulesL.threeDLayer=true;
       for(i=0;i<blocks.length;i++){blocks[i].L.threeDLayer=true; if(blocks[i].T) blocks[i].T.threeDLayer=true;}
       for(i=0;i<fillLayers.length;i++) fillLayers[i].threeDLayer=true;
-      cam=comp.layers.addCamera("GB · Camera",[comp.width/2,comp.height/2]);
+      cam=main.layers.addCamera("GB · Camera",[main.width/2,main.height/2]);
       cam.comment="GridBlocks:camera"; cam.label=2;
       try{cam.autoOrient=AutoOrientType.NO_AUTO_ORIENT;}catch(eO){}
       var zv=cam.property("ADBE Camera Options Group").property("ADBE Camera Zoom").value;
       var cp=GB_xf(cam).property("ADBE Position");
-      cp.setValue([comp.width/2,comp.height/2,-zv]);
+      cp.setValue([main.width/2,main.height/2,-zv]);
+      var zExpr=function(ref,lw){return 'var c='+ref+';\nvar z=Math.abs(c.transform.position[2]);\nvar s=c.cameraOption.zoom/Math.max(1,z);\n'+lw+'/Math.max(s,0.01)';};
       if(d.lines && d.lines.mode=="strokes" && linesL){
-        linesL.property("ADBE Root Vectors Group").property(1).property("ADBE Vectors Group").property("ADBE Vector Graphic - Stroke").property("ADBE Vector Stroke Width").expression=
-          'var c=thisComp.layer("GB · Camera");\nvar z=Math.abs(c.transform.position[2]);\nvar s=c.cameraOption.zoom/Math.max(1,z);\n'+d.lines.lw+'/Math.max(s,0.01)';
+        linesL.property("ADBE Root Vectors Group").property(1).property("ADBE Vectors Group").property("ADBE Vector Graphic - Stroke").property("ADBE Vector Stroke Width").expression=zExpr(camRefG,d.lines.lw);
       }
-      if(rulesL && d.rules.mode=="strokes"){
-        GB_strokeWidth(rulesL).expression='var c=thisComp.layer("GB · Camera");\nvar z=Math.abs(c.transform.position[2]);\nvar s=c.cameraOption.zoom/Math.max(1,z);\n'+d.rules.lw+'/Math.max(s,0.01)';
-      }
+      if(rulesL && d.rules.mode=="strokes") GB_strokeWidth(rulesL).expression=zExpr(camRefR,d.rules.lw);
       if(A){
+        var wrapExpr=function(ref,px,py){return 'var c='+ref+'.transform.position;\n'+
+            'var px='+px+', py='+py+';\n'+
+            'var dx=c[0]-'+(main.width/2)+', dy=c[1]-'+(main.height/2)+';\n'+
+            '[px*Math.round(dx/px), py>0?py*Math.round(dy/py):0, 0]';};
         if(A.wrap3 && rulesL){
-          var rw=GB_null(comp,"GB · Rules Wrap",true); rw.comment="GridBlocks:null";
+          var rw=GB_null(rulesC,"GB · Rules Wrap",true); rw.comment="GridBlocks:null"; shy.push(rw);
           rulesL.parent=rw;
-          GB_xf(rw).property("ADBE Position").expression='var c=thisComp.layer("GB · Camera").transform.position;\n'+
-            'var px='+d.rules.period+', py='+A.wrap3.py+';\n'+
-            'var dx=c[0]-'+(comp.width/2)+', dy=c[1]-'+(comp.height/2)+';\n'+
-            '[px*Math.round(dx/px), py>0?py*Math.round(dy/py):0, 0]';
+          GB_xf(rw).property("ADBE Position").expression=wrapExpr(camRefR,d.rules.period,A.wrap3.py);
           locks.push(rw);
         }
         if(A.conv && A.conv.length){
-          conv=GB_null(comp,"GB · Conveyor",true); conv.comment="GridBlocks:null";
-          for(i=0;i<blocks.length;i++) blocks[i].L.parent=conv;
+          conv=GB_null(blockC,"GB · Conveyor",true); conv.comment="GridBlocks:null";
+          for(i=0;i<blocks.length;i++) if(!blocks[i].L.parent) blocks[i].L.parent=conv;
         }
         if(A.wrap3 && gridKids.length){
-          wrap=GB_null(comp,"GB · Grid Wrap",true); wrap.comment="GridBlocks:null";
+          wrap=GB_null(gridC,"GB · Grid Wrap",true); wrap.comment="GridBlocks:null"; shy.push(wrap);
           for(i=0;i<gridKids.length;i++) gridKids[i].parent=wrap;
-          GB_xf(wrap).property("ADBE Position").expression='var c=thisComp.layer("GB · Camera").transform.position;\n'+
-            'var px='+A.wrap3.px+', py='+A.wrap3.py+';\n'+
-            'var dx=c[0]-'+(comp.width/2)+', dy=c[1]-'+(comp.height/2)+';\n'+
-            '[px*Math.round(dx/px), py>0?py*Math.round(dy/py):0, 0]';
+          GB_xf(wrap).property("ADBE Position").expression=wrapExpr(camRefG,A.wrap3.px,A.wrap3.py);
           locks.push(wrap);
         }
         GB_blockKeys(blocks,fps);
@@ -545,7 +742,7 @@ function GB_build(d){
         }
         if(conv) GB_keys(GB_xf(conv).property("ADBE Position"),A.conv,fps);
         if(A.pan && A.pan.length){
-          var fr=GB_null(comp,"GB · Framing"); fr.comment="GridBlocks:null"; fr.enabled=false;
+          var fr=GB_null(main,"GB · Framing"); fr.comment="GridBlocks:null"; fr.enabled=false; shy.push(fr);
           GB_keys(GB_xf(fr).property("ADBE Position"),A.pan,fps);
           var shift='var f=thisComp.layer("GB · Framing").transform.position;\nvar z=Math.abs(transform.position[2]);\nvar k=z/cameraOption.zoom;\n';
           if(cp.dimensionsSeparated){
@@ -559,21 +756,21 @@ function GB_build(d){
       }
       out.push("camera");
     }else if(A){
-      /* ---- 2D null rig ---- */
+      /* ---- 2D null rig (everything stays in the main comp) ---- */
       if(A.zoom){
-        zoom=GB_null(comp,"GB · Zoom");
+        zoom=GB_null(main,"GB · Zoom");
         zoom.comment="GridBlocks:null";
         GB_xf(zoom).property("ADBE Position").setValue([A.zoom.cx,A.zoom.cy]);
       }
       if(A.needCam){
-        cam=GB_null(comp,A.camName);
+        cam=GB_null(main,A.camName);
         cam.comment="GridBlocks:null";
         for(i=0;i<blocks.length;i++) blocks[i].L.parent=cam;
         if(zoom) cam.parent=zoom;
       }
       if(A.wrap && cam){
-        wrap=GB_null(comp,"GB · Grid Wrap");
-        wrap.comment="GridBlocks:null";
+        wrap=GB_null(main,"GB · Grid Wrap");
+        wrap.comment="GridBlocks:null"; shy.push(wrap);
         for(i=0;i<gridKids.length;i++) gridKids[i].parent=wrap;
         if(zoom) wrap.parent=zoom;
         var ex='var o=thisComp.layer("'+A.camName+'").transform.position;\n'+
@@ -588,7 +785,7 @@ function GB_build(d){
       }
       if(rulesL){
         if(A.wrap && cam){
-          var rw2=GB_null(comp,"GB · Rules Wrap"); rw2.comment="GridBlocks:null";
+          var rw2=GB_null(main,"GB · Rules Wrap"); rw2.comment="GridBlocks:null"; shy.push(rw2);
           rulesL.parent=rw2; if(zoom) rw2.parent=zoom;
           GB_xf(rw2).property("ADBE Position").expression='var o=thisComp.layer("'+A.camName+'").transform.position;\n'+
             'var cx='+A.wrap.cx+', cy='+A.wrap.cy+', px='+d.rules.period+', py='+A.wrap.py+';\n'+
@@ -603,20 +800,38 @@ function GB_build(d){
       if(zoom && A.zoom.pan) GB_keys(GB_xf(zoom).property("ADBE Position"),A.zoom.pan,fps);
       out.push(A.label);
     }
-    if(d.trans){var nt=GB_trans(comp,d,d.fps||comp.frameRate); if(nt) out.push(nt+" transition blocks");}
+    if(d.lab){GB_labScreen(main,d.lab,fps);}
+    if(d.trans){var nt=GB_trans(main,d,fps,org,folder,comps); if(nt) out.push(nt+" transition blocks");}
+    // the camera (and its framing helper) on top, where animators look for it
+    try{ if(cam) cam.moveToBeginning(); }catch(eTop){}
+
+    /* ---- motion blur: every comp we made + every moving layer ---- */
     if(d.mb){
-      // motion blur: comp switch + shutter, and the switch on every Grid Blocks layer that can carry it
-      try{comp.motionBlur=true; comp.shutterAngle=Math.max(1,Math.min(720,d.mb.angle||180)); comp.shutterPhase=-comp.shutterAngle/2;}catch(eMB){}
-      for(i=1;i<=comp.numLayers;i++){
-        var mL=comp.layer(i);
-        if(String(mL.comment).indexOf("GridBlocks")!==0) continue;
-        if(String(mL.comment)=="GridBlocks:bg") continue;
-        try{ if(!(mL instanceof CameraLayer) && !mL.nullLayer) mL.motionBlur=true; }catch(eMB2){}
+      var ang=Math.max(1,Math.min(720,d.mb.angle||180)), c, k2;
+      for(c=0;c<comps.length;c++){
+        try{comps[c].motionBlur=true; comps[c].shutterAngle=ang; comps[c].shutterPhase=-ang/2;}catch(eMB){}
+        for(k2=1;k2<=comps[c].numLayers;k2++){
+          var mL=comps[c].layer(k2);
+          if(String(mL.comment).indexOf("GridBlocks")!==0) continue;
+          if(String(mL.comment)=="GridBlocks:bg") continue;
+          try{ if(!(mL instanceof CameraLayer) && !mL.nullLayer) mL.motionBlur=true; }catch(eMB2){}
+        }
       }
-      out.push("motion blur "+Math.round(comp.shutterAngle)+"°");
+      out.push("motion blur "+Math.round(ang)+"°");
     }
-    if(d.lock){for(i=0;i<locks.length;i++){locks[i].locked=true;}}
-    return "OK|"+(made?"New comp “"+comp.name+"” · ":"")+"Built "+out.join(", ")+" in “"+comp.name+"”";
+    /* ---- tidy: helpers shy, comp markers ---- */
+    if(org.shy&&shy.length){
+      for(i=0;i<shy.length;i++){try{shy[i].shy=true;}catch(eSh){}}
+      for(i=0;i<comps.length;i++){try{comps[i].hideShyLayers=true;}catch(eH){}}
+    }
+    if(org.markers&&org.markers.length){
+      for(i=0;i<org.markers.length;i++){
+        try{var m=org.markers[i], mv=new MarkerValue("GB · "+m[1]); if(m[2]) mv.duration=m[2]/fps; main.markerProperty.setValueAtTime(Math.max(0,m[0]/fps),mv);}catch(eMk){}
+      }
+    }
+    if(gridPre||blockPre){var pn=[];if(gridPre)pn.push("grid");if(blockPre)pn.push("blocks");out.push("precomps: "+pn.join(", "));}
+    if(d.lock){for(i=0;i<locks.length;i++){try{locks[i].locked=true;}catch(eL){}}}
+    return "OK|"+(made?"New comp “"+main.name+"” · ":"")+"Built "+out.join(", ")+" in “"+main.name+"”"+(folder?" · project items in Grid Blocks › "+folder.name:"");
   }catch(e){
     return "ERR|"+e.toString()+(e.line?" (line "+e.line+")":"");
   }finally{

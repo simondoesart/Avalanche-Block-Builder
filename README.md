@@ -76,3 +76,23 @@ Avalanche logo as a random element (in blocks and gaps), with icon frequency and
 
 ## New in v1.5
 **When blocks appear** (Animate › Block reveal, camera modes): *When the camera arrives* (new default) holds each block back until the camera has carried it into the **reveal zone**, so you always see it pop in on screen instead of off to the side. The zone (dashed green box on the canvas) is set as a % of the frame — Centre, Near centre, Inside, On screen presets — with a separate height when the camera also moves up/down. *Ahead of the camera* keeps the previous behaviour. Delayed reveals still finish by the end of the scene.
+
+## New in v1.6 — a clean After Effects build
+Build › **Organise in After Effects** (all on by default):
+- **Precomp the grid** (tiles, lines, rules) and **Precomp blocks & content** — each lands as one layer, collapsed + 3D so the main AE camera still drives everything inside. Expressions inside precomps point at the main comp's camera by name (AE updates them if you rename the comp).
+- **Precomp each transition** — one layer per transition instead of dozens of tiles; matte transitions were already precomps.
+- **Project folder** — precomps and the background solid are filed under *Grid Blocks › comp name*.
+- **Hide helper nulls** — wrap/framing nulls are shy and the comps hide shy layers.
+- **Trim layers** — blocks, echoes, content and transition precomps start where they first appear.
+- **Markers** — *GB · Scene start / Scene end / Transition in / Transition out* on the main comp.
+
+Typical main comp: `GB · Camera`, `GB · Transition Out`, `GB · Transition In`, `GB · Blocks`, `GB · Grid`, `GB · Background`. Content layers are named after their block (*Block 07 · INITIALIZING*), gap content starts with *Gap ·*. Rebuilding (with *Replace the previous build*) removes the old precomps, unused solids and GB markers too. The Build step shows the resulting timeline and Project panel before you build. Grid/block precomps need the AE camera rig; the 2D null rig stays flat.
+
+## New in v1.7 — overlay toolkit
+- **Avalanche brand defaults** (2026 kit): `#1F1F1F` background, Avalanche Red `#E6212F` blocks, slate `#A2AFB2` second colour, steel `#3B484B` rules, and the brand palette (reds, slate/steel, darks, light `#EBF0FA`, blues). The retired `#E84142` is gone, including from the UI. **Defaults** button in the top bar resets everything (one undo step).
+- **Camera › Let go before the end**: the camera follows for X% of the scene, then coasts to a stop (keeps its speed and lets it bleed away) while new blocks keep arriving and run off frame. Marked on the speed graph.
+- **Block exit** (Animate): un-reveal blocks for overlays — *after a hold* (a travelling trail), *behind the camera* (once they pass an exit line) or *all at the end* (staggered, first-in-first-out or reverse). Cut / fade / wipe (onward or back) / scale, own length and easing. Content, numbers and echoes leave with their block; AE layers are trimmed to their exit.
+- **Block numbers**: a text layer in each block's top-right corner (01 · 001 · #01 · BLK 001 · block height #4,812,337), start value, size, colour, opacity; per-block on/off in the inspector. Auto-fill content keeps clear of the corner.
+- **Content**: 7 new modules (mempool, validators, latency/TPS, RPC calls, progress bars, consensus, hex stream), a 14-icon line-icon set (node, block, chain, check, speed chevrons, peak, lock, network, signal, target, snow, arrow, plus, bars) built as shape layers in AE, dot size + round/square dots, icons/hex/RPC in the gaps.
+- **Lab** step (experiments, all off by default, each labelled with its status): signal flicker, landing pulse, momentum trails, finality bar, transaction ticker (expression-driven text layer), snow drift (expression-driven shape layer).
+- **Essential / All controls** switch in the step header hides fine-tuning controls so each step is calmer.
