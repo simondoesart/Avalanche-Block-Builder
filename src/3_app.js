@@ -2147,7 +2147,8 @@ function initDope(){
   c.addEventListener('pointerleave',()=>{DOPE.hover=null;if(tip)tip.hidden=true;drawDope();});
   c.addEventListener('pointerdown',e=>{
     const t=dopeHit(e); if(t.x<DOPE.LW) return; c.setPointerCapture&&c.setPointerCapture(e.pointerId);
-    if(t.h){pushHist(true);DOPE.drag=t.h;DOPE.lockN=DOPE.N;}   // freeze the time scale while dragging, so the handle tracks the pointer else {stopPlay();U.t=Math.round(DOPE.F(t.x));$('#scrub').value=U.t;render();drawDope();DOPE.drag={scrub:true};}
+    // a handle: freeze the time scale while dragging so it tracks the pointer; anywhere else: scrub
+    if(t.h){pushHist(true);DOPE.drag=t.h;DOPE.lockN=DOPE.N;} else {stopPlay();U.t=Math.round(DOPE.F(t.x));$('#scrub').value=U.t;render();drawDope();DOPE.drag={scrub:true};}
   });
   c.addEventListener('pointermove',e=>{const d=DOPE.drag;if(!d)return;const r=c.getBoundingClientRect(),f=DOPE.F(e.clientX-r.left);
     if(d.scrub){U.t=Math.round(f);$('#scrub').value=U.t;render();drawDope();return;}
