@@ -48,13 +48,13 @@ const DEF={
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,tail:24,
         sceneCurve:[0,0,1,1],camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zoomOn:true,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
-  out:{replace:true,lock:true,fitDur:true,rig:'camera'},
+  out:{replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180},
   blocks:[{"id": 1, "c": 0, "r": 1, "w": 3, "h": 1, "color": "#FF0000"}, {"id": 2, "c": 0, "r": 3, "w": 3, "h": 1, "color": "#FF0000", "stack": true}, {"id": 3, "c": 3, "r": 2, "w": 3, "h": 1, "color": "#FF0000"}, {"id": 4, "c": 6, "r": 3, "w": 3, "h": 1, "color": "#FF0000"}, {"id": 5, "c": 9, "r": 2, "w": 3, "h": 1, "color": "#FF0000"}, {"id": 6, "c": 12, "r": 2, "w": 3, "h": 1, "color": "#FF0000"}]
 };
 let D=clone(DEF);
 let uid=1;
 /* UI state (not saved) */
-const U={step:0,tool:'stamp',sel:null,selIds:[],hover:null,t:null,playing:false,live:false,genBase:null,
+const U={step:0,mbPrev:true,tool:'stamp',sel:null,selIds:[],hover:null,t:null,playing:false,live:false,genBase:null,
   compLive:false,aeName:'',moNext:1,showOrder:true,editing:null,space:false,drag:null,lib:[],help:true,loop:true,picking:false,fonts:null};
 
 const STEPS=[
@@ -1062,7 +1062,7 @@ function computePlan(G){
     let maxGap=1, prevG=0; for(let g=1;g<used;g++){const a=tg[g-1],b=tg[g];if(Math.abs(a[0]-b[0])>1e-6||Math.abs(a[1]-b[1])>1e-6){maxGap=Math.max(maxGap,g-prevG);prevG=g;}}
     lagSteps=Math.max(lag,maxGap);
     const tau=cm==='follow'?Math.max(0,+A.motionBlurF):0;
-    settleF=cm==='follow'?Math.max(Math.round(+A.settle||0),Math.ceil(4*tau),2):0;
+    settleF=cm==='follow'?Math.max(Math.round(+A.settle||0),Math.ceil(4*tau),2):Math.max(4,Math.round((D.comp.fps||30)*.25));   // step & settle: room for the last move
     finalF=(A.extendOn&&A.ending==='spot'&&!manual)?Math.max(1,Math.round(A.finalMove)||30):0;
     // reveals leave room for: the camera's follow distance (lag steps) + the final framing move + the settle
     step=(L-finalF-settleF)/Math.max(1,used-1+lagSteps);
@@ -1170,16 +1170,22 @@ function computePlan(G){
         cam.push([b,[r3(xs[N-1]),r3(ys[N-1])],'h']);
       }
     } else {
-      // step & settle: once a target appears, ease over to it; final move lands at the scene end
-      const lin=[[UT[0].s,UT[0].o,'e',CC]];
-      for(let k=1;k<=last;k++){
-        const nxt=k<last?UT[k+1].s:L, md=Math.max(1,Math.min(tr0,nxt-UT[k].s));
-        lin.push([UT[k].s,UT[k-1].o,'e',CC]); lin.push([UT[k].s+md,UT[k].o,'e',CC]);
+      // step & settle (real frames): when a block appears, ease over to it and come to rest.
+      // Blocks that arrive in quick succession are taken in one move (to the latest one), so moves never stutter.
+      const fps=D.comp.fps||30, mm=Math.max(4,Math.round(fps*.25)), finLen=fin?Math.max(1,Math.round(A.finalMove)||30):0;
+      const tEndAll=endF-(fin?finLen:0), keys=[[uT[0],uO[0],'e',CC]];
+      let pos=uO[0], tFree=uT[0], k=1;
+      while(k<=lastU){
+        let j=k; while(j<lastU&&uT[j+1]<Math.max(uT[k],tFree)+mm) j++;      // gather the burst
+        const t0=Math.max(uT[j],tFree); if(t0>=tEndAll) {pos=uO[lastU];break;}
+        const nxt=j<lastU?uT[j+1]:tEndAll, dur=Math.max(mm,Math.min(tEndAll-t0,(nxt-t0)*.85));
+        const t1=Math.min(tEndAll,t0+dur);
+        if(t1-t0<1){pos=uO[j];k=j+1;continue;}
+        keys.push([t0,pos,'e',CC],[t1,uO[j],'e',CC]); pos=uO[j]; tFree=t1; k=j+1;
       }
-      if(fin){const s0=Math.max(lin[lin.length-1][0]+1,L-Math.max(1,Math.round(A.finalMove)||30));lin.push([s0,UT[last].o,'e',CC]);lin.push([Math.max(s0+1,L),fin,'e',CC]);}
-      cam=dedupe(lin).map(k=>[Math.min(endF,Math.round(W(k[0]))),k[1],k[2],k[3]]);
-      // a move never starts before its block has really appeared
-      cam=dedupe(cam);
+      if(pos!==uO[lastU]){const t0=Math.max(tFree,Math.min(uT[lastU],tEndAll-1)),t1=Math.max(t0+1,tEndAll);keys.push([t0,pos,'e',CC],[t1,uO[lastU],'e',CC]);tFree=t1;}
+      if(fin){const t0=Math.max(tFree,endF-finLen);keys.push([t0,uO[lastU],'e',CC],[Math.max(t0+1,endF),fin,'e',CC]);}
+      cam=dedupe(keys.map(q=>[Math.round(q[0]),q[1],q[2],q[3]]));
     }
     if(cam.every(k=>k[1][0]===0&&k[1][1]===0)) cam=[];
     P.cam=clip0(cam); if(cam.length) lastT=Math.max(lastT,cam[cam.length-1][0]);
@@ -1345,7 +1351,7 @@ function animState(G){
 }
 
 /* ------------------------------------------------------------------ canvas + view */
-const cv=$('#cv'), ctx=cv.getContext('2d'), wrap=$('#wrap');
+const cv=$('#cv'), wrap=$('#wrap'); let ctx=cv.getContext('2d');
 const V={sc:1,ox:0,oy:0,cw:0,ch:0,dpr:1,fit:'comp'};
 let checker=null;
 function makeChecker(){const c=document.createElement('canvas');c.width=c.height=16;const x=c.getContext('2d');x.fillStyle='#28282c';x.fillRect(0,0,16,16);x.fillStyle='#202023';x.fillRect(0,0,8,8);x.fillRect(8,8,8,8);checker=ctx.createPattern(c,'repeat');}
@@ -1374,7 +1380,38 @@ function zoomAt(f,sx,sy){
 function updZoom(){$('#zPct').textContent=Math.round(V.sc*100)+'%';}
 function viewBounds(){return{x:-V.ox/V.sc,y:-V.oy/V.sc,w:V.cw/V.sc,h:V.ch/V.sc};}
 
+/* preview motion blur: average a few sub-frames across the shutter (matches the AE build's motion blur) */
+let mbOC=null, mbMax=12;
+function mbWanted(A){return U.mbPrev&&D.out.mb&&A&&A.live&&D.anim.mode!=='static'&&D.anim.motion!=='stop';}
 function render(){
+  const G0=geom(), A0=animState(G0);
+  if(!mbWanted(A0)) return renderFrame(ctx,true);
+  const t0=U.t, fr=U.playing?Math.floor(t0):t0, sh=clamp((+D.out.mbAngle||180)/360,0,2);
+  if(!mbOC) mbOC=document.createElement('canvas');
+  if(mbOC.width!==cv.width||mbOC.height!==cv.height){mbOC.width=cv.width;mbOC.height=cv.height;}
+  const oc=mbOC.getContext('2d'), t1=performance.now();
+  // samples: enough that the streak (in screen pixels) has no visible gaps; nothing to blur → plain frame
+  const P=A0.P, sp=t=>{const a=ev(P.cam,t-.5,[0,0]),b=ev(P.cam,t+.5,[0,0]),s=ev(P.zs,t,100)/100;return Math.hypot(b[0]-a[0],b[1]-a[1])*s;};
+  const zs=Math.abs(ev(P.zs,fr+.5,100)-ev(P.zs,fr-.5,100))/100*Math.max(G0.W,G0.H)/2;
+  const streak=(sp(fr)+zs)*sh*V.sc*V.dpr;
+  const mbN=Math.round(clamp(streak/2.5,1,mbMax));
+  if(mbN<2){U.t=fr;renderFrame(ctx,true);U.t=t0;return;}
+  ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,cv.width,cv.height);
+  for(let k=0;k<mbN;k++){
+    U.t=fr+sh*((k+.5)/mbN-.5);
+    renderFrame(oc,false);
+    ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha=1/(k+1); ctx.drawImage(mbOC,0,0);
+  }
+  ctx.globalAlpha=1; U.t=t0;
+  // overlays (order numbers, outlines) drawn once, sharp, at the shown frame
+  const G=geom(), A=animState(G); ctx.setTransform(V.dpr,0,0,V.dpr,0,0); ctx.save(); ctx.translate(V.ox,V.oy); ctx.scale(V.sc,V.sc);
+  ctx.lineWidth=1/V.sc; ctx.strokeStyle='rgba(255,255,255,.45)'; ctx.strokeRect(0,0,G.W,G.H);
+  drawOverlays(G,A); ctx.restore(); updBackBtn(G);
+  const ms=performance.now()-t1; if(ms>40&&mbMax>3) mbMax--; else if(ms<16&&mbMax<16) mbMax++;
+}
+function renderFrame(target,overlays){
+  const saved=ctx; ctx=target;
+  try{
   const G=geom(), sc=V.sc, A=animState(G);
   ctx.setTransform(V.dpr,0,0,V.dpr,0,0);
   ctx.clearRect(0,0,V.cw,V.ch);
@@ -1394,10 +1431,11 @@ function render(){
     });
     ctx.restore(); ctx.globalAlpha=1;
   }
-  ctx.lineWidth=1/sc; ctx.strokeStyle='rgba(255,255,255,.45)'; ctx.strokeRect(0,0,G.W,G.H);
-  drawOverlays(G,A);
+  if(overlays){ctx.lineWidth=1/sc; ctx.strokeStyle='rgba(255,255,255,.45)'; ctx.strokeRect(0,0,G.W,G.H);
+  drawOverlays(G,A);}
   ctx.restore();
-  updBackBtn(G);
+  if(overlays) updBackBtn(G);
+  } finally { ctx=saved; }
 }
 function zoomXf(g,G,s,pan){if(pan&&(pan[0]||pan[1]))g.translate(pan[0],pan[1]);if(s!==1){g.translate(G.W/2,G.H/2);g.scale(s,s);g.translate(-G.W/2,-G.H/2);}}
 function blockState(K,t,q){
@@ -2038,6 +2076,7 @@ $$('[data-bind]').forEach(el=>{
   el.addEventListener('input',()=>{
     const p=el.dataset.bind;
     let v=el.type==='checkbox'?el.checked:el.type==='number'?parseFloat(el.value):el.value;
+    if(el.type==='number'&&el.dataset.zero!=null&&el.value.trim()==='') v=0;
     if(el.type==='number'){if(isNaN(v))return;if(el.min!=='')v=Math.max(+el.min,v);if(el.max!=='')v=Math.min(+el.max,v);}
     if(el.type==='color')v=v.toUpperCase();
     if(U.editing!==el){pushHist(true);U.editing=el;}
@@ -2103,7 +2142,9 @@ function syncInputs(force){
   $$('[data-bind]').forEach(el=>{
     if(!force&&document.activeElement===el) return;
     const v=getP(el.dataset.bind);
-    if(el.type==='checkbox') el.checked=!!v; else if(el.value!==String(v)) el.value=v;
+    if(el.type==='checkbox') el.checked=!!v;
+    else if(el.dataset.zero!=null&&+v===0){ if(el.value!=='') el.value=''; el.placeholder=el.dataset.zero; }
+    else if(el.value!==String(v)) el.value=v;
   });
   $$('[data-seg]').forEach(seg=>{const v=getP(seg.dataset.seg);$$('[data-v]',seg).forEach(b=>b.classList.toggle('on',b.dataset.v===v));});
   $$('[data-swatch]').forEach(l=>l.style.background=getP(l.dataset.swatch));
@@ -2113,6 +2154,7 @@ function syncInputs(force){
   renderCurves(); renderFontUI(); renderFillFont();
   const en=$('#endNote'); if(en) en.textContent=`Ends on row ${D.anim.endRow}`;
   const lp=$('#chkLoop'); if(lp) lp.checked=U.loop;
+  const mbx=$('#chkMB'); if(mbx){mbx.checked=U.mbPrev!==false; mbx.parentElement.hidden=!D.out.mb||D.anim.mode==='static';}
   $$('#camPreset [data-p]').forEach(b=>{const p=b.dataset.p.split(',').map(Number);b.classList.toggle('on',+D.anim.smooth===p[0]&&+D.anim.motionBlurF===p[1]&&+D.anim.settle===p[2]);});
   $$('#endPreset [data-ex]').forEach(b=>b.classList.toggle('on',+b.dataset.ex===+D.anim.endX));
   $$('[data-layer]').forEach(el=>{const v=getP(el.dataset.layer);el.classList.toggle('off',!v||v==='none');});
@@ -2136,8 +2178,7 @@ function goStep(i){
   if(i===U.step){refresh();return;}
   stopPlay();
   U.step=i; const st=STEPS[i];
-  if(st.tools.indexOf(U.tool)<0) U.tool=st.tool;
-  else if(i<=1) U.tool=st.tool;
+  if(st.tools.indexOf(U.tool)<0||U.tool==='hand'||i<=1) U.tool=st.tool;  // each step opens on its own tool (Space still pans anywhere)
   U.sel=null; U.t=null;
   if(st.id==='animate') U.showOrder=true;
   $('#left .step-body').scrollTop=0;
@@ -2327,6 +2368,7 @@ $('#paletteEdit').addEventListener('click',e=>{const b=e.target.closest('[data-p
   if(e.altKey){if(D.palette.length<=1)return;pushHist(true);D.palette.splice(i,1);syncPalettes();renderInsp();return;}
   applySwatch('block.color',D.palette[i]);});
 $('#btnPickEnd').onclick=startPick;
+$('#chkMB').onchange=e=>{U.mbPrev=e.target.checked;savePrefs();render();};
 $('#chkLoop').onchange=e=>{U.loop=e.target.checked;savePrefs();toast(U.loop?'Preview will loop':'Preview plays once');};
 $('#camPreset').addEventListener('click',e=>{const b=e.target.closest('[data-p]');if(!b)return;const p=b.dataset.p.split(',').map(Number);pushHist(true);Object.assign(D.anim,{smooth:p[0],motionBlurF:p[1],settle:p[2]});syncInputs();refresh();});
 $('#endPreset').addEventListener('click',e=>{const b=e.target.closest('[data-ex]');if(!b)return;pushHist(true);D.anim.endX=+b.dataset.ex;syncInputs();refresh();});
@@ -2653,6 +2695,8 @@ const HELP={
   'out.replace':'Delete the layers from your last build before building again.',
   'out.lock':'Lock the background, lines and tiles so you don’t move them by accident.',
   'out.fitDur':'If the animation is longer than the comp, make the comp longer.',
+  'out.mb':'Turns on motion blur for the comp and every moving Grid Blocks layer, so fast camera moves read as smooth streaks instead of strobing. Strongly recommended for camera follow.',
+  'out.mbAngle':'How long the virtual shutter stays open. 180° looks natural; 90° is crisper; 270–360° gives long, dreamy streaks.',
   'anim.startF':'Frame the scene starts on. Use a negative number to start the comp part-way through: blocks that would already be on screen are there at frame 0, and the camera is already moving.',
   'anim.lenF':'Total length of the scene in frames, from the first block to the camera coming to rest. Nothing moves after this. With “Fill the length” a shorter scene simply has fewer blocks.',
   'anim.toEnd':'Stretch the scene so it ends exactly when the comp ends.',
@@ -2786,7 +2830,7 @@ document.addEventListener('mouseout',e=>{const q=e.target.closest&&e.target.clos
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.qm')){e.preventDefault();e.stopPropagation();}},true);
 function setHelp(on){U.help=on;document.body.classList.toggle('nohelp',!on);$('#btnHelp').classList.toggle('on',on);$('#btnHelp').title=on?'Hide the ? help tips':'Show ? help tips next to each setting';}
 $('#btnHelp').onclick=()=>{setHelp(!U.help);toast(U.help?'Help tips on: hover any ?':'Help tips hidden');savePrefs();};
-function savePrefs(){webSet('prefs',JSON.stringify({help:U.help,loop:U.loop,collapsed:U.collapsed||{}}));if(inAE)evalHost('GB_writeText("prefs.json",'+jsStr(JSON.stringify({help:U.help,loop:U.loop,collapsed:U.collapsed||{}}))+')');}
+function savePrefs(){const pr=JSON.stringify({help:U.help,loop:U.loop,mb:U.mbPrev!==false,collapsed:U.collapsed||{}});webSet('prefs',pr);if(inAE)evalHost('GB_writeText("prefs.json",'+jsStr(pr)+')');}
 
 /* ------------------------------------------------------------------ toast */
 let tt=0;
@@ -3071,7 +3115,7 @@ function payload(){
   return{
     v:3, fps,
     comp:{w:G.W,h:G.H,name:'Grid Blocks '+G.W+'x'+G.H,dur:Math.max(D.comp.dur||10,D.out.fitDur?Math.ceil(Math.max(endSec,transOn()?transP(G).end/fps:0)*100)/100:0)},
-    replace:D.out.replace, lock:D.out.lock, fitDur:D.out.fitDur, rig,
+    replace:D.out.replace, lock:D.out.lock, fitDur:D.out.fitDur, rig, mb:D.out.mb?{angle:+D.out.mbAngle||180}:null,
     bg:D.look.bgOn?{color:hexRgb(D.look.bg)}:null,
     cells, lines, rules, echoes, blocks, gaps,
     trans:transOn()?(()=>{const TP=transP(G);return {groups:TP.groups.map(g=>({k:g.k,output:g.output,name:g.k==='in'?'GB · Transition In':'GB · Transition Out',
@@ -3097,7 +3141,8 @@ function renderBuildSummary(G){
     row(d.blocks.length>0,'Blocks',`${d.blocks.length} layer${d.blocks.length===1?'':'s'}`)+
     row(d.blocks.some(b=>b.text),'Text',`${d.blocks.filter(b=>b.text).length} layers`)+
     row(d.blocks.some(b=>b.order>0)&&!!d.anim,'Animation',d.anim?d.anim.label:'static')+
-    row(true,'Camera',d.rig==='camera'?'AE camera · 3D layers':'2D null rig');
+    row(true,'Camera',d.rig==='camera'?'AE camera · 3D layers':'2D null rig')+
+    row(!!d.mb,'Motion blur',d.mb?`${d.mb.angle}° shutter`:'off');
   $('#buildLabel2').textContent=inAE?'Build in After Effects':'Export .jsx for After Effects';
   $('#btnExportJsx').hidden=!inAE;
   $('#buildNote').innerHTML=inAE
@@ -3176,7 +3221,7 @@ async function init(){
     registerKeys();
     await evalHost(HOST);
     await libLoad();
-    try{const pr=JSON.parse(await evalHost('GB_readText("prefs.json")')||'{}');if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
+    try{const pr=JSON.parse(await evalHost('GB_readText("prefs.json")')||'{}');if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.mb===false)U.mbPrev=false;if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
     try{
       const s=await evalHost('GB_readText("autosave.json")');
       if(s){const o=JSON.parse(s);if(o&&o.doc){setDoc(o.doc);U.step=clamp(o.step|0,0,STEPS.length-1);U.tool=STEPS[U.step].tool;}}
@@ -3191,7 +3236,7 @@ async function init(){
     if(inWeb){
       await libLoad();
       try{const o=JSON.parse(webGet('autosave')||'null');if(o&&o.doc){setDoc(o.doc);U.step=clamp(o.step|0,0,STEPS.length-1);}}catch(e){}
-      try{const pr=JSON.parse(webGet('prefs')||'{}');if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
+      try{const pr=JSON.parse(webGet('prefs')||'{}');if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.mb===false)U.mbPrev=false;if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
       const dl=$('#btnPanel'); if(dl) dl.hidden=false;
     }
     $('#compNote').textContent='In the browser, pick a size here. Inside After Effects the panel reads your comp automatically.';

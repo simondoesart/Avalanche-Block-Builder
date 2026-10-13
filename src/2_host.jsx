@@ -604,6 +604,17 @@ function GB_build(d){
       out.push(A.label);
     }
     if(d.trans){var nt=GB_trans(comp,d,d.fps||comp.frameRate); if(nt) out.push(nt+" transition blocks");}
+    if(d.mb){
+      // motion blur: comp switch + shutter, and the switch on every Grid Blocks layer that can carry it
+      try{comp.motionBlur=true; comp.shutterAngle=Math.max(1,Math.min(720,d.mb.angle||180)); comp.shutterPhase=-comp.shutterAngle/2;}catch(eMB){}
+      for(i=1;i<=comp.numLayers;i++){
+        var mL=comp.layer(i);
+        if(String(mL.comment).indexOf("GridBlocks")!==0) continue;
+        if(String(mL.comment)=="GridBlocks:bg") continue;
+        try{ if(!(mL instanceof CameraLayer) && !mL.nullLayer) mL.motionBlur=true; }catch(eMB2){}
+      }
+      out.push("motion blur "+Math.round(comp.shutterAngle)+"°");
+    }
     if(d.lock){for(i=0;i<locks.length;i++){locks[i].locked=true;}}
     return "OK|"+(made?"New comp “"+comp.name+"” · ":"")+"Built "+out.join(", ")+" in “"+comp.name+"”";
   }catch(e){
