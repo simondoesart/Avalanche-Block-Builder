@@ -12,7 +12,7 @@
 @font-face{font-family:'Aeonik Fono';font-style:normal;font-weight:700;font-display:swap;src:local('Aeonik Fono Bold'),local('AeonikFono-Bold'),url('fonts/AeonikFono-Bold.woff2') format('woff2'),url('fonts/AeonikFono-Bold.woff') format('woff'),url('fonts/AeonikFono-Bold.otf') format('opentype'),url('fonts/AeonikFono-Bold.ttf') format('truetype')}
 :root{
   --bg:#131315;--panel:#1b1b1e;--panel2:#222226;--field:#2a2a2f;--hover:#313137;--line:#2f2f35;--line2:#404047;
-  --text:#ececef;--muted:#9898a1;--dim:#686871;--accent:#E6212F;--accent2:#FF394A;--accentA:rgba(230,33,47,.16);--ok:#3ecf8e;--warn:#ffb44d;
+  --text:#ececef;--muted:#9898a1;--dim:#686871;--accent:#E6212F;--accent2:#FF7F7B;--accentA:rgba(230,33,47,.16);--ok:#3ecf8e;--warn:#ffb44d;
   font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
 }
 *{box-sizing:border-box}
@@ -1973,14 +1973,18 @@ const webGet=k=>{if(!inWeb)return null;try{return localStorage.getItem('gridbloc
 const webSet=(k,v)=>{if(!inWeb)return;try{localStorage.setItem('gridblocks.'+k,v);}catch(e){}};
 const HOST=$('#host-src').textContent;
 /* Avalanche brand palette (2026): red is the accent; slate, darks and blue support it */
-const PALETTE=['#E6212F','#FF394A','#B20F2A','#820419','#A2AFB2','#3B484B','#EBF0FA','#1F1F1F','#121212','#0061E2','#749DD3','#C5CFF5'];
+const PALETTE=[
+  '#E6212F','#B20F2A','#820419','#3D000A','#FF7F7B','#FEAFAC',            // red family
+  '#1F1F1F','#16261C','#121212','#000000','#3B484B','#A2AFB2','#EBF0FA',  // neutrals & darks
+  '#0061E2','#0E4DA0','#0C3F83','#05295B','#3176D3','#749DD3','#C5CFF5'   // blue family
+];
 const BRAND={red:'#E6212F',slate:'#A2AFB2',steel:'#3B484B',bg:'#1F1F1F',dark:'#121212',light:'#EBF0FA',blue:'#0061E2'};
 const clone=o=>JSON.parse(JSON.stringify(o));
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const hexRgb=h=>{h=String(h).replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16)||0;return[(n>>16&255)/255,(n>>8&255)/255,(n&255)/255];};
 const lum=h=>{const c=hexRgb(h);return .2126*c[0]+.7152*c[1]+.0722*c[2];};
-const contrast=h=>lum(h)>.55?'#111111':'#FFFFFF';
+const contrast=h=>lum(h)>.55?'#121212':'#EBF0FA';
 const r3=v=>Math.round(v*1000)/1000;
 function rng(seed){let a=seed>>>0;return()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 const LS1=String.fromCharCode(0x2028), LS2=String.fromCharCode(0x2029);
@@ -1991,7 +1995,7 @@ const DEF={
   v:4,
   comp:{w:1920,h:1080,fps:24,dur:10,follow:true},
   grid:{rows:7,colsMode:'bleed',cols:12,gutter:1,margin:0,offsetX:0,snap:true,overX:8,overY:1},
-  look:{bgOn:true,bg:'#1F1F1F',linesOn:false,line:'#2B3133',lineW:1,border:false,cellsMode:'none',cell:'#D9D9D9',
+  look:{bgOn:true,bg:'#1F1F1F',linesOn:false,line:'#3B484B',lineW:1,border:false,cellsMode:'none',cell:'#3B484B',
         rulesOn:false,rule:'#3B484B',ruleW:1,ruleEvery:4,ruleStart:1,ruleLayer:'top'},
   block:{w:3,h:1,color:'#E6212F',color2:'#A2AFB2',sync:true,mix:'single',mixPct:25},
   palette:PALETTE.slice(),
@@ -2666,7 +2670,7 @@ function setDoc(obj){
     if(obj.anim.ramp&&obj.anim.ramp!=='none'&&!obj.anim.sceneCurve) obj.anim.sceneCurve={up:[0.6,0,1,1],down:[0,0,0.4,1],mid:[0.6,0,0.4,1]}[obj.anim.ramp]||[0,0,1,1];
   }
   if(obj&&obj.rand&&obj.rand.echo&&!obj.echo){
-    obj.echo=Object.assign(clone(DEF.echo),{on:true,dx:obj.rand.echoDX||0,dy:obj.rand.echoDY||2,last:obj.rand.echoLast||0,color:(obj.block&&obj.block.color2)||'#FFFFFF'});
+    obj.echo=Object.assign(clone(DEF.echo),{on:true,dx:obj.rand.echoDX||0,dy:obj.rand.echoDY||2,last:obj.rand.echoLast||0,color:(obj.block&&obj.block.color2)||'#EBF0FA'});
     if(Array.isArray(obj.blocks)) obj.blocks=obj.blocks.filter(b=>!b.echo);
   }
   if(obj&&obj.anim&&obj.anim.endAt&&obj.anim.endRow==null) obj.anim.endRow=(obj.anim.endAt.r|0)+1;
