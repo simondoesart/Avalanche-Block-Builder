@@ -35,7 +35,7 @@ const DEF={
   comp:{w:1920,h:1080,fps:24,dur:10,follow:true},
   grid:{rows:7,colsMode:'bleed',cols:12,gutter:1,margin:0,offsetX:0,snap:true,overX:8,overY:1},
   look:{bgOn:true,bg:'#1F1F1F',linesOn:false,line:'#3B484B',lineW:1,border:false,cellsMode:'none',cell:'#3B484B',
-        rulesOn:false,rule:'#3B484B',ruleW:1,ruleEvery:4,ruleStart:1,ruleLayer:'top',ruleEnd:'stay',ruleFadeAt:0,ruleFadeLen:24},
+        rulesOn:false,rule:'#3B484B',ruleW:1,ruleEvery:4,ruleStart:1,ruleLayer:'top',ruleParallax:100,ruleEnd:'stay',ruleFadeAt:0,ruleFadeLen:24},
   block:{w:3,h:1,color:'#E6212F',color2:'#A2AFB2',sync:true,mix:'single',mixPct:25},
   palette:PALETTE.slice(),
   trans:{in:{on:false,mode:'clear',start:0,atEnd:false,dur:24,pattern:'sweep',dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:true,color:'#E6212F',output:'blocks',seed:3},
@@ -51,7 +51,7 @@ const DEF={
   rand:{pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
         wander:1,climb:0,stackPct:20,stackGap:1,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,tracking:0,leading:0,kern:'metrics',caps:'none'},
-  anim:{mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
+  anim:{seed:0,skip:[],mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.45,0,0.55,1],camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zoomOn:false,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
@@ -987,7 +987,7 @@ function extension(G,base,capOverride){
   const A=D.anim; if(!A.extendOn||!base.length) return [];
   const spot=A.ending==='spot';
   const cap=capOverride!=null?capOverride:Math.max(0,Math.round(A.extendN)||0); if(!cap) return [];
-  const rnd=rng((D.rand.seed|0)+977);
+  const rnd=rng((D.rand.seed|0)+977+(A.seed|0)*7919);
   const out=[], all=base.slice(); let vid=-1;
   const mk=(src,c,r,color)=>{const b={id:vid--,c,r,w:src.w,h:src.h,color:color||src.color,text:'',fontSize:src.fontSize,textColor:contrast(color||src.color),align:src.align,pad:src.pad,virtual:true,name:'',mo:0,order:0};TEXT_KEYS.forEach(k=>b[k]=src[k]);return b;};
   const add=n=>{if(all.some(x=>hits(x,n)))return false;out.push(n);all.push(n);return true;};
@@ -1228,7 +1228,9 @@ function computePlan(G){
     const more=extension(G,base.concat(exts),woN); A.ending=sv; A.extendOn=svOn;
     more.forEach((b,k)=>{b.id=-100000-k; exts.push(b);}); P._woMore=more.length;   // own ids (the build's virtual blocks already use -1, -2, …)
   }
-  let seq=base.concat(exts);
+  const skip=new Set((A.skip||[]).map(Number));
+  let seq=base.concat(exts.filter(b=>!skip.has(b.id)));
+  if(skip.size&&WO&&P._woMore!=null) P._woMore=exts.filter(b=>b.id<=-100000&&!skip.has(b.id)).length;
   seq.forEach((b,i)=>{if(b.virtual)b.order=i+1;});
   let gi=[], ng=0;
   if(A.groupCol){const m={};seq.forEach(b=>{if(!(b.c in m))m[b.c]=ng++;gi.push(m[b.c]);});}
@@ -2120,8 +2122,17 @@ function drawDope(){
    if(D.anim.relOn&&P.relT!=null){knob(P.relT,y,'#749DD3'); g.fillStyle='#C5CFF5'; g.fillText('let go',X(P.relT)+5,y+8);
      H(X(P.relT),y,y+RH,'ew-resize',f=>{D.anim.relAt=clamp(Math.round((f-D.anim.startF)/Math.max(1,D.anim.lenF)*100),5,99);},'let go');}}
   // blocks: one thin line per block, reveal → exit
-  {const y=Y(row++), n=P.seq.length||1, lh=Math.max(1,Math.min(3,(RH-6)/n));
-   P.seq.forEach((b,i)=>{const t0=P.T[i], t1=P.exitT&&P.exitT[i]!=null?P.exitT[i]+(+D.exit.len||8):N; g.fillStyle=b.color; g.globalAlpha=.85; g.fillRect(X(t0),y+3+(i%Math.max(1,Math.floor((RH-6)/lh)))*lh,Math.max(1,X(t1)-X(t0)),Math.max(1,lh-.3));}); g.globalAlpha=1;
+  {const y=Y(row++), n=P.seq.length||1, lh=Math.max(1,Math.min(3,(RH-6)/n)), per=Math.max(1,Math.floor((RH-6)/lh));
+   DOPE.blk=[];
+   P.seq.forEach((b,i)=>{const t0=P.T[i], t1=P.exitT&&P.exitT[i]!=null?P.exitT[i]+(+D.exit.len||8):N, yy=y+3+(i%per)*lh, sel=U.dopeSel===b.id;
+     g.fillStyle=sel?'#fff':b.color; g.globalAlpha=sel?1:.85; g.fillRect(X(t0),yy-(sel?1:0),Math.max(1,X(t1)-X(t0)),Math.max(1,lh-.3)+(sel?2:0));
+     g.fillStyle=sel?'#fff':'rgba(255,255,255,.7)'; g.fillRect(X(t0)-1,yy-1,2,lh+2);       // landing tick
+     DOPE.blk.push({id:b.id,i,x:X(t0),y0:y,y1:y+RH,t0});}); g.globalAlpha=1;
+   // last-block handle: drag left to drop the late blocks at the end of the build
+   const nb=P.walkFrom!=null?P.walkFrom:P.seq.length, lastI=nb-1;
+   if(lastI>=0){const tl=P.T[lastI]; knob(tl,y,'#FFC21A'); H(X(tl),y,y+RH,'ew-resize',f=>{
+       const keep=P.T.slice(0,nb).filter(t=>t<=f).length, mains=P.seq.slice(0,Math.max(1,keep)).filter(b=>!b.echo&&!b.stack).length;
+       D.anim.countMode='exact'; D.anim.total=Math.max(1,mains);},'last block (drag left to drop late blocks)');}
    if(D.exit.on&&D.exit.mode==='end'&&P.exitT){const t=Math.min(...P.exitT.filter(v=>v!=null)); if(isFinite(t)){knob(t,y,'#FF7F7B'); H(X(t),y,y+RH,'ew-resize',f=>{D.exit.at=Math.round(f-(D.anim.startF+D.anim.lenF));},'clear-out start');}}
    if(D.exit.on&&D.exit.mode==='walk'&&P.exitT&&P.exitT.length){const t=Math.min(...P.exitT.filter(v=>v!=null)); const last=Math.max(...(P.done||P.T)); if(isFinite(t)){knob(t,y,'#FF7F7B'); H(X(t),y,y+RH,'ew-resize',f=>{D.exit.walkHold=Math.max(0,Math.round(f-last));},'walk-off start');}}
    if(D.exit.on&&D.exit.mode==='hold'&&P.exitT&&P.exitT[0]!=null){const t=P.exitT[0]; knob(t,y,'#FF7F7B'); const d0=(P.done||[])[0]||P.T[0]; H(X(t),y,y+RH,'ew-resize',f=>{D.exit.hold=Math.max(1,Math.round(f-d0));},'block hold');}}
@@ -2173,6 +2184,10 @@ function initDope(){
   c.addEventListener('pointerdown',e=>{
     const t=dopeHit(e); if(t.x<DOPE.LW) return; c.setPointerCapture&&c.setPointerCapture(e.pointerId);
     // a handle: freeze the time scale while dragging so it tracks the pointer; anywhere else: scrub
+    const rowB=(DOPE.rowsY||[]).find(r=>r.name==='Blocks'&&t.y>=r.y0&&t.y<r.y1);
+    if(!t.h&&rowB&&DOPE.blk&&DOPE.blk.length){ let best=null; DOPE.blk.forEach(b=>{const d=Math.abs(b.x-t.x); if(d<8&&(!best||d<best.d))best={d,b};});
+      if(best){ U.dopeSel=best.b.id; stopPlay(); U.t=Math.round(best.b.t0); $('#scrub').value=U.t; render(); drawDope();
+        if(tip){tip.hidden=false;tip.textContent=`Block selected (lands f${Math.round(best.b.t0)}) — Delete removes it · ⇧Delete removes it and every block after · Esc to deselect`;} return; } }
     if(t.h){pushHist(true);DOPE.drag=t.h;DOPE.lockN=DOPE.N;} else {stopPlay();U.t=Math.round(DOPE.F(t.x));$('#scrub').value=U.t;render();drawDope();DOPE.drag={scrub:true};}
   });
   c.addEventListener('pointermove',e=>{const d=DOPE.drag;if(!d)return;const r=c.getBoundingClientRect(),f=DOPE.F(e.clientX-r.left);
@@ -2180,6 +2195,18 @@ function initDope(){
     d.apply(f);planCache.k='';syncInputs();render();drawDope();drawSpeedGraph();if(tip){tip.hidden=false;tip.textContent=`${d.tip} → f${Math.round(f)} (${(f/(D.comp.fps||30)).toFixed(2)}s)`;}});
   const up=()=>{const was=DOPE.drag;DOPE.drag=null;DOPE.lockN=null;if(was&&!was.scrub){refresh();}drawDope();};
   c.addEventListener('pointerup',up); c.addEventListener('pointercancel',up);
+}
+/* remove the block picked on the timeline: a layout block is deleted, a generated one is skipped.
+   with shift: it and everything after it in the build go (the build gets shorter) */
+function dopeRemove(after){
+  const P=plan(geom()), i=P.seq.findIndex(b=>b.id===U.dopeSel); if(i<0){U.dopeSel=null;return;}
+  const b=P.seq[i]; pushHist();
+  if(after&&(P.walkFrom==null||i<P.walkFrom)){
+    const mains=P.seq.slice(0,i).filter(x=>!x.echo&&!x.stack).length; D.anim.countMode='exact'; D.anim.total=Math.max(1,mains);
+    toast(`Build now ends before that block (${D.anim.total} blocks)`,'',true);
+  } else if(b.id>0){ D.blocks=D.blocks.filter(x=>x.id!==b.id); toast('Removed that block from the layout','',true); }
+  else { D.anim.skip=(D.anim.skip||[]).concat([b.id]); toast('Skipped that block — undo or “Bring back skipped blocks” to restore','',true); }
+  U.dopeSel=null; planCache.k=''; refresh();
 }
 /* when each block leaves (real frames), or null */
 function exitTimes(P,G,seq,done){
@@ -2438,9 +2465,10 @@ function drawWorld(g,G,o){
   }
   const drawRules=()=>{
     if(!D.look.rulesOn) return;
-    g.save(); g.translate(gridOff[0],gridOff[1]); g.globalAlpha=o.alpha*(live&&A.P&&A.P.ruleOp&&A.P.ruleOp.length?ev(A.P.ruleOp,A.t,100)/100:1);
+    const k=clamp((+D.look.ruleParallax||100)/100,0,4), ro=[gridOff[0]*k,gridOff[1]*k], dc=Math.round((gridOff[0]-ro[0])/G.p);
+    g.save(); g.translate(ro[0],ro[1]); g.globalAlpha=o.alpha*(live&&A.P&&A.P.ruleOp&&A.P.ruleOp.length?ev(A.P.ruleOp,A.t,100)/100:1);
     g.fillStyle=D.look.rule; const min=1/(sc*s);
-    rulesFor(G,c0,c1,r0,r1,(+D.look.ruleW||1)/s).forEach(a=>{let x=a[0],w=a[2];if(w<min){x+=(w-min)/2;w=min;}g.fillRect(x,a[1],w,a[3]);});
+    rulesFor(G,c0+dc-2,c1+dc+2,r0,r1,(+D.look.ruleW||1)/s).forEach(a=>{let x=a[0],w=a[2];if(w<min){x+=(w-min)/2;w=min;}g.fillRect(x,a[1],w,a[3]);});
     g.restore();
   };
   g.restore();
@@ -3086,6 +3114,7 @@ function syncInputs(force){
   const mbx=$('#chkMB'); if(mbx){mbx.checked=U.mbPrev!==false; mbx.parentElement.hidden=!D.out.mb||D.anim.mode==='static';}
   $$('#camPreset [data-p]').forEach(b=>{const p=b.dataset.p.split(',').map(Number);b.classList.toggle('on',+D.anim.smooth===p[0]&&+D.anim.motionBlurF===p[1]&&+D.anim.settle===p[2]);});
   syncIconSet();
+  {const ub=$('#btnUnskip'); if(ub) ub.hidden=!(D.anim.skip&&D.anim.skip.length);}
   $$('#afterSeg [data-after]').forEach(b=>b.classList.toggle('on',D.exit.on?b.dataset.after===D.exit.mode:b.dataset.after==='stay'));
   $$('#zonePreset [data-z]').forEach(b=>b.classList.toggle('on',+b.dataset.z===+D.anim.revealX));
   $$('#endPreset [data-ex]').forEach(b=>b.classList.toggle('on',+b.dataset.ex===+D.anim.endX));
@@ -3340,11 +3369,13 @@ document.addEventListener('keydown',e=>{
   if(mod&&kl==='s'){e.preventDefault();openLib(true);return;}
   if(typing){if(k==='Escape')t.blur();return;}
   if(!$('#libModal').hidden){if(k==='Escape')closeLib();return;}
-  if(!$('#curveModal').hidden){if(k==='Escape'){$('#curveModal').hidden=true;U.curveEd=null;refresh();}return;}
+  if(!$('#curveModal').hidden&&k==='Escape'){$('#curveModal').hidden=true;U.curveEd=null;refresh();return;}
   if(k===' '){e.preventDefault();if(!U.space&&!e.repeat){U.space=true;U.spacePanned=false;cv.classList.add('panning');}return;}   // tap = play/pause, hold + drag = pan
   if(mod) return;
   if(kl==='m'||k==='Enter'){if(U.sel){e.preventDefault();mergeSel();}}
+  else if((k==='Delete'||k==='Backspace')&&U.dopeSel!=null&&STEPS[U.step].id==='timing'){e.preventDefault();dopeRemove(e.shiftKey);}
   else if(k==='Delete'||k==='Backspace'){e.preventDefault();deleteSelected();}
+  else if(k==='Escape'&&U.dopeSel!=null){U.dopeSel=null;drawDope();}
   else if(k==='Escape'){if(!$('#clearMenu').hidden){closeMenu();return;}if(U.picking){cancelPick();return;}U.sel=null;U.selIds=[];refresh();}
   else if(kl==='d'){duplicate();}
   else if(kl==='g'){if(STEPS[U.step].id!=='layout')goStep(2);generate(false);}
@@ -3513,7 +3544,7 @@ function openCurveEditor(path,ymin,ymax,title){
     planCache.k=''; draw(); refresh();};
   const close=()=>{m.hidden=true;U.curveEd=null;refresh();};
   $('#cvBigClose').onclick=close;
-  m.onclick=e=>{if(e.target===m)close();};
+  m.onclick=null;
   requestAnimationFrame(draw);
 }
 /* camera speed over the scene: a quick visual check of smoothness (flat and round = smooth) */
@@ -3757,6 +3788,7 @@ const HELP={
   'exit.walkLen':'How long the camera travels with the walking line before it lets go. After that the line, with its short trail, carries on and walks off the edge of frame.',
   'exit.walkFollow':'How much of the walk-off the camera follows before it lets go and the line runs off screen. 100% = follows to the end.',
   'exit.trail':'How many blocks stay visible behind the head of the line as it walks off.',
+  'look.ruleParallax':'How fast the column rules move with the camera. 100% = locked to the grid. Lower = they drift slower, like a layer further back; higher = faster, like a layer in front. Camera follow only.',
   'look.ruleEnd':'Column rules stay for the whole piece, or fade off when the walk-off starts (or after the scene if there is no walk-off).',
   'look.ruleFadeAt':'Frames after the walk-off starts (negative = before) when the rules begin to fade.',
   'look.ruleFadeLen':'How long the rules take to fade off.',
@@ -3978,6 +4010,10 @@ function resetDefaults(withHist){
 }
 $('#btnDefaults').onclick=()=>resetDefaults();
 initDope();
+const animSeed=()=>{pushHist();D.anim.seed=(D.anim.seed|0)+1;D.anim.skip=[];planCache.k='';refresh();toast('New walk — same layout','',true);};
+$('#btnAnimSeed').onclick=animSeed; $('#btnAnimSeed2').onclick=animSeed;
+$('#btnUnskip').onclick=()=>{pushHist();D.anim.skip=[];planCache.k='';refresh();};
+$('#cvPlay').onclick=()=>{U.playing?stopPlay():play();};
 document.addEventListener('click',e=>{const l=e.target.closest('[data-goto]');if(!l)return;e.preventDefault();const i=STEPS.findIndex(s=>s.id===l.dataset.goto);if(i>=0)goStep(i);});
 $('#afterSeg').addEventListener('click',e=>{const b=e.target.closest('[data-after]');if(!b)return;const v=b.dataset.after;pushHist();
   if(v==='stay') D.exit.on=false; else Object.assign(D.exit,{on:true,mode:v});
@@ -4191,7 +4227,7 @@ function payload(){
     let rr=rulesFor(G,c0-N,c1+N,r0,r1);
     rr=free?rr.map(a=>a.map(r3)):rr.filter(inside).map(clip);
     const lwR=+D.look.ruleW||1;
-    rules={color:hexRgb(D.look.rule),lw:lwR,top:D.look.ruleLayer==='top',period:r3(N*G.p),op:animOn&&P.ruleOp&&P.ruleOp.length?P.ruleOp:null,
+    rules={color:hexRgb(D.look.rule),lw:lwR,top:D.look.ruleLayer==='top',period:r3(N*G.p),parallax:r3(clamp((+D.look.ruleParallax||100)/100,0,4)),op:animOn&&P.ruleOp&&P.ruleOp.length?P.ruleOp:null,
       mode:zoomOn?'strokes':'rects', rects:zoomOn?null:rr,
       segs:zoomOn?rr.map(a=>[r3(a[0]+a[2]/2),a[1],r3(a[0]+a[2]/2),r3(a[1]+a[3])]):null};
   }

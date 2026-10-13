@@ -142,3 +142,9 @@ Walk-off is now a true "snake": when the walk starts, the surplus older blocks p
 
 ## v2.2 — bezier handles in the big curve editor
 Every point has bezier handles (like AE's graph editor). A two-handle curve opens as exactly the same curve; clicking the line adds a point by splitting the curve without changing its shape. Drag points or handles (handles stay linked; Shift = flat). Hold **⌥** for the convert tool: ⌥-click a point toggles corner ↔ smooth, ⌥-drag a point pulls out new handles, ⌥-drag a handle breaks it from its partner. Double-click a point to remove it. ⌘Z inside the editor only undoes curve edits.
+
+## v2.3
+- **Column rules parallax** (Grid › Column rules and Block exit › Column rules, camera follow): 100% = locked to the grid, lower drifts slower (further back), higher faster. Built in AE through the rules' wrap expression.
+- **↻ Shuffle the walk** (Animate › Keep building, Timing › Pace): a new random continuation of the pattern without touching your layout.
+- **Big curve editor floats** at the bottom right instead of covering the screen: the preview stays visible and **Space / ▶ plays** while you shape the curve.
+- **Edit blocks from the timeline:** click a block in the Blocks row to select it (the playhead jumps to it), **Delete** removes it (generated blocks are skipped, layout blocks deleted), **⇧Delete** cuts it and everything after it from the build; the **yellow handle** at the last block drags left to drop late blocks. "Bring back skipped blocks" restores them.
