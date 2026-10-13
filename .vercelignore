@@ -1,0 +1,5 @@
+# the website only needs index.html + fonts/ (web files); desktop OTFs are for After Effects
+fonts/desktop/
+src/
+install.command
+build.sh

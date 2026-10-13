@@ -6,10 +6,27 @@
 <title>Grid Blocks</title>
 <style>
 /* Aeonik Fono: uses the installed font, or files in /fonts when hosted */
-@font-face{font-family:'Aeonik Fono';font-style:normal;font-weight:300;font-display:swap;src:local('Aeonik Fono Light'),local('AeonikFono-Light'),url('fonts/AeonikFono-Light.woff2') format('woff2'),url('fonts/AeonikFono-Light.woff') format('woff'),url('fonts/AeonikFono-Light.otf') format('opentype'),url('fonts/AeonikFono-Light.ttf') format('truetype')}
-@font-face{font-family:'Aeonik Fono';font-style:normal;font-weight:400;font-display:swap;src:local('Aeonik Fono Regular'),local('AeonikFono-Regular'),url('fonts/AeonikFono-Regular.woff2') format('woff2'),url('fonts/AeonikFono-Regular.woff') format('woff'),url('fonts/AeonikFono-Regular.otf') format('opentype'),url('fonts/AeonikFono-Regular.ttf') format('truetype')}
-@font-face{font-family:'Aeonik Fono';font-style:normal;font-weight:500;font-display:swap;src:local('Aeonik Fono Medium'),local('AeonikFono-Medium'),url('fonts/AeonikFono-Medium.woff2') format('woff2'),url('fonts/AeonikFono-Medium.woff') format('woff'),url('fonts/AeonikFono-Medium.otf') format('opentype'),url('fonts/AeonikFono-Medium.ttf') format('truetype')}
-@font-face{font-family:'Aeonik Fono';font-style:normal;font-weight:700;font-display:swap;src:local('Aeonik Fono Bold'),local('AeonikFono-Bold'),url('fonts/AeonikFono-Bold.woff2') format('woff2'),url('fonts/AeonikFono-Bold.woff') format('woff'),url('fonts/AeonikFono-Bold.otf') format('opentype'),url('fonts/AeonikFono-Bold.ttf') format('truetype')}
+@font-face{font-family:'Aeonik';font-style:normal;font-weight:100;font-display:swap;src:local('Aeonik Air'),local('Aeonik-Air'),url('fonts/Aeonik-Air.woff2') format('woff2'),url('fonts/Aeonik-Air.woff') format('woff')}
+@font-face{font-family:'Aeonik';font-style:italic;font-weight:100;font-display:swap;src:local('Aeonik Air Italic'),local('Aeonik-AirItalic'),url('fonts/Aeonik-AirItalic.woff2') format('woff2'),url('fonts/Aeonik-AirItalic.woff') format('woff')}
+@font-face{font-family:'Aeonik';font-style:normal;font-weight:150;font-display:swap;src:local('Aeonik Thin'),local('Aeonik-Thin'),url('fonts/Aeonik-Thin.woff2') format('woff2'),url('fonts/Aeonik-Thin.woff') format('woff')}
+@font-face{font-family:'Aeonik';font-style:italic;font-weight:150;font-display:swap;src:local('Aeonik Thin Italic'),local('Aeonik-ThinItalic'),url('fonts/Aeonik-ThinItalic.woff2') format('woff2'),url('fonts/Aeonik-ThinItalic.woff') format('woff')}
+@font-face{font-family:'Aeonik';font-style:normal;font-weight:300;font-display:swap;src:local('Aeonik Light'),local('Aeonik-Light'),url('fonts/Aeonik-Light.woff2') format('woff2'),url('fonts/Aeonik-Light.woff') format('woff')}
+@font-face{font-family:'Aeonik';font-style:italic;font-weight:300;font-display:swap;src:local('Aeonik Light Italic'),local('Aeonik-LightItalic'),url('fonts/Aeonik-LightItalic.woff2') format('woff2'),url('fonts/Aeonik-LightItalic.woff') format('woff')}
+@font-face{font-family:'Aeonik';font-style:normal;font-weight:400;font-display:swap;src:local('Aeonik Regular'),local('Aeonik-Regular'),url('fonts/Aeonik-Regular.woff2') format('woff2'),url('fonts/Aeonik-Regular.woff') format('woff')}
+@font-face{font-family:'Aeonik';font-style:italic;font-weight:400;font-display:swap;src:local('Aeonik Regular Italic'),local('Aeonik-RegularItalic'),url('fonts/Aeonik-RegularItalic.woff2') format('woff2'),url('fonts/Aeonik-RegularItalic.woff') format('woff')}
+@font-face{font-family:'Aeonik';font-style:normal;font-weight:500;font-display:swap;src:local('Aeonik Medium'),local('Aeonik-Medium'),url('fonts/Aeonik-Medium.woff2') format('woff2'),url('fonts/Aeonik-Medium.woff') format('woff')}
+@font-face{font-family:'Aeonik';font-style:italic;font-weight:500;font-display:swap;src:local('Aeonik Medium Italic'),local('Aeonik-MediumItalic'),url('fonts/Aeonik-MediumItalic.woff2') format('woff2'),url('fonts/Aeonik-MediumItalic.woff') format('woff')}
+@font-face{font-family:'Aeonik';font-style:normal;font-weight:700;font-display:swap;src:local('Aeonik Bold'),local('Aeonik-Bold'),url('fonts/Aeonik-Bold.woff2') format('woff2'),url('fonts/Aeonik-Bold.woff') format('woff')}
+@font-face{font-family:'Aeonik';font-style:italic;font-weight:700;font-display:swap;src:local('Aeonik Bold Italic'),local('Aeonik-BoldItalic'),url('fonts/Aeonik-BoldItalic.woff2') format('woff2'),url('fonts/Aeonik-BoldItalic.woff') format('woff')}
+@font-face{font-family:'Aeonik';font-style:normal;font-weight:900;font-display:swap;src:local('Aeonik Black'),local('Aeonik-Black'),url('fonts/Aeonik-Black.woff2') format('woff2'),url('fonts/Aeonik-Black.woff') format('woff')}
+@font-face{font-family:'Aeonik';font-style:italic;font-weight:900;font-display:swap;src:local('Aeonik Black Italic'),local('Aeonik-BlackItalic'),url('fonts/Aeonik-BlackItalic.woff2') format('woff2'),url('fonts/Aeonik-BlackItalic.woff') format('woff')}
+@font-face{font-family:'Aeonik Fono';font-style:normal;font-weight:100;font-display:swap;src:local('Aeonik Fono Air'),local('AeonikFono-Air'),url('fonts/AeonikFono-Air.woff2') format('woff2'),url('fonts/AeonikFono-Air.woff') format('woff')}
+@font-face{font-family:'Aeonik Fono';font-style:normal;font-weight:150;font-display:swap;src:local('Aeonik Fono Thin'),local('AeonikFono-Thin'),url('fonts/AeonikFono-Thin.woff2') format('woff2'),url('fonts/AeonikFono-Thin.woff') format('woff')}
+@font-face{font-family:'Aeonik Fono';font-style:normal;font-weight:300;font-display:swap;src:local('Aeonik Fono Light'),local('AeonikFono-Light'),url('fonts/AeonikFono-Light.woff2') format('woff2'),url('fonts/AeonikFono-Light.woff') format('woff')}
+@font-face{font-family:'Aeonik Fono';font-style:normal;font-weight:400;font-display:swap;src:local('Aeonik Fono Regular'),local('AeonikFono-Regular'),url('fonts/AeonikFono-Regular.woff2') format('woff2'),url('fonts/AeonikFono-Regular.woff') format('woff')}
+@font-face{font-family:'Aeonik Fono';font-style:normal;font-weight:500;font-display:swap;src:local('Aeonik Fono Medium'),local('AeonikFono-Medium'),url('fonts/AeonikFono-Medium.woff2') format('woff2'),url('fonts/AeonikFono-Medium.woff') format('woff')}
+@font-face{font-family:'Aeonik Fono';font-style:normal;font-weight:700;font-display:swap;src:local('Aeonik Fono Bold'),local('AeonikFono-Bold'),url('fonts/AeonikFono-Bold.woff2') format('woff2'),url('fonts/AeonikFono-Bold.woff') format('woff')}
+@font-face{font-family:'Aeonik Fono';font-style:normal;font-weight:900;font-display:swap;src:local('Aeonik Fono Black'),local('AeonikFono-Black'),url('fonts/AeonikFono-Black.woff2') format('woff2'),url('fonts/AeonikFono-Black.woff') format('woff')}
 :root{
   --bg:#131315;--panel:#1b1b1e;--panel2:#222226;--field:#2a2a2f;--hover:#313137;--line:#2f2f35;--line2:#404047;
   --text:#ececef;--muted:#9898a1;--dim:#686871;--accent:#E6212F;--accent2:#FF7F7B;--accentA:rgba(230,33,47,.16);--ok:#3ecf8e;--warn:#ffb44d;
@@ -64,7 +81,7 @@ main{display:grid;grid-template-columns:320px minmax(0,1fr) 276px;grid-template-
 main.noinsp{grid-template-columns:320px minmax(0,1fr)}
 main.noinsp #insp{display:none}
 #left{grid-area:l;display:grid;grid-template-rows:auto minmax(0,1fr) auto;border-right:1px solid var(--line);background:var(--panel);min-height:0}
-.stage{grid-area:s;display:grid;grid-template-rows:minmax(0,1fr) auto 30px;min-width:0;min-height:0;background:#0e0e10}
+.stage{grid-area:s;display:grid;grid-template-rows:minmax(0,1fr) auto auto 30px;min-width:0;min-height:0;background:#0e0e10}
 #insp{grid-area:i;overflow:auto;border-left:1px solid var(--line);background:var(--panel);padding:10px}
 
 .step-head{padding:16px 16px 12px;border-bottom:1px solid var(--line)}
@@ -239,6 +256,19 @@ textarea{height:auto;min-height:64px;padding:7px 8px;resize:vertical;line-height
 .sumrow b{color:var(--text);font-weight:600}
 .sumrow .ok{color:var(--ok)}
 .sumrow.off{opacity:.4}
+.dope{border-top:1px solid var(--line);background:#121214;height:178px;flex:0 0 auto}
+.dope canvas{width:100%;height:100%;display:block}
+.phases{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:-2px 0 2px}
+.phases i{flex:1;height:1px;background:var(--line2)}
+details.sub{border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.015)}
+details.sub>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:7px;padding:8px 10px;font-weight:600;font-size:12px;color:var(--text);user-select:none}
+details.sub>summary::-webkit-details-marker{display:none}
+details.sub>summary::before{content:'';width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid var(--muted);transform:rotate(-90deg);transition:transform .12s}
+details.sub[open]>summary::before{transform:none}
+details.sub>summary .note{font-weight:400;margin-left:auto}
+details.sub>summary:hover{background:var(--hover);border-radius:9px}
+details.sub .subbody{display:grid;gap:9px;padding:2px 10px 10px}
+.brandfonts b.ok{color:var(--ok)} .brandfonts b.no{color:var(--warn)}
 body.simple [data-adv]{display:none!important}
 .seg.mini{height:28px;padding:2px;width:auto;flex:0 0 auto}
 .seg.mini button{padding:0 9px;font-size:11px;white-space:nowrap}
@@ -642,8 +672,9 @@ body.nohelp .qm{display:none}
               <span></span>
             </div>
             <div data-show="fill.on=true" style="display:grid;gap:9px">
-              <div class="lbl">What can appear</div>
-              <div class="lbl" style="opacity:.7;margin-top:2px">Text</div>
+              <div class="row-btns"><button class="btn" id="btnFillShuffle" title="New random content in every block (same settings)">↻ Shuffle content</button></div>
+              <details class="sub" data-sub="fill-what" open><summary>What appears</summary><div class="subbody">
+              <div class="lbl" style="opacity:.7">Text</div>
               <div class="checkgrid" id="modGridText"></div>
               <div class="lbl" style="opacity:.7;margin-top:4px">Graphics</div>
               <div class="checkgrid" id="modGridGfx"></div>
@@ -651,6 +682,8 @@ body.nohelp .qm{display:none}
                 <div class="lbl">Icon set <span class="note">click to switch icons on or off</span></div>
                 <div class="iconset" id="iconSet"></div>
               </div>
+              </div></details>
+              <details class="sub" data-sub="fill-amount" open><summary>How much <span class="note">density, icons</span></summary><div class="subbody">
               <div class="field stack"><span class="lbl">Density</span><div class="seg" data-seg="fill.density"><button data-v="light">Light</button><button data-v="medium">Medium</button><button data-v="busy">Busy</button></div></div>
               <div class="field"><span class="lbl scrub" title="Share of blocks that get text">Blocks with text</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.textPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
               <div class="field"><span class="lbl scrub" title="Chance a block gets a dot field">Dot fields</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.patternPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
@@ -658,57 +691,77 @@ body.nohelp .qm{display:none}
                 <div class="field"><span class="lbl scrub" title="Chance a block gets a ring or logo">Icons</span><div class="num"><input type="number" data-bind="fill.iconPct" min="0" max="100" step="5"><span class="unit">%</span></div></div>
                 <div class="field"><span class="lbl scrub">Icon size</span><div class="num"><input type="number" data-bind="fill.iconSize" min="8" max="400" step="2"><span class="unit">px</span></div></div>
               </div>
-              <div class="lbl" style="margin-top:4px">Text</div>
+              </div></details>
+              <details class="sub" data-sub="fill-text"><summary>Text <span class="note">font, size, colour</span></summary><div class="subbody">
               <div class="fontrow"><input class="text-in" id="fillFam" list="fontFamilies" placeholder="Mono font family" autocomplete="off" spellcheck="false"><select id="fillStyle"></select></div>
+              <div class="note brandfonts" data-fontstatus></div>
               <div class="field3">
                 <div class="field"><span class="lbl scrub">Size</span><div class="num"><input type="number" data-bind="fill.size" min="6" max="200" step="1"></div></div>
                 <div class="field"><span class="lbl scrub">Leading</span><div class="num"><input type="number" data-bind="fill.leading" min="80" max="300" step="5"></div></div>
               </div>
-              <div class="lbl" style="margin-top:4px">Dot grid</div>
+              <div class="field stack"><span class="lbl">Case</span><div class="seg" data-seg="fill.caps"><button data-v="upper">UPPERCASE</button><button data-v="none">As written</button></div></div>
+              <div class="field stack"><span class="lbl">Text on solid blocks</span><div class="swatches" data-pal="fill.textColor"></div></div>
+              <div class="note">Text on outline blocks and echoes uses the block / echo colour.</div>
+              </div></details>
+              <details class="sub" data-sub="fill-dots"><summary>Dot grid <span class="note">spacing, size, shape</span></summary><div class="subbody">
               <div class="field2">
                 <div class="field"><span class="lbl scrub" title="Distance between dots">Spacing</span><div class="num"><input type="number" data-bind="fill.dotSpacing" min="3" max="80" step="1"><span class="unit">px</span></div></div>
                 <div class="field"><span class="lbl scrub" title="Dot diameter">Dot size</span><div class="num"><input type="number" data-bind="fill.dotSize" min="0.5" max="40" step="0.2"><span class="unit">px</span></div></div>
               </div>
               <div class="seg" data-seg="fill.dotShape"><button data-v="circle">● Round</button><button data-v="square">■ Square</button></div>
-              <div class="field stack"><span class="lbl">Case</span><div class="seg" data-seg="fill.caps"><button data-v="upper">UPPERCASE</button><button data-v="none">As written</button></div></div>
-              <div class="field stack"><span class="lbl">Text on solid blocks</span><div class="swatches" data-pal="fill.textColor"></div></div>
-              <div class="note">Text on outline blocks and echoes uses the block / echo colour.</div>
+              </div></details>
+              <details class="sub" data-sub="fill-extra"><summary>Outlines &amp; extras</summary><div class="subbody">
               <div data-adv class="field2">
                 <div class="field"><span class="lbl scrub" title="Share of blocks drawn as outlines">Outline</span><div class="num"><input type="number" data-bind="fill.outlinePct" min="0" max="100" step="5"><span class="unit">%</span></div></div>
                 <div class="field"><span class="lbl scrub">Stroke</span><div class="num"><input type="number" data-bind="fill.outlineW" min="1" max="40" step="1"><span class="unit">px</span></div></div>
               </div>
               <label data-adv class="check"><input type="checkbox" data-bind="fill.skipText"> Skip blocks that have my own text</label>
-              <div class="row-btns"><button class="btn" id="btnFillShuffle">Shuffle content</button></div>
+              </div></details>
             </div>
           </div>
           <div class="group" data-show="fill.on=true">
             <div class="group-h">Content animation</div>
-            <div class="field stack"><span class="lbl">Comes on</span><div class="seg" data-seg="fill.anim.inMode"><button data-v="type">Type on</button><button data-v="fade">Fade</button><button data-v="cut">Cut</button></div></div>
-            <div class="field2" data-show="fill.anim.inMode=type">
-              <div data-adv class="field"><span class="lbl scrub">Speed</span><div class="num"><input type="number" data-bind="fill.anim.cps" min="1" max="400" step="5"><span class="unit">ch/s</span></div></div>
-              <label data-adv class="check"><input type="checkbox" data-bind="fill.anim.typeAll"> All text</label>
-            </div>
-            <div data-adv class="field" data-show="fill.anim.inMode=fade"><span class="lbl scrub">Fade in</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.anim.inDur" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-            <div data-adv class="field2">
-              <div class="field"><span class="lbl scrub" title="Frames after the block appears">Delay</span><div class="num"><input type="number" data-bind="fill.anim.delay" min="0" max="600" step="1"><span class="unit">fr</span></div></div>
-              <div class="field"><span class="lbl scrub" title="Frames between items in a block">Stagger</span><div class="num"><input type="number" data-bind="fill.anim.stagger" min="0" max="120" step="1"><span class="unit">fr</span></div></div>
-            </div>
-            <div class="field stack"><span class="lbl">Goes off</span><div class="seg" data-seg="fill.anim.outMode"><button data-v="stay">Stays</button><button data-v="fade">Fade out</button><button data-v="typeoff">Type off</button><button data-v="cut">Cut</button></div></div>
-            <div class="field2" data-show="fill.anim.outMode=fade|typeoff|cut">
-              <div class="field"><span class="lbl scrub" title="Frames it stays fully on before going">Hold</span><div class="num"><input type="number" data-bind="fill.anim.hold" min="0" max="9999" step="1"><span class="unit">fr</span></div></div>
-              <div data-adv class="field" data-show="fill.anim.outMode=fade|typeoff"><span class="lbl scrub" title="Frames it takes to go">Out</span><div class="num"><input type="number" data-bind="fill.anim.outDur" min="1" max="600" step="1"><span class="unit">fr</span></div></div>
-            </div>
-            <label data-adv class="check"><input type="checkbox" data-bind="fill.anim.ellipsis"> Animated ellipses on dev text</label>
-            <label data-adv class="check"><input type="checkbox" data-bind="fill.anim.count"> Count numbers up</label>
-            <div data-adv class="field" data-show="fill.anim.count=true"><span class="lbl scrub">Count for</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.anim.countDur" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-            <label data-adv class="check"><input type="checkbox" data-bind="fill.anim.scramble"> Scramble hashes</label>
-            <div data-show="fill.anim.scramble=true" style="display:grid;gap:9px">
-              <div data-adv class="seg" data-seg="fill.anim.scrMode"><button data-v="settle">Then settle</button><button data-v="always">Keep changing</button></div>
-              <div data-adv class="field2">
-                <div class="field"><span class="lbl scrub">Rate</span><div class="num"><input type="number" data-bind="fill.anim.scrRate" min="1" max="60" step="1"><span class="unit">/s</span></div></div>
-                <div class="field" data-show="fill.anim.scrMode=settle"><span class="lbl scrub">For</span><div class="num"><input type="number" data-bind="fill.anim.scrDur" min="1" max="600" step="1"><span class="unit">fr</span></div></div>
+            <div class="phases"><span>Animate on</span><i></i><span>Hold</span><i></i><span>Animate off</span></div>
+            <details class="sub" data-sub="anim-on" open><summary>Animate on</summary><div class="subbody">
+              <div class="field stack"><div class="seg" data-seg="fill.anim.inMode"><button data-v="type">Type on</button><button data-v="fade">Fade</button><button data-v="cut">Cut</button></div></div>
+              <div class="field2" data-show="fill.anim.inMode=type">
+                <div class="field"><span class="lbl scrub">Speed</span><div class="num"><input type="number" data-bind="fill.anim.cps" min="1" max="400" step="5"><span class="unit">ch/s</span></div></div>
+                <label data-adv class="check"><input type="checkbox" data-bind="fill.anim.typeAll"> All text</label>
               </div>
-            </div>
+              <div class="field" data-show="fill.anim.inMode=fade"><span class="lbl scrub" title="">Fade in</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.anim.inDur" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              <div class="field2">
+                <div class="field"><span class="lbl scrub" title="Frames after the block appears">Delay</span><div class="num"><input type="number" data-bind="fill.anim.delay" min="0" max="600" step="1"><span class="unit">fr</span></div></div>
+                <div class="field"><span class="lbl scrub" title="Frames between items in a block">Stagger</span><div class="num"><input type="number" data-bind="fill.anim.stagger" min="0" max="120" step="1"><span class="unit">fr</span></div></div>
+              </div>
+              <label class="check"><input type="checkbox" data-bind="fill.anim.count"> Numbers count up</label>
+              <div data-adv class="field" data-show="fill.anim.count=true"><span class="lbl scrub" title="">Count for</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.anim.countDur" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              <label class="check"><input type="checkbox" data-bind="fill.anim.scramble"> Hashes scramble in, then settle</label>
+              <div data-adv class="field2" data-show="fill.anim.scramble=true">
+                <div class="field"><span class="lbl scrub">Rate</span><div class="num"><input type="number" data-bind="fill.anim.scrRate" min="1" max="60" step="1"><span class="unit">/s</span></div></div>
+                <div class="field"><span class="lbl scrub">For</span><div class="num"><input type="number" data-bind="fill.anim.scrDur" min="1" max="600" step="1"><span class="unit">fr</span></div></div>
+              </div>
+              <label data-adv class="check"><input type="checkbox" data-bind="fill.anim.ellipsis"> Animated ellipses on dev text</label>
+            </div></details>
+            <details class="sub" data-sub="anim-hold" open><summary>Hold <span class="note">while it's on screen</span></summary><div class="subbody">
+              <div class="field" data-show="fill.anim.outMode=fade|typeoff|cut"><span class="lbl scrub" title="Frames it stays fully on before animating off">Hold for</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.anim.hold" min="0" max="9999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              <div class="note" data-show="fill.anim.outMode=stay">Content stays until its block leaves (or forever). Choose an Animate off style to set a hold time.</div>
+              <label class="check"><input type="checkbox" data-bind="fill.anim.live"> Keep it alive while holding</label>
+              <div data-show="fill.anim.live=true" style="display:grid;gap:9px">
+                <div class="checkgrid">
+                  <label class="check"><input type="checkbox" data-bind="fill.anim.liveTick"> Numbers tick</label>
+                  <label class="check"><input type="checkbox" data-bind="fill.anim.liveHash"> Hashes keep scrambling</label>
+                  <label class="check"><input type="checkbox" data-bind="fill.anim.liveGlitch"> Letters glitch</label>
+                </div>
+                <div class="field2">
+                  <div class="field"><span class="lbl scrub" title="How often things update while holding">Updates</span><div class="num"><input type="number" data-bind="fill.anim.liveRate" min="0.5" max="30" step="0.5"><span class="unit">/s</span></div></div>
+                  <div class="field" data-show="fill.anim.liveGlitch=true"><span class="lbl scrub" title="Chance a line glitches on each update">Glitch</span><div class="num"><input type="number" data-bind="fill.anim.glitchAmt" min="1" max="100" step="1"><span class="unit">%</span></div></div>
+                </div>
+              </div>
+            </div></details>
+            <details class="sub" data-sub="anim-off" open><summary>Animate off</summary><div class="subbody">
+              <div class="field stack"><div class="seg" data-seg="fill.anim.outMode"><button data-v="stay">Stays</button><button data-v="fade">Fade out</button><button data-v="typeoff">Type off</button><button data-v="cut">Cut</button></div></div>
+              <div class="field" data-show="fill.anim.outMode=fade|typeoff"><span class="lbl scrub" title="Frames it takes to go">Off length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.anim.outDur" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+            </div></details>
           </div>
           <div class="group" data-show="fill.on=true">
             <div class="group-h">Text between blocks</div>
@@ -733,6 +786,7 @@ body.nohelp .qm{display:none}
             <datalist id="fontFamilies"></datalist>
             <div class="fontrow"><input class="text-in" id="fontFam" list="fontFamilies" placeholder="Font family" autocomplete="off" spellcheck="false"><select id="fontStyle"></select></div>
             <div class="note" id="fontNote"></div>
+            <div class="note brandfonts" data-fontstatus></div>
             <div class="field3">
               <div class="field"><span class="lbl scrub">Size</span><div class="num"><input type="number" data-bind="text.size" min="4" max="1000" step="1"></div></div>
               <div class="field"><span class="lbl scrub" title="0 = auto">Leading</span><div class="num"><input type="number" data-bind="text.leading" data-zero="auto" min="0" max="2000" step="1"></div></div>
@@ -787,25 +841,31 @@ body.nohelp .qm{display:none}
 
           <div class="group" data-show="anim.mode=camera|push">
             <div class="group-h">Camera<span id="camHead" class="note" style="margin-left:6px;text-transform:none;letter-spacing:0"></span></div>
-            <div class="field stack" data-show="anim.motion=smooth"><span class="lbl">Movement</span><div class="seg" data-seg="anim.camMove"><button data-v="follow">Glide (continuous)</button><button data-v="step">Step &amp; settle</button></div></div>
-            <div data-adv class="field stack"><span class="lbl">Follows</span><div class="seg" data-seg="anim.axis"><button data-v="x">Sideways</button><button data-v="xy">Sideways + up/down</button></div></div>
-            <div data-show="anim.motion=smooth&amp;anim.camMove=follow" style="display:grid;gap:9px">
-              <div class="field stack"><span class="lbl">Feel</span><div class="seg" id="camPreset"><button data-p="1,2.5,12" title="Stays close, quick but still eased">Tight</button><button data-p="1.5,4,18" title="The default: smooth and readable">Balanced</button><button data-p="2.5,7,30" title="Trails further behind with long, soft acceleration">Floaty</button><button data-p="3.5,10,48" title="Very slow, cinematic drift">Drift</button></div></div>
-              <div data-adv class="field"><span class="lbl scrub" title="How many blocks the camera trails behind the newest one">Follow distance</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.smooth" min="1" max="6" step="0.5"><span class="unit">blocks</span><button data-d="1">+</button></div></div>
-              <div data-adv class="field"><span class="lbl scrub" title="Higher = softer changes of speed">Smoothness</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.motionBlurF" min="0" max="12" step="0.5"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-              <div data-adv class="field"><span class="lbl scrub" title="Frames the camera takes to ease to a stop at the end">Settle</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.settle" min="0" max="240" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-            </div>
-            <div class="curve" data-curve="anim.camCurve" data-show="anim.motion=smooth&amp;anim.camMove=step" data-title="Move easing · each step and the final move"></div>
-            <label data-adv class="check" data-show="anim.mode=camera"><input type="checkbox" data-bind="anim.lazy"> Hold still until blocks reach the centre</label>
-            <div data-show="anim.motion=smooth&amp;anim.camMove=follow" style="display:grid;gap:9px">
-              <label class="check"><input type="checkbox" data-bind="anim.relOn"> Let go before the end <span class="note">camera coasts to a stop, blocks keep going past</span></label>
-              <div class="field2" data-show="anim.relOn=true">
-                <div class="field"><span class="lbl scrub" title="How far through the scene the camera stops following">Let go at</span><div class="num"><input type="number" data-bind="anim.relAt" min="5" max="100" step="1"><span class="unit">%</span></div></div>
-                <div class="field"><span class="lbl scrub" title="Frames the camera takes to coast to a stop">Coast</span><div class="num"><input type="number" data-bind="anim.relSlow" min="2" max="600" step="1"><span class="unit">fr</span></div></div>
+            <details class="sub" data-sub="cam-move" open><summary>How it moves <span class="note">movement, feel</span></summary><div class="subbody">
+              <div class="field stack" data-show="anim.motion=smooth"><span class="lbl">Movement</span><div class="seg" data-seg="anim.camMove"><button data-v="follow">Glide (continuous)</button><button data-v="step">Step &amp; settle</button></div></div>
+              <div data-adv class="field stack"><span class="lbl">Follows</span><div class="seg" data-seg="anim.axis"><button data-v="x">Sideways</button><button data-v="xy">Sideways + up/down</button></div></div>
+              <div data-show="anim.motion=smooth&amp;anim.camMove=follow" style="display:grid;gap:9px">
+                <div class="field stack"><span class="lbl">Feel</span><div class="seg" id="camPreset"><button data-p="1,2.5,12" title="Stays close, quick but still eased">Tight</button><button data-p="1.5,4,18" title="The default: smooth and readable">Balanced</button><button data-p="2.5,7,30" title="Trails further behind with long, soft acceleration">Floaty</button><button data-p="3.5,10,48" title="Very slow, cinematic drift">Drift</button></div></div>
+                <div data-adv class="field"><span class="lbl scrub" title="How many blocks the camera trails behind the newest one">Follow distance</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.smooth" min="1" max="6" step="0.5"><span class="unit">blocks</span><button data-d="1">+</button></div></div>
+                <div data-adv class="field"><span class="lbl scrub" title="Higher = softer changes of speed">Smoothness</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.motionBlurF" min="0" max="12" step="0.5"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+                <div data-adv class="field"><span class="lbl scrub" title="Frames the camera takes to ease to a stop at the end">Settle</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.settle" min="0" max="240" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
               </div>
-            </div>
-            <label class="check" data-show="anim.camMove=step"><input type="checkbox" data-bind="anim.snap"> Aim at whole cells</label>
-            <div class="speedgraph"><div class="lbl">Camera speed <span class="note" id="speedNote"></span></div><canvas id="speedCv"></canvas></div>
+              <div class="curve" data-curve="anim.camCurve" data-show="anim.motion=smooth&amp;anim.camMove=step" data-title="Move easing · each step and the final move"></div>
+              <label data-adv class="check" data-show="anim.mode=camera"><input type="checkbox" data-bind="anim.lazy"> Hold still until blocks reach the centre</label>
+              <label class="check" data-show="anim.camMove=step"><input type="checkbox" data-bind="anim.snap"> Aim at whole cells</label>
+            </div></details>
+            <details class="sub" data-sub="cam-letgo" data-show="anim.motion=smooth&amp;anim.camMove=follow"><summary>Let go before the end <span class="note">coast to a stop</span></summary><div class="subbody">
+              <div data-show="anim.motion=smooth&amp;anim.camMove=follow" style="display:grid;gap:9px">
+                <label class="check"><input type="checkbox" data-bind="anim.relOn"> On — camera coasts to a stop, blocks keep going past</label>
+                <div class="field2" data-show="anim.relOn=true">
+                  <div class="field"><span class="lbl scrub" title="How far through the scene the camera stops following">Let go at</span><div class="num"><input type="number" data-bind="anim.relAt" min="5" max="100" step="1"><span class="unit">%</span></div></div>
+                  <div class="field"><span class="lbl scrub" title="Frames the camera takes to coast to a stop">Coast</span><div class="num"><input type="number" data-bind="anim.relSlow" min="2" max="600" step="1"><span class="unit">fr</span></div></div>
+                </div>
+              </div>
+            </div></details>
+            <details class="sub" data-sub="cam-graph" open><summary>Speed graph</summary><div class="subbody">
+              <div class="speedgraph"><div class="lbl">Camera speed <span class="note" id="speedNote"></span></div><canvas id="speedCv"></canvas></div>
+            </div></details>
           </div>
 
           <div class="group" data-show="anim.mode=reveal|camera|push">
@@ -829,8 +889,13 @@ body.nohelp .qm{display:none}
             <div class="group-h">Block exit<label class="switch hswitch" title="Blocks leave again (great for overlays)"><input type="checkbox" data-bind="exit.on"><span></span></label></div>
             <div class="note" data-show="exit.on=false">Off: blocks stay once they’ve appeared. Turn on to un-reveal them — handy when this is an overlay.</div>
             <div data-show="exit.on=true" style="display:grid;gap:9px">
-              <div class="field stack"><span class="lbl">When they leave</span><div class="seg" data-seg="exit.mode"><button data-v="hold" title="Each block leaves a set time after it appeared — a moving trail">After a hold</button><button data-v="behind" title="Each block leaves once the camera has carried it past the exit line">Behind the camera</button><button data-v="end" title="Everything clears out at the end, one after another">All at the end</button></div></div>
+              <div class="field stack"><span class="lbl">When they leave</span><div class="seg" data-seg="exit.mode"><button data-v="hold" title="Each block leaves a set time after it appeared — a moving trail">After a hold</button><button data-v="walk" title="The finished build holds, then walks off in the order it walked on">Walk off</button><button data-v="behind" title="Each block leaves once the camera has carried it past the exit line">Behind camera</button><button data-v="end" title="Everything clears out at the end, one after another">All at end</button></div></div>
               <div class="field" data-show="exit.mode=hold"><span class="lbl scrub" title="Frames a block stays fully visible before leaving">Stays for</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.hold" min="0" max="2000" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              <div class="field2" data-show="exit.mode=walk">
+                <div class="field"><span class="lbl scrub" title="Frames the finished build holds before walking off">Hold</span><div class="num"><input type="number" data-bind="exit.walkHold" min="0" max="2000" step="1"><span class="unit">fr</span></div></div>
+                <div class="field"><span class="lbl scrub" title="1 = same rhythm as the walk-on">Pace</span><div class="num"><input type="number" data-bind="exit.walkPace" min="0.1" max="5" step="0.1"><span class="unit">×</span></div></div>
+              </div>
+              <div class="field stack" data-show="exit.mode=walk"><span class="lbl">Order</span><div class="seg" data-seg="exit.order"><button data-v="same">First on, first off</button><button data-v="reverse">Last on, first off</button></div></div>
               <div class="field" data-show="exit.mode=behind"><span class="lbl scrub" title="A block leaves when its right edge passes this line (% of the frame width from the left)">Exit line</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.line" min="-50" max="100" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
               <div data-show="exit.mode=end" style="display:grid;gap:9px">
                 <div class="field2">
@@ -839,10 +904,11 @@ body.nohelp .qm{display:none}
                 </div>
                 <div class="field stack"><span class="lbl">Order</span><div class="seg" data-seg="exit.order"><button data-v="same">First in, first out</button><button data-v="reverse">Last in, first out</button></div></div>
               </div>
-              <div class="field stack"><span class="lbl">How they leave</span><div class="seg" data-seg="exit.style"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe</button><button data-v="scale">Scale</button></div></div>
-              <div class="field stack" data-show="exit.style=wipe"><span class="lbl">Wipe direction</span><div class="seg" data-seg="exit.dir"><button data-v="same" title="Collapses toward the direction of travel — keeps the momentum">Onward →</button><button data-v="back" title="Collapses back where it came from">← Back</button></div></div>
-              <div class="field" data-show="exit.style=fade|wipe|scale"><span class="lbl scrub">Exit length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.len" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-              <div data-adv class="curve" data-curve="exit.curve" data-show="anim.motion=smooth&amp;exit.style=fade|wipe|scale" data-title="Exit easing"></div>
+              <div class="field stack"><span class="lbl">How they leave</span><div class="seg" data-seg="exit.style"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe</button><button data-v="slide" title="Keeps travelling: slides on and fades out">Slide</button><button data-v="scale">Scale</button></div></div>
+              <div class="field stack" data-show="exit.style=wipe|slide"><span class="lbl">Direction</span><div class="seg" data-seg="exit.dir"><button data-v="same" title="Collapses toward the direction of travel — keeps the momentum">Onward →</button><button data-v="back" title="Collapses back where it came from">← Back</button></div></div>
+              <div class="field" data-show="exit.style=slide"><span class="lbl scrub" title="Slide distance in block widths">Slide</span><div class="num"><input type="number" data-bind="exit.slide" min="0.1" max="20" step="0.1"><span class="unit">× block</span></div></div>
+              <div class="field" data-show="exit.style=fade|wipe|scale|slide"><span class="lbl scrub">Exit length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.len" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              <div data-adv class="curve" data-curve="exit.curve" data-show="anim.motion=smooth&amp;exit.style=fade|wipe|scale|slide" data-title="Exit easing"></div>
               <label class="check"><input type="checkbox" data-bind="exit.content"> Content leaves with its block</label>
               <label data-adv class="check"><input type="checkbox" data-bind="exit.echo"> Echoes leave too</label>
             </div>
@@ -902,6 +968,39 @@ body.nohelp .qm{display:none}
         </div>
 
         <!-- 5b TRANSITIONS -->
+        <!-- 5b TIMING -->
+        <div class="pane" data-pane="timing">
+          <div class="group">
+            <div class="note">The timeline under the canvas shows every timing at once: the scene, the camera's speed, each block from reveal to exit, the content's on · hold · off, and the transitions. <b>Drag the handles</b> to retime; click anywhere to move the playhead.</div>
+          </div>
+          <div class="group">
+            <div class="group-h">Retime everything</div>
+            <div class="note">Stretches or squeezes the whole piece — scene, reveals, camera, exits, content, transitions, Lab — keeping every relationship.</div>
+            <div class="seg"><button data-retime="0.5">×0.5</button><button data-retime="0.75">×0.75</button><button data-retime="0.9">×0.9</button><button data-retime="1.1">×1.1</button><button data-retime="1.25">×1.25</button><button data-retime="1.5">×1.5</button><button data-retime="2">×2</button></div>
+            <div class="field" style="grid-template-columns:auto 1fr auto"><span class="lbl">Scene length to</span><div class="num"><input type="number" id="retimeTarget" min="0.1" max="600" step="0.1" value="3"><span class="unit">s</span></div><button class="btn" id="btnRetimeTo">Retime</button></div>
+            <button class="btn" id="btnRetimeComp" title="Stretch the scene so it ends with the comp">Fit the scene to the comp length</button>
+          </div>
+          <div class="group">
+            <div class="group-h">Scene</div>
+            <div class="field2"><div class="field"><span class="lbl scrub" title="">Starts</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.startF" min="-9999" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div><div class="field"><span class="lbl scrub" title="">Length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.lenF" min="2" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div></div>
+            <div class="curve" data-curve="anim.sceneCurve" data-ymin="0" data-ymax="1" data-title="Scene easing · the pace of the whole build"></div>
+          </div>
+          <div class="group" data-show="anim.mode=camera|push">
+            <div class="group-h">Camera</div>
+            <label class="check" data-show="anim.camMove=follow"><input type="checkbox" data-bind="anim.relOn"> Let go before the end — the line keeps going past the camera</label>
+            <div class="field2" data-show="anim.relOn=true"><div class="field"><span class="lbl scrub" title="">Let go at</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.relAt" min="5" max="100" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div><div class="field"><span class="lbl scrub" title="">Coast</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.relSlow" min="2" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div></div>
+          </div>
+          <div class="group">
+            <div class="group-h">Holds</div>
+            <div class="field2"><div class="field" data-show="fill.anim.outMode=fade|typeoff|cut"><span class="lbl scrub" title="How long content holds before animating off">Content</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.anim.hold" min="0" max="9999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div><div class="field" data-show="exit.mode=hold"><span class="lbl scrub" title="How long each block stays before it leaves">Blocks</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.hold" min="1" max="9999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div></div>
+            <div class="note">Block holds apply when Block exit is “After a hold”; content holds when content animates off.</div>
+          </div>
+          <div class="group">
+            <div class="group-h">Sync to sound</div>
+            <div id="mediaBox"></div>
+          </div>
+        </div>
+
         <div class="pane" data-pane="transitions">
           <div class="group">
             <div class="group-h">How it works</div>
@@ -1064,6 +1163,7 @@ body.nohelp .qm{display:none}
           <button id="zAll" title="Show off-screen area (Shift+F)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"/></svg></button>
         </div>
       </div>
+      <div class="dope" id="dope" hidden><canvas id="dopeCv"></canvas></div>
       <div class="timeline" id="timeline" hidden>
         <button class="btn icon" id="btnPlay" title="Play preview (P)"><svg id="icoPlay" width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg></button>
         <input type="range" id="scrub" min="0" max="100" step="1" value="0">
@@ -1113,6 +1213,7 @@ body.nohelp .qm{display:none}
   <div class="msep" data-ae></div>
   <button data-clear="ae" data-ae class="danger">Remove built layers from comp</button>
 </div>
+<input type="file" id="mediaIn" accept="audio/*,video/*" hidden>
 <input type="file" id="fileIn" accept=".json,.jsx,application/json,text/plain" hidden>
 <div class="tip" id="tip"></div>
 <div class="toast" id="toast"><span class="dot"></span><span id="toastMsg"></span><button class="btn" id="toastBtn" hidden>Undo</button></div>

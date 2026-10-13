@@ -13,6 +13,43 @@ function GB_getComp(){
 
 /* ---------- fonts (AE 2024+ exposes app.fonts) ---------- */
 function GB_clean(s){return String(s).replace(/[\t\r\n]/g," ");}
+/* PostScript names AE can't find (AE 2024+: app.fonts; older versions can't tell) */
+function GB_missingFonts(list){
+  var miss=[], i;
+  if(!list||!list.length) return miss;
+  try{ if(!app.fonts||!app.fonts.getFontsByPostScriptName) return miss; }catch(e0){ return miss; }
+  for(i=0;i<list.length;i++){
+    try{ var r=app.fonts.getFontsByPostScriptName(list[i][0]); if(!r||!r.length) miss.push(list[i][1]+" ("+list[i][0]+")"); }catch(e){}
+  }
+  return miss;
+}
+/* read the active comp for timing: length, fps, markers; optionally the per-frame loudness of its first audio layer */
+function GB_readComp(analyse){
+  var c=app.project.activeItem; if(!(c&&c instanceof CompItem)) return "ERR|Open a comp first";
+  var i, mk=[], mp=c.markerProperty, s;
+  for(i=1;i<=mp.numKeys;i++){ var mv=mp.keyValue(i); if(!(mv&&String(mv.comment).indexOf("GB · ")===0)) mk.push(Math.round(mp.keyTime(i)*1000)/1000); }
+  var aud=null;
+  for(i=1;i<=c.numLayers;i++){ var L=c.layer(i); try{ if(L.hasAudio&&L.audioEnabled&&!(L.comment&&String(L.comment).indexOf("GridBlocks")===0)){aud=L;break;} }catch(e0){} }
+  if(aud){ try{ var lm=aud.property("ADBE Marker"); for(i=1;i<=lm.numKeys;i++) mk.push(Math.round(lm.keyTime(i)*1000)/1000); }catch(e1){} }
+  s='{"name":"'+GB_esc(c.name)+'","dur":'+c.duration+',"fps":'+c.frameRate+',"markers":['+mk.join(",")+']';
+  if(analyse&&aud){
+    app.beginUndoGroup("Grid Blocks: read audio");
+    var amp=[], tmp=null;
+    try{
+      for(i=1;i<=c.numLayers;i++) c.layer(i).selected=false;
+      aud.selected=true;
+      app.executeCommand(app.findMenuCommandId("Convert Audio to Keyframes"));
+      tmp=c.layer(1);
+      var sl=tmp.property("ADBE Effect Parade").property(3).property(1);   // Both Channels › Slider
+      var n=Math.floor(c.duration*c.frameRate);
+      for(i=0;i<n;i++) amp.push(Math.round(sl.valueAtTime(i/c.frameRate,false)*1000)/1000);
+    }catch(e2){ amp=[]; }
+    try{ if(tmp&&tmp.name.indexOf("Audio Amplitude")>=0) tmp.remove(); }catch(e3){}
+    app.endUndoGroup();
+    s+=',"audioName":"'+GB_esc(aud.name)+'","amp":['+amp.join(",")+']';
+  }
+  return "OK|"+s+"}";
+}
 function GB_getFonts(){
   try{
     if(!app.fonts) return "NONE";
@@ -831,6 +868,7 @@ function GB_build(d){
     }
     if(gridPre||blockPre){var pn=[];if(gridPre)pn.push("grid");if(blockPre)pn.push("blocks");out.push("precomps: "+pn.join(", "));}
     if(d.lock){for(i=0;i<locks.length;i++){try{locks[i].locked=true;}catch(eL){}}}
+    var fm=GB_missingFonts(d.fontsUsed); if(fm.length) out.push("⚠ font not installed: "+fm.join(", ")+" (AE used a substitute)");
     return "OK|"+(made?"New comp “"+main.name+"” · ":"")+"Built "+out.join(", ")+" in “"+main.name+"”"+(folder?" · project items in Grid Blocks › "+folder.name:"");
   }catch(e){
     return "ERR|"+e.toString()+(e.line?" (line "+e.line+")":"");
