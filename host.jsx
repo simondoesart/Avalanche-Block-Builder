@@ -754,7 +754,11 @@ function GB_build(d){
         if(A.wrap3 && rulesL){
           var rw=GB_null(rulesC,"GB · Rules Wrap",true); rw.comment="GridBlocks:null"; shy.push(rw);
           rulesL.parent=rw;
-          GB_xf(rw).property("ADBE Position").expression=wrapExpr(camRefR,d.rules.period,A.wrap3.py);
+          if(d.rules.parallax!=null&&Math.abs(d.rules.parallax-1)>1e-3){
+            // parallax: the rules move k× the camera (the layer follows the camera by (1-k)), wrapped by whole periods
+            GB_xf(rw).property("ADBE Position").expression='var c='+camRefR+'.transform.position;\nvar px='+d.rules.period+', k='+d.rules.parallax+';\n'+
+              'var dx=c[0]-'+(main.width/2)+', dy=c[1]-'+(main.height/2)+';\nvar sx=dx*(1-k), sy=dy*(1-k);\n[sx+px*Math.round((dx-sx)/px), '+(A.wrap3.py>0?'sy+'+A.wrap3.py+'*Math.round((dy-sy)/'+A.wrap3.py+')':'0')+', 0]';
+          } else GB_xf(rw).property("ADBE Position").expression=wrapExpr(camRefR,d.rules.period,A.wrap3.py);
           locks.push(rw);
         }
         if(A.conv && A.conv.length){
