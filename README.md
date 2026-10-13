@@ -139,3 +139,6 @@ Walk-off is now a true "snake": when the walk starts, the surplus older blocks p
 
 ## v2.1 — multi-point scene easing
 **⤢ Big editor** on the Scene easing curve (or double-click the small graph): a large graph where you click to add points, drag them, and double-click / Alt-click to remove them. The curve runs smoothly through the points without overshooting; a speed strip underneath shows fast and slow parts, and tick marks show when blocks land. Presets: Ease in-out, Fast start long settle, Burst-hold-burst, Slow build punch, Two-step; "Simple curve" goes back to the two-handle version.
+
+## v2.2 — bezier handles in the big curve editor
+Every point has bezier handles (like AE's graph editor). A two-handle curve opens as exactly the same curve; clicking the line adds a point by splitting the curve without changing its shape. Drag points or handles (handles stay linked; Shift = flat). Hold **⌥** for the convert tool: ⌥-click a point toggles corner ↔ smooth, ⌥-drag a point pulls out new handles, ⌥-drag a handle breaks it from its partner. Double-click a point to remove it. ⌘Z inside the editor only undoes curve edits.
