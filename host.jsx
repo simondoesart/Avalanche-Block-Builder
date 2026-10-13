@@ -725,6 +725,7 @@ function GB_build(d){
     if(fillLayers.length||gapLayers.length) out.push((fillLayers.length+gapLayers.length)+" content layers");
     if(d.lab){var nl=GB_labWorld(blockC,d.lab,blocks,blockLayers,fps,org,main); if(nl) out.push(nl+" lab layers");}
     if(d.rules && d.rules.top){rulesC=blockC; rulesL=GB_mkRules(blockC,d.rules); if(rulesL){locks.push(rulesL);out.push("column rules on top");}}
+    if(rulesL&&d.rules.op&&d.rules.op.length){try{GB_keys(GB_xf(rulesL).property("ADBE Opacity"),d.rules.op,fps);}catch(eRo){}}
     var camRefR=rulesC===main?camRefMain:camRefPre;
 
     var cam=null, wrap=null, zoom=null, conv=null;
