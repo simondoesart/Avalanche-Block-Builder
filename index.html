@@ -1293,6 +1293,7 @@ body.nohelp .qm{display:none}
   <div class="cvbig-h"><b id="cvBigTitle">Easing</b><span style="flex:1"></span><button class="btn icon ghost" id="cvBigClose" title="Close (Esc)">✕</button></div>
   <canvas id="cvBig"></canvas><canvas id="cvSpeed"></canvas>
   <div class="note" id="cvBigInfo"></div>
+  <div class="row-btns"><label class="check"><input type="checkbox" id="cvEaseIn"> Ease in at the start</label><label class="check"><input type="checkbox" id="cvEaseOut"> Ease out at the end</label></div>
   <div class="cv-row" id="cvBigPresets"></div>
 </div></div>
 <input type="file" id="mediaIn" accept="audio/*,video/*" hidden>
@@ -3218,14 +3219,16 @@ function extension(G,base,capOverride){
   return out;
 }
 const curveCache={};
-const isPts=c=>Array.isArray(c)&&c.length>=6&&c.length%2===0;
-function ptsOf(c){const p=[];for(let i=0;i<c.length;i+=2)p.push([+c[i],+c[i+1]]);return p.sort((a,b)=>a[0]-b[0]);}
+const isPts=c=>Array.isArray(c)&&c.length>=6&&!(c.length===4);
+const ptsFlags=c=>c.length%2===1?(+c[0]|0):0;
+function ptsOf(c){const o=c.length%2===1?1:0,p=[];for(let i=o;i<c.length;i+=2)p.push([+c[i],+c[i+1]]);return p.sort((a,b)=>a[0]-b[0]);}
+function ptsPack(p,flags){const flat=p.reduce((o,q)=>o.concat([r3(q[0]),r3(q[1])]),[]);return flags?[flags].concat(flat):flat;}
 /* smooth curve through points (monotone cubic — no overshoot between points) */
 function ptsFn(c){
   const p=ptsOf(c), n=p.length, dx=[], m=[], tg=new Array(n).fill(0);
   for(let i=0;i<n-1;i++){dx.push(Math.max(1e-6,p[i+1][0]-p[i][0]));m.push((p[i+1][1]-p[i][1])/dx[i]);}
-  tg[0]=m[0]; tg[n-1]=m[n-2];
-  for(let i=1;i<n-1;i++) tg[i]=(m[i-1]*m[i]<=0)?0:(dx[i-1]+dx[i])/((dx[i-1]+2*dx[i])/m[i-1]+(2*dx[i-1]+dx[i])/m[i]);   // harmonic-mean tangents
+  const fl=ptsFlags(c); tg[0]=(fl&1)?0:m[0]; tg[n-1]=(fl&2)?0:m[n-2];
+  for(let i=1;i<n-1;i++) tg[i]=(m[i-1]*m[i]<=0)?0:3*(dx[i-1]+dx[i])/((dx[i-1]+2*dx[i])/m[i-1]+(2*dx[i-1]+dx[i])/m[i]);   // harmonic-mean tangents
   return u=>{ if(u<=p[0][0]) return p[0][1]; if(u>=p[n-1][0]) return p[n-1][1];
     let k=0; while(k<n-2&&u>p[k+1][0]) k++;
     const h=dx[k], s=(u-p[k][0])/h, s2=s*s, s3=s2*s;
@@ -5492,12 +5495,13 @@ document.addEventListener('keydown',e=>{
   const t=e.target;
   const typing=t.matches&&t.matches('input:not([type=checkbox]):not([type=color]):not([type=range]),textarea,select');
   const mod=e.metaKey||e.ctrlKey, k=e.key, kl=k.length===1?k.toLowerCase():k;
+  if(mod&&kl==='z'&&U.curveEd&&!$('#curveModal').hidden){e.preventDefault();U.curveEd.step(e.shiftKey?1:-1);return;}
   if(mod&&kl==='z'){if(typing)return;e.preventDefault();e.shiftKey?redo():undo();return;}
   if(mod&&kl==='y'){if(typing)return;e.preventDefault();redo();return;}
   if(mod&&kl==='s'){e.preventDefault();openLib(true);return;}
   if(typing){if(k==='Escape')t.blur();return;}
   if(!$('#libModal').hidden){if(k==='Escape')closeLib();return;}
-  if(!$('#curveModal').hidden){if(k==='Escape'){$('#curveModal').hidden=true;refresh();}return;}
+  if(!$('#curveModal').hidden){if(k==='Escape'){$('#curveModal').hidden=true;U.curveEd=null;refresh();}return;}
   if(k===' '){e.preventDefault();if(!U.space&&!e.repeat){U.space=true;U.spacePanned=false;cv.classList.add('panning');}return;}   // tap = play/pause, hold + drag = pan
   if(mod) return;
   if(kl==='m'||k==='Enter'){if(U.sel){e.preventDefault();mergeSel();}}
@@ -5575,52 +5579,68 @@ function buildCurves(){
 function openCurveEditor(path,ymin,ymax,title){
   const m=$('#curveModal'), c=$('#cvBig'), sp=$('#cvSpeed'); if(!m) return;
   $('#cvBigTitle').textContent=title||'Easing';
-  m.hidden=false; let drag=-1, pushed=false;
-  const pts=()=>{const cur=getP(path);if(isPts(cur))return ptsOf(cur);const f=curveFn(cur);return [0,.25,.5,.75,1].map(u=>[u,r3(f(u))]);};
-  const save=p=>{p.sort((a,b)=>a[0]-b[0]);p[0][0]=0;p[p.length-1][0]=1;setP(path,p.reduce((o,q)=>o.concat([r3(q[0]),r3(q[1])]),[]));planCache.k='';};
+  m.hidden=false; let drag=-1, pushedGlobal=false;
+  const CE=U.curveEd={path,undo:[],redo:[]};
+  const snap=()=>JSON.stringify(getP(path));
+  const remember=()=>{ if(!pushedGlobal){pushHist(true);pushedGlobal=true;} CE.undo.push(snap()); if(CE.undo.length>200)CE.undo.shift(); CE.redo=[]; };
+  CE.step=dir=>{ const from=dir<0?CE.undo:CE.redo, to=dir<0?CE.redo:CE.undo; if(!from.length) return; to.push(snap()); setP(path,JSON.parse(from.pop())); planCache.k=''; draw(); refresh(); };
+  const flagsFromBezier=cu=>((cu[1]<cu[0]*.5)?1:0)|(((1-cu[3])<(1-cu[2])*.5)?2:0);
+  const cur=()=>getP(path);
+  const pts=()=>{const cu=cur();return isPts(cu)?ptsOf(cu):[[0,0],[1,1]];};
+  const flags=()=>{const cu=cur();return isPts(cu)?ptsFlags(cu):flagsFromBezier(cu);};
+  const save=(p,fl)=>{p.sort((a,b)=>a[0]-b[0]);p[0][0]=0;p[p.length-1][0]=1;setP(path,ptsPack(p,fl==null?flags():fl));planCache.k='';};
   const geo=()=>{const r=c.getBoundingClientRect(),pad=28;return{r,x0:pad,x1:r.width-pad,y0:r.height-pad,y1:pad};};
-  const toPx=(g,u,v)=>[g.x0+(g.x1-g.x0)*u,g.y0+(g.y1-g.y0)*((v-0)/(1-0))];
+  const toPx=(g,u,v)=>[g.x0+(g.x1-g.x0)*u,g.y0+(g.y1-g.y0)*v];
   const fromPx=(g,px,py)=>[clamp((px-g.x0)/(g.x1-g.x0),0,1),clamp((py-g.y0)/(g.y1-g.y0),ymin,ymax)];
   function draw(){
     const g=geo(),dpr=window.devicePixelRatio||1; c.width=Math.round(g.r.width*dpr); c.height=Math.round(g.r.height*dpr);
     const x=c.getContext('2d'); x.scale(dpr,dpr); x.clearRect(0,0,g.r.width,g.r.height);
-    x.strokeStyle='#2a2a30'; x.lineWidth=1; for(let i=0;i<=10;i++){const a=toPx(g,i/10,0),b=toPx(g,i/10,1);x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.stroke();const c2=toPx(g,0,i/10),d2=toPx(g,1,i/10);x.beginPath();x.moveTo(c2[0],c2[1]);x.lineTo(d2[0],d2[1]);x.stroke();}
+    x.strokeStyle='#2a2a30'; x.lineWidth=1; for(let i=0;i<=10;i++){const a1=toPx(g,i/10,0),b1=toPx(g,i/10,1);x.beginPath();x.moveTo(a1[0],a1[1]);x.lineTo(b1[0],b1[1]);x.stroke();const c2=toPx(g,0,i/10),d2=toPx(g,1,i/10);x.beginPath();x.moveTo(c2[0],c2[1]);x.lineTo(d2[0],d2[1]);x.stroke();}
     x.strokeStyle='#3a3a42'; x.strokeRect(g.x0,g.y1,g.x1-g.x0,g.y0-g.y1);
     x.fillStyle='#8a8a94'; x.font='11px sans-serif'; x.fillText('time →',g.x1-40,g.y0+18); x.fillText('progress',g.x0-22,g.y1-10);
-    // when blocks land (for the scene curve)
     if(path==='anim.sceneCurve'){try{const P=plan(geom());x.fillStyle='rgba(255,255,255,.35)';[...new Set(P.T)].forEach(t=>{const u=(t-P.startF)/Math.max(1,P.L);if(u>=0&&u<=1){const q=toPx(g,u,0);x.fillRect(q[0],g.y0-6,1,6);}});}catch(e){}}
-    const cur=getP(path), f=curveFn(cur); x.strokeStyle='#E6212F'; x.lineWidth=2.5; x.beginPath();
+    const cu=cur(), f=curveFn(cu); x.strokeStyle='#E6212F'; x.lineWidth=2.5; x.beginPath();
     for(let i=0;i<=200;i++){const u=i/200,p=toPx(g,u,f(u));i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]);} x.stroke();
-    if(isPts(cur)) ptsOf(cur).forEach((q,i)=>{const p=toPx(g,q[0],q[1]);x.fillStyle=i===drag?'#E6212F':'#fff';x.strokeStyle='#E6212F';x.lineWidth=2;x.beginPath();x.arc(p[0],p[1],6,0,7);x.fill();x.stroke();});
-    else {const P1=toPx(g,cur[0],cur[1]),P2=toPx(g,cur[2],cur[3]);x.fillStyle='#fff';[P1,P2].forEach(p=>{x.beginPath();x.arc(p[0],p[1],5,0,7);x.fill();});}
-    // speed (slope) underneath: high = fast
+    if(CE.hover){const p=toPx(g,CE.hover[0],CE.hover[1]);x.strokeStyle='rgba(255,255,255,.8)';x.lineWidth=1.5;x.beginPath();x.arc(p[0],p[1],6,0,7);x.stroke();x.beginPath();x.moveTo(p[0]-3,p[1]);x.lineTo(p[0]+3,p[1]);x.moveTo(p[0],p[1]-3);x.lineTo(p[0],p[1]+3);x.stroke();}
+    if(isPts(cu)) ptsOf(cu).forEach((q,i)=>{const p=toPx(g,q[0],q[1]);x.fillStyle=i===drag?'#E6212F':'#fff';x.strokeStyle='#E6212F';x.lineWidth=2;x.beginPath();x.arc(p[0],p[1],6,0,7);x.fill();x.stroke();});
     const r2=sp.getBoundingClientRect(); sp.width=Math.round(r2.width*dpr); sp.height=Math.round(r2.height*dpr);
     const y=sp.getContext('2d'); y.scale(dpr,dpr); y.clearRect(0,0,r2.width,r2.height);
     const v=[]; for(let i=0;i<200;i++){v.push(Math.max(0,(f((i+1)/200)-f(i/200))*200));} const mx=Math.max(1e-6,...v);
     y.fillStyle='rgba(116,157,211,.45)'; v.forEach((s,i)=>{const hh=s/mx*(r2.height-6);y.fillRect(g.x0+(g.x1-g.x0)*i/200,r2.height-hh,Math.max(1,(g.x1-g.x0)/200+.5),hh);});
     y.fillStyle='#8a8a94'; y.font='10px sans-serif'; y.fillText('speed',4,12);
-    $('#cvBigInfo').textContent=isPts(cur)?`${ptsOf(cur).length} points · drag to move · click to add · double-click (or Alt-click) a point to remove`:'Click anywhere on the graph to switch to points and add one';
+    $('#cvBigInfo').textContent=isPts(cu)?`${ptsOf(cu).length} points · click the line to add a point · drag to move · double-click (or Alt-click) to remove · ⌘Z undoes here`:'Click the red line to add a point · ⌘Z undoes here';
+    const fl=flags(); $('#cvEaseIn').checked=!!(fl&1); $('#cvEaseOut').checked=!!(fl&2);
   }
-  const hit=(g,mx,my)=>{const cur=getP(path);if(!isPts(cur))return -1;let best=-1,bd=12;ptsOf(cur).forEach((q,i)=>{const p=toPx(g,q[0],q[1]);const d=Math.hypot(p[0]-mx,p[1]-my);if(d<bd){bd=d;best=i;}});return best;};
+  const hitPt=(g,mx,my)=>{const cu=cur();if(!isPts(cu))return -1;let best=-1,bd=12;ptsOf(cu).forEach((q,i)=>{const p=toPx(g,q[0],q[1]);const d=Math.hypot(p[0]-mx,p[1]-my);if(d<bd){bd=d;best=i;}});return best;};
+  const onLine=(g,mx,my)=>{const u=clamp((mx-g.x0)/(g.x1-g.x0),0,1),f=curveFn(cur()),p=toPx(g,u,f(u));return Math.abs(p[1]-my)<=10&&mx>=g.x0-4&&mx<=g.x1+4?[u,f(u)]:null;};
   c.onpointerdown=e=>{
-    const g=geo(), mx=e.clientX-g.r.left, my=e.clientY-g.r.top; if(!pushed){pushHist(true);pushed=true;}
-    let i=hit(g,mx,my), p=pts();
-    if(i>=0&&(e.altKey)){ if(i>0&&i<p.length-1){p.splice(i,1);save(p);} drag=-1; draw(); refresh(); return; }
-    if(i<0){ const q=fromPx(g,mx,my); p.push([r3(q[0]),r3(q[1])]); save(p); p=pts(); i=p.findIndex(z=>Math.abs(z[0]-q[0])<1e-3); }
-    drag=i; c.setPointerCapture(e.pointerId); draw();
+    const g=geo(), mx=e.clientX-g.r.left, my=e.clientY-g.r.top;
+    let i=hitPt(g,mx,my), p=pts();
+    if(i>=0&&e.altKey){ if(i>0&&i<p.length-1){remember();p.splice(i,1);save(p);draw();refresh();} return; }
+    if(i<0){ const q=onLine(g,mx,my); if(!q) return;            // only clicks on the line add a point
+      remember(); const fl=flags(); p.push([r3(q[0]),r3(q[1])]); save(p,fl); p=pts(); i=p.findIndex(z=>Math.abs(z[0]-r3(q[0]))<1e-6); }
+    else remember();
+    drag=i; CE.hover=null; c.setPointerCapture(e.pointerId); draw();
   };
-  c.onpointermove=e=>{ if(drag<0) return; const g=geo(), q=fromPx(g,e.clientX-g.r.left,e.clientY-g.r.top), p=pts();
+  c.onpointermove=e=>{ const g=geo(), mx=e.clientX-g.r.left, my=e.clientY-g.r.top;
+    if(drag<0){ const q=hitPt(g,mx,my)<0?onLine(g,mx,my):null; CE.hover=q; c.style.cursor=hitPt(g,mx,my)>=0?'grab':q?'copy':'default'; draw(); return; }
+    const q=fromPx(g,mx,my), p=pts();
     const lo=drag>0?p[drag-1][0]+.01:0, hi=drag<p.length-1?p[drag+1][0]-.01:1;
     p[drag]=[drag===0?0:drag===p.length-1?1:clamp(q[0],lo,hi),q[1]]; save(p); draw(); render(); try{drawDope();}catch(x){} };
   c.onpointerup=()=>{ if(drag>=0){drag=-1;refresh();draw();} };
-  c.ondblclick=e=>{const g=geo(),i=hit(g,e.clientX-g.r.left,e.clientY-g.r.top),p=pts();if(i>0&&i<p.length-1){p.splice(i,1);save(p);draw();refresh();}};
-  $('#cvBigPresets').innerHTML=[['Linear',[0,0,.5,.5,1,1]],['Ease in-out',[0,0,.3,.12,.7,.88,1,1]],['Fast start, long settle',[0,0,.2,.45,.55,.85,1,1]],['Burst, hold, burst',[0,0,.25,.45,.5,.55,.75,.6,1,1]],['Slow build, punch',[0,0,.5,.18,.8,.5,1,1]],['Two-step',[0,0,.3,.5,.55,.52,1,1]]]
-    .map((p,i)=>`<button class="chipbtn" data-bp="${p[1].join(',')}">${p[0]}</button>`).join('')+'<button class="chipbtn" data-bsimple="1" title="Back to a simple two-handle curve">↺ Simple curve</button>';
-  $('#cvBigPresets').onclick=e=>{const b=e.target.closest('[data-bp],[data-bsimple]');if(!b)return;pushHist(true);
+  c.onpointerleave=()=>{CE.hover=null;draw();};
+  c.ondblclick=e=>{const g=geo(),i=hitPt(g,e.clientX-g.r.left,e.clientY-g.r.top),p=pts();if(i>0&&i<p.length-1){remember();p.splice(i,1);save(p);draw();refresh();}};
+  const setFlag=(bit,on)=>{remember();const cu=cur();let fl=flags();fl=on?(fl|bit):(fl&~bit);if(isPts(cu)) save(pts(),fl); else save([[0,0],[1,1]],fl); draw(); refresh();};
+  $('#cvEaseIn').onchange=e=>setFlag(1,e.target.checked);
+  $('#cvEaseOut').onchange=e=>setFlag(2,e.target.checked);
+  $('#cvBigPresets').innerHTML=[['Linear',[0,0,0,1,1]],['Ease in-out',[3,0,0,.5,.5,1,1]],['Fast start, long settle',[2,0,0,.2,.45,.55,.85,1,1]],['Burst, hold, burst',[0,0,0,.25,.45,.5,.55,.75,.6,1,1]],['Slow build, punch',[1,0,0,.5,.18,.8,.5,1,1]],['Two-step',[3,0,0,.3,.5,.55,.52,1,1]]]
+    .map(p=>`<button class="chipbtn" data-bp="${p[1].join(',')}">${p[0]}</button>`).join('')+'<button class="chipbtn" data-bsimple="1" title="Back to a simple two-handle curve">↺ Simple curve</button>';
+  $('#cvBigPresets').onclick=e=>{const b=e.target.closest('[data-bp],[data-bsimple]');if(!b)return;remember();
     if(b.dataset.bsimple) setP(path,clone(defOf(path))); else setP(path,b.dataset.bp.split(',').map(Number));
     planCache.k=''; draw(); refresh();};
-  $('#cvBigClose').onclick=()=>{m.hidden=true;refresh();};
-  m.onclick=e=>{if(e.target===m){m.hidden=true;refresh();}};
+  const close=()=>{m.hidden=true;U.curveEd=null;refresh();};
+  $('#cvBigClose').onclick=close;
+  m.onclick=e=>{if(e.target===m)close();};
   requestAnimationFrame(draw);
 }
 /* camera speed over the scene: a quick visual check of smoothness (flat and round = smooth) */
