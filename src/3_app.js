@@ -45,7 +45,7 @@ const DEF={
         wander:1,climb:0,stackPct:20,stackGap:1,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Arial',style:'Bold',font:'Arial-BoldMT',size:48,align:'center',pad:24,tracking:0,leading:0,kern:'metrics',caps:'none'},
   anim:{mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'follow',stepEvery:2,appear:'wipe',
-        axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,tail:24,
+        axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,tail:24,
         sceneCurve:[0,0,1,1],camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zoomOn:true,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
   out:{replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180},
@@ -1189,6 +1189,32 @@ function computePlan(G){
     }
     if(cam.every(k=>k[1][0]===0&&k[1][1]===0)) cam=[];
     P.cam=clip0(cam); if(cam.length) lastT=Math.max(lastT,cam[cam.length-1][0]);
+    // reveal timing vs the camera: 'lead' = on schedule (blocks appear ahead, the camera follows them in);
+    // 'arrive' = a block waits until the camera has brought it inside the reveal band of the frame, then appears
+    if(A.revealWhen==='arrive'&&P.cam.length){
+      const band=clamp(+A.revealX||70,50,120)/100, bandY=A.axis==='xy'?clamp(+A.revealY||100,50,120)/100:1e6;  // sideways-only camera: height doesn't matter
+      const xl=G.W*(1-band), xr=G.W*band, yt=G.H*(1-bandY), yb=G.H*bandY;
+      const scrAt=(t,px,py)=>{const off=ev(P.cam,t,[0,0]),s=ev(P.zs,t,100)/100,pn=ev(P.pan,t,[0,0]);return [G.W/2+s*(px+off[0]-G.W/2)+pn[0],G.H/2+s*(py+off[1]-G.H/2)+pn[1]];};
+      const tMax=Math.min(endF-1,Math.floor(W(L-Math.max(1,tr0))));   // a delayed reveal still finishes by the scene end
+      let prev=-1e9;
+      seq.forEach((b,i)=>{
+        const r=cellRect(G,b.c,b.r,b.w,b.h), px=r.x+r.w/2, py=r.y+r.h/2;
+        let t=Math.max(P.T[i], A.revealOrder!==false?prev:-1e9), hit=false;
+        // first frame its centre is inside the zone (or crosses it between frames); if it never gets there,
+        // the frame it comes closest (never its off-screen schedule)
+        let q0=null, best=null, bestD=1e18; const t0=t;
+        for(;t<=tMax;t++){
+          const q=scrAt(t,px,py), inX=q[0]>=xl&&q[0]<=xr, inY=q[1]>=yt&&q[1]<=yb;
+          const crossX=q0&&((q0[0]<xl&&q[0]>xr)||(q0[0]>xr&&q[0]<xl)), crossY=q0&&((q0[1]<yt&&q[1]>yb)||(q0[1]>yb&&q[1]<yt));
+          if((inX||crossX)&&(inY||crossY)){hit=true;break;}
+          const dd=Math.max(inX||crossX?0:Math.min(Math.abs(q[0]-xl),Math.abs(q[0]-xr)), inY||crossY?0:Math.min(Math.abs(q[1]-yt),Math.abs(q[1]-yb)));
+          if(dd<bestD-.5){bestD=dd;best=t;}
+          q0=q;
+        }
+        if(!hit) t=best!=null?best:Math.max(t0,Math.min(tMax,prev));
+        P.T[i]=Math.round(t); prev=P.T[i];
+      });
+    }
   }
 
   // per-block reveal keys: built on the linear clock (so reveal speed follows the scene easing), then re-timed
@@ -1587,6 +1613,14 @@ function handlesFor(G,b){
 }
 function drawOverlays(G,A){
   const sc=V.sc, tool=U.tool, live=!!(A&&A.live), s=live?A.s:1, bo=live?A.off:[0,0];
+  // reveal zone (camera modes, 'when the camera arrives')
+  if(STEPS[U.step].id==='animate'&&(D.anim.mode==='camera'||D.anim.mode==='push')&&D.anim.revealWhen==='arrive'){
+    const bx=clamp(+D.anim.revealX||70,50,120)/100, by=D.anim.axis==='xy'?clamp(+D.anim.revealY||100,50,120)/100:1;
+    ctx.save(); ctx.setLineDash([6/sc,5/sc]); ctx.lineWidth=1.25/sc; ctx.strokeStyle='rgba(43,217,143,.75)';
+    ctx.strokeRect(G.W*(1-bx),G.H*(1-by),G.W*(2*bx-1),G.H*(2*by-1));
+    ctx.setLineDash([]); ctx.fillStyle='rgba(43,217,143,.9)'; ctx.font=`${11/sc}px sans-serif`; ctx.fillText('reveal zone',G.W*(1-bx)+6/sc,G.H*(1-by)+14/sc);
+    ctx.restore();
+  }
   if(!live&&U.hover&&!U.drag&&!U.space){
     const h=U.hover;
     if(tool==='stamp'){
@@ -2156,6 +2190,7 @@ function syncInputs(force){
   const lp=$('#chkLoop'); if(lp) lp.checked=U.loop;
   const mbx=$('#chkMB'); if(mbx){mbx.checked=U.mbPrev!==false; mbx.parentElement.hidden=!D.out.mb||D.anim.mode==='static';}
   $$('#camPreset [data-p]').forEach(b=>{const p=b.dataset.p.split(',').map(Number);b.classList.toggle('on',+D.anim.smooth===p[0]&&+D.anim.motionBlurF===p[1]&&+D.anim.settle===p[2]);});
+  $$('#zonePreset [data-z]').forEach(b=>b.classList.toggle('on',+b.dataset.z===+D.anim.revealX));
   $$('#endPreset [data-ex]').forEach(b=>b.classList.toggle('on',+b.dataset.ex===+D.anim.endX));
   $$('[data-layer]').forEach(el=>{const v=getP(el.dataset.layer);el.classList.toggle('off',!v||v==='none');});
   const lock=inAE&&D.comp.follow&&U.compLive;
@@ -2371,6 +2406,7 @@ $('#btnPickEnd').onclick=startPick;
 $('#chkMB').onchange=e=>{U.mbPrev=e.target.checked;savePrefs();render();};
 $('#chkLoop').onchange=e=>{U.loop=e.target.checked;savePrefs();toast(U.loop?'Preview will loop':'Preview plays once');};
 $('#camPreset').addEventListener('click',e=>{const b=e.target.closest('[data-p]');if(!b)return;const p=b.dataset.p.split(',').map(Number);pushHist(true);Object.assign(D.anim,{smooth:p[0],motionBlurF:p[1],settle:p[2]});syncInputs();refresh();});
+$('#zonePreset').addEventListener('click',e=>{const b=e.target.closest('[data-z]');if(!b)return;pushHist(true);D.anim.revealX=+b.dataset.z;syncInputs();refresh();});
 $('#endPreset').addEventListener('click',e=>{const b=e.target.closest('[data-ex]');if(!b)return;pushHist(true);D.anim.endX=+b.dataset.ex;syncInputs();refresh();});
 $('#btnResetAnim').onclick=()=>{pushHist(true);const keepZoom=D.anim.zoom;D.anim=clone(DEF.anim);U.t=null;syncInputs(true);refresh();toast('Animation settings reset','',true);};
 $('#btnResizeAll').onclick=resizeAll;
@@ -2689,6 +2725,9 @@ const HELP={
   'anim.axis':'Follow blocks sideways only, or up and down too.',
   'anim.smooth':'How many blocks the camera trails behind the newest one (at least 1, so it never moves ahead of what has appeared). Larger = calmer, floatier camera.',
   'anim.motionBlurF':'Softens changes in camera speed (in frames). Higher = rounder, smoother acceleration; 0 = follows the pace exactly.',
+  'anim.revealWhen':'Ahead of the camera: blocks appear on their schedule and the camera follows them in (they can pop in off to the side or off screen). When the camera arrives: each block waits until the camera has carried it into the reveal zone, so you always see it appear.',
+  'anim.revealX':'Width of the reveal zone, centred in the frame. A block appears once its centre is inside. 50% = only at the centre line, 100% = anywhere on screen.',
+  'anim.revealY':'Height of the reveal zone (when the camera also follows up/down).',
   'anim.settle':'Frames the camera takes to glide to a complete stop at the end of the scene (never less than about 4× Smoothness). The last reveals are spaced to leave room for it, so nothing gets rushed.',
   'anim.lazy':'The camera holds still until the newest block reaches the middle of the frame.',
   'anim.snap':'The camera aims at whole-square positions so the grid stays aligned with the frame.',

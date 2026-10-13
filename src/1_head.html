@@ -759,6 +759,15 @@ body.nohelp .qm{display:none}
             <div class="group-h">Block reveal</div>
             <div class="field stack"><span class="lbl">Blocks appear</span>
               <div class="seg" data-seg="anim.appear"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe →</button><button data-v="scale">Scale</button></div></div>
+            <div data-show="anim.mode=camera|push" style="display:grid;gap:9px">
+              <div class="field stack"><span class="lbl">When blocks appear</span><div class="seg" data-seg="anim.revealWhen"><button data-v="lead" title="Blocks appear on their schedule, ahead of the camera, and the camera follows them in">Ahead of the camera</button><button data-v="arrive" title="Each block waits until the camera brings it into the reveal zone">When the camera arrives</button></div></div>
+              <div data-show="anim.revealWhen=arrive" style="display:grid;gap:9px">
+                <div class="field"><span class="lbl scrub" title="How far across the frame a block's centre must be before it appears. 50 = only at the centre, 100 = as soon as it's on screen">Reveal zone</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.revealX" min="50" max="120" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
+                <div class="field" data-show="anim.axis=xy"><span class="lbl scrub" title="Same, for up/down">Zone height</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.revealY" min="50" max="120" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
+                <div class="seg" id="zonePreset"><button data-z="55" title="Appear right at the centre">Centre</button><button data-z="65">Near centre</button><button data-z="75">Inside</button><button data-z="95" title="As soon as the block is on screen">On screen</button></div>
+                <div class="note">The dashed lines on the canvas show the zone. Blocks pop in once the camera carries them inside it.</div>
+              </div>
+            </div>
             <div class="field"><span class="lbl scrub">Reveal length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.trans" min="1" max="1000" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
             <div class="curve" data-curve="anim.revCurve" data-show="anim.motion=smooth" data-title="Reveal easing · each block"></div>
           </div>
