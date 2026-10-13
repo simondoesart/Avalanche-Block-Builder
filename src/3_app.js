@@ -51,9 +51,9 @@ const DEF={
   rand:{pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
         wander:1,climb:0,stackPct:20,stackGap:1,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,tracking:0,leading:0,kern:'metrics',caps:'none'},
-  anim:{mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'follow',stepEvery:2,appear:'wipe',
+  anim:{mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
-        sceneCurve:[0,0,1,1],camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
+        sceneCurve:[0.45,0,0.55,1],camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zoomOn:false,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
   lab:{flicker:{on:false,frames:8,seed:3},
        pulse:{on:false,scale:1.35,len:18,width:2,color:'#E6212F'},
@@ -1227,9 +1227,9 @@ function computePlan(G){
   // so the reveals are spaced to leave exactly that much room before the scene ends
   let step, lagSteps=0, settleF=0, finalF=0;
   // camera release: follow for the first relAt% of the scene, then coast to a stop while the blocks keep building past
-  const relOn=camOn&&A.relOn&&(cm==='follow'||cm==='stop')&&!(A.extendOn&&A.ending==='spot')&&clamp(+A.relAt||85,5,100)<100;
+  const relOn=camOn&&A.relOn&&(cm==='follow'||cm==='stop'||cm==='curve')&&!(A.extendOn&&A.ending==='spot')&&clamp(+A.relAt||85,5,100)<100;
   P.relT=relOn?Math.round(startF+L*clamp(+A.relAt||85,5,100)/100):null;
-  if(relOn){ step=Math.max(.25,(L-tr0)/Math.max(1,used-1)); }
+  if(relOn||cm==='curve'){ step=Math.max(.25,(L-tr0)/Math.max(1,used-1)); }   // curve camera: reveals spread over the whole scene (the camera follows the easing, not the blocks)
   else if(camOn){
     let maxGap=1, prevG=0; for(let g=1;g<used;g++){const a=tg[g-1],b=tg[g];if(Math.abs(a[0]-b[0])>1e-6||Math.abs(a[1]-b[1])>1e-6){maxGap=Math.max(maxGap,g-prevG);prevG=g;}}
     lagSteps=Math.max(lag,maxGap);
@@ -1324,8 +1324,38 @@ function computePlan(G){
     const goal=t=>along(prog(t)-lagU);
     const finalO=uO[uO.length-1];
     let cam=[];
-    if(cm==='follow'||cm==='stop'){
+    if(cm==='follow'||cm==='stop'||cm==='curve'){
       const a=startF, b=endF, N=b-a+1, xs=new Float64Array(N), ys=new Float64Array(N);
+      if(cm==='curve'){
+        /* CURVE CAMERA: no lag, no reaction. The newest block is kept on the reveal line, so the camera's speed is
+           exactly the pace of the reveals — which is the scene easing curve. Corners are rounded with a light
+           symmetric blur; it doesn't move until the blocks reach the line, and holds once the last one lands. */
+        const line=G.W*(A.revealWhen==='arrive'?clamp(+A.revealX||75,50,120)/100:0.62), dirO=A.order==='rtl'?-1:1;
+        const lineX=dirO>0?line:G.W-line;
+        const key=[]; let pvx=0,pvy=0, front=null;
+        for(let g=0;g<used;g++){
+          const mem=seq.filter((b,i)=>gi[i]===g), main=mem.filter(b=>!b.stack), use=main.length?main:mem;
+          use.forEach(b=>{const r=cellRect(G,b.c,b.r,b.w,b.h),c=[r.x+r.w/2,r.y+r.h/2];if(!front||dirO*c[0]>dirO*front[0]+1e-6)front=c;});
+          let ox=lineX-front[0], oy=A.axis==='xy'?(cy-front[1]):0;
+          ox=dirO>0?Math.min(pvx,ox):Math.max(pvx,ox);      // only ever moves forward, never before the blocks reach the line
+          key.push([Tg[g],ox,oy]); pvx=ox; pvy=oy;
+        }
+        if(fin) key.push([endF,fin[0],fin[1]]);
+        // the path the frame travels (frontier on the line), walked by distance so uneven block spacing doesn't jerk it
+        const pts=[]; key.forEach(k=>{const l=pts[pts.length-1];if(!l||Math.hypot(l[0]-k[1],l[1]-k[2])>1e-6)pts.push([k[1],k[2]]);});
+        const cum=[0]; for(let k=1;k<pts.length;k++) cum.push(cum[k-1]+Math.hypot(pts[k][0]-pts[k-1][0],pts[k][1]-pts[k-1][1]));
+        const tot=cum[cum.length-1];
+        let kStart=0; while(kStart+1<key.length&&Math.abs(key[kStart+1][1]-key[0][1])<1e-6&&Math.abs(key[kStart+1][2]-key[0][2])<1e-6) kStart++;
+        const t0c=key[kStart][0], t1c=Math.max(t0c+1,key[key.length-1][0]), E=curveFn((A.sceneCurve||[0,0,1,1]).map(Number));
+        // the scene easing is applied over the camera's own travel time (first move → last block), from its matching point on the curve
+        // the whole easing curve is laid over the camera's travel (first move → last block)
+        const at=dd=>{if(pts.length<2||tot<=0)return pts[0];let k=1;while(k<cum.length-1&&cum[k]<dd)k++;const seg=Math.max(1e-9,cum[k]-cum[k-1]),f=clamp((dd-cum[k-1])/seg,0,1);return[pts[k-1][0]+(pts[k][0]-pts[k-1][0])*f,pts[k-1][1]+(pts[k][1]-pts[k-1][1])*f];};
+        for(let i=0;i<N;i++){const t=a+i, u=clamp((t-t0c)/Math.max(1,t1c-t0c),0,1), o=at(tot*clamp(E(u),0,1)); xs[i]=o[0]; ys[i]=o[1];}
+        P.curveLine=lineX;
+        const sg=A.axis==='xy'?Math.max(1,(+A.motionBlurF||4)*.5):0.8, R=Math.ceil(3*sg), kk=[]; let ks=0; for(let j=-R;j<=R;j++){const v=Math.exp(-j*j/(2*sg*sg));kk.push(v);ks+=v;}
+        const sm=arr=>{const o=new Float64Array(N);for(let i=0;i<N;i++){let acc=0;for(let j=-R;j<=R;j++)acc+=arr[clamp(i+j,0,N-1)]*kk[j+R];o[i]=acc/ks;}return o;};
+        const sx=sm(xs), sy=sm(ys); for(let i=0;i<N;i++){xs[i]=sx[i];ys[i]=sy[i];}
+      } else {
       // goal sampled at sub-frame resolution, smoothed causally, then blended to rest
       const tau=Math.max(0,+A.motionBlurF), sub=4, NS=(N-1)*sub+1, gx=new Float64Array(NS), gy=new Float64Array(NS);
       for(let i=0;i<NS;i++){const o=goal(a+i/sub);gx[i]=o[0];gy[i]=o[1];}
@@ -1343,6 +1373,7 @@ function computePlan(G){
         if(t>t0s){const u=clamp((t-t0s)/sS,0,1), w=u*u*u*(u*(u*6-15)+10); x+= (finalO[0]-x)*w; y+=(finalO[1]-y)*w;}  // smootherstep: zero speed at the end
         xs[i]=x; ys[i]=y;
       }
+      }
       if(relOn&&P.relT>a&&P.relT<b){
         // keep the velocity it has at the release point, then let it bleed away smoothly (no jolt) over relSlow frames
         const i0=P.relT-a, S=Math.max(2,Math.round(+A.relSlow||36));
@@ -1352,7 +1383,7 @@ function computePlan(G){
           xs[i]=x0+vx*f; ys[i]=y0+vy*f;
         }
       }
-      if(cm==='follow'){
+      if(cm==='follow'||cm==='curve'){
         // sampled every frame; only near-straight runs are merged (≤0.02px error) so the motion stays exact in AE
         const pts=[]; for(let i=0;i<N;i++) pts.push([a+i,[xs[i],ys[i]]]);
         cam=simplify(pts,.02).map(p=>[p[0],[r3(p[1][0]),r3(p[1][1])],'l']);
@@ -1382,6 +1413,25 @@ function computePlan(G){
     P.cam=clip0(cam); if(cam.length) lastT=Math.max(lastT,cam[cam.length-1][0]);
     // reveal timing vs the camera: 'lead' = on schedule (blocks appear ahead, the camera follows them in);
     // 'arrive' = a block waits until the camera has brought it inside the reveal band of the frame, then appears
+    if(cm==='curve'&&P.cam.length&&!(D.timing&&D.timing.sync)){
+      /* curve camera: the camera leads, so each block appears while it's on screen — on its schedule if that's
+         when it's visible, otherwise as soon as it enters (arrive: the reveal zone; ahead: the frame), before it leaves */
+      const band=A.revealWhen==='arrive'?clamp(+A.revealX||70,50,120)/100:1, bandY=A.axis==='xy'?(A.revealWhen==='arrive'?clamp(+A.revealY||100,50,120)/100:1):1e6;
+      const xl=G.W*(1-band), xr=G.W*band, yt=G.H*(1-bandY), yb=G.H*bandY;
+      const scrAt=(t,px,py)=>{const off=ev(P.cam,t,[0,0]),s=ev(P.zs,t,100)/100,pn=ev(P.pan,t,[0,0]);return [G.W/2+s*(px+off[0]-G.W/2)+pn[0],G.H/2+s*(py+off[1]-G.H/2)+pn[1]];};
+      const tMax=Math.min(endF-1,Math.floor(W(L-Math.max(1,tr0))));
+      let prev=-1e9;
+      seq.forEach((b,i)=>{
+        const r=cellRect(G,b.c,b.r,b.w,b.h), px=r.x+r.w/2, py=r.y+r.h/2;
+        const win=(x0,x1,y0,y1)=>{let tIn=null,tOut=null;for(let t=startF;t<=tMax;t++){const q=scrAt(t,px,py),inz=q[0]>=x0&&q[0]<=x1&&q[1]>=y0&&q[1]<=y1; if(inz&&tIn==null)tIn=t; if(!inz&&tIn!=null){tOut=t;break;}}return [tIn,tOut];};
+        let [tIn,tOut]=win(xl,xr,yt,yb);
+        if(tIn==null) [tIn,tOut]=win(G.W*.02,G.W*.98,-1e6,1e6);   // never reaches the zone (e.g. already past it at the start): any time it's on screen
+        let t=P.T[i];
+        if(tIn!=null){ t=Math.max(tIn,Math.min(t,(tOut!=null?tOut:tMax+1)-1)); }
+        if(P.relT!=null&&P.T[i]>=P.relT) t=P.T[i];        // after the camera lets go: keep the schedule
+        t=Math.min(tMax,Math.max(t,prev)); P.T[i]=Math.round(t); prev=P.T[i];
+      });
+    } else
     if(A.revealWhen==='arrive'&&P.cam.length){
       const band=clamp(+A.revealX||70,50,120)/100, bandY=A.axis==='xy'?clamp(+A.revealY||100,50,120)/100:1e6;  // sideways-only camera: height doesn't matter
       const xl=G.W*(1-band), xr=G.W*band, yt=G.H*(1-bandY), yb=G.H*bandY;
@@ -1673,6 +1723,156 @@ function drawLabScreen(g,G,t){
     if(T.band){g.fillStyle=T.bandColor;g.fillRect(0,y-sz*.9,G.W,sz*1.8);}
     const x=G.W-((sec*(+T.speed||160))%(w+G.W)); g.fillStyle=T.color; g.textBaseline='middle'; g.fillText(txt,x,y); g.restore();}
 }
+/* ==================================================================== ASSISTANT (Claude, with tools)
+   Talks to Claude through the Vercel proxy (/api/assistant, key kept on the server) or directly with a personal API key.
+   The model can read the current setup, change settings by path, and run actions — every change is one undo step. */
+const AI={busy:false,msgs:[],log:[],errors:[]};
+const aiStore={get(k){try{return localStorage.getItem('gridblocks.ai.'+k);}catch(e){return null;}},set(k,v){try{localStorage.setItem('gridblocks.ai.'+k,v);}catch(e){}}};
+window.addEventListener&&window.addEventListener('error',e=>{AI.errors.push(String(e.message||e.error||e).slice(0,300));if(AI.errors.length>20)AI.errors.shift();});
+const _toast=toast; toast=function(msg,kind,u){AI.log.push(String(msg).slice(0,200));if(AI.log.length>20)AI.log.shift();return _toast(msg,kind,u);};
+const AI_MODELS=[['claude-sonnet-5-5','Sonnet 5.5 (balanced)'],['claude-opus-5-5','Opus 5.5 (smartest)'],['claude-haiku-5-5','Haiku 5.5 (fastest)']];
+const AI_SECTIONS={comp:'composition size, fps, duration',grid:'rows, gutter, margin, columns mode (bleed/fit/custom), off-screen area',look:'background, grid lines, square tiles, column rules',
+  block:'default block size and colours',rand:'layout generator (walk/stairs/scatter…, count, seed, stairs/jumps/pairs %)',echo:'echo copies behind blocks',
+  fill:'auto-fill content: modules, icons, density, font, dots, content animation (fill.anim.*: on / hold / off, live hold)',num:'block numbers (top-right)',
+  anim:'animation: mode (static/reveal/camera/push), scene start/length/easing (sceneCurve = cubic-bezier [x1,y1,x2,y2]), camera (camMove curve/follow/step, axis, smoothing, let-go relOn/relAt/relSlow), reveal style (appear/trans/revCurve), reveal zone (revealWhen/revealX), keep building (extendOn/extendMode/ending), order, grid zoom',
+  exit:'blocks leaving: on, mode (hold/walk/behind/end), style (cut/fade/wipe/slide/scale), timings',trans:'full-frame transitions in/out',lab:'experimental effects (flicker, pulse, trail, bar, ticker, snow)',
+  timing:'sound sync (beats/markers/offset/sync)',out:'After Effects build options (precomps, folders, motion blur, rig)'};
+function aiSystem(){
+  return `You are the built-in assistant for "Grid Blocks", Ava Labs' tool for building animated block-grid overlays (Avalanche brand) that export to After Effects.
+You can see and change the user's current setup through tools. Work like a careful motion designer:
+- Before changing anything, call get_state (and list_settings for the section you need) so you use exact paths and valid values.
+- Change settings with set_values (several at once is fine). Use exact paths like "anim.lenF". Keep value types (numbers stay numbers, booleans stay booleans, curves are 4-number arrays).
+- Use run_action for things that aren't a single setting (generate a layout, shuffle content, play the preview, retime, jump to a step…).
+- Frames are in the comp's fps (D.comp.fps). Times like "2 seconds" → frames.
+- After changes, say briefly what you did and how to see it (e.g. "press ▶"). Everything is undoable with ⌘Z.
+- For troubleshooting, read get_state (it includes warnings, recent messages and errors) and explain the cause in plain words, then offer or apply a fix.
+- Brand: dark #1F1F1F, Avalanche Red #E6212F, slate #A2AFB2; fonts Aeonik / Aeonik Fono. Don't use #E84142.
+Sections of the setup: ${Object.keys(AI_SECTIONS).map(k=>k+' = '+AI_SECTIONS[k]).join('; ')}.
+Steps of the tool, in order: ${STEPS.map((s,i)=>i+':'+s.id).join(', ')}.`;
+}
+const AI_TOOLS=[
+  {name:'get_state',description:'Current setup summary: key settings, how many blocks, scene timing, camera, warnings, recent messages and errors.',input_schema:{type:'object',properties:{}}},
+  {name:'list_settings',description:'List every setting under a section prefix (e.g. "anim", "fill.anim", "exit") with its current value and what it does.',input_schema:{type:'object',properties:{prefix:{type:'string'}},required:['prefix']}},
+  {name:'set_values',description:'Change one or more settings by exact path. Applied together as one undo step.',input_schema:{type:'object',properties:{changes:{type:'array',items:{type:'object',properties:{path:{type:'string'},value:{}},required:['path','value']}}},required:['changes']}},
+  {name:'run_action',description:'Run an action. generate_layout (new walk layout from the rules), shuffle_layout (new random seed), shuffle_content, clear_blocks, reset_defaults (blank canvas), load_example (Avalanche HUD example), go_to_step (value = step index or id), play, stop, set_playhead (value = frame), retime (value = factor, e.g. 1.5 = 50% longer), fit_to_comp.',
+   input_schema:{type:'object',properties:{action:{type:'string',enum:['generate_layout','shuffle_layout','shuffle_content','clear_blocks','reset_defaults','load_example','go_to_step','play','stop','set_playhead','retime','fit_to_comp']},value:{}},required:['action']}}
+];
+function aiState(){
+  const G=geom(), P=plan(G), fps=D.comp.fps||30, warn=[];
+  const A=D.anim;
+  if(A.mode!=='static'&&A.camMove==='follow') warn.push('Camera is "Glide behind": it trails the blocks and always eases in gently, ignoring a fast-start easing. "Follow the easing" (anim.camMove="curve") follows the scene curve exactly.');
+  if(!D.blocks.length) warn.push('No blocks in the layout yet.');
+  if(A.mode!=='static'&&P.end>(D.comp.dur||10)*fps) warn.push(`Animation (${P.end}f) is longer than the comp (${Math.round((D.comp.dur||10)*fps)}f).`);
+  if(A.extendOn&&A.ending==='spot'&&P.endReach===false) warn.push('End row can\'t be reached with this many blocks.');
+  const missing=Object.keys(U.fontState||{}).filter(k=>U.fontState[k]==='missing'); if(missing.length) warn.push('Fonts not available: '+missing.join(', '));
+  const pick=(o,keys)=>{const r={};keys.forEach(k=>{r[k]=o[k];});return r;};
+  return {step:STEPS[U.step].id, playhead:U.t, inAfterEffects:inAE,
+    comp:D.comp, grid:D.grid, look:D.look,
+    blocks:{inLayout:D.blocks.length, animated:P.seq?P.seq.length:0, sizes:[...new Set(D.blocks.map(b=>b.w+'x'+b.h))].slice(0,6), colours:[...new Set(D.blocks.map(b=>b.color))].slice(0,6)},
+    anim:pick(A,['mode','order','startF','lenF','toEnd','countMode','pace','total','trans','appear','motion','camMove','axis','sceneCurve','revealWhen','revealX','relOn','relAt','relSlow','extendOn','extendMode','ending','zoomOn','lazy','smooth','motionBlurF','settle']),
+    scene:{startF:P.startF,endF:P.startF+P.L,previewEnd:P.end,firstReveal:P.T&&P.T[0],lastReveal:P.T&&P.T[P.T.length-1],cameraLetGoAt:P.relT},
+    exit:D.exit, fill:{on:D.fill.on,density:D.fill.density,font:D.fill.family+' '+D.fill.style,anim:D.fill.anim}, num:D.num, trans:{in:pick(D.trans.in,['on','mode','start','dur']),out:pick(D.trans.out,['on','mode','start','dur','atEnd'])},
+    lab:Object.keys(D.lab||{}).filter(k=>D.lab[k].on), timing:{cues:timingCues().length,sync:D.timing.sync,media:D.timing.media},
+    warnings:warn, recentMessages:AI.log.slice(-6), errors:AI.errors.slice(-6)};
+}
+function aiListSettings(prefix){
+  const out=[]; prefix=String(prefix||'').replace(/^D\./,'');
+  const walk=(o,p)=>{Object.keys(o).forEach(k=>{const v=o[k],path=p?p+'.'+k:k;
+    if(v&&typeof v==='object'&&!Array.isArray(v)) walk(v,path);
+    else if(path.indexOf(prefix)===0&&!/^blocks|^palette/.test(path)){const h=HELP[path];out.push(path+' = '+JSON.stringify(v)+(h?' — '+String(h).replace(/<[^>]+>/g,''):''));}});};
+  walk(D,''); return out.slice(0,220).join('\n')||'No settings under "'+prefix+'". Sections: '+Object.keys(AI_SECTIONS).join(', ');
+}
+function aiSetValues(changes){
+  const ok=[],bad=[]; if(!Array.isArray(changes)||!changes.length) return 'No changes given.';
+  pushHist();
+  changes.forEach(c=>{const p=String(c.path||'').replace(/^D\./,''), cur=getP(p);
+    if(cur===undefined||/^blocks/.test(p)){bad.push(p+' (unknown setting)');return;}
+    let v=c.value;
+    if(typeof cur==='number'){v=+v;if(!isFinite(v)){bad.push(p+' (needs a number)');return;}}
+    else if(typeof cur==='boolean'){v=v===true||v==='true'||v===1;}
+    else if(Array.isArray(cur)){if(!Array.isArray(v)){bad.push(p+' (needs a list)');return;}}
+    else if(typeof cur==='string'){v=String(v);if(/^#[0-9a-f]{6}$/i.test(cur)&&!/^#[0-9a-f]{6}$/i.test(v)){bad.push(p+' (needs a #RRGGBB colour)');return;}}
+    setP(p,v); ok.push(p+' → '+JSON.stringify(v)); try{onChange(p);}catch(e){}
+  });
+  planCache.k=''; fillCache.clear(); syncInputs(true); syncPalettes(); refresh(); U._mediaUI=0;
+  return (ok.length?'Changed: '+ok.join('; '):'')+(bad.length?(ok.length?'\n':'')+'Not changed: '+bad.join('; '):'');
+}
+function aiAction(a,v){
+  switch(a){
+    case 'generate_layout': if(STEPS[U.step].id!=='layout')goStep(2); generate(false); return 'Generated a new layout ('+D.blocks.length+' blocks).';
+    case 'shuffle_layout': shuffle(); return 'Shuffled the layout ('+D.blocks.length+' blocks).';
+    case 'shuffle_content': pushHist(true); D.fill.seed=(D.fill.seed|0)+1; fillCache.clear(); refresh(); return 'Shuffled the content.';
+    case 'clear_blocks': pushHist(); D.blocks=[]; U.selIds=[]; refresh(); return 'Cleared all blocks.';
+    case 'reset_defaults': resetDefaults(); return 'Reset to the blank default.';
+    case 'load_example': loadExample(); return 'Loaded the Avalanche HUD example.';
+    case 'go_to_step': {const i=typeof v==='number'?v:STEPS.findIndex(s=>s.id===v||s.name.toLowerCase()===String(v).toLowerCase()); if(i<0||i>=STEPS.length) return 'Unknown step.'; goStep(i); return 'Now on '+STEPS[i].name+'.';}
+    case 'play': play(); return 'Playing the preview.';
+    case 'stop': stopPlay(); return 'Stopped.';
+    case 'set_playhead': stopPlay(); U.t=Math.max(0,Math.round(+v||0)); render(); try{drawDope();}catch(e){} return 'Playhead at frame '+U.t+'.';
+    case 'retime': {const k=+v; if(!(k>0)) return 'retime needs a factor > 0.'; retime(k); return 'Retimed ×'+k+'; scene is '+D.anim.lenF+' frames.';}
+    case 'fit_to_comp': {const fps=D.comp.fps||30,t=Math.round((D.comp.dur||10)*fps)-Math.max(0,D.anim.startF); retime(t/Math.max(1,D.anim.lenF)); return 'Scene now fills the comp ('+D.anim.lenF+' frames).';}
+  }
+  return 'Unknown action.';
+}
+async function aiCall(body){
+  const key=aiStore.get('key')||'', pass=aiStore.get('pass')||'', model=aiStore.get('model')||AI_MODELS[0][0];
+  body.model=model;
+  const direct=!!key||!inWeb;
+  const url=direct?'https://api.anthropic.com/v1/messages':'api/assistant';
+  const headers={'content-type':'application/json'};
+  if(direct){ if(!key) throw new Error('Add your Anthropic API key in the assistant settings (⚙).'); headers['x-api-key']=key; headers['anthropic-version']='2023-06-01'; headers['anthropic-dangerous-direct-browser-access']='true'; }
+  else if(pass) headers['x-gb-pass']=pass;
+  const r=await fetch(url,{method:'POST',headers,body:JSON.stringify(body)});
+  const txt=await r.text(); let j=null; try{j=JSON.parse(txt);}catch(e){}
+  if(!r.ok) throw new Error((j&&j.error&&(j.error.message||j.error))||('HTTP '+r.status+(direct?'':' from the site’s /api/assistant — set ANTHROPIC_API_KEY in Vercel, or add your own key in ⚙')));
+  return j;
+}
+async function aiSend(text){
+  if(AI.busy||!text.trim()) return;
+  AI.busy=true; AI.msgs.push({role:'user',content:text}); aiRender(); aiAddUI('user',text);
+  try{
+    for(let round=0;round<10;round++){
+      const res=await aiCall({max_tokens:2048,system:aiSystem(),tools:AI_TOOLS,messages:AI.msgs});
+      AI.msgs.push({role:'assistant',content:res.content});
+      const texts=(res.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('\n').trim(); if(texts) aiAddUI('assistant',texts);
+      const uses=(res.content||[]).filter(c=>c.type==='tool_use'); if(res.stop_reason!=='tool_use'||!uses.length) break;
+      const results=uses.map(u=>{let out='';try{
+        if(u.name==='get_state') out=JSON.stringify(aiState());
+        else if(u.name==='list_settings') out=aiListSettings(u.input.prefix);
+        else if(u.name==='set_values'){out=aiSetValues(u.input.changes);aiAddUI('tool',out);}
+        else if(u.name==='run_action'){out=aiAction(u.input.action,u.input.value);aiAddUI('tool',out);}
+        else out='Unknown tool';}catch(e){out='Error: '+e.message;}
+        return {type:'tool_result',tool_use_id:u.id,content:String(out).slice(0,12000)};});
+      AI.msgs.push({role:'user',content:results});
+    }
+  }catch(e){ aiAddUI('error',e.message); AI.msgs.pop(); }
+  // keep the conversation small: drop old turns (always starting on a plain user message)
+  while(AI.msgs.length>24){AI.msgs.shift();while(AI.msgs.length&&!(AI.msgs[0].role==='user'&&typeof AI.msgs[0].content==='string'))AI.msgs.shift();}
+  AI.busy=false; aiRender();
+}
+function aiAddUI(kind,text){
+  const box=$('#aiMsgs'); if(!box) return;
+  const md=s=>esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\n/g,'<br>');
+  box.insertAdjacentHTML('beforeend',`<div class="aim ${kind}">${kind==='tool'?'⚙ ':''}${md(text)}</div>`); box.scrollTop=box.scrollHeight;
+}
+function aiRender(){
+  const d=$('#aiDrawer'); if(!d) return;
+  $('#aiSend').disabled=AI.busy; $('#aiBusy').hidden=!AI.busy;
+  const via=aiStore.get('key')?'your API key':inWeb?'the team proxy (Vercel)':'— add an API key in ⚙';
+  $('#aiVia').textContent='Claude · '+((AI_MODELS.find(m=>m[0]===(aiStore.get('model')||AI_MODELS[0][0]))||AI_MODELS[0])[1])+' · via '+via;
+}
+function aiInit(){
+  const d=$('#aiDrawer'); if(!d||!d.addEventListener) return;
+  $('#btnAI').onclick=()=>{d.hidden=!d.hidden; if(!d.hidden){aiRender(); setTimeout(()=>$('#aiIn').focus(),50); if(!$('#aiMsgs').children.length) aiAddUI('assistant','Hi! Tell me what to build ("a walking line of red blocks that ends on row 3, then walks off") or ask why something looks wrong. I can change settings, generate layouts and play the preview — everything is one ⌘Z away.');}};
+  $('#aiClose').onclick=()=>{d.hidden=true;};
+  $('#aiSend').onclick=()=>{const t=$('#aiIn').value;$('#aiIn').value='';aiSend(t);};
+  $('#aiIn').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('#aiSend').click();} e.stopPropagation();});
+  $('#aiQuick').addEventListener('click',e=>{const b=e.target.closest('[data-q]');if(b)aiSend(b.dataset.q);});
+  $('#aiGear').onclick=()=>{const s=$('#aiSettings');s.hidden=!s.hidden;$('#aiKey').value=aiStore.get('key')||'';$('#aiPass').value=aiStore.get('pass')||'';$('#aiModel').innerHTML=AI_MODELS.map(m=>`<option value="${m[0]}"${m[0]===(aiStore.get('model')||AI_MODELS[0][0])?' selected':''}>${m[1]}</option>`).join('');};
+  $('#aiSave').onclick=()=>{aiStore.set('key',$('#aiKey').value.trim());aiStore.set('pass',$('#aiPass').value.trim());aiStore.set('model',$('#aiModel').value);$('#aiSettings').hidden=true;aiRender();toast('Assistant settings saved');};
+  $('#aiReset').onclick=()=>{AI.msgs=[];$('#aiMsgs').innerHTML='';aiAddUI('assistant','New conversation. What should we make?');};
+}
+
 /* ==================================================================== SOUND / MEDIA SYNC */
 function timingCues(){
   const T=D.timing; if(!T) return [];
@@ -1781,7 +1981,7 @@ function retime(k){
   const fps=D.comp.fps||30; toast(`Retimed ×${(+k).toFixed(2)} — scene is now ${D.anim.lenF}f (${(D.anim.lenF/fps).toFixed(2)}s)`,'⌘Z to undo',true);
 }
 /* the dope sheet: one row per thing that has timing, with handles you can drag */
-const DOPE={rows:['Scene','Camera','Blocks','Content','Transitions'],handles:[],drag:null};
+const DOPE={rows:['Scene','Camera speed','Blocks','Content','Transitions'],handles:[],drag:null,rowsY:[]};
 function dopeRange(){const G=geom(),fps=D.comp.fps||30;return Math.max(sceneEnd(G),Math.round((D.comp.dur||10)*fps),D.timing&&D.timing.media?Math.round(D.timing.media.dur*fps):0,10);}
 function drawDope(){
   const c=$('#dopeCv'); if(!c) return; const r=c.getBoundingClientRect(); if(!r.width) return;
@@ -1797,10 +1997,11 @@ function drawDope(){
   for(let s=0;s*fps<=N;s+=stepS){const x=X(s*fps);g.fillRect(x,12,1,6);g.fillText(s+'s',x+3,8);}
   g.fillStyle='rgba(255,255,255,.06)'; g.fillRect(X(Math.round((D.comp.dur||10)*fps)),18,1,r.height);
   // cue marks (beats / AE markers)
+  DOPE.rowsY=rows.map((n,i)=>({name:n,y0:Y(i),y1:Y(i)+RH})); DOPE.P=P; DOPE.N=N;
   rows.forEach((name,i)=>{const y=Y(i); g.fillStyle=i%2?'rgba(255,255,255,.015)':'rgba(255,255,255,.035)'; g.fillRect(0,y,r.width,RH); g.fillStyle='#9898a1'; g.font='11px sans-serif'; g.fillText(name,8,y+RH/2);});
   let row=0;
   const bar=(f0,f1,y,col,h)=>{g.fillStyle=col;g.fillRect(X(f0),y+(RH-h)/2,Math.max(1,X(f1)-X(f0)),h);};
-  const knob=(f,y,col)=>{g.fillStyle=col;g.fillRect(X(f)-2,y+3,4,RH-6);};
+  const knob=(f,y,col)=>{const x=X(f);g.fillStyle=col;g.beginPath();if(g.roundRect)g.roundRect(x-3.5,y+2,7,RH-4,3);else g.rect(x-3.5,y+2,7,RH-4);g.fill();g.fillStyle='rgba(0,0,0,.45)';g.fillRect(x-.5,y+RH/2-4,1,8);};
   // sound
   if(media){const y=Y(row++), pk=U.media.peaks, d=U.media.dur*fps, off=+(D.timing.offset||0); g.fillStyle='rgba(162,175,178,.55)';
     for(let px=LW;px<LW+W;px++){const f=F(px)-off; if(f<0||f>d) continue; const v=pk[Math.min(pk.length-1,Math.floor(f/d*pk.length))]||0; g.fillRect(px,y+RH/2-v*RH*.45,1,Math.max(1,v*RH*.9));}}
@@ -1840,20 +2041,42 @@ function drawDope(){
   // cues (beats / markers) on top of the tracks
   const cues=timingCues(); g.fillStyle=D.timing&&D.timing.sync?'rgba(116,157,211,.7)':'rgba(116,157,211,.35)'; cues.forEach(f=>{g.fillRect(X(f),18,1,r.height-18);});
   // playhead
-  if(U.t!=null){g.fillStyle='#fff';g.fillRect(X(U.t),0,1,r.height);}
+  if(U.t!=null){const x=X(U.t);g.fillStyle='#fff';g.fillRect(x,0,1,r.height);const lab=`f${Math.round(U.t)} · ${(U.t/fps).toFixed(2)}s`;g.font='10px sans-serif';const w=g.measureText(lab).width+8;g.fillStyle='#fff';g.fillRect(Math.min(x+2,r.width-w-2),1,w,14);g.fillStyle='#000';g.fillText(lab,Math.min(x+6,r.width-w+2),8);}
+  // hover guide
+  if(DOPE.hover&&!DOPE.drag){g.fillStyle='rgba(255,255,255,.25)';g.fillRect(DOPE.hover.x,18,1,r.height-18);}
+}
+/* what's under the pointer, in words */
+function dopeInfo(x,y){
+  const P=DOPE.P, fps=D.comp.fps||30, f=Math.round(DOPE.F(x)), row=(DOPE.rowsY||[]).find(r=>y>=r.y0&&y<r.y1), tc=`f${f} · ${(f/fps).toFixed(2)}s`;
+  if(!row||!P) return tc;
+  const sec=v=>`f${Math.round(v)} (${(v/fps).toFixed(2)}s)`;
+  switch(row.name){
+    case 'Sound': return `${tc} — sound${D.timing.media?' · '+D.timing.media.name:''}. Blue lines are beats / markers.`;
+    case 'Scene': return `${tc} — scene ${sec(P.startF)} → ${sec(P.startF+P.L)}. The line inside is the easing; ticks are reveals. Drag the red ends to move or resize.`;
+    case 'Camera speed': {let s=0;if(P.cam.length){const a=ev(P.cam,f,[0,0]),b=ev(P.cam,f+1,[0,0]);s=Math.hypot(b[0]-a[0],b[1]-a[1]);}return `${tc} — camera moving ${Math.round(s)} px/frame${P.relT!=null?` · lets go at ${sec(P.relT)} (drag the blue handle)`:''}`;}
+    case 'Blocks': {let best=null;P.seq.forEach((b,i)=>{const t0=P.T[i],t1=P.exitT&&P.exitT[i]!=null?P.exitT[i]:null;if(f>=t0&&(t1==null||f<=t1+(+D.exit.len||8)))best={b,t0,t1};});
+      const on=P.seq.filter((b,i)=>f>=P.T[i]&&!(P.exitT&&P.exitT[i]!=null&&f>P.exitT[i]+(+D.exit.len||8))).length;
+      return `${tc} — ${on} block${on===1?'':'s'} on screen${best?` · newest: ${bname(best.b)} appears ${sec(best.t0)}${best.t1!=null?`, leaves ${sec(best.t1)}`:''}`:''}${D.exit.on?' · drag the coral handle to change when they leave':''}`;}
+    case 'Content': return `${tc} — content on a block: red = animate on, grey/blue = hold${D.fill.anim.live?' (live)':''}, pink = animate off. Drag the coral handle to change the hold.`;
+    case 'Transitions': return `${tc} — green = transition in, yellow = transition out. Drag the white ends.`;
+  }
+  return tc;
 }
 function dopeHit(e){const c=$('#dopeCv'),r=c.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
   let best=null;DOPE.handles.forEach(h=>{const d=Math.abs(h.x-x);if(y>=h.y0&&y<=h.y1&&d<=7&&(!best||d<best.d))best=Object.assign({d},h);});return {x,y,h:best};}
 function initDope(){
   const c=$('#dopeCv'); if(!c||!c.addEventListener) return;
-  c.addEventListener('pointermove',e=>{if(DOPE.drag)return;const t=dopeHit(e);c.style.cursor=t.h?t.h.cur:(t.x>DOPE.LW?'text':'default');c.title=t.h?'Drag: '+t.h.tip:'Click to move the playhead';});
+  const tip=$('#dopeTip');
+  c.addEventListener('pointermove',e=>{if(DOPE.drag)return;const t=dopeHit(e);c.style.cursor=t.h?t.h.cur:(t.x>DOPE.LW?'crosshair':'default');
+    DOPE.hover=t.x>DOPE.LW?{x:t.x}:null; if(tip){tip.textContent=t.x>DOPE.LW?(t.h?`Drag to change the ${t.h.tip} · f${Math.round(DOPE.F(t.h.x))}`:dopeInfo(t.x,t.y)):'';tip.hidden=!tip.textContent;} drawDope();});
+  c.addEventListener('pointerleave',()=>{DOPE.hover=null;if(tip)tip.hidden=true;drawDope();});
   c.addEventListener('pointerdown',e=>{
     const t=dopeHit(e); if(t.x<DOPE.LW) return; c.setPointerCapture&&c.setPointerCapture(e.pointerId);
     if(t.h){pushHist(true);DOPE.drag=t.h;} else {stopPlay();U.t=Math.round(DOPE.F(t.x));$('#scrub').value=U.t;render();drawDope();DOPE.drag={scrub:true};}
   });
   c.addEventListener('pointermove',e=>{const d=DOPE.drag;if(!d)return;const r=c.getBoundingClientRect(),f=DOPE.F(e.clientX-r.left);
     if(d.scrub){U.t=Math.round(f);$('#scrub').value=U.t;render();drawDope();return;}
-    d.apply(f);planCache.k='';syncInputs();render();drawDope();drawSpeedGraph();});
+    d.apply(f);planCache.k='';syncInputs();render();drawDope();drawSpeedGraph();if(tip){tip.hidden=false;tip.textContent=`${d.tip} → f${Math.round(f)} (${(f/(D.comp.fps||30)).toFixed(2)}s)`;}});
   const up=()=>{if(DOPE.drag&&!DOPE.drag.scrub){refresh();}DOPE.drag=null;};
   c.addEventListener('pointerup',up); c.addEventListener('pointercancel',up);
 }
@@ -3324,6 +3547,7 @@ const HELP={
   'fill.anim.liveGlitch':'Now and then a character flips to a glyph (#%&*/<>[]=+01) for one update.',
   'fill.anim.liveRate':'How many times per second the live text updates.',
   'fill.anim.glitchAmt':'Chance a line glitches on each update.',
+  'anim.camMove':'Follow the easing: the camera travels the line at exactly the pace of the Scene easing curve — a fast-start curve starts fast, a slow-end curve glides to a stop. Glide behind: the camera trails the newest block and reacts to it, so it always eases in gently. Step & settle: hops from block to block.',
   'anim.settle':'Frames the camera takes to glide to a complete stop at the end of the scene (never less than about 4× Smoothness). The last reveals are spaced to leave room for it, so nothing gets rushed.',
   'anim.lazy':'The camera holds still until the newest block reaches the middle of the frame.',
   'anim.snap':'The camera aims at whole-square positions so the grid stays aligned with the frame.',
@@ -3424,7 +3648,6 @@ const HELP={
   'text.leading':'Space between lines in pixels. 0 = automatic.',
   'text.tracking':'Even spacing between all letters, in thousandths of an em (same units as After Effects).',
   'anim.ending':'<b>After a number of blocks</b>: set the total under Scene. <b>On a chosen spot</b>: the pattern steers so its last block lands on a square you pick, and the camera frames it where you choose.',
-  'anim.camMove':'<b>Glide</b>: one continuous, smoothed move that trails the blocks and eases to rest at the end. <b>Step &amp; settle</b>: after each block appears, the camera eases over to it and stops. Either way it never moves ahead of what has appeared.',
   'anim.camCurve':'Easing for each camera move in Step &amp; settle and for the final move to the end row. Dots close together = slow, far apart = fast. Hold Shift or ⌘ while dragging to snap the handle to 0°, 45° or 90°.',
   'anim.revCurve':'Shapes how each individual block wipes, fades or scales on. Independent of scene pacing.'
 };
@@ -3519,6 +3742,7 @@ function resetDefaults(withHist){
 }
 $('#btnDefaults').onclick=()=>resetDefaults();
 initDope();
+aiInit();
 $('#mediaIn').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(f)loadMediaFile(f);e.target.value='';});
 $$('[data-retime]').forEach(b=>b.addEventListener('click',()=>retime(+b.dataset.retime)));
 $('#btnRetimeTo').onclick=()=>{const fps=D.comp.fps||30,tgt=Math.round((+$('#retimeTarget').value||0)*fps);if(tgt>1)retime(tgt/Math.max(1,D.anim.lenF));};

@@ -114,3 +114,10 @@ Aeonik web fonts added in `fonts/` (17 static faces + the variable Fono) and wir
 
 ## v1.8.1 — fonts
 Full Aeonik + Aeonik Fono families on the website (21 styles) and the desktop OTFs in `fonts/desktop/` for After Effects (`install.command` installs them). See `fonts/README.md`.
+
+## New in v1.9
+- **Camera › Follow the easing** (new default): the camera travels the line at exactly the pace of the Scene easing curve (fast-start curves start fast). Blocks are revealed as the camera brings them to the reveal line. *Glide behind* (the old mode) still trails the blocks and always eases in.
+- **Timeline** is easier to read: a legend in the Timing step, plain-English hover readouts for every row, bigger handles, live values while dragging, timecode on the playhead.
+- **Assistant** (✦ in the top bar): ask Claude to build a look or troubleshoot. It reads the current setup, changes settings, generates layouts, retimes and plays the preview — every change is one ⌘Z.
+  - **Website (Vercel):** add `ANTHROPIC_API_KEY` in Vercel › Settings › Environment Variables; requests go through `api/assistant.js` so the key never reaches the browser. Optional `ASSISTANT_PASSCODE` makes the team enter a passcode once.
+  - **AE panel / local file:** open the assistant's ⚙ and paste a personal Anthropic API key (stored only on that machine).
