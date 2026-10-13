@@ -1450,16 +1450,18 @@ function computePlan(G){
       const band=A.revealWhen==='arrive'?clamp(+A.revealX||70,50,120)/100:1, bandY=A.axis==='xy'?(A.revealWhen==='arrive'?clamp(+A.revealY||100,50,120)/100:1):1e6;
       const xl=G.W*(1-band), xr=G.W*band, yt=G.H*(1-bandY), yb=G.H*bandY;
       const scrAt=(t,px,py)=>{const off=ev(P.cam,t,[0,0]),s=ev(P.zs,t,100)/100,pn=ev(P.pan,t,[0,0]);return [G.W/2+s*(px+off[0]-G.W/2)+pn[0],G.H/2+s*(py+off[1]-G.H/2)+pn[1]];};
-      const tMax=WO?endF-1:Math.min(endF-1,Math.floor(W(L-Math.max(1,tr0))));
+      const tBuild=Math.min(endF-1,Math.floor(W(L-Math.max(1,tr0))));   // build blocks are all in by the scene end
       let prev=-1e9;
       seq.forEach((b,i)=>{
+        const walk=P.walkFrom!=null&&i>=P.walkFrom, tMax=walk?endF-1:tBuild;
+        if(walk&&P.relT!=null&&P.T[i]>=P.relT){ P.T[i]=Math.max(P.T[i],prev); prev=P.T[i]; return; }   // after the camera lets go: keep the walk's rhythm
         const r=cellRect(G,b.c,b.r,b.w,b.h), px=r.x+r.w/2, py=r.y+r.h/2;
-        const win=(x0,x1,y0,y1)=>{let tIn=null,tOut=null;for(let t=startF;t<=tMax;t++){const q=scrAt(t,px,py),inz=q[0]>=x0&&q[0]<=x1&&q[1]>=y0&&q[1]<=y1; if(inz&&tIn==null)tIn=t; if(!inz&&tIn!=null){tOut=t;break;}}return [tIn,tOut];};
-        let [tIn,tOut]=win(xl,xr,yt,yb);
-        if(tIn==null) [tIn,tOut]=win(G.W*.02,G.W*.98,-1e6,1e6);   // never reaches the zone (e.g. already past it at the start): any time it's on screen
-        let t=P.T[i];
-        if(tIn!=null){ t=Math.max(tIn,Math.min(t,(tOut!=null?tOut:tMax+1)-1)); }
-        if(P.relT!=null&&P.T[i]>=P.relT) t=P.T[i];        // after the camera lets go: keep the schedule
+        // the camera carries each block onto the reveal line: it appears the frame it gets there
+        // on its schedule if it's in the reveal zone then; otherwise the first frame the camera has it in the zone
+        const inZ=t=>{const q=scrAt(t,px,py);return q[0]>=xl&&q[0]<=xr*1.015+2&&q[1]>=yt&&q[1]<=yb;};
+        const lo=Math.max(startF,Math.round(prev)), sched=Math.max(lo,P.T[i]);
+        let t=sched;
+        if(!(sched<=tMax&&inZ(sched))){ let found=null; for(let k=lo;k<=tMax;k++){ if(inZ(k)){found=k;break;} } if(found!=null) t=found; }
         t=Math.min(tMax,Math.max(t,prev)); P.T[i]=Math.round(t); prev=P.T[i];
       });
     } else
@@ -2029,7 +2031,7 @@ function renderPace(){
     } else cp.innerHTML=''; }
 }
 /* the dope sheet: one row per thing that has timing, with handles you can drag */
-const DOPE={rows:['Scene','Camera speed','Blocks','Content','Transitions'],handles:[],drag:null,rowsY:[]};
+const DOPE={rows:['Phases','Camera speed','Blocks','Content','Transitions'],handles:[],drag:null,rowsY:[]};
 function dopeRange(){const G=geom(),fps=D.comp.fps||30;return Math.max(sceneEnd(G),Math.round((D.comp.dur||10)*fps),D.timing&&D.timing.media?Math.round(D.timing.media.dur*fps):0,10);}
 function drawDope(){
   const c=$('#dopeCv'); if(!c) return; const r=c.getBoundingClientRect(); if(!r.width) return;
@@ -2053,14 +2055,25 @@ function drawDope(){
   // sound
   if(media){const y=Y(row++), pk=U.media.peaks, d=U.media.dur*fps, off=+(D.timing.offset||0); g.fillStyle='rgba(162,175,178,.55)';
     for(let px=LW;px<LW+W;px++){const f=F(px)-off; if(f<0||f>d) continue; const v=pk[Math.min(pk.length-1,Math.floor(f/d*pk.length))]||0; g.fillRect(px,y+RH/2-v*RH*.45,1,Math.max(1,v*RH*.9));}}
-  // scene
-  {const y=Y(row++), s0=P.startF, s1=P.startF+P.L; bar(s0,s1,y,'rgba(230,33,47,.35)',RH-8);
-   const sc=curveFn(D.anim.sceneCurve||[0,0,1,1]); g.strokeStyle='rgba(255,255,255,.5)'; g.lineWidth=1; g.beginPath();
+  // phases: Build · Hold · Camera follows · Walks off  (or Build · Hold · Clear-out)
+  {const y=Y(row++), s0=P.startF, s1=P.startF+P.L, X2=D.exit, fpsR=fps;
+   const lastReveal=Math.max(...P.T.slice(0,P.walkFrom!=null?P.walkFrom:P.T.length)), buildDone=Math.max(s1,lastReveal+(+D.anim.trans||1));
+   const seg=(f0,f1,col,label)=>{if(f1<=f0)return;bar(f0,f1,y,col,RH-6);const w=X(f1)-X(f0);if(w>34){g.fillStyle='#ececef';g.font='600 10px sans-serif';const t=`${label} ${((f1-f0)/fpsR).toFixed(1)}s`;g.fillText(w>g.measureText(t).width+10?t:label,X(f0)+5,y+RH/2);}};
+   seg(s0,s1,'rgba(230,33,47,.45)','Build');
+   const sc=curveFn(D.anim.sceneCurve||[0,0,1,1]); g.strokeStyle='rgba(255,255,255,.35)'; g.lineWidth=1; g.beginPath();
    for(let k=0;k<=40;k++){const u=k/40, xx=X(s0+(s1-s0)*u), yy=y+RH-4-(RH-8)*sc(u); k?g.lineTo(xx,yy):g.moveTo(xx,yy);} g.stroke();
-   g.fillStyle='rgba(255,255,255,.75)'; [...new Set(P.T)].forEach(t=>g.fillRect(X(t),y+RH-6,1,4));
+   g.fillStyle='rgba(255,255,255,.8)'; [...new Set(P.T)].forEach(t=>g.fillRect(X(t),y+RH-6,1,4));
+   let holdEnd=N, holdKnob=null;
+   if(X2.on&&X2.mode==='walk'&&P.walkT!=null){holdEnd=P.walkT; holdKnob=f=>{X2.walkHold=Math.max(0,Math.round(f-(P.walkT-(+X2.walkHold||0))));};}
+   else if(X2.on&&X2.mode==='end'&&P.exitT&&P.exitT.length){holdEnd=Math.min(...P.exitT.filter(v=>v!=null)); holdKnob=f=>{X2.at=Math.round(f-(D.anim.startF+D.anim.lenF));};}
+   seg(s1,holdEnd,'rgba(236,236,239,.16)',X2.on&&X2.mode==='hold'?`Each block stays ${X2.hold}f`:'Hold');
+   if(X2.on&&X2.mode==='walk'&&P.walkT!=null){const rel=P.relT!=null?P.relT:P.walkT; seg(P.walkT,rel,'rgba(116,157,211,.45)','Camera follows'); seg(rel,N,'rgba(116,157,211,.18)','Walks off');
+     knob(rel,y,'#749DD3'); H(X(rel),y,y+RH,'ew-resize',f=>{X2.walkLen=Math.max(6,Math.round(f-P.walkT));},'how long the camera follows');}
+   else if(X2.on&&X2.mode==='end'&&isFinite(holdEnd)) seg(holdEnd,N,'rgba(255,127,123,.25)','Clear-out');
    knob(s0,y,'#E6212F'); knob(s1,y,'#E6212F');
    H(X(s0),y,y+RH,'ew-resize',f=>{const e=D.anim.startF+D.anim.lenF;D.anim.startF=Math.round(f);D.anim.lenF=Math.max(2,e-D.anim.startF);},'scene start');
-   H(X(s1),y,y+RH,'ew-resize',f=>{D.anim.lenF=Math.max(2,Math.round(f-D.anim.startF));D.anim.toEnd=false;},'scene end');}
+   H(X(s1),y,y+RH,'ew-resize',f=>{D.anim.lenF=Math.max(2,Math.round(f-D.anim.startF));D.anim.toEnd=false;},'build length');
+   if(holdKnob&&isFinite(holdEnd)){knob(holdEnd,y,'#FFFFFF'); H(X(holdEnd),y,y+RH,'ew-resize',holdKnob,'hold');}}
   // camera speed + let go
   {const y=Y(row++); if(P.cam.length){const v=[];let mx=1;for(let f=0;f<N;f++){const a=ev(P.cam,f,[0,0]),b=ev(P.cam,f+1,[0,0]);const s=Math.hypot(b[0]-a[0],b[1]-a[1]);v.push(s);mx=Math.max(mx,s);}
      g.fillStyle='rgba(116,157,211,.45)'; v.forEach((s,f)=>{const hh=s/mx*(RH-6);g.fillRect(X(f),y+RH-3-hh,Math.max(1,X(f+1)-X(f)),hh);});}
@@ -2100,7 +2113,7 @@ function dopeInfo(x,y){
   const sec=v=>`f${Math.round(v)} (${(v/fps).toFixed(2)}s)`;
   switch(row.name){
     case 'Sound': return `${tc} — sound${D.timing.media?' · '+D.timing.media.name:''}. Blue lines are beats / markers.`;
-    case 'Scene': return `${tc} — scene ${sec(P.startF)} → ${sec(P.startF+P.L)}. The line inside is the easing; ticks are reveals. Drag the red ends to move or resize.`;
+    case 'Phases': return `${tc} — Build ${sec(P.startF)} → ${sec(P.startF+P.L)} (line = easing, ticks = blocks landing), then Hold${D.exit.on&&D.exit.mode==='walk'?' → camera follows the walking line → it walks off':D.exit.on&&D.exit.mode==='end'?' → clear-out':''}. Drag the red ends to set the build, the white handle to set the hold${D.exit.on&&D.exit.mode==='walk'?', the blue handle for how long the camera follows':''}.`;
     case 'Camera speed': {let s=0;if(P.cam.length){const a=ev(P.cam,f,[0,0]),b=ev(P.cam,f+1,[0,0]);s=Math.hypot(b[0]-a[0],b[1]-a[1]);}return `${tc} — camera moving ${Math.round(s)} px/frame${P.relT!=null?` · lets go at ${sec(P.relT)} (drag the blue handle)`:''}`;}
     case 'Blocks': {let best=null;P.seq.forEach((b,i)=>{const t0=P.T[i],t1=P.exitT&&P.exitT[i]!=null?P.exitT[i]:null;if(f>=t0&&(t1==null||f<=t1+(+D.exit.len||8)))best={b,t0,t1};});
       const on=P.seq.filter((b,i)=>f>=P.T[i]&&!(P.exitT&&P.exitT[i]!=null&&f>P.exitT[i]+(+D.exit.len||8))).length;
@@ -3033,6 +3046,7 @@ function syncInputs(force){
   const mbx=$('#chkMB'); if(mbx){mbx.checked=U.mbPrev!==false; mbx.parentElement.hidden=!D.out.mb||D.anim.mode==='static';}
   $$('#camPreset [data-p]').forEach(b=>{const p=b.dataset.p.split(',').map(Number);b.classList.toggle('on',+D.anim.smooth===p[0]&&+D.anim.motionBlurF===p[1]&&+D.anim.settle===p[2]);});
   syncIconSet();
+  $$('#afterSeg [data-after]').forEach(b=>b.classList.toggle('on',D.exit.on?b.dataset.after===D.exit.mode:b.dataset.after==='stay'));
   $$('#zonePreset [data-z]').forEach(b=>b.classList.toggle('on',+b.dataset.z===+D.anim.revealX));
   $$('#endPreset [data-ex]').forEach(b=>b.classList.toggle('on',+b.dataset.ex===+D.anim.endX));
   $$('[data-layer]').forEach(el=>{const v=getP(el.dataset.layer);el.classList.toggle('off',!v||v==='none');});
@@ -3381,8 +3395,8 @@ function updPaceTotal(){
   if(D.anim.mode==='static'){el.textContent='';return;}
   const P=plan(geom()), fps=D.comp.fps||30, n=P.groups;
   const sec=f=>`f${f} (${+(f/fps).toFixed(2)}s)`;
-  const total=P.seq.filter(b=>!b.echo&&!b.stack).length;
-  el.innerHTML=n?`<b>${total}</b> blocks${P.ext?` (${P.baseMain} in your layout + ${total-P.baseMain} more)`:''} over <b>${sec(P.L)}</b> · about one every <b>${Math.max(1,Math.round(P.L/Math.max(1,n)))}</b> frames<br>Scene runs ${sec(P.startF)} → ${sec(P.startF+P.L)}${P.startF<0?' · already running at frame 0':''}${D.anim.ending==='spot'&&P.endReach===false?'<br><span class="warn">That row is too far to reach with this many blocks — the pattern gets as close as it can. Raise Wander or add blocks.</span>':''}${D.anim.order==='manual'?`<br>Manual: <b>${P.seq.length}</b> picked block${P.seq.length===1?'':'s'} animate${P.unpicked.length?`, ${P.unpicked.length} ${D.anim.unpicked==='visible'?'stay visible':'stay hidden'}`:''}.`:''}${D.anim.countMode==='exact'&&D.anim.total<P.baseMain&&D.anim.ending==='count'?'<br><span class="warn">Your layout has more blocks than this, so all of them are used.</span>':''}`:'Add some blocks first.';
+  const total=(P.walkFrom!=null?P.seq.slice(0,P.walkFrom):P.seq).filter(b=>!b.echo&&!b.stack).length;
+  el.innerHTML=n?`<b>${total}</b> blocks${P.ext?` (${P.baseMain} in your layout + ${total-P.baseMain} more)`:''} over <b>${sec(P.L)}</b> · about one every <b>${Math.max(1,Math.round(P.L/Math.max(1,total)))}</b> frames${P.walkFrom!=null?` · then ${P.seq.length-P.walkFrom} more walk off`:""}<br>Scene runs ${sec(P.startF)} → ${sec(P.startF+P.L)}${P.startF<0?' · already running at frame 0':''}${D.anim.ending==='spot'&&P.endReach===false?'<br><span class="warn">That row is too far to reach with this many blocks — the pattern gets as close as it can. Raise Wander or add blocks.</span>':''}${D.anim.order==='manual'?`<br>Manual: <b>${P.seq.length}</b> picked block${P.seq.length===1?'':'s'} animate${P.unpicked.length?`, ${P.unpicked.length} ${D.anim.unpicked==='visible'?'stay visible':'stay hidden'}`:''}.`:''}${D.anim.countMode==='exact'&&D.anim.total<P.baseMain&&D.anim.ending==='count'?'<br><span class="warn">Your layout has more blocks than this, so all of them are used.</span>':''}`:'Add some blocks first.';
 }
 function updRuleNote(G){
   const el=$('#ruleNote'); if(!el) return;
@@ -3810,7 +3824,10 @@ function resetDefaults(withHist){
 }
 $('#btnDefaults').onclick=()=>resetDefaults();
 initDope();
-$('#lnkWalkOn').onclick=e=>{e.preventDefault();pushHist();Object.assign(D.exit,{on:true,mode:'walk'});syncInputs(true);refresh();};
+document.addEventListener('click',e=>{const l=e.target.closest('[data-goto]');if(!l)return;e.preventDefault();const i=STEPS.findIndex(s=>s.id===l.dataset.goto);if(i>=0)goStep(i);});
+$('#afterSeg').addEventListener('click',e=>{const b=e.target.closest('[data-after]');if(!b)return;const v=b.dataset.after;pushHist();
+  if(v==='stay') D.exit.on=false; else Object.assign(D.exit,{on:true,mode:v});
+  planCache.k='';syncInputs(true);refresh();});
 aiInit();
 $('#mediaIn').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(f)loadMediaFile(f);e.target.value='';});
 $$('[data-retime]').forEach(b=>b.addEventListener('click',()=>retime(+b.dataset.retime)));
