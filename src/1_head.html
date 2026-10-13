@@ -917,11 +917,12 @@ body.nohelp .qm{display:none}
             <div data-show="exit.on=true" style="display:grid;gap:9px">
               <div class="field stack"><span class="lbl">When they leave</span><div class="seg" data-seg="exit.mode"><button data-v="hold" title="Each block leaves a set time after it appeared — a moving trail">After a hold</button><button data-v="walk" title="The finished build holds, then walks off in the order it walked on">Walk off</button><button data-v="behind" title="Each block leaves once the camera has carried it past the exit line">Behind camera</button><button data-v="end" title="Everything clears out at the end, one after another">All at end</button></div></div>
               <div class="field" data-show="exit.mode=hold"><span class="lbl scrub" title="Frames a block stays fully visible before leaving">Stays for</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.hold" min="0" max="2000" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-              <div class="field2" data-show="exit.mode=walk">
-                <div class="field"><span class="lbl scrub" title="Frames the finished build holds before walking off">Hold</span><div class="num"><input type="number" data-bind="exit.walkHold" min="0" max="2000" step="1"><span class="unit">fr</span></div></div>
-                <div class="field"><span class="lbl scrub" title="1 = same rhythm as the walk-on">Pace</span><div class="num"><input type="number" data-bind="exit.walkPace" min="0.1" max="5" step="0.1"><span class="unit">×</span></div></div>
+              <div data-show="exit.mode=walk" style="display:grid;gap:9px">
+                <div class="note">The build finishes and holds, then the line <b>keeps walking</b>: new blocks keep arriving at the head, the camera picks up again, and the oldest blocks fall away so only a short trail follows — until the camera lets go and the line runs off screen.</div>
+                <div class="field2"><div class="field"><span class="lbl scrub" title="Frames the finished build holds before walking on">Hold</span><div class="num"><input type="number" data-bind="exit.walkHold" min="0" max="2000" step="1"><span class="unit">fr</span></div></div><div class="field"><span class="lbl scrub" title="How long new blocks keep arriving">Keeps walking</span><div class="num"><input type="number" data-bind="exit.walkLen" min="6" max="5000" step="1"><span class="unit">fr</span></div></div></div>
+                <div class="field2"><div class="field"><span class="lbl scrub" title="Blocks left visible behind the head">Trail</span><div class="num"><input type="number" data-bind="exit.trail" min="1" max="60" step="1"><span class="unit">blocks</span></div></div><div class="field"><span class="lbl scrub" title="1 = same rhythm as the build; 0.5 = twice as fast">Pace</span><div class="num"><input type="number" data-bind="exit.walkPace" min="0.1" max="5" step="0.1"><span class="unit">×</span></div></div></div>
+                <div class="field"><span class="lbl scrub" title="How much of the walk-off the camera follows before letting the line run off screen">Camera follows</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.walkFollow" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
               </div>
-              <div class="field stack" data-show="exit.mode=walk"><span class="lbl">Order</span><div class="seg" data-seg="exit.order"><button data-v="same">First on, first off</button><button data-v="reverse">Last on, first off</button></div></div>
               <div class="field" data-show="exit.mode=behind"><span class="lbl scrub" title="A block leaves when its right edge passes this line (% of the frame width from the left)">Exit line</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.line" min="-50" max="100" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
               <div data-show="exit.mode=end" style="display:grid;gap:9px">
                 <div class="field2">
@@ -936,6 +937,15 @@ body.nohelp .qm{display:none}
               <div class="field" data-show="exit.style=fade|wipe|scale|slide"><span class="lbl scrub">Exit length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.len" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
               <div data-adv class="curve" data-curve="exit.curve" data-show="anim.motion=smooth&amp;exit.style=fade|wipe|scale|slide" data-title="Exit easing"></div>
               <label class="check"><input type="checkbox" data-bind="exit.content"> Content leaves with its block</label>
+              <details class="sub" data-sub="exit-rules"><summary>Column rules <span class="note">the vertical lines</span></summary><div class="subbody">
+                <label class="check"><input type="checkbox" data-bind="look.rulesOn"> Show column rules</label>
+                <div data-show="look.rulesOn=true" style="display:grid;gap:9px">
+                  <div class="field2"><div class="field"><span class="lbl scrub" title="">Every</span><div class="num"><input type="number" data-bind="look.ruleEvery" min="1" max="64" step="1"><span class="unit">cols</span></div></div><div class="field"><span class="lbl scrub" title="">Weight</span><div class="num"><input type="number" data-bind="look.ruleW" min="0.5" max="40" step="0.5"><span class="unit">px</span></div></div></div>
+                  <div class="field stack"><span class="lbl">Colour</span><div class="swatches" data-pal="look.rule"></div></div>
+                  <div class="field stack"><span class="lbl">At the end</span><div class="seg" data-seg="look.ruleEnd"><button data-v="stay">Stay</button><button data-v="fade">Fade off</button></div></div>
+                  <div class="field2" data-show="look.ruleEnd=fade"><div class="field"><span class="lbl scrub" title="Frames after the walk-off starts (or after the scene)">Fade starts</span><div class="num"><input type="number" data-bind="look.ruleFadeAt" min="-2000" max="2000" step="1"><span class="unit">fr</span></div></div><div class="field"><span class="lbl scrub" title="">Fade length</span><div class="num"><input type="number" data-bind="look.ruleFadeLen" min="1" max="600" step="1"><span class="unit">fr</span></div></div></div>
+                </div>
+              </div></details>
               <label data-adv class="check"><input type="checkbox" data-bind="exit.echo"> Echoes leave too</label>
             </div>
           </div>
@@ -1010,6 +1020,24 @@ body.nohelp .qm{display:none}
             </div>
           </div>
           <div class="group">
+            <div class="group-h">Pace &amp; holds</div>
+            <div class="note">The <b>rhythm</b> is how often a new block lands. With the camera paired, its speed comes straight from it: blocks every fewer frames → the camera travels faster.</div>
+            <div class="field" data-show="anim.countMode=fill"><span class="lbl scrub" title="Frames between one block landing and the next">Block every</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.pace" min="1" max="240" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+            <div class="field" data-show="anim.countMode=exact"><span class="lbl scrub" title="Exact number of blocks over the scene">Blocks</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.total" min="1" max="400" step="1"><button data-d="1">+</button></div></div>
+            <div class="readout" id="paceRead"></div>
+            <div id="camPair"></div>
+            <div class="lbl" style="margin-top:4px">Holds</div>
+            <div data-show="exit.on=false" class="note">Blocks stay once they land. <a href="#" id="lnkWalkOn" style="color:var(--accent2)">Make the line walk off after a hold</a></div>
+            <div data-show="exit.on=true" style="display:grid;gap:9px">
+              <div class="field" data-show="exit.mode=walk"><span class="lbl scrub" title="How long the finished build holds before walking off">Build holds</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.walkHold" min="0" max="2000" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              <div class="field" data-show="exit.mode=hold"><span class="lbl scrub" title="How long each block stays before it leaves">Each block stays</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.hold" min="1" max="9999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              <div class="field" data-show="exit.mode=end"><span class="lbl scrub" title="Frames after the scene end (negative = before)">Clear-out starts</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.at" min="-2000" max="2000" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              <div class="field2" data-show="exit.mode=walk"><div class="field"><span class="lbl scrub" title="">Keeps walking</span><div class="num"><input type="number" data-bind="exit.walkLen" min="6" max="5000" step="1"><span class="unit">fr</span></div></div><div class="field"><span class="lbl scrub" title="">Trail</span><div class="num"><input type="number" data-bind="exit.trail" min="1" max="60" step="1"><span class="unit">blocks</span></div></div></div>
+              <div class="field" data-show="exit.mode=walk"><span class="lbl scrub" title="How much of the walk-off the camera follows before letting the line run off">Camera follows</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.walkFollow" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
+            </div>
+            <div class="field" data-show="fill.anim.outMode=fade|typeoff|cut"><span class="lbl scrub" title="How long content stays fully on before animating off">Content holds</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.anim.hold" min="0" max="9999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+          </div>
+          <div class="group">
             <div class="group-h">Retime everything</div>
             <div class="note">Stretches or squeezes the whole piece — scene, reveals, camera, exits, content, transitions, Lab — keeping every relationship.</div>
             <div class="seg"><button data-retime="0.5">×0.5</button><button data-retime="0.75">×0.75</button><button data-retime="0.9">×0.9</button><button data-retime="1.1">×1.1</button><button data-retime="1.25">×1.25</button><button data-retime="1.5">×1.5</button><button data-retime="2">×2</button></div>
@@ -1022,14 +1050,7 @@ body.nohelp .qm{display:none}
             <div class="field2"><div class="field"><span class="lbl scrub" title="">Starts</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.startF" min="-9999" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div><div class="field"><span class="lbl scrub" title="">Length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.lenF" min="2" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div></div>
             <div class="curve" data-curve="anim.sceneCurve" data-ymin="0" data-ymax="1" data-title="Scene easing · the pace of the whole build"></div>
             </div></details>
-            <details class="sub" data-sub="t-cam" data-show="anim.mode=camera|push"><summary>Camera let-go</summary><div class="subbody">
-            <label class="check" data-show="anim.camMove=follow|curve"><input type="checkbox" data-bind="anim.relOn"> Let go before the end — the line keeps going past the camera</label>
-            <div class="field2" data-show="anim.relOn=true"><div class="field"><span class="lbl scrub" title="">Let go at</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.relAt" min="5" max="100" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div><div class="field"><span class="lbl scrub" title="">Coast</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.relSlow" min="2" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div></div>
-            </div></details>
-            <details class="sub" data-sub="t-holds"><summary>Holds</summary><div class="subbody">
-            <div class="field2"><div class="field" data-show="fill.anim.outMode=fade|typeoff|cut"><span class="lbl scrub" title="How long content holds before animating off">Content</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.anim.hold" min="0" max="9999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div><div class="field" data-show="exit.mode=hold"><span class="lbl scrub" title="How long each block stays before it leaves">Blocks</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.hold" min="1" max="9999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div></div>
-            <div class="note">Block holds apply when Block exit is “After a hold”; content holds when content animates off.</div>
-          </div></details>
+
           </div>
           <div class="group">
             <div class="group-h">Sync to sound</div>
@@ -1201,7 +1222,7 @@ body.nohelp .qm{display:none}
       </div>
       <div class="dope" id="dope" hidden><canvas id="dopeCv"></canvas><div class="dopetip" id="dopeTip" hidden></div></div>
       <div class="timeline" id="timeline" hidden>
-        <button class="btn icon" id="btnPlay" title="Play preview (P)"><svg id="icoPlay" width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg></button>
+        <button class="btn icon" id="btnPlay" title="Play / pause (Space or P)"><svg id="icoPlay" width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg></button>
         <input type="range" id="scrub" min="0" max="100" step="1" value="0">
         <span class="tc" id="tc">0f</span>
         <div class="field" style="grid-template-columns:auto 78px;gap:6px" title="Frame the scene starts on. Negative = already running at frame 0"><span class="lbl scrub">Scene starts</span><div class="num"><input type="number" data-bind="anim.startF" min="-9999" max="99999" step="1"><span class="unit">fr</span></div></div>

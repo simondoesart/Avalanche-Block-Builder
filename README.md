@@ -121,3 +121,9 @@ Full Aeonik + Aeonik Fono families on the website (21 styles) and the desktop OT
 - **Assistant** (✦ in the top bar): ask Claude to build a look or troubleshoot. It reads the current setup, changes settings, generates layouts, retimes and plays the preview — every change is one ⌘Z.
   - **Website (Vercel):** add `ANTHROPIC_API_KEY` in Vercel › Settings › Environment Variables; requests go through `api/assistant.js` so the key never reaches the browser. Optional `ASSISTANT_PASSCODE` makes the team enter a passcode once.
   - **AE panel / local file:** open the assistant's ⚙ and paste a personal Anthropic API key (stored only on that machine).
+
+## v1.9.1
+- **Walk-off reworked:** after the build holds, the line keeps walking — new blocks keep arriving, the camera picks up again, the oldest blocks fall away leaving a short trail, then the camera lets go and the line runs off screen (Hold, Keeps walking, Trail, Pace, Camera follows %).
+- **Column rules** controls in Block exit, with **Stay / Fade off** (starts with the walk-off, adjustable start and length; keyed in AE).
+- **Space** = play / pause (hold Space and drag still pans).
+- **Timing › Pace & holds:** block rhythm with a live readout of block count and camera speed, a one-click "pair the camera to the blocks", and every hold (build hold, per-block hold, clear-out, content hold) in one place. Retime also scales the walk-off and rule fade.

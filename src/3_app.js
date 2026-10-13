@@ -35,7 +35,7 @@ const DEF={
   comp:{w:1920,h:1080,fps:24,dur:10,follow:true},
   grid:{rows:7,colsMode:'bleed',cols:12,gutter:1,margin:0,offsetX:0,snap:true,overX:8,overY:1},
   look:{bgOn:true,bg:'#1F1F1F',linesOn:false,line:'#3B484B',lineW:1,border:false,cellsMode:'none',cell:'#3B484B',
-        rulesOn:false,rule:'#3B484B',ruleW:1,ruleEvery:4,ruleStart:1,ruleLayer:'top'},
+        rulesOn:false,rule:'#3B484B',ruleW:1,ruleEvery:4,ruleStart:1,ruleLayer:'top',ruleEnd:'stay',ruleFadeAt:0,ruleFadeLen:24},
   block:{w:3,h:1,color:'#E6212F',color2:'#A2AFB2',sync:true,mix:'single',mixPct:25},
   palette:PALETTE.slice(),
   trans:{in:{on:false,mode:'clear',start:0,atEnd:false,dur:24,pattern:'sweep',dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:true,color:'#E6212F',output:'blocks',seed:3},
@@ -63,7 +63,7 @@ const DEF={
        snow:{on:false,count:90,speed:240,size:2,stretch:6,dir:'left',color:'#EBF0FA',opacity:55,seed:9}},
   num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100},
   timing:{beats:[],markers:[],use:'beats',offset:0,sync:false,sens:1.3,minGap:4,media:null,video:true,videoOpacity:60,sound:true},
-  exit:{on:false,walkHold:24,walkPace:1,slide:1.5,mode:'hold',hold:36,at:0,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
+  exit:{on:false,walkHold:24,walkPace:1,walkLen:48,walkFollow:60,trail:6,slide:1.5,mode:'hold',hold:36,at:0,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
   out:{replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180,folder:true,preGrid:true,preBlocks:true,preTrans:true,shy:true,trim:true,markers:true},
   blocks:[]
 };
@@ -103,7 +103,7 @@ const TOOLS={
   erase:{key:'E',name:'Unmerge',desc:'Drag over blocks to break those squares back out.'},
   order:{key:'O',name:'Order',desc:'Click blocks in the order they should appear.'},
   paint:{key:'C',name:'Paint colour',desc:'Click or drag over blocks to paint them the main colour. Alt-click a block to pick up its colour.'},
-  hand:{key:'H',name:'Pan',desc:'Drag to move around. Hold Space for this anytime.'}
+  hand:{key:'H',name:'Pan',desc:'Drag to move around. Hold Space and drag for this anytime (tap Space to play / pause).'}
 };
 
 /* ------------------------------------------------------------------ fonts */
@@ -1177,13 +1177,20 @@ function computePlan(G){
   // how many blocks: fill the length at the chosen pace, or an exact number
   const cuesIn=(D.timing&&D.timing.sync)?timingCues().filter(c=>c>=startF&&c<=startF+L).length:0;
   const want=A.countMode==='exact'?Math.round(A.total||0):cuesIn?cuesIn:Math.max(1,Math.round(L/Math.max(1,+A.pace||6)));   // synced to sound: one block per cue
-  const exts=manual?[]:extension(G,base,Math.max(0,want-baseMain)); P.endCol=exts.__endCol; P.endReach=exts.__reach; P.endRowUsed=exts.__endRow;
+  // walk-off: after the build holds, the line keeps walking — extra blocks continue the pattern
+  const WO=!!(D.exit&&D.exit.on&&D.exit.mode==='walk'&&!manual&&A.mode!=='static');
+  const pace2=Math.max(1,(+A.pace||6)*Math.max(.1,+D.exit.walkPace||1)), woLen=Math.max(0,Math.round(+D.exit.walkLen||48)), woN=WO?Math.max(1,Math.round(woLen/pace2)):0;
+  const exts=manual?[]:extension(G,base,Math.max(0,want-baseMain)+woN); P.endCol=exts.__endCol; P.endReach=exts.__reach; P.endRowUsed=exts.__endRow;
   let seq=base.concat(exts);
   seq.forEach((b,i)=>{if(b.virtual)b.order=i+1;});
   let gi=[], ng=0;
   if(A.groupCol){const m={};seq.forEach(b=>{if(!(b.c in m))m[b.c]=ng++;gi.push(m[b.c]);});}
   else seq.forEach(()=>gi.push(ng++));
   const used=ng;
+  // which groups belong to the walk-off (the last woN blocks)
+  const nBuildBlocks=Math.max(1,seq.length-(WO?Math.min(woN,exts.length):0));
+  const usedB=WO?Math.max(1,Math.max(...gi.slice(0,nBuildBlocks))+1):used;
+  P.walkFrom=WO?nBuildBlocks:null;
   const CC=(A.camCurve||[0.33,0,0.67,1]).map(Number), RC=(A.revCurve||[0.25,0.1,0.25,1]).map(Number), ZC=(A.zoomCurve||[0.65,0,0.35,1]).map(Number);
   const camOn=(A.mode==='camera'||A.mode==='push');
 
@@ -1229,32 +1236,38 @@ function computePlan(G){
   // camera release: follow for the first relAt% of the scene, then coast to a stop while the blocks keep building past
   const relOn=camOn&&A.relOn&&(cm==='follow'||cm==='stop'||cm==='curve')&&!(A.extendOn&&A.ending==='spot')&&clamp(+A.relAt||85,5,100)<100;
   P.relT=relOn?Math.round(startF+L*clamp(+A.relAt||85,5,100)/100):null;
-  if(relOn||cm==='curve'){ step=Math.max(.25,(L-tr0)/Math.max(1,used-1)); }   // curve camera: reveals spread over the whole scene (the camera follows the easing, not the blocks)
+  if(relOn||cm==='curve'){ step=Math.max(.25,(L-tr0)/Math.max(1,usedB-1)); }   // curve camera: reveals spread over the whole scene (the camera follows the easing, not the blocks)
   else if(camOn){
-    let maxGap=1, prevG=0; for(let g=1;g<used;g++){const a=tg[g-1],b=tg[g];if(Math.abs(a[0]-b[0])>1e-6||Math.abs(a[1]-b[1])>1e-6){maxGap=Math.max(maxGap,g-prevG);prevG=g;}}
+    let maxGap=1, prevG=0; for(let g=1;g<usedB;g++){const a=tg[g-1],b=tg[g];if(Math.abs(a[0]-b[0])>1e-6||Math.abs(a[1]-b[1])>1e-6){maxGap=Math.max(maxGap,g-prevG);prevG=g;}}
     lagSteps=Math.max(lag,maxGap);
     const tau=cm==='follow'?Math.max(0,+A.motionBlurF):0;
     settleF=cm==='follow'?Math.max(Math.round(+A.settle||0),Math.ceil(4*tau),2):Math.max(4,Math.round((D.comp.fps||30)*.25));   // step & settle: room for the last move
     finalF=(A.extendOn&&A.ending==='spot'&&!manual)?Math.max(1,Math.round(A.finalMove)||30):0;
     // reveals leave room for: the camera's follow distance (lag steps) + the final framing move + the settle
-    step=(L-finalF-settleF)/Math.max(1,used-1+lagSteps);
+    step=(L-finalF-settleF)/Math.max(1,usedB-1+lagSteps);
     if(step<1){ // not enough room: shrink the settle first, never below 2 frames
-      settleF=Math.max(2,Math.floor(L-finalF-(used-1+lagSteps)));
-      step=Math.max(.25,(L-finalF-settleF)/Math.max(1,used-1+lagSteps));
+      settleF=Math.max(2,Math.floor(L-finalF-(usedB-1+lagSteps)));
+      step=Math.max(.25,(L-finalF-settleF)/Math.max(1,usedB-1+lagSteps));
     }
-    step=Math.min(step,(L-tr0)/Math.max(1,used-1));
-  } else step=Math.max(1,L-tr0)/Math.max(1,used-1);
+    step=Math.min(step,(L-tr0)/Math.max(1,usedB-1));
+  } else step=Math.max(1,L-tr0)/Math.max(1,usedB-1);
   // reveal times on the linear clock, then re-timed by the scene curve (one at a time, in order)
   const sg=[], Tg=[]; const spread=(used-1)<=L;
   for(let g=0;g<used;g++){
+    if(g>=usedB){ // walk-off: after the hold, one block every pace2 frames
+      const tW=Tg[usedB-1]+tr0+Math.max(0,Math.round(+D.exit.walkHold||0));
+      const t=Math.round(tW+(g-usedB)*pace2); Tg.push(t); sg.push(S(t)); continue;
+    }
     const s=Math.min(L,step*g); sg.push(s);
     let t=Math.round(W(s)); if(spread&&g>0&&t<=Tg[g-1]) t=Tg[g-1]+1; Tg.push(Math.min(t,startF+L));
   }
+  P.walkT=WO?Tg[usedB-1]+tr0+Math.max(0,Math.round(+D.exit.walkHold||0)):null;
+  P.walkEnd=WO?Tg[used-1]+tr0:null;
   // sync to sound: each reveal moves to the nearest cue (beat / marker), keeping the order
   const CUES=timingCues();
   if(D.timing&&D.timing.sync&&CUES.length){
     let prev=-1e9;
-    for(let g=0;g<used;g++){
+    for(let g=0;g<usedB;g++){
       const want=Tg[g], cand=CUES.filter(c=>c>prev&&c<=startF+L);
       let best=null; cand.forEach(c=>{if(best==null||Math.abs(c-want)<Math.abs(best-want))best=c;});
       Tg[g]=best!=null?best:Math.max(want,prev+1); prev=Tg[g];
@@ -1296,7 +1309,7 @@ function computePlan(G){
 
   // camera / conveyor
   if(camOn){
-    const endF=startF+L;
+    const endF=WO?Math.max(startF+L,P.walkEnd+2):startF+L;
     // linear time at which each step actually appears (after the one-at-a-time spacing)
     const sEff=Tg.map(t=>S(t));
     // distinct camera targets in order (pairs / echoes in the same column don't make the camera stall)
@@ -1341,6 +1354,7 @@ function computePlan(G){
           key.push([Tg[g],ox,oy]); pvx=ox; pvy=oy;
         }
         if(fin) key.push([endF,fin[0],fin[1]]);
+        const keyAll=key.slice(); if(WO) key.length=Math.min(key.length,usedB);
         // the path the frame travels (frontier on the line), walked by distance so uneven block spacing doesn't jerk it
         const pts=[]; key.forEach(k=>{const l=pts[pts.length-1];if(!l||Math.hypot(l[0]-k[1],l[1]-k[2])>1e-6)pts.push([k[1],k[2]]);});
         const cum=[0]; for(let k=1;k<pts.length;k++) cum.push(cum[k-1]+Math.hypot(pts[k][0]-pts[k-1][0],pts[k][1]-pts[k-1][1]));
@@ -1351,6 +1365,14 @@ function computePlan(G){
         // the whole easing curve is laid over the camera's travel (first move → last block)
         const at=dd=>{if(pts.length<2||tot<=0)return pts[0];let k=1;while(k<cum.length-1&&cum[k]<dd)k++;const seg=Math.max(1e-9,cum[k]-cum[k-1]),f=clamp((dd-cum[k-1])/seg,0,1);return[pts[k-1][0]+(pts[k][0]-pts[k-1][0])*f,pts[k-1][1]+(pts[k][1]-pts[k-1][1])*f];};
         for(let i=0;i<N;i++){const t=a+i, u=clamp((t-t0c)/Math.max(1,t1c-t0c),0,1), o=at(tot*clamp(E(u),0,1)); xs[i]=o[0]; ys[i]=o[1];}
+        if(WO&&keyAll.length>usedB){
+          // walk-off: from the hold, the camera eases back up to the line's speed and travels with it
+          const kb=[[P.walkT,keyAll[usedB-1][1],keyAll[usedB-1][2]]].concat(keyAll.slice(usedB).map(k=>[k[0],k[1],k[2]]));
+          const pB=[], cB=[0]; kb.forEach(k=>pB.push([k[1],k[2]])); for(let k=1;k<pB.length;k++) cB.push(cB[k-1]+Math.hypot(pB[k][0]-pB[k-1][0],pB[k][1]-pB[k-1][1]));
+          const totB=cB[cB.length-1], tB0=P.walkT, tB1=Math.max(tB0+1,kb[kb.length-1][0]), vB=totB/Math.max(1,tB1-tB0), ramp=Math.max(6,Math.round(pace2*2.5));
+          const atB=dd=>{if(pB.length<2||totB<=0)return pB[0];let k=1;while(k<cB.length-1&&cB[k]<dd)k++;const sgm=Math.max(1e-9,cB[k]-cB[k-1]),f=clamp((dd-cB[k-1])/sgm,0,1);return[pB[k-1][0]+(pB[k][0]-pB[k-1][0])*f,pB[k-1][1]+(pB[k][1]-pB[k-1][1])*f];};
+          for(let i=0;i<N;i++){const t=a+i; if(t<tB0) continue; const e=t-tB0, dd=e<ramp?vB*e*e/(2*ramp):vB*(e-ramp/2); const o=atB(Math.min(totB,dd)); xs[i]=o[0]; ys[i]=o[1];}
+        }
         P.curveLine=lineX;
         const sg=A.axis==='xy'?Math.max(1,(+A.motionBlurF||4)*.5):0.8, R=Math.ceil(3*sg), kk=[]; let ks=0; for(let j=-R;j<=R;j++){const v=Math.exp(-j*j/(2*sg*sg));kk.push(v);ks+=v;}
         const sm=arr=>{const o=new Float64Array(N);for(let i=0;i<N;i++){let acc=0;for(let j=-R;j<=R;j++)acc+=arr[clamp(i+j,0,N-1)]*kk[j+R];o[i]=acc/ks;}return o;};
@@ -1374,7 +1396,8 @@ function computePlan(G){
         xs[i]=x; ys[i]=y;
       }
       }
-      if(relOn&&P.relT>a&&P.relT<b){
+      if(WO&&+D.exit.walkFollow<100){P.relT=Math.round(P.walkT+woLen*clamp(+D.exit.walkFollow||60,0,100)/100);}
+      if((relOn||(WO&&+D.exit.walkFollow<100))&&P.relT>a&&P.relT<b){
         // keep the velocity it has at the release point, then let it bleed away smoothly (no jolt) over relSlow frames
         const i0=P.relT-a, S=Math.max(2,Math.round(+A.relSlow||36));
         const vx=xs[i0]-xs[i0-1], vy=ys[i0]-ys[i0-1], x0=xs[i0], y0=ys[i0];
@@ -1419,7 +1442,7 @@ function computePlan(G){
       const band=A.revealWhen==='arrive'?clamp(+A.revealX||70,50,120)/100:1, bandY=A.axis==='xy'?(A.revealWhen==='arrive'?clamp(+A.revealY||100,50,120)/100:1):1e6;
       const xl=G.W*(1-band), xr=G.W*band, yt=G.H*(1-bandY), yb=G.H*bandY;
       const scrAt=(t,px,py)=>{const off=ev(P.cam,t,[0,0]),s=ev(P.zs,t,100)/100,pn=ev(P.pan,t,[0,0]);return [G.W/2+s*(px+off[0]-G.W/2)+pn[0],G.H/2+s*(py+off[1]-G.H/2)+pn[1]];};
-      const tMax=Math.min(endF-1,Math.floor(W(L-Math.max(1,tr0))));
+      const tMax=WO?endF-1:Math.min(endF-1,Math.floor(W(L-Math.max(1,tr0))));
       let prev=-1e9;
       seq.forEach((b,i)=>{
         const r=cellRect(G,b.c,b.r,b.w,b.h), px=r.x+r.w/2, py=r.y+r.h/2;
@@ -1436,7 +1459,7 @@ function computePlan(G){
       const band=clamp(+A.revealX||70,50,120)/100, bandY=A.axis==='xy'?clamp(+A.revealY||100,50,120)/100:1e6;  // sideways-only camera: height doesn't matter
       const xl=G.W*(1-band), xr=G.W*band, yt=G.H*(1-bandY), yb=G.H*bandY;
       const scrAt=(t,px,py)=>{const off=ev(P.cam,t,[0,0]),s=ev(P.zs,t,100)/100,pn=ev(P.pan,t,[0,0]);return [G.W/2+s*(px+off[0]-G.W/2)+pn[0],G.H/2+s*(py+off[1]-G.H/2)+pn[1]];};
-      const tMax=Math.min(endF-1,Math.floor(W(L-Math.max(1,tr0))));   // a delayed reveal still finishes by the scene end
+      const tMax=WO?endF-1:Math.min(endF-1,Math.floor(W(L-Math.max(1,tr0))));   // a delayed reveal still finishes by the scene end
       let prev=-1e9; const T0=P.T.slice();
       seq.forEach((b,i)=>{
         if(P.relT!=null&&P.T[i]>=P.relT){ const gap=i>0?Math.max(0,T0[i]-T0[i-1]):0; P.T[i]=Math.min(tMax,Math.max(P.T[i],prev+gap)); prev=P.T[i]; return; }   // after the release: keep the schedule's rhythm
@@ -1514,6 +1537,10 @@ function computePlan(G){
     K.num=clip0(nk); if(K.num.length===1&&!(P.T[i]>0)&&tE==null) K.num=[];
   });
   P.lab=labPlan(P,G,seq,stop,st);
+  // column rules: stay, or fade off once the walk-off starts (or after the scene)
+  P.ruleOp=[];
+  if(D.look.rulesOn&&D.look.ruleEnd==='fade'){const t0=Math.round((P.walkT!=null?P.walkT:startF+L)+(+D.look.ruleFadeAt||0)), len=Math.max(1,Math.round(+D.look.ruleFadeLen||24));
+    P.ruleOp=clip0([[Math.min(0,t0-1),100,'h'],[t0,100,'e',[0.4,0,0.6,1]],[t0+len,0,'e',[0.4,0,0.6,1]]]); lastT=Math.max(lastT,t0+len);}
   // every track: time-sorted, one key per frame (a later key at the same frame wins)
   const tidy=tr=>{if(!tr||tr.length<2)return tr;const s=tr.map((k,i)=>[k,i]).sort((x,y)=>x[0][0]-y[0][0]||x[1]-y[1]).map(x=>x[0]);const o=[];s.forEach(k=>{if(o.length&&Math.abs(o[o.length-1][0]-k[0])<1e-6)o[o.length-1]=k;else o.push(k);});return o;};
   Object.values(P.tracks).forEach(K=>Object.keys(K).forEach(k=>{K[k]=tidy(K[k]);}));
@@ -1962,7 +1989,7 @@ function renderMedia(){
 /* ==================================================================== TIMING: master retime + dope sheet */
 const TIME_PATHS=['anim.startF','anim.lenF','anim.trans','anim.settle','anim.relSlow','anim.finalMove','anim.stepEvery',
   'trans.in.start','trans.in.dur','trans.in.len','trans.out.start','trans.out.dur','trans.out.len',
-  'exit.hold','exit.at','exit.stagger','exit.len',
+  'exit.hold','exit.at','exit.stagger','exit.len','exit.walkHold','exit.walkLen','look.ruleFadeAt','look.ruleFadeLen',
   'fill.anim.delay','fill.anim.stagger','fill.anim.hold','fill.anim.outDur','fill.anim.inDur','fill.anim.countDur','fill.anim.scrDur',
   'echo.offset','echo.hold','echo.outF',
   'lab.flicker.frames','lab.pulse.len','lab.trail.len','lab.bar.len'];
@@ -1979,6 +2006,19 @@ function retime(k){
   if(D.timing&&Array.isArray(D.timing.beats)) {} // beats are real-time cues, they don't stretch
   planCache.k=''; fillCache.clear(); syncInputs(true); refresh();
   const fps=D.comp.fps||30; toast(`Retimed ×${(+k).toFixed(2)} — scene is now ${D.anim.lenF}f (${(D.anim.lenF/fps).toFixed(2)}s)`,'⌘Z to undo',true);
+}
+/* Pace & holds readout: rhythm → block count → camera speed */
+function renderPace(){
+  const el=$('#paceRead'), cp=$('#camPair'); if(!el) return;
+  const G=geom(), P=plan(G), fps=D.comp.fps||30, A=D.anim;
+  if(A.mode==='static'||!P.seq||!P.seq.length){el.innerHTML='Pick an animation style and add blocks to see the pace.';if(cp)cp.innerHTML='';return;}
+  let dist=0,moving=0; if(P.cam.length){for(let f=P.startF;f<P.startF+P.L;f++){const a=ev(P.cam,f,[0,0]),b=ev(P.cam,f+1,[0,0]);const s=Math.hypot(b[0]-a[0],b[1]-a[1]);if(s>.05){dist+=s;moving++;}}}
+  const build=P.walkFrom!=null?P.seq.slice(0,P.walkFrom):P.seq, n=build.filter(b=>!b.echo&&!b.stack).length, nW=P.walkFrom!=null?P.seq.length-P.walkFrom:0, sp=moving?dist/moving*fps:0;
+  el.innerHTML=`<b>${n}</b> blocks over ${(P.L/fps).toFixed(2)}s · one every <b>${(P.L/Math.max(1,n)).toFixed(1)}f</b>${nW?` · then <b>${nW}</b> more walking off`:''}`+(P.cam.length?`<br>Camera ≈ <b>${Math.round(sp)} px/s</b> (${(sp/G.p).toFixed(1)} columns a second) while moving`:'');
+  if(cp){ if(A.mode==='camera'||A.mode==='push'){
+      cp.innerHTML=A.camMove==='curve'?'<div class="note">✓ Camera paired to the blocks — its speed follows the rhythm and the scene easing.</div>':'<div class="row-btns"><button class="btn" id="btnPair">Pair the camera to the blocks</button></div><div class="note">The camera is on “'+(A.camMove==='step'?'Step &amp; settle':'Glide behind')+'”, so it reacts to the blocks instead of moving with them.</div>';
+      const b=cp.querySelector('#btnPair'); if(b) b.onclick=()=>{pushHist();D.anim.camMove='curve';D.anim.motion='smooth';syncInputs(true);refresh();};
+    } else cp.innerHTML=''; }
 }
 /* the dope sheet: one row per thing that has timing, with handles you can drag */
 const DOPE={rows:['Scene','Camera speed','Blocks','Content','Transitions'],handles:[],drag:null,rowsY:[]};
@@ -2090,10 +2130,10 @@ function exitTimes(P,G,seq,done){
     const order=seq.map((b,i)=>i); if(X.order==='reverse') order.reverse();
     order.forEach((i,k)=>{out[i]=Math.max(done[i]+1,Math.round(t0+k*stg));});
   } else if(X.mode==='walk'){
-    // the whole build holds, then walks off in the order (and rhythm) it walked on
-    const last=Math.max(...done.map((d,i)=>d!=null?d:P.T[i])), t0=Math.round(last+Math.max(0,+X.walkHold||0)), k=Math.max(.05,+X.walkPace||1);
-    const T0=P.T[0], T1=P.T[P.T.length-1];
-    seq.forEach((b,i)=>{out[i]=Math.round(t0+(X.order==='reverse'?(T1-P.T[i]):(P.T[i]-T0))*k);});
+    // walk-off: after the hold the line keeps walking; the oldest blocks leave first so only a short trail follows the head
+    const tW=P.walkT!=null?P.walkT:Math.round(Math.max(...done)+Math.max(0,+X.walkHold||0)), pc=Math.max(1,(+D.anim.pace||6)*Math.max(.1,+X.walkPace||1));
+    const K=Math.max(1,Math.round(+X.trail||6)), life=K*pc;
+    seq.forEach((b,i)=>{out[i]=Math.max(Math.round(done[i]!=null?done[i]+1:P.T[i]+1),Math.round(Math.max(tW+i*pc*.5,P.T[i]+life)));});
   } else if(X.mode==='behind'){
     // leaves when its right edge passes the exit line (X% of the frame from the left) — blocks trail away behind the camera
     const line=G.W*clamp(+X.line||10,-50,100)/100, maxT=Math.round(P.startF+P.L+600);
@@ -2329,7 +2369,7 @@ function drawWorld(g,G,o){
   }
   const drawRules=()=>{
     if(!D.look.rulesOn) return;
-    g.save(); g.translate(gridOff[0],gridOff[1]); g.globalAlpha=o.alpha;
+    g.save(); g.translate(gridOff[0],gridOff[1]); g.globalAlpha=o.alpha*(live&&A.P&&A.P.ruleOp&&A.P.ruleOp.length?ev(A.P.ruleOp,A.t,100)/100:1);
     g.fillStyle=D.look.rule; const min=1/(sc*s);
     rulesFor(G,c0,c1,r0,r1,(+D.look.ruleW||1)/s).forEach(a=>{let x=a[0],w=a[2];if(w<min){x+=(w-min)/2;w=min;}g.fillRect(x,a[1],w,a[3]);});
     g.restore();
@@ -2481,6 +2521,7 @@ function clampCell(G,c){return{c:clamp(c.c,G.cLo,G.cHi),r:clamp(c.r,G.rLo,G.rHi)
 
 cv.addEventListener('pointerdown',e=>{
   cv.setPointerCapture(e.pointerId);
+  if(U.space) U.spacePanned=true;
   if(e.button===1||e.button===2||U.space||U.tool==='hand'){
     U.drag={type:'pan',x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY};cv.classList.add('grabbing');return;
   }
@@ -3032,7 +3073,7 @@ function renderStepUI(){
   // tool cards in layout pane
   $('#toolcards').innerHTML=['select','stamp','draw','erase'].map(t=>`<button class="toolcard${U.tool===t?' on':''}" data-tool="${t}"><span class="ic">${ICON[t]}</span><span><div class="t">${TOOLS[t].name}</div><div class="d">${TOOLS[t].desc}</div></span><kbd>${TOOLS[t].key}</kbd></button>`).join('');
   $('#timeline').hidden=!(((st.id==='animate'||st.id==='lab'||st.id==='timing')&&D.anim.mode!=='static')||st.id==='transitions');
-  $('#dope').hidden=st.id!=='timing'; if(st.id==='timing'){ drawDope(); if(!U._mediaUI){U._mediaUI=1;renderMedia();} const rt=$('#retimeTarget'); if(rt&&document.activeElement!==rt) rt.value=+(D.anim.lenF/(D.comp.fps||30)).toFixed(2); }
+  $('#dope').hidden=st.id!=='timing'; if(st.id==='timing'){ drawDope(); renderPace(); if(!U._mediaUI){U._mediaUI=1;renderMedia();} const rt=$('#retimeTarget'); if(rt&&document.activeElement!==rt) rt.value=+(D.anim.lenF/(D.comp.fps||30)).toFixed(2); }
   $('#hint').textContent=st.id==='grid'?'Scroll to pan · ⌘/Ctrl + scroll or pinch to zoom':TOOLS[U.tool].desc;
 }
 document.addEventListener('click',e=>{const b=e.target.closest('[data-tool]');if(b)setTool(b.dataset.tool);});
@@ -3088,7 +3129,7 @@ function updCtx(){
   } else if(st==='layout'){
     h=`<span class="msg"><b>${TOOLS[U.tool].name}</b> — ${TOOLS[U.tool].desc}</span>`;
   } else if(st==='animate'&&D.anim.mode!=='static'){
-    h=`<span class="msg">Press <b>P</b> or ▶ to preview</span>`;
+    h=`<span class="msg">Press <b>Space</b> or ▶ to preview</span>`;
   } else { el.hidden=true; return; }
   el.hidden=false; el.className='ctxbar'+(quiet?' quiet':''); el.innerHTML=h;
 }
@@ -3228,7 +3269,7 @@ document.addEventListener('keydown',e=>{
   if(mod&&kl==='s'){e.preventDefault();openLib(true);return;}
   if(typing){if(k==='Escape')t.blur();return;}
   if(!$('#libModal').hidden){if(k==='Escape')closeLib();return;}
-  if(k===' '){e.preventDefault();if(!U.space){U.space=true;cv.classList.add('panning');}return;}
+  if(k===' '){e.preventDefault();if(!U.space&&!e.repeat){U.space=true;U.spacePanned=false;cv.classList.add('panning');}return;}   // tap = play/pause, hold + drag = pan
   if(mod) return;
   if(kl==='m'||k==='Enter'){if(U.sel){e.preventDefault();mergeSel();}}
   else if(k==='Delete'||k==='Backspace'){e.preventDefault();deleteSelected();}
@@ -3244,7 +3285,12 @@ document.addEventListener('keydown',e=>{
   else if(k.indexOf('Arrow')===0&&U.selIds.length){e.preventDefault();const s=e.shiftKey?D.block.w||1:1;nudge(k==='ArrowLeft'?-s:k==='ArrowRight'?s:0,k==='ArrowUp'?-1:k==='ArrowDown'?1:0);}
   else{const tool=Object.keys(TOOLS).find(x=>TOOLS[x].key.toLowerCase()===kl);if(tool)setTool(tool);}
 });
-document.addEventListener('keyup',e=>{if(e.key===' '){U.space=false;cv.classList.remove('panning');}});
+document.addEventListener('keyup',e=>{if(e.key===' '){
+  const t=e.target, typing=t&&t.matches&&t.matches('input:not([type=checkbox]):not([type=color]):not([type=range]),textarea,select');
+  const was=U.space; U.space=false; cv.classList.remove('panning');
+  if(typing||!was) return; e.preventDefault();
+  if(!U.spacePanned&&$('#libModal').hidden){ if(U.playing) stopPlay(); else if(D.anim.mode!=='static'||transOn()) play(); }
+}});
 
 
 
@@ -3524,6 +3570,12 @@ const HELP={
   'exit.hold':'How long a block stays fully visible before it starts to leave.',
   'exit.line':'Blocks leave when their right edge passes this line. 0 = left edge of frame, negative = once fully off screen.',
   'exit.at':'When the clear-out starts, in frames relative to the scene end. Negative starts before the scene ends.',
+  'exit.walkLen':'How long the line keeps walking after the hold, in frames. New blocks keep arriving for this long.',
+  'exit.walkFollow':'How much of the walk-off the camera follows before it lets go and the line runs off screen. 100% = follows to the end.',
+  'exit.trail':'How many blocks stay visible behind the head of the line as it walks off.',
+  'look.ruleEnd':'Column rules stay for the whole piece, or fade off when the walk-off starts (or after the scene if there is no walk-off).',
+  'look.ruleFadeAt':'Frames after the walk-off starts (negative = before) when the rules begin to fade.',
+  'look.ruleFadeLen':'How long the rules take to fade off.',
   'exit.walkHold':'How long the finished build holds before the first block walks off.',
   'exit.walkPace':'Rhythm of the walk-off compared with the walk-on. 1 = same rhythm, 0.5 = twice as fast, 2 = half speed.',
   'exit.slide':'How far a block slides as it leaves, in block widths.',
@@ -3742,6 +3794,7 @@ function resetDefaults(withHist){
 }
 $('#btnDefaults').onclick=()=>resetDefaults();
 initDope();
+$('#lnkWalkOn').onclick=e=>{e.preventDefault();pushHist();Object.assign(D.exit,{on:true,mode:'walk'});syncInputs(true);refresh();};
 aiInit();
 $('#mediaIn').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(f)loadMediaFile(f);e.target.value='';});
 $$('[data-retime]').forEach(b=>b.addEventListener('click',()=>retime(+b.dataset.retime)));
@@ -3951,7 +4004,7 @@ function payload(){
     let rr=rulesFor(G,c0-N,c1+N,r0,r1);
     rr=free?rr.map(a=>a.map(r3)):rr.filter(inside).map(clip);
     const lwR=+D.look.ruleW||1;
-    rules={color:hexRgb(D.look.rule),lw:lwR,top:D.look.ruleLayer==='top',period:r3(N*G.p),
+    rules={color:hexRgb(D.look.rule),lw:lwR,top:D.look.ruleLayer==='top',period:r3(N*G.p),op:animOn&&P.ruleOp&&P.ruleOp.length?P.ruleOp:null,
       mode:zoomOn?'strokes':'rects', rects:zoomOn?null:rr,
       segs:zoomOn?rr.map(a=>[r3(a[0]+a[2]/2),a[1],r3(a[0]+a[2]/2),r3(a[1]+a[3])]):null};
   }
