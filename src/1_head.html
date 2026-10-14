@@ -4,6 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Grid Blocks</title>
+<script>
+/* startup reporter: if anything fails while loading, show it in the panel instead of a blank screen */
+(function(){
+  function show(msg){
+    var d=document.getElementById('gbBootErr');
+    if(!d){d=document.createElement('pre');d.id='gbBootErr';
+      d.style.cssText='position:fixed;left:10px;right:10px;bottom:10px;z-index:99999;max-height:45%;overflow:auto;margin:0;padding:10px 12px;background:#3D000A;color:#FEAFAC;border:1px solid #E6212F;border-radius:6px;font:12px/1.45 Menlo,monospace;white-space:pre-wrap;-webkit-user-select:text;user-select:text';
+      (document.body||document.documentElement).appendChild(d);}
+    d.textContent+=(d.textContent?'\n':'')+'Grid Blocks error: '+msg;
+  }
+  window.__gbShowErr=show;
+  window.addEventListener('error',function(e){show((e.message||'error')+(e.lineno?' (line '+e.lineno+':'+e.colno+')':''));});
+  window.addEventListener('unhandledrejection',function(e){var r=e.reason;show('promise: '+(r&&(r.stack||r.message)||r));});
+  window.addEventListener('load',function(){setTimeout(function(){if(!window.__gbReady)show('the panel script did not finish starting. Chrome version: '+(navigator.userAgent.match(/Chrome\/[\d.]+/)||['?'])[0]);},4000);});
+})();
+</script>
 <style>
 /* Aeonik Fono: uses the installed font, or files in /fonts when hosted */
 @font-face{font-family:'Aeonik';font-style:normal;font-weight:100;font-display:swap;src:local('Aeonik Air'),local('Aeonik-Air'),url('fonts/Aeonik-Air.woff2') format('woff2'),url('fonts/Aeonik-Air.woff') format('woff')}
