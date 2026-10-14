@@ -13,12 +13,11 @@ The panel follows the active comp, autosaves your work, and keeps a layouts libr
 
 ## The steps
 1. **Grid**: comp size, rows, gutter, margin, columns, off-screen area, look
-2. **Block size**: pick W × H squares; click the canvas to test
-3. **Layout**: Select (V), Stamp (S), Draw (B), Unmerge (E) tools, or generate from rules
-4. **Content**: text inside blocks
-5. **Animate**: Reveal, Camera follow, Conveyor · Keep building (repeat or continue the pattern) · same-column grouping · speed ramp · smooth / step / stop-motion · grid size over time · live preview (P)
-6. **Transitions**: full-frame block transitions in and out, as coloured blocks or a white matte precomp
-7. **Build**: layers + keyframes in one undo step
+2. **Blocks**: pick a W × H block size, then Select (V), Stamp (S), Draw (B), Unmerge (E) by hand or generate from rules · Clear layout
+3. **Content**: text inside blocks
+4. **Animate**: Reveal, Camera follow, Conveyor · Keep building (repeat or continue the pattern) · same-column grouping · speed ramp · smooth / step / stop-motion · grid size over time · live preview (P)
+5. **Timing** · 6. **Transitions**: full-frame block transitions in and out, as coloured blocks or a white matte precomp
+7. **Lab** · 8. **Build**: layers + keyframes in one undo step
 
 ## What gets built
 | Layer | Notes |
@@ -148,3 +147,9 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - **↻ Shuffle the walk** (Animate › Keep building, Timing › Pace): a new random continuation of the pattern without touching your layout.
 - **Big curve editor floats** at the bottom right instead of covering the screen: the preview stays visible and **Space / ▶ plays** while you shape the curve.
 - **Edit blocks from the timeline:** click a block in the Blocks row to select it (the playhead jumps to it), **Delete** removes it (generated blocks are skipped, layout blocks deleted), **⇧Delete** cuts it and everything after it from the build; the **yellow handle** at the last block drags left to drop late blocks — the blocks you keep don’t move in time. "Bring back skipped blocks" restores them.
+
+### v2.3.3
+- Block size and Layout merged into one **Blocks** step, with a **Clear layout** button.
+- Stamp slides to the nearest spot that fits instead of refusing; tool buttons react on press.
+- Panel draws immediately and no longer waits on After Effects before it becomes clickable.
+- Grid lines on by default. Startup errors show in a red box; `.debug` enables Chrome debugging on port 8088.
