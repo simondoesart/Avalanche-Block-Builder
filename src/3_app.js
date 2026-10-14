@@ -34,7 +34,7 @@ const DEF={
   v:4,
   comp:{w:1920,h:1080,fps:24,dur:10,follow:true},
   grid:{rows:7,colsMode:'bleed',cols:12,gutter:1,margin:0,offsetX:0,snap:true,overX:8,overY:1},
-  look:{bgOn:true,bg:'#1F1F1F',linesOn:false,line:'#3B484B',lineW:1,border:false,cellsMode:'none',cell:'#3B484B',
+  look:{bgOn:true,bg:'#1F1F1F',linesOn:true,line:'#3B484B',lineW:1,border:false,cellsMode:'none',cell:'#3B484B',
         rulesOn:false,rule:'#3B484B',ruleW:1,ruleEvery:4,ruleStart:1,ruleLayer:'top',ruleParallax:100,ruleEnd:'stay',ruleFadeAt:0,ruleFadeLen:24},
   block:{w:3,h:1,color:'#E6212F',color2:'#A2AFB2',sync:true,mix:'single',mixPct:25},
   palette:PALETTE.slice(),
@@ -4498,6 +4498,7 @@ async function init(){
   // redraw once web fonts (Aeonik Fono) have loaded so text measures correctly
   try{if(document.fonts&&document.fonts.load){Promise.all([document.fonts.load("400 14px 'Aeonik Fono'"),document.fonts.load("900 14px 'Aeonik'")]).then(()=>{fontCW={};fillCache.clear();refresh();});}}catch(e){}
   if(!inAE) checkBrandFonts(); else renderFontStatus();
+  window.__gbReady=true;
 }
-init();
+init().catch(e=>{if(window.__gbShowErr)window.__gbShowErr('startup: '+(e&&(e.stack||e.message)||e));});
 })();
