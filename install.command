@@ -11,6 +11,8 @@ for f in "$SRC"/fonts/desktop/*.otf "$SRC"/fonts/desktop/*.ttf "$SRC"/fonts/*.ot
   mkdir -p "$HOME/Library/Fonts"; cp -n "$f" "$HOME/Library/Fonts/" && n=$((n+1))
 done
 [ $n -gt 0 ] && echo "Installed $n brand font file(s) from fonts/ into ~/Library/Fonts"
+# clear the CEP page cache so After Effects loads the new version (stale cache can show a black panel)
+rm -rf "$HOME/Library/Caches/CSXS/cep_cache" 2>/dev/null
 for v in 9 10 11 12 13; do defaults write com.adobe.CSXS.$v PlayerDebugMode 1; done
 echo ""
 echo "Installed to: $DEST"
