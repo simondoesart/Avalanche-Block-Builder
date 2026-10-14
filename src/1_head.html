@@ -478,7 +478,7 @@ body.nohelp .qm{display:none}
   <main id="main">
     <!-- ================= LEFT: step panels ================= -->
     <section id="left">
-      <div class="step-head"><div class="seg mini" id="advSeg" title="Essential hides the fine-tuning controls. All shows everything."><button data-adv-v="0">Essential</button><button data-adv-v="1">All controls</button></div><div class="eyebrow" id="stepEyebrow">Step 1 of 6</div><h2 id="stepTitle">Grid</h2><p id="stepDesc"></p></div>
+      <div class="step-head"><div class="seg mini" id="advSeg" title="Essential hides the fine-tuning controls. All shows everything."><button data-adv-v="0">Essential</button><button data-adv-v="1">All controls</button></div><div class="eyebrow" id="stepEyebrow">Step 1 of 8</div><h2 id="stepTitle">Grid</h2><p id="stepDesc"></p></div>
       <div class="step-body">
 
         <!-- 1 GRID -->
@@ -577,10 +577,10 @@ body.nohelp .qm{display:none}
           </div>
         </div>
 
-        <!-- 2 BLOCK SIZE -->
-        <div class="pane" data-pane="blocks">
+        <!-- 2 BLOCKS: size + layout -->
+        <div class="pane" data-pane="layout">
           <div class="group">
-            <div class="group-h">Block size</div>
+            <div class="group-h">Block size<span class="tag">click the canvas to stamp</span></div>
             <div class="pick-label"><span class="big" id="pickBig">3 × 1</span><span class="note" id="pickPx"></span></div>
             <div class="picker" id="picker"></div>
             <div class="field2">
@@ -588,34 +588,14 @@ body.nohelp .qm{display:none}
               <div class="field"><span class="lbl scrub">H</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="block.h" min="1" max="60" step="1"><button data-d="1">+</button></div></div>
             </div>
             <div class="chips" id="sizeChips"></div>
-          </div>
-          <div class="group">
-            <div class="group-h">Colours</div>
-            <div class="field stack"><span class="lbl">Main</span><div class="swatches" data-pal="block.color"></div></div>
-            <div class="field stack"><span class="lbl">Second</span><div class="swatches" data-pal="block.color2"></div></div>
-            <div class="field stack"><span class="lbl">Colour mix for new blocks</span>
-              <div class="seg" data-seg="block.mix"><button data-v="single">Main only</button><button data-v="alternate">Alternate</button><button data-v="random">Random mix</button></div></div>
-            <div class="field" data-show="block.mix=random"><span class="lbl scrub">Second</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="block.mixPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
-            <button class="btn wide" id="btnRecolour">Recolour existing blocks with this mix</button>
-          </div>
-          <div class="group">
-            <div class="group-h">Palette</div>
-            <div class="swatches palette-edit" id="paletteEdit"></div>
-            <div class="row-btns"><button class="btn" id="btnPalAdd">+ Add main colour</button><button class="btn ghost" id="btnPalReset">Reset</button></div>
-            <div class="note">These colours appear in every colour picker. Alt-click a colour here to remove it.</div>
-          </div>
-          <div class="group">
             <label class="check"><input type="checkbox" data-bind="block.sync"> Apply size &amp; colour changes to existing blocks</label>
             <button class="btn wide" id="btnResizeAll">Resize existing blocks</button>
-            <div class="note">Click the canvas to stamp a block and try the size.</div>
           </div>
-        </div>
-
-        <!-- 3 LAYOUT -->
-        <div class="pane" data-pane="layout">
           <div class="group">
             <div class="group-h">Place by hand</div>
             <div class="toolcards" id="toolcards"></div>
+            <div class="row-btns"><button class="btn" id="btnClearLayout"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg>Clear layout</button></div>
+            <div class="note">Stamp: click or drag on the canvas. If a block doesn’t fit where you click, it slides over to the nearest spot that does. ⌘Z undoes.</div>
           </div>
           <div class="group">
             <div class="group-h">Generate from rules<span class="tag" id="sizeTag"></span></div>
@@ -659,6 +639,21 @@ body.nohelp .qm{display:none}
               <button class="btn" id="btnShuffle"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="3"/><circle cx="5.5" cy="5.5" r=".9" fill="currentColor"/><circle cx="10.5" cy="10.5" r=".9" fill="currentColor"/><circle cx="8" cy="8" r=".9" fill="currentColor"/></svg>Shuffle <kbd>R</kbd></button>
             </div>
             <div class="note" id="seedNote">Blocks are all the same size and run left to right. After generating, any change here updates the layout straight away.</div>
+          </div>
+          <div class="group">
+            <div class="group-h">Colours</div>
+            <div class="field stack"><span class="lbl">Main</span><div class="swatches" data-pal="block.color"></div></div>
+            <div class="field stack"><span class="lbl">Second</span><div class="swatches" data-pal="block.color2"></div></div>
+            <div class="field stack"><span class="lbl">Colour mix for new blocks</span>
+              <div class="seg" data-seg="block.mix"><button data-v="single">Main only</button><button data-v="alternate">Alternate</button><button data-v="random">Random mix</button></div></div>
+            <div class="field" data-show="block.mix=random"><span class="lbl scrub">Second</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="block.mixPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
+            <button class="btn wide" id="btnRecolour">Recolour existing blocks with this mix</button>
+          </div>
+          <div class="group">
+            <div class="group-h">Palette</div>
+            <div class="swatches palette-edit" id="paletteEdit"></div>
+            <div class="row-btns"><button class="btn" id="btnPalAdd">+ Add main colour</button><button class="btn ghost" id="btnPalReset">Reset</button></div>
+            <div class="note">These colours appear in every colour picker. Alt-click a colour here to remove it.</div>
           </div>
           <div class="group">
             <div class="group-h">Echo</div>

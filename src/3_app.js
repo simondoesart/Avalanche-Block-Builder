@@ -76,10 +76,10 @@ let uid=1;
 const U={step:0,mbPrev:true,tool:'stamp',sel:null,selIds:[],hover:null,t:null,playing:false,live:false,genBase:null,
   compLive:false,aeName:'',moNext:1,showOrder:true,editing:null,space:false,drag:null,lib:[],help:true,loop:true,picking:false,fonts:null};
 
+const SI=id=>STEPS.findIndex(s=>s.id===id);
 const STEPS=[
   {id:'grid',name:'Grid',title:'Set up the grid',desc:'Rows always fit the comp height. Squares can run off the sides.',tools:['hand'],tool:'hand',insp:false},
-  {id:'blocks',name:'Block size',title:'Choose a block size',desc:'How many squares one block covers. Click the canvas to try it out.',tools:['stamp','hand'],tool:'stamp',insp:false},
-  {id:'layout',name:'Layout',title:'Lay out your blocks',desc:'Place blocks by hand or generate a layout from rules. Drag blocks off screen if you need to.',tools:['select','stamp','draw','erase','paint','hand'],tool:'stamp',insp:true},
+  {id:'layout',name:'Blocks',title:'Size & lay out blocks',desc:'Pick a block size, then stamp blocks by hand or generate a layout from rules. Drag blocks off screen if you need to.',tools:['select','stamp','draw','erase','paint','hand'],tool:'stamp',insp:true},
   {id:'content',name:'Content',title:'Put things in blocks',desc:'Auto-fill blocks with blockchain HUD content, or select a block and type your own text.',tools:['select','paint','hand'],tool:'select',insp:true},
   {id:'animate',name:'Animate',title:'Order & animate',desc:'Choose the order blocks arrive in and how the view moves.',tools:['select','order','hand'],tool:'select',insp:true},
   {id:'timing',name:'Timing',title:'Timing',desc:'One place for when everything happens. Drag on the timeline under the canvas, retime the whole piece at once, or sync to sound.',tools:['hand'],tool:'hand',insp:false},
@@ -832,10 +832,21 @@ function nudge(dc,dr){
   if(moved.some(m=>D.blocks.some(x=>sel.indexOf(x)<0&&hits(x,m)))) return;
   pushHist(); sel.forEach((b,i)=>{b.c=moved[i].c;b.r=moved[i].r;}); refresh();
 }
+/* where a stamp at this cell lands: the block covers the clicked square, sliding left/up if it would
+   overlap a neighbour or run off the grid. null if nothing covering the square fits. */
+function stampSpot(cell,G){
+  G=G||geom(); const w=Math.max(1,D.block.w|0), h=Math.max(1,D.block.h|0);
+  if(blockAt(cell.c,cell.r)) return null;
+  let best=null;
+  for(let dr=0;dr<h;dr++)for(let dc=0;dc<w;dc++){
+    const b={c:cell.c-dc,r:cell.r-dr,w,h};
+    if(!valid(b,G)||D.blocks.some(x=>hits(x,b))) continue;
+    const cost=dc+dr*w*0.9; if(!best||cost<best.cost) best={c:b.c,r:b.r,w,h,cost};
+  }
+  return best;
+}
 function tryStamp(cell){
-  const G=geom(), b={c:cell.c,r:cell.r,w:Math.max(1,D.block.w|0),h:Math.max(1,D.block.h|0)};
-  if(!valid(b,G)) return false;
-  if(D.blocks.some(x=>hits(x,b))) return false;
+  const b=stampSpot(cell); if(!b) return false;
   const nb=newBlock(b.c,b.r,b.w,b.h,D.block.color); D.blocks.push(nb); select([nb.id]);
   return true;
 }
@@ -1893,7 +1904,7 @@ function aiSetValues(changes){
 }
 function aiAction(a,v){
   switch(a){
-    case 'generate_layout': if(STEPS[U.step].id!=='layout')goStep(2); generate(false); return 'Generated a new layout ('+D.blocks.length+' blocks).';
+    case 'generate_layout': if(STEPS[U.step].id!=='layout')goStep(SI('layout')); generate(false); return 'Generated a new layout ('+D.blocks.length+' blocks).';
     case 'shuffle_layout': shuffle(); return 'Shuffled the layout ('+D.blocks.length+' blocks).';
     case 'shuffle_content': pushHist(true); D.fill.seed=(D.fill.seed|0)+1; fillCache.clear(); refresh(); return 'Shuffled the content.';
     case 'clear_blocks': pushHist(); D.blocks=[]; U.selIds=[]; refresh(); return 'Cleared all blocks.';
@@ -2534,12 +2545,13 @@ function drawOverlays(G,A){
   if(!live&&U.hover&&!U.drag&&!U.space){
     const h=U.hover;
     if(tool==='stamp'){
-      const b={c:h.c,r:h.r,w:Math.max(1,D.block.w|0),h:Math.max(1,D.block.h|0)};
-      const ok=valid(b,G)&&!D.blocks.some(x=>hits(x,b));
+      const sp=stampSpot(h,G);
+      const b=sp||{c:h.c,r:h.r,w:Math.max(1,D.block.w|0),h:Math.max(1,D.block.h|0)};
+      const ok=!!sp;
       const q=cellRect(G,b.c,b.r,b.w,b.h);
       ctx.fillStyle=hexA(D.block.color,ok?.5:.15); ctx.fillRect(q.x,q.y,q.w,q.h);
       ctx.lineWidth=1.5/sc; ctx.setLineDash(ok?[]:[5/sc,4/sc]); ctx.strokeStyle=ok?'rgba(255,255,255,.85)':'#ffb44d'; ctx.strokeRect(q.x,q.y,q.w,q.h); ctx.setLineDash([]);
-      if(STEPS[U.step].id==='blocks') pill(`${b.w} × ${b.h}  ·  ${Math.round(q.w)} × ${Math.round(q.h)} px`,q.x+q.w/2,q.y-14/sc,sc,'rgba(0,0,0,.8)','#fff',true);
+      if(STEPS[U.step].id==='layout') pill(`${b.w} × ${b.h}  ·  ${Math.round(q.w)} × ${Math.round(q.h)} px`,q.x+q.w/2,q.y-14/sc,sc,'rgba(0,0,0,.8)','#fff',true);
     } else if((tool==='select'||tool==='draw'||tool==='erase')&&!blockAt(h.c,h.r)){
       const q=cellRect(G,h.c,h.r); ctx.fillStyle='rgba(230,33,47,.18)'; ctx.fillRect(q.x,q.y,q.w,q.h);
     }
@@ -2686,7 +2698,7 @@ cv.addEventListener('pointerdown',e=>{
   if(tool==='stamp'){
     const before=snap(); const ok=tryStamp(cell);
     if(ok){H.u.push(before);H.r=[];U.live=false;updUndo();}
-    else if(b) select([b.id]); else toast('That doesn’t fit there');
+    else if(b) select([b.id]); else toast(`A ${D.block.w} × ${D.block.h} block doesn’t fit there`);
     U.drag={type:'stamp',last:cell,any:ok,before}; refresh(); return;
   }
   if(tool==='draw'||tool==='erase'){
@@ -2778,7 +2790,7 @@ cv.addEventListener('dblclick',e=>{
   const G=geom(), c=cellAt(G,localPt(G,toWorld(e))); const b=inRange(G,c.c,c.r)?blockAt(c.c,c.r):null;
   if(!b) return;
   select([b.id]);
-  if(STEPS[U.step].id!=='content') goStep(3);
+  if(STEPS[U.step].id!=='content') goStep(SI('content'));
   refresh(); setTimeout(()=>{const t=$('#insp textarea');if(t){t.focus();t.select();}},30);
 });
 cv.addEventListener('wheel',e=>{
@@ -3150,6 +3162,8 @@ function buildStepper(){
   $('#steps').innerHTML=STEPS.map((s,i)=>(i?'<span class="join"></span>':'')+`<button class="stepbtn" data-step="${i}" title="${s.name}"><span class="n">${i+1}</span><span class="lbl2">${s.name}</span></button>`).join('');
   $('#steps').addEventListener('click',e=>{const b=e.target.closest('[data-step]');if(b)goStep(+b.dataset.step);});
 }
+/* saved step → index (older saves had a separate Block size step at index 1) */
+function savedStep(o){if(o.stepId&&SI(o.stepId)>=0)return SI(o.stepId);const i=o.step|0;return clamp(i>=2?i-1:i,0,STEPS.length-1);}
 function goStep(i){
   i=clamp(i,0,STEPS.length-1);
   if(i===U.step){refresh();return;}
@@ -3165,10 +3179,11 @@ function setTool(t){
   if(t==='order'&&STEPS[U.step].id==='animate'){setTimeout(()=>{fitView('all');render();},0);}
   if(STEPS[U.step].tools.indexOf(t)<0){
     // jump to the step that owns this tool
-    if(t==='order') goStep(4); else if(['stamp','draw','erase'].indexOf(t)>=0) goStep(2); else return;
+    if(t==='order') goStep(SI('animate')); else if(['stamp','draw','erase','paint'].indexOf(t)>=0) goStep(SI('layout')); else return;
   }
   U.tool=t; U.sel=t==='select'?U.sel:null; refresh();
 }
+function setHTML(el,h){if(el&&el._h!==h){el.innerHTML=h;el._h=h;}}
 function renderStepUI(){
   const st=STEPS[U.step];
   $$('.stepbtn').forEach((b,i)=>{b.classList.toggle('on',i===U.step);b.classList.toggle('done',i<U.step);});
@@ -3181,21 +3196,21 @@ function renderStepUI(){
   $('#btnNext').innerHTML=nx?`Next: ${nx.name} →`:(inAE?'Build in After Effects':'Export .jsx');
   $('#main').classList.toggle('noinsp',!st.insp);
   // toolbox
-  $('#toolbox').innerHTML=st.tools.map((t,i)=>(t==='hand'&&i?'<div class="sepH"></div>':'')+`<button data-tool="${t}" class="${U.tool===t?'on':''}" title="${TOOLS[t].name} (${TOOLS[t].key}) — ${TOOLS[t].desc}">${ICON[t]}<span>${TOOLS[t].key}</span></button>`).join('');
+  setHTML($('#toolbox'),st.tools.map((t,i)=>(t==='hand'&&i?'<div class="sepH"></div>':'')+`<button data-tool="${t}" class="${U.tool===t?'on':''}" title="${TOOLS[t].name} (${TOOLS[t].key}) — ${TOOLS[t].desc}">${ICON[t]}<span>${TOOLS[t].key}</span></button>`).join(''));
   const tp=$('#toolPill');
   if(tp){tp.className='toolpill'+(U.picking?' pick':'');tp.innerHTML=U.picking?`<span class="ic">◎</span>Picking end spot <span class="k">click a square</span>`:`<span class="ic">${ICON[U.tool]}</span>${TOOLS[U.tool].name} <span class="k">${TOOLS[U.tool].key}</span>`;}
   cv.className='t-'+U.tool+(U.space?' panning':'')+(U.drag&&(U.drag.type==='move'||U.drag.type==='pan')?' grabbing':'');
   // tool cards in layout pane
-  $('#toolcards').innerHTML=['select','stamp','draw','erase'].map(t=>`<button class="toolcard${U.tool===t?' on':''}" data-tool="${t}"><span class="ic">${ICON[t]}</span><span><div class="t">${TOOLS[t].name}</div><div class="d">${TOOLS[t].desc}</div></span><kbd>${TOOLS[t].key}</kbd></button>`).join('');
+  setHTML($('#toolcards'),['select','stamp','draw','erase'].map(t=>`<button class="toolcard${U.tool===t?' on':''}" data-tool="${t}"><span class="ic">${ICON[t]}</span><span><div class="t">${TOOLS[t].name}</div><div class="d">${TOOLS[t].desc}</div></span><kbd>${TOOLS[t].key}</kbd></button>`).join(''));
   $('#timeline').hidden=!(((st.id==='animate'||st.id==='lab'||st.id==='timing')&&D.anim.mode!=='static')||st.id==='transitions');
   $('#dope').hidden=st.id!=='timing'; if(st.id==='timing'){ drawDope(); renderPace(); if(!U._mediaUI){U._mediaUI=1;renderMedia();} const rt=$('#retimeTarget'); if(rt&&document.activeElement!==rt) rt.value=+(D.anim.lenF/(D.comp.fps||30)).toFixed(2); }
   $('#hint').textContent=st.id==='grid'?'Scroll to pan · ⌘/Ctrl + scroll or pinch to zoom':TOOLS[U.tool].desc;
 }
-document.addEventListener('click',e=>{const b=e.target.closest('[data-tool]');if(b)setTool(b.dataset.tool);});
+document.addEventListener('pointerdown',e=>{if(e.button)return;const b=e.target.closest&&e.target.closest('[data-tool]');if(b){e.preventDefault();setTool(b.dataset.tool);}});
 $('#btnBack').onclick=()=>goStep(U.step-1);
 $('#btnNext').onclick=()=>{if(U.step<STEPS.length-1)goStep(U.step+1);else build();};
 
-/* size picker (step 2) */
+/* size picker (Blocks step) */
 function buildPicker(){
   const p=$('#picker'); let h='';
   for(let r=0;r<4;r++)for(let c=0;c<8;c++)h+=`<i data-c="${c+1}" data-r="${r+1}"></i>`;
@@ -3217,7 +3232,7 @@ function renderBlockStep(G){
   const diff=D.blocks.filter(b=>b.w!==w||b.h!==h).length;
   const btn=$('#btnResizeAll'); btn.textContent=diff?`Resize ${diff} existing block${diff>1?'s':''} to ${w} × ${h}`:'All blocks are this size';
   btn.disabled=!diff;
-  $('#sizeTag').textContent=`${w}×${h} blocks · change in step 2`;
+  $('#sizeTag').textContent=`${w}×${h} blocks · size above`;
 }
 
 /* ------------------------------------------------------------------ context bar */
@@ -3235,8 +3250,8 @@ function updCtx(){
     h=`<span class="msg">Painting with <span style="display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;background:${D.block.color};border:1px solid rgba(255,255,255,.3)"></span> · Alt-click a block to pick up its colour</span>`;
   } else if(st==='grid'){
     const G=geom(); h=`<span class="msg"><b>${G.C}</b> columns × <b>${G.R}</b> rows · squares <b>${+G.s.toFixed(1)}px</b></span>`;
-  } else if(st==='blocks'){
-    h=`<span class="msg">Click to stamp a <b>${D.block.w} × ${D.block.h}</b> block</span>`;
+  } else if(st==='layout'&&U.tool==='stamp'&&!sel.length){
+    h=`<span class="msg">Click or drag to stamp <b>${D.block.w} × ${D.block.h}</b> blocks</span>${D.blocks.length?'<button class="btn ghost" data-act2="clearlayout">Clear layout</button>':''}`;
   } else if(U.tool==='order'){
     h=`<span class="msg">Click blocks in the order they should appear · next is <b>#${U.moNext}</b></span>`;
   } else if(sel.length&&st!=='animate'){
@@ -3248,7 +3263,7 @@ function updCtx(){
   } else { el.hidden=true; return; }
   el.hidden=false; el.className='ctxbar'+(quiet?' quiet':''); el.innerHTML=h;
 }
-$('#ctxbar').addEventListener('click',e=>{const b=e.target.closest('[data-act2]');if(!b)return;const a=b.dataset.act2;if(a==='merge')mergeSel();else if(a==='erase')eraseRect(normSel());else if(a==='cancelpick'){cancelPick();}else{U.sel=null;refresh();}});
+$('#ctxbar').addEventListener('click',e=>{const b=e.target.closest('[data-act2]');if(!b)return;const a=b.dataset.act2;if(a==='merge')mergeSel();else if(a==='erase')eraseRect(normSel());else if(a==='cancelpick'){cancelPick();}else if(a==='clearlayout'){clearLayout();}else{U.sel=null;refresh();}});
 
 /* ------------------------------------------------------------------ refresh */
 function fmtT(f,fps){const s=f/fps;return s<60?`${(+s.toFixed(2))}s`:`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;}
@@ -3284,7 +3299,7 @@ function refresh(){
 let raf=0, lastTs=0;
 function play(){
   if(D.anim.mode==='static') return toast('Pick an animation style first');
-  if(['animate','transitions','lab','timing'].indexOf(STEPS[U.step].id)<0) goStep(4);
+  if(['animate','transitions','lab','timing'].indexOf(STEPS[U.step].id)<0) goStep(SI('animate'));
   let P=plan(geom()); if(!P.seq.length&&!transOn()) return toast('Add some blocks first'); P={seq:P.seq,end:sceneEnd(geom())};
   if(U.t===null||U.t>=P.end) U.t=0;
   U.playing=true; lastTs=0; $('#icoPlay').innerHTML='<path d="M4 2.5h3v11H4zM9 2.5h3v11H9z"/>';
@@ -3354,6 +3369,13 @@ $('#zonePreset').addEventListener('click',e=>{const b=e.target.closest('[data-z]
 $('#endPreset').addEventListener('click',e=>{const b=e.target.closest('[data-ex]');if(!b)return;pushHist(true);D.anim.endX=+b.dataset.ex;syncInputs();refresh();});
 $('#btnResetAnim').onclick=()=>{pushHist(true);const keepZoom=D.anim.zoom;D.anim=clone(DEF.anim);U.t=null;syncInputs(true);refresh();toast('Animation settings reset','',true);};
 $('#btnResizeAll').onclick=resizeAll;
+function clearLayout(){
+  if(!D.blocks.length){toast('The layout is already empty');return;}
+  const n=D.blocks.length; pushHist(); D.blocks=[]; U.selIds=[]; U.sel=null; U.moNext=1;
+  if(STEPS[U.step].id==='layout') U.tool='stamp';
+  syncInputs(); refresh(); toast(`Cleared ${n} block${n===1?'':'s'}`,'',true);
+}
+$('#btnClearLayout').onclick=clearLayout;
 $('#btnGen').onclick=()=>generate(false);
 $('#btnShuffle').onclick=shuffle;
 $('#chkOrder').onchange=e=>{U.showOrder=e.target.checked;render();};
@@ -3394,8 +3416,8 @@ document.addEventListener('keydown',e=>{
   else if(k==='Escape'&&U.dopeSel!=null){U.dopeSel=null;drawDope();}
   else if(k==='Escape'){if(!$('#clearMenu').hidden){closeMenu();return;}if(U.picking){cancelPick();return;}U.sel=null;U.selIds=[];refresh();}
   else if(kl==='d'){duplicate();}
-  else if(kl==='g'){if(STEPS[U.step].id!=='layout')goStep(2);generate(false);}
-  else if(kl==='r'){if(STEPS[U.step].id!=='layout')goStep(2);shuffle();}
+  else if(kl==='g'){if(STEPS[U.step].id!=='layout')goStep(SI('layout'));generate(false);}
+  else if(kl==='r'){if(STEPS[U.step].id!=='layout')goStep(SI('layout'));shuffle();}
   else if(kl==='p'){U.playing?stopPlay():play();}
   else if(kl==='f'){fitView(e.shiftKey?'all':'comp');render();}
   else if(k==='+'||k==='='){zoomAt(1.25,V.cw/2,V.ch/2);}
@@ -3404,6 +3426,7 @@ document.addEventListener('keydown',e=>{
   else if(k.indexOf('Arrow')===0&&U.selIds.length){e.preventDefault();const s=e.shiftKey?D.block.w||1:1;nudge(k==='ArrowLeft'?-s:k==='ArrowRight'?s:0,k==='ArrowUp'?-1:k==='ArrowDown'?1:0);}
   else{const tool=Object.keys(TOOLS).find(x=>TOOLS[x].key.toLowerCase()===kl);if(tool)setTool(tool);}
 });
+window.addEventListener('blur',()=>{if(U.space){U.space=false;cv.classList.remove('panning');refresh();}});
 document.addEventListener('keyup',e=>{if(e.key===' '){
   const t=e.target, typing=t&&t.matches&&t.matches('input:not([type=checkbox]):not([type=color]):not([type=range]),textarea,select');
   const was=U.space; U.space=false; cv.classList.remove('panning');
@@ -4049,7 +4072,7 @@ function loadExample(){
   D=merge(clone(DEF),clone(EXAMPLE)); Object.assign(D.comp,keep);
   D.blocks=EXAMPLE.blocks.map(b=>normBlock(clone(b))); uid=D.blocks.reduce((m,b)=>Math.max(m,b.id),0)+1;
   U.selIds=[];U.sel=null;U.t=null;U.live=false;planCache.k='';fillCache.clear();
-  syncInputs(true);syncPalettes();renderFontUI();goStep(4);if(V.fit)fitView(V.fit);refresh();
+  syncInputs(true);syncPalettes();renderFontUI();goStep(SI('animate'));if(V.fit)fitView(V.fit);refresh();
   toast('Loaded the Avalanche HUD example','⌘Z to undo',true);
 }
 /* Essential / All controls */
@@ -4201,9 +4224,9 @@ function download(name,text,type){
 /* autosave (AE only — browser preview keeps nothing between sessions) */
 let asT=0;
 function autosave(){
-  if(!inAE){ if(inWeb){clearTimeout(asT);asT=setTimeout(()=>webSet('autosave',JSON.stringify({doc:D,step:U.step})),800);} return; }
+  if(!inAE){ if(inWeb){clearTimeout(asT);asT=setTimeout(()=>webSet('autosave',JSON.stringify({doc:D,step:U.step,stepId:STEPS[U.step].id})),800);} return; }
   clearTimeout(asT);
-  asT=setTimeout(()=>evalHost('GB_writeText("autosave.json",'+jsStr(JSON.stringify({doc:D,step:U.step}))+')'),1200);
+  asT=setTimeout(()=>evalHost('GB_writeText("autosave.json",'+jsStr(JSON.stringify({doc:D,step:U.step,stepId:STEPS[U.step].id}))+')'),1200);
 }
 
 /* ------------------------------------------------------------------ build payload */
@@ -4465,36 +4488,38 @@ async function init(){
   D.blocks=D.blocks.map(b=>normBlock(b)); uid=D.blocks.reduce((m,b)=>Math.max(m,b.id),0)+1;   // starter layout
   buildStepper(); buildPicker(); buildCurves(); addHelp(); addResets(); addCollapse(); setHelp(true); renderFontUI();
   $$('.field').forEach(f=>{if(f.querySelector('.seg'))f.classList.add('stack');});
+  // draw the panel straight away so it is usable even if After Effects is slow to answer
+  const paint=()=>{U.tool=STEPS[U.step].tool;syncPreset();syncInputs(true);syncPalettes();updUndo();resize();fitView('comp');refresh();};
+  if(window.ResizeObserver) new ResizeObserver(resize).observe(wrap); else window.addEventListener('resize',resize);
+  try{paint();}catch(e){if(window.__gbShowErr)window.__gbShowErr('first draw: '+(e&&(e.stack||e.message)||e));}
+  const soon=(p,ms,fb)=>Promise.race([Promise.resolve(p).catch(()=>fb),new Promise(r=>setTimeout(()=>r(fb),ms))]);
   if(inAE){
     $('#compTag').textContent='After Effects';
     $('#buildLabel').textContent='Build';
     registerKeys();
-    await evalHost(HOST);
-    await libLoad();
-    try{const pr=JSON.parse(await evalHost('GB_readText("prefs.json")')||'{}');if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.mb===false)U.mbPrev=false;if(pr.adv)setAdv(true);if(pr.subs){U.subs=pr.subs;applySubs();}if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
+    await soon(evalHost(HOST),15000,'');
+    await soon(libLoad(),5000);
+    try{const pr=JSON.parse(await soon(evalHost('GB_readText("prefs.json")'),5000,'')||'{}');if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.mb===false)U.mbPrev=false;if(pr.adv)setAdv(true);if(pr.subs){U.subs=pr.subs;applySubs();}if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
     try{
-      const s=await evalHost('GB_readText("autosave.json")');
-      if(s){const o=JSON.parse(s);if(o&&o.doc){setDoc(o.doc);U.step=clamp(o.step|0,0,STEPS.length-1);U.tool=STEPS[U.step].tool;}}
+      const s=await soon(evalHost('GB_readText("autosave.json")'),5000,'');
+      if(s){const o=JSON.parse(s);if(o&&o.doc){setDoc(o.doc);U.step=savedStep(o);U.tool=STEPS[U.step].tool;}}
     }catch(e){}
-    await detect();
-    loadFonts();
+    await soon(detect(),5000);
+    try{loadFonts();}catch(e){}
     setInterval(()=>{if(D.comp.follow&&!document.hidden&&!U.playing)detect();},1500);
   } else {
     $('#buildLabel').textContent='Export .jsx';
     $('#followRow').hidden=true;
     $('#compTag').textContent='browser preview';
     if(inWeb){
-      await libLoad();
-      try{const o=JSON.parse(webGet('autosave')||'null');if(o&&o.doc){setDoc(o.doc);U.step=clamp(o.step|0,0,STEPS.length-1);}}catch(e){}
+      await soon(libLoad(),5000);
+      try{const o=JSON.parse(webGet('autosave')||'null');if(o&&o.doc){setDoc(o.doc);U.step=savedStep(o);}}catch(e){}
       try{const pr=JSON.parse(webGet('prefs')||'{}');if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.mb===false)U.mbPrev=false;if(pr.adv)setAdv(true);if(pr.subs){U.subs=pr.subs;applySubs();}if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
       const dl=$('#btnPanel'); if(dl) dl.hidden=false;
     }
     $('#compNote').textContent='In the browser, pick a size here. Inside After Effects the panel reads your comp automatically.';
   }
-  U.tool=STEPS[U.step].tool;
-  syncPreset(); syncInputs(true); syncPalettes(); updUndo();
-  if(window.ResizeObserver) new ResizeObserver(resize).observe(wrap); else window.addEventListener('resize',resize);
-  resize(); fitView('comp'); refresh();
+  paint();
   // redraw once web fonts (Aeonik Fono) have loaded so text measures correctly
   try{if(document.fonts&&document.fonts.load){Promise.all([document.fonts.load("400 14px 'Aeonik Fono'"),document.fonts.load("900 14px 'Aeonik'")]).then(()=>{fontCW={};fillCache.clear();refresh();});}}catch(e){}
   if(!inAE) checkBrandFonts(); else renderFontStatus();
