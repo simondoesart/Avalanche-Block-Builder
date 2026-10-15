@@ -221,3 +221,6 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 
 ### v3.12
 - Pairs (two blocks in one column) are only kept when the extra block touches the block before or after it in the line, at a side or a corner — no more floating blocks with a gap above/below.
+
+### v3.13
+- Pair gap now defaults to the block's own height (3×2 pairs leave a 2-row gap, 3×1 a 1-row gap). "Pair gap" is an advanced setting (All controls) — leave it empty for auto, or type a number of rows. Older layouts with the old default of 1 switch to auto.
