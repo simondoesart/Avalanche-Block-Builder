@@ -110,14 +110,14 @@ main{display:grid;grid-template-columns:68px minmax(0,1fr) 336px;grid-template-a
 .tlsplit{cursor:ns-resize;background:var(--panel);border-top:1px solid var(--line);border-bottom:1px solid var(--line);position:relative}
 .tlsplit:after{content:'';position:absolute;left:50%;top:2px;width:36px;height:2px;margin-left:-18px;border-radius:2px;background:var(--line2)}
 .tlsplit:hover:after,.tlsplit.drag:after{background:var(--accent2)}
-.tl{display:grid;grid-template-rows:38px minmax(0,1fr);min-height:0;background:#121214}
+.tlpanel{display:grid;grid-template-rows:38px minmax(0,1fr);min-height:0;background:#121214}
 .tlbar{display:flex;align-items:center;gap:6px;padding:0 8px;border-bottom:1px solid var(--line);background:var(--panel);min-width:0;overflow:hidden}
 .tlbar .tc{font-variant-numeric:tabular-nums;color:var(--text);min-width:92px;font-weight:600;font-size:11.5px}
 .tlbar .tlf{grid-template-columns:auto 74px;gap:5px}
 .tlbar .tlf .num{height:26px}
 .tlbar .check{align-items:center;white-space:nowrap;font-size:11px}
 .tlbar .btn{height:26px}
-.viewbadge{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);padding:5px 11px;border-radius:999px;background:rgba(27,27,30,.92);border:1px solid var(--line2);color:var(--muted);font-size:11px;white-space:nowrap;pointer-events:none}
+.viewbadge{position:absolute;left:50%;top:52px;transform:translateX(-50%);padding:5px 11px;border-radius:999px;background:rgba(27,27,30,.92);border:1px solid var(--line2);color:var(--muted);font-size:11px;white-space:nowrap;pointer-events:none}
 .viewbadge b{color:var(--text)}
 .viewbadge:empty{display:none}
 .ph-row{display:flex;align-items:center;gap:6px;min-height:22px}
@@ -528,7 +528,7 @@ body.nohelp .qm{display:none}
         </div>
       </div>
       <div class="tlsplit" id="tlSplit" title="Drag to resize the timeline"></div>
-      <section class="tl" id="tl">
+      <section class="tlpanel" id="tl">
         <div class="tlbar">
           <button class="btn icon" id="btnPlay" title="Play / pause (Space)"><svg id="icoPlay" width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg></button>
           <button class="btn icon ghost" id="btnToStart" title="Go to the start (Home)"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2.5h2v11H3zM14 2.5v11L6 8z"/></svg></button>
