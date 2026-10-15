@@ -227,3 +227,6 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 
 ### v3.14
 - **Last block settles** (Blocks › How many, camera styles): the camera carries the line on until the last block of the build sits at the centre (or left/right of centre), instead of stopping the moment it reaches the reveal line. The last block now appears on the beat, inside the frame, rather than popping in late at the right edge. "At the reveal line" gives the old behaviour.
+
+### v3.15
+- Ending "On a chosen row": when blocks are dropped (removed on the timeline, or cut with the yellow end handle), the whole line slides up or down so its new last block still lands on that row. Blocks pushed past the top/bottom are cropped by the frame. Making the line editable keeps it where it's drawn.
