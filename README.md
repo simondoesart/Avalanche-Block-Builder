@@ -198,3 +198,8 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.6 — Camera moves with the blocks
 - Camera "With the blocks" (default): steady on the blocks' clock while the line builds or walks, still while it holds, with a short ease at each start/stop (Smooth starts, frames). All speed changes across the scene now come from the Scene curve — the curve *is* the camera's speed control.
 - The Camera row labels what it's doing: waits for the line · moves with the build · holds · moves with the walk.
+
+### v3.7 (UX workshop mode)
+- Only the **Setup** step is shown while we go through the steps one by one (`VISIBLE_STEPS` in src/3_app.js). Add `?steps=all` to the URL, or set localStorage `gridblocks.steps` = `all`, to see every step.
+- Blocks step: the canvas always shows every generated block (no camera), wherever the playhead is — except while playing. Stamping shows where the block will land.
+- Generate always picks a new seed.
