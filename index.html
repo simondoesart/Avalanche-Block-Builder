@@ -2343,6 +2343,11 @@ const U={step:0,ctx:null,ctab:'hud',dopeSel:[],mbPrev:true,tool:'select',sel:nul
   compLive:false,aeName:'',moNext:1,showOrder:true,editing:null,space:false,drag:null,lib:[],help:true,loop:true,picking:false,fonts:null};
 
 const SI=id=>STEPS.findIndex(s=>s.id===id);
+/* steps shown while we workshop the UX one step at a time — add ids to bring a step back.
+   ?steps=all in the URL (or localStorage gridblocks.steps='all') shows everything */
+const VISIBLE_STEPS=['grid'];
+const stepVisible=i=>{try{if(/[?&]steps=all/.test(location.search||'')||localStorage.getItem('gridblocks.steps')==='all')return true;}catch(e){} return !!STEPS[i]&&VISIBLE_STEPS.indexOf(STEPS[i].id)>=0;};
+const nextVisible=(i,d)=>{for(let j=i+d;j>=0&&j<STEPS.length;j+=d) if(stepVisible(j)) return j; return -1;};
 const STEPS=[
   {id:'grid',name:'Setup',title:'Comp, grid & look',desc:'Rows always fit the comp height. Squares can run off the sides.',tools:['hand'],tool:'hand',insp:false},
   {id:'layout',name:'Blocks',title:'Generate the line',desc:'Pick a block size and generate a walking line from a seed. Then drag any block on the canvas, or retime it on the timeline.',tools:['select','stamp','draw','erase','paint','hand'],tool:'select',insp:true},
@@ -4914,11 +4919,12 @@ function exitTimes(P,G,seq,done){
   return out;
 }
 function animOn(){return D.anim.mode!=='static'||transOn();}
-function animActive(){return animOn()&&U.t!==null;}
+function animActive(){return animOn()&&U.t!==null&&!(STEPS[U.step].id==='layout'&&!U.playing);}
 /* current preview state: null (editing), ghost (animate step, layout view), or live (scrubbing/playing) */
 function animState(G){
   if(!animOn()) return null;
   const P=plan(G);
+  if(STEPS[U.step].id==='layout'&&!U.playing) return {P,live:false,t:0,off:[0,0],s:1,pan:[0,0]};   // Blocks step: see every block, wherever the playhead is
   if(U.t===null) return {P,live:false,t:0,off:[0,0],s:1,pan:[0,0]};
   return {P,live:true,t:U.t,off:ev(P.cam,U.t,[0,0]),s:ev(P.zs,U.t,100)/100,pan:ev(P.pan,U.t,[0,0])};
 }
@@ -5839,7 +5845,7 @@ $('#preset').addEventListener('change',e=>{const v=e.target.value;if(v==='custom
 
 /* ------------------------------------------------------------------ steps & tools */
 function buildStepper(){
-  $('#rail').innerHTML=STEPS.map((st,i)=>(st.id==='lab'?'<div class="railsep"></div>':'')+`<button class="railbtn" data-step="${i}" title="${st.name} — ${st.title}">${RAIL_ICON[st.id]||''}<span>${st.name}</span></button>`).join('');
+  $('#rail').innerHTML=STEPS.map((st,i)=>!stepVisible(i)?'':(st.id==='lab'?'<div class="railsep"></div>':'')+`<button class="railbtn" data-step="${i}" title="${st.name} — ${st.title}">${RAIL_ICON[st.id]||''}<span>${st.name}</span></button>`).join('');
   $('#rail').addEventListener('click',e=>{const b=e.target.closest('[data-step]');if(!b)return;U.ctx=null;U.dopeSel=[];U.selIds=[];U.sel=null;goStep(+b.dataset.step);refresh();});
 }
 /* contexts: a timeline row's settings in the properties panel */
@@ -5869,6 +5875,7 @@ document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest
 function savedStep(o){if(o.stepId&&SI(o.stepId)>=0)return SI(o.stepId);const i=o.step|0;return clamp(i>=2?i-1:i,0,STEPS.length-1);}
 function goStep(i){
   i=clamp(i,0,STEPS.length-1);
+  if(!stepVisible(i)){ const j=nextVisible(i,i>U.step?1:-1); i=j>=0?j:U.step; }
   if(i===U.step){refresh();return;}
   stopPlay();
   U.step=i; const st=STEPS[i];
@@ -5892,8 +5899,8 @@ function renderStepUI(){
   $$('.railbtn').forEach((b,i)=>{b.classList.toggle('on',i===U.step);});
   $$('.pane').forEach(p=>p.classList.toggle('on',p.dataset.pane===st.id));
   renderProps();
-  $('#btnBack').disabled=U.step===0;
-  const nx=STEPS[U.step+1];
+  $('#btnBack').disabled=nextVisible(U.step,-1)<0;
+  const nxI=nextVisible(U.step,1), nx=nxI>=0?STEPS[nxI]:null; $('#btnNext').hidden=!nx&&!(STEPS[U.step].id==='build');
   $('#btnNext').innerHTML=nx?`Next: ${nx.name} →`:(inAE?'Build in After Effects':'Export .jsx');
   setHTML($('#toolbox'),st.tools.map((t,i)=>(t==='hand'&&i?'<div class="sepH"></div>':'')+`<button data-tool="${t}" class="${U.tool===t?'on':''}" title="${TOOLS[t].name} (${TOOLS[t].key}) — ${TOOLS[t].desc}">${ICON[t]}<span>${TOOLS[t].key}</span></button>`).join(''));
   const tp=$('#toolPill');
@@ -5906,11 +5913,12 @@ function renderStepUI(){
 }
 /* the little badge under the canvas: which frame you're looking at */
 function updViewBadge(){const el=$('#viewBadge'); if(!el) return; const fps=D.comp.fps||30;
+  if(STEPS[U.step].id==='layout'&&!U.playing&&animOn()){el.innerHTML='<b>All blocks</b> · Space to preview';return;}
   if(D.anim.mode==='static'&&!transOn()){el.innerHTML='';return;}
   el.innerHTML=U.t==null?'<b>Layout view</b> · Space to preview':`<b>f${Math.round(U.t)}</b> · ${(U.t/fps).toFixed(2)}s · Esc = layout view`;}
 document.addEventListener('pointerdown',e=>{if(e.button)return;const b=e.target.closest&&e.target.closest('[data-tool]');if(b){e.preventDefault();setTool(b.dataset.tool);}});
-$('#btnBack').onclick=()=>goStep(U.step-1);
-$('#btnNext').onclick=()=>{if(U.step<STEPS.length-1)goStep(U.step+1);else build();};
+$('#btnBack').onclick=()=>{const j=nextVisible(U.step,-1);if(j>=0){U.ctx=null;goStep(j);refresh();}};
+$('#btnNext').onclick=()=>{const j=nextVisible(U.step,1);if(j>=0){U.ctx=null;goStep(j);refresh();}else build();};
 
 /* size picker (Blocks step) */
 function buildPicker(){
@@ -6035,7 +6043,7 @@ $('#btnSound').onclick=()=>setCtx('sound');
 $('#btnRetimeMenu').onclick=e=>{e.stopPropagation();const m=$('#retimeMenu');if(!m.hidden){m.hidden=true;return;}m.hidden=false;const r=e.currentTarget.getBoundingClientRect();m.style.left=Math.max(8,Math.min(innerWidth-m.offsetWidth-8,r.left))+'px';m.style.top=Math.max(8,r.top-m.offsetHeight-6)+'px';};
 document.addEventListener('pointerdown',e=>{const m=$('#retimeMenu');if(m&&!m.hidden&&!(e.target.closest&&(e.target.closest('#retimeMenu')||e.target.closest('#btnRetimeMenu'))))m.hidden=true;});
 $('#mRetimeMore').onclick=()=>{$('#retimeMenu').hidden=true;setCtx('scene');};
-$('#btnGenLine').onclick=()=>generateLine(false);
+$('#btnGenLine').onclick=()=>generateLine(true);
 /* Generate panel status: live generated line vs hand-edited */
 function renderGenStatus(G){
   const el=$('#genStatus'); if(!el) return; const P=plan(G), fps=D.comp.fps||30, n=P.walkFrom!=null?P.walkFrom:P.seq.length;
@@ -6187,7 +6195,7 @@ document.addEventListener('keydown',e=>{
   else if(k==='Escape'){if(!$('#clearMenu').hidden){closeMenu();return;}if(U.picking){cancelPick();return;}closeTlMenu();
     if(tsel.length||U.sel){U.sel=null;U.selIds=[];U.dopeSel=[];refresh();} else if(U.ctx){U.ctx=null;refresh();} else if(U.t!=null){stopPlay();U.t=null;refresh();}}
   else if(kl==='d'){duplicate();}
-  else if(kl==='g'){if(STEPS[U.step].id!=='layout'){U.ctx=null;goStep(SI('layout'));}generateLine(false);}
+  else if(kl==='g'){if(STEPS[U.step].id!=='layout'){U.ctx=null;goStep(SI('layout'));}generateLine(true);}
   else if(kl==='r'){if(STEPS[U.step].id!=='layout'){U.ctx=null;goStep(SI('layout'));}animSeed();}
   else if(kl==='p'){U.playing?stopPlay():play();}
   else if(kl==='f'){if(e.shiftKey){tlFit();}else{fitView('comp');render();}}
@@ -7267,7 +7275,8 @@ async function init(){
   buildStepper(); buildPicker(); buildCurves(); addHelp(); addResets(); addCollapse(); setHelp(true); renderFontUI();
   $$('.field').forEach(f=>{if(f.querySelector('.seg'))f.classList.add('stack');});
   // draw the panel straight away so it is usable even if After Effects is slow to answer
-  if(!D.blocks.length&&U.step===0) U.step=SI('layout');
+  if(!D.blocks.length&&U.step===0&&stepVisible(SI('layout'))) U.step=SI('layout');
+  if(!stepVisible(U.step)){ const j=nextVisible(-1,1); U.step=j>=0?j:0; }
   const paint=()=>{U.tool=STEPS[U.step].tool;syncPreset();syncInputs(true);syncPalettes();updUndo();resize();fitView('comp');refresh();};
   if(window.ResizeObserver) new ResizeObserver(resize).observe(wrap); else window.addEventListener('resize',resize);
   try{paint();}catch(e){if(window.__gbShowErr)window.__gbShowErr('first draw: '+(e&&(e.stack||e.message)||e));}
