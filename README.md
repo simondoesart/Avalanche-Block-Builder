@@ -224,3 +224,6 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 
 ### v3.13
 - Pair gap now defaults to the block's own height (3×2 pairs leave a 2-row gap, 3×1 a 1-row gap). "Pair gap" is an advanced setting (All controls) — leave it empty for auto, or type a number of rows. Older layouts with the old default of 1 switch to auto.
+
+### v3.14
+- **Last block settles** (Blocks › How many, camera styles): the camera carries the line on until the last block of the build sits at the centre (or left/right of centre), instead of stopping the moment it reaches the reveal line. The last block now appears on the beat, inside the frame, rather than popping in late at the right edge. "At the reveal line" gives the old behaviour.

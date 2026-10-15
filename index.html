@@ -684,6 +684,7 @@ body.nohelp .qm{display:none}
             
               <div class="readout" id="paceNote"></div>
               <div class="note">How long the build takes is the red <b>On</b> part of the Blocks row on the timeline — drag its end. The <b>Scene</b> row above fits the whole thing (On · Hold · Off) into the scene length.</div>
+              <div class="field stack" data-show="anim.ending=count&amp;anim.mode=camera|push"><span class="lbl" title="Where the camera leaves the last block of the build. The line keeps its rhythm and the last block lands inside the frame instead of popping in late at the edge">Last block settles</span><div class="seg" data-seg="anim.settleX"><button data-v="0" title="Stop as soon as the last block reaches the reveal line">At the reveal line</button><button data-v="40">Left of centre</button><button data-v="50">Centre</button><button data-v="60">Right of centre</button></div></div>
               <div class="field stack"><span class="lbl">Ending</span><div class="seg" data-seg="anim.ending"><button data-v="count">Wherever it lands</button><button data-v="spot">On a chosen row</button></div></div><div class="field" data-show="anim.ending=spot"><span class="lbl scrub">End row</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endRow" min="1" max="60" step="1"><button data-d="1">+</button></div></div><div class="target-chip" data-show="anim.ending=spot"><button class="btn" id="btnPickEnd">◎ Pick the row on the canvas</button><span class="note" id="endNote"></span></div><div class="note" data-show="anim.ending=spot">The end column comes from your grid rules and block count, so spacing never breaks. You choose the row.</div><div data-show="anim.ending=spot" style="display:grid;gap:9px">
                 <div class="field stack"><span class="lbl">Last block ends up</span><div class="seg" id="endPreset"><button data-ex="-25" title="Just past the left edge">Off left</button><button data-ex="20">Left</button><button data-ex="50">Centre</button><button data-ex="80">Right</button><button data-ex="125" title="Just past the right edge">Off right</button></div></div>
                 <div class="field2">
@@ -2289,7 +2290,7 @@ const DEF={
   rand:{pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
         wander:1,climb:0,stackPct:20,stackGap:0,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,tracking:0,leading:0,kern:'metrics',caps:'none'},
-  anim:{seed:0,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
+  anim:{seed:0,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,settleX:50,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.45,0,0.55,1],camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zoomOn:false,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
@@ -3755,6 +3756,9 @@ function computePlan(G){
           use.forEach(b=>{const r=cellRect(G,b.c,b.r,b.w,b.h),c=[r.x+r.w/2,r.y+r.h/2];if(!front||dirO*c[0]>dirO*front[0]+1e-6)front=c;});
           let ox=lineX-front[0], oy=A.axis==='xy'?(cy-front[1]):0;
           ox=dirO>0?Math.min(pvx,ox):Math.max(pvx,ox);      // only ever moves forward, never before the blocks reach the line
+          // the line finishes building: the camera carries on until the last block sits at the settle point (centre by
+          // default), so the last block pops in on rhythm inside the frame instead of late at the right-hand edge
+          if(g===usedB-1&&!fin&&(+A.settleX||0)>0){ const sl=G.W*clamp(+A.settleX,5,95)/100, sx=dirO>0?sl:G.W-sl, so=sx-front[0]; ox=dirO>0?Math.min(ox,so):Math.max(ox,so); }
           key.push([Tg[g],ox,oy]); pvx=ox; pvy=oy;
         }
         if(fin) key.push([endF,fin[0],fin[1]]);
@@ -3868,8 +3872,8 @@ function computePlan(G){
         // on its schedule if it's in the reveal zone then; otherwise the first frame the camera has it in the zone
         const inZ=t=>{const q=scrAt(t,px,py);return q[0]>=xl&&q[0]<=xr*1.015+2&&q[1]>=yt&&q[1]<=yb;};
         const lo=Math.max(startF,Math.round(prev)), sched=Math.max(lo,P.T[i]);
-        let t=sched;
-        if(!(sched<=tMax&&inZ(sched))){ let found=null; for(let k=lo;k<=tMax;k++){ if(inZ(k)){found=k;break;} } if(found!=null) t=found; }
+        let t=Math.max(lo,Math.min(sched,tMax));   // on its schedule (the build's last one right at the end), if it's in the zone then
+        if(!inZ(t)){ let found=null; for(let k=lo;k<=tMax;k++){ if(inZ(k)){found=k;break;} } if(found!=null) t=found; }
         t=Math.min(tMax,Math.max(t,prev)); P.T[i]=Math.round(t); prev=P.T[i];
       });
     } else
@@ -5759,7 +5763,7 @@ $$('[data-bind]',root).forEach(el=>{
 });
 $$('[data-seg]',root).forEach(seg=>{ if(seg._gbBound) return; seg._gbBound=true; seg.addEventListener('click',e=>{
   const b=e.target.closest('button[data-v]'); if(!b) return;
-  if(getP(seg.dataset.seg)===b.dataset.v) return;
+  if(String(getP(seg.dataset.seg))===b.dataset.v) return;
   pushHist(true); setP(seg.dataset.seg,b.dataset.v); onChange(seg.dataset.seg);
 });});
 }
@@ -5820,7 +5824,7 @@ function syncInputs(force){
     else if(el.dataset.zero!=null&&+v===0){ if(el.value!=='') el.value=''; el.placeholder=el.dataset.zero; }
     else if(el.value!==String(v)) el.value=v;
   });
-  $$('[data-seg]').forEach(seg=>{const v=getP(seg.dataset.seg);$$('[data-v]',seg).forEach(b=>b.classList.toggle('on',b.dataset.v===v));});
+  $$('[data-seg]').forEach(seg=>{const v=getP(seg.dataset.seg);$$('[data-v]',seg).forEach(b=>b.classList.toggle('on',b.dataset.v===String(v)));});
   $$('[data-swatch]').forEach(l=>l.style.background=getP(l.dataset.swatch));
   $$('[data-show]').forEach(el=>{
     el.hidden=!el.dataset.show.split('&').every(cond=>{const parts=cond.split('=');return parts[1].split('|').indexOf(String(getP(parts[0])))>=0;});
