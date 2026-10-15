@@ -203,3 +203,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - Only the **Setup** step is shown while we go through the steps one by one (`VISIBLE_STEPS` in src/3_app.js). Add `?steps=all` to the URL, or set localStorage `gridblocks.steps` = `all`, to see every step.
 - Blocks step: the canvas always shows every generated block (no camera), wherever the playhead is — except while playing. Stamping shows where the block will land.
 - Generate always picks a new seed.
+
+### v3.8
+- The grid is effectively infinite: no more Off-screen area setting. Blocks can sit anywhere; the canvas draws grid wherever you look (pan/zoom out to see more). "Show whole area" (⇧F on the canvas) frames 2× the frame, grown to fit every block.
+- The AE build only lays down grid as wide as the frame plus the blocks (or the camera's travel), not the infinite range.

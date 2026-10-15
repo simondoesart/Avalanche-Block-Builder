@@ -657,8 +657,9 @@ function geom(){
   let firstFull=0,lastFull=C-1;
   while(firstFull<C-1&&x0+firstFull*p<-0.01) firstFull++;
   while(lastFull>0&&x0+lastFull*p+s>W+0.01) lastFull--;
-  const ox=Math.max(0,Math.round(g.overX)||0), oy=Math.max(0,Math.round(g.overY)||0);
-  return {W,H,R,C,s,p,gut,m,x0,y0,gridW,gridH,firstFull,lastFull,cLo:-ox,cHi:C-1+ox,rLo:-oy,rHi:R-1+oy};
+  // the grid is effectively infinite: blocks can sit anywhere off frame (only what's on screen gets drawn)
+  const INF=20000;
+  return {W,H,R,C,s,p,gut,m,x0,y0,gridW,gridH,firstFull,lastFull,cLo:-INF,cHi:C-1+INF,rLo:-INF,rHi:R-1+INF};
 }
 const cellRect=(G,c,r,w,h)=>({x:G.x0+c*G.p,y:G.y0+r*G.p,w:(w||1)*G.p-G.gut,h:(h||1)*G.p-G.gut});
 const inRange=(G,c,r)=>c>=G.cLo&&c<=G.cHi&&r>=G.rLo&&r<=G.rHi;
@@ -2675,9 +2676,11 @@ function resize(){
   cv.width=Math.max(1,Math.round(r.width*dpr));cv.height=Math.max(1,Math.round(r.height*dpr));
   makeChecker(); if(V.fit) fitView(V.fit); render();
 }
+/* the 'whole area' view: the frame with half a frame all round (2× the frame), grown to fit every block */
 function extBounds(G){
-  const a=cellRect(G,G.cLo,G.rLo), b=cellRect(G,G.cHi,G.rHi);
-  let x0=Math.min(0,a.x),y0=Math.min(0,a.y),x1=Math.max(G.W,b.x+b.w),y1=Math.max(G.H,b.y+b.h);
+  let x0=-G.W/2,y0=-G.H/2,x1=G.W*1.5,y1=G.H*1.5;
+  let list=D.blocks.slice(); try{ if(D.anim.mode!=='static'&&planCache.v) list=list.concat(planCache.v.seq||[]); }catch(e){}
+  list.forEach(b=>{const q=cellRect(G,b.c,b.r,b.w,b.h);x0=Math.min(x0,q.x-G.p);y0=Math.min(y0,q.y-G.p);x1=Math.max(x1,q.x+q.w+G.p);y1=Math.max(y1,q.y+q.h+G.p);});
   return{x:x0,y:y0,w:x1-x0,h:y1-y0};
 }
 function fitView(kind){
@@ -2851,20 +2854,19 @@ function drawWorld(g,G,o){
   const s=live?A.s:1, off=live?A.off:[0,0], gridOff=camMode?off:[0,0];
   g.globalAlpha=o.alpha;
   const vb=viewBounds(), ext=extBounds(G);
-  const bgR=(live&&(camMode||s!==1))?vb:ext;
+  const bgR=vb;
   if(D.look.bgOn){g.fillStyle=D.look.bg;g.fillRect(bgR.x,bgR.y,bgR.w,bgR.h);}
   if(o.inside) drawMediaBg(g,G);
   else if(o.inside){g.save();g.fillStyle=checker||'#222';g.scale(1/sc,1/sc);g.fillRect(0,0,G.W*sc,G.H*sc);g.restore();}
   const pan=live?A.pan:[0,0];
   g.save(); zoomXf(g,G,s,pan);
   // which cells to draw
-  let c0=G.cLo,c1=G.cHi,r0=0,r1=G.R-1;
-  if(live&&(camMode||s<1)){
-    const lv={x:G.W/2+(vb.x-pan[0]-G.W/2)/s,y:G.H/2+(vb.y-pan[1]-G.H/2)/s,w:vb.w/s,h:vb.h/s};
+  // which cells to draw: whatever is in view (the grid goes on forever), coarser when zoomed far out
+  let c0,c1,r0,r1;
+  { const lv=live?{x:G.W/2+(vb.x-pan[0]-G.W/2)/s,y:G.H/2+(vb.y-pan[1]-G.H/2)/s,w:vb.w/s,h:vb.h/s}:vb;
     c0=Math.floor((lv.x-gridOff[0]-G.x0)/G.p)-1; c1=Math.ceil((lv.x+lv.w-gridOff[0]-G.x0)/G.p)+1;
-    if(s<1||(camMode&&D.anim.axis==='xy')){r0=Math.floor((lv.y-gridOff[1]-G.y0)/G.p)-1;r1=Math.ceil((lv.y+lv.h-gridOff[1]-G.y0)/G.p)+1;}
-    if((c1-c0)*(r1-r0)>60000){c1=c0+Math.min(c1-c0,600);r1=r0+Math.min(r1-r0,100);}
-  }
+    r0=Math.floor((lv.y-gridOff[1]-G.y0)/G.p)-1; r1=Math.ceil((lv.y+lv.h-gridOff[1]-G.y0)/G.p)+1;
+    if((c1-c0)*(r1-r0)>60000){const k=Math.sqrt(60000/((c1-c0)*(r1-r0)));const cm=(c0+c1)/2,rm=(r0+r1)/2;c0=Math.floor(cm-(c1-c0)*k/2);c1=Math.ceil(cm+(c1-c0)*k/2);r0=Math.floor(rm-(r1-r0)*k/2);r1=Math.ceil(rm+(r1-r0)*k/2);} }
   g.save(); g.translate(gridOff[0],gridOff[1]);
   if(D.look.cellsMode!=='none'){
     g.fillStyle=D.look.cell;
@@ -4758,7 +4760,8 @@ function payload(){
   const CX=G.W/2, CY=G.H/2;
   const inside=a=>a[0]<G.W&&a[1]<G.H&&a[0]+a[2]>0&&a[1]+a[3]>0;
   const clip=a=>{const nx=Math.max(0,a[0]),ny=Math.max(0,a[1]);return[r3(nx),r3(ny),r3(Math.min(G.W,a[0]+a[2])-nx),r3(Math.min(G.H,a[1]+a[3])-ny)];};
-  let c0=Math.min(G.cLo,0), c1=Math.max(G.cHi,G.C-1), r0=0, r1=G.R-1;
+  let c0=0, c1=G.C-1, r0=0, r1=G.R-1;
+  (animOn?P.seq:D.blocks).forEach(b=>{c0=Math.min(c0,b.c-2);c1=Math.max(c1,b.c+b.w+1);});
   const free=camMode||zoomOn;
   if(free){
     const sMin=Math.min(1,P.sMin||1), hw=G.W/2/sMin+2*G.p, hh=G.H/2/sMin+2*G.p;
