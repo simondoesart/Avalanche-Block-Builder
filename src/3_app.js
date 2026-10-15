@@ -3913,11 +3913,12 @@ $('#btnResetAnim').onclick=()=>{pushHist(true);const keepZoom=D.anim.zoom;D.anim
 $('#btnResizeAll').onclick=resizeAll;
 function clearLayout(){
   if(!D.blocks.length){toast('The layout is already empty');return;}
-  const n=D.blocks.length; pushHist(); D.blocks=[]; U.selIds=[]; U.sel=null; U.moNext=1;
+  const n=Math.max(D.blocks.length,(plan(geom()).seq||[]).length); pushHist(); D.blocks=[]; U.selIds=[]; U.sel=null; U.moNext=1;
   if(STEPS[U.step].id==='layout') U.tool='stamp';
   syncInputs(); refresh(); toast(`Cleared ${n} block${n===1?'':'s'}`,'',true);
 }
 $('#btnClearLayout').onclick=clearLayout;
+$('#btnGenClear').onclick=()=>{if(!D.blocks.length)return toast('No blocks to clear');D.anim.dt={};D.anim.dx={};D.anim.skip=[];D.anim.cutAt=null;clearLayout();};
 $('#btnGen').onclick=()=>generate(false);
 $('#btnShuffle').onclick=shuffle;
 $('#chkOrder').onchange=e=>{U.showOrder=e.target.checked;render();};
