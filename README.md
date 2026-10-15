@@ -194,3 +194,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - Scene row is taller; the remap curve can't go backwards or overshoot (points stay between their neighbours, handles can't push past the next point).
 - Markers on the curve show when **On is done** and when **Off starts** in scene time.
 - Right-click the Scene row: Linear · Ease in-out · **Ease each phase** (a point at each phase boundary, easing through each).
+
+### v3.6 — Camera moves with the blocks
+- Camera "With the blocks" (default): steady on the blocks' clock while the line builds or walks, still while it holds, with a short ease at each start/stop (Smooth starts, frames). All speed changes across the scene now come from the Scene curve — the curve *is* the camera's speed control.
+- The Camera row labels what it's doing: waits for the line · moves with the build · holds · moves with the walk.
