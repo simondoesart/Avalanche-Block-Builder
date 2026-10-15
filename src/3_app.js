@@ -2196,7 +2196,7 @@ function tlView(){
   if(TL.f0==null||TL.f1==null){ const NN=Math.max(N,TL.autoN||0); TL.autoN=NN; return {f0:lo-Math.max(2,NN*.01),f1:NN+Math.max(4,NN*.02)}; }
   return {f0:TL.f0,f1:TL.f1};
 }
-function tlFit(){TL.f0=TL.f1=null;TL.autoN=0;drawDope();}
+function tlFit(){TL.f0=TL.f1=null;TL.autoN=0;drawDope();try{updTlZoom();}catch(e){}}
 const tlSelIds=()=>{const s=new Set((U.dopeSel||[]).concat(U.selIds||[]));return [...s];};
 function tlContentRows(){
   const r=[];
@@ -2536,7 +2536,7 @@ function initDope(){
     else if(e.shiftKey||Math.abs(e.deltaX)>Math.abs(e.deltaY)){ const d=(Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY)/Math.max(1,TL.W-TL.LW)*span; TL.f0=V0.f0+d; TL.f1=V0.f1+d; }
     else if(p.y>=TL.listY0){ TL.scrollY+=e.deltaY; }
     else { const d=e.deltaY/Math.max(1,TL.W-TL.LW)*span; TL.f0=V0.f0+d; TL.f1=V0.f1+d; }
-    drawDope();
+    drawDope(); updTlZoom();
   },{passive:false});
   // splitter: drag to resize the timeline
   const sp=$('#tlSplit'), ctr=document.querySelector('.center');
@@ -3425,6 +3425,7 @@ $('#insp').addEventListener('click',e=>{
 /* ------------------------------------------------------------------ bindings */
 function onChange(path){
   if(path==='comp.w'||path==='comp.h') syncPreset();
+  if(path==='comp.dur'||path==='comp.fps'){TL.autoN=0;TL.f0=TL.f1=null;}
   if(path==='comp.follow'&&D.comp.follow) detect();
   if(path.indexOf('grid.')===0||path.indexOf('comp.')===0){if(V.fit)fitView(V.fit);}
   if(path.indexOf('fill.')===0) fillCache.clear();
@@ -3542,7 +3543,8 @@ function syncInputs(force){
   $$('#endPreset [data-ex]').forEach(b=>b.classList.toggle('on',+b.dataset.ex===+D.anim.endX));
   $$('[data-layer]').forEach(el=>{const v=getP(el.dataset.layer);el.classList.toggle('off',!v||v==='none');});
   const lock=inAE&&D.comp.follow&&U.compLive;
-  $$('[data-bind="comp.w"],[data-bind="comp.h"],[data-bind="comp.fps"]').forEach(i=>i.disabled=lock);
+  $$('[data-bind="comp.w"],[data-bind="comp.h"],[data-bind="comp.fps"],[data-bind="comp.dur"]').forEach(i=>i.disabled=lock);
+  try{updTlZoom();}catch(e){}
   $('#preset').disabled=lock;
   $('#countUnit').textContent=D.rand.count>0?'':'auto';
   $('#rowUnit').textContent=D.rand.startRow>0?'':'random';
@@ -3733,6 +3735,17 @@ $('#scrub').addEventListener('input',e=>{tlSetT(+e.target.value);});
 $('#btnLayoutView').onclick=()=>{stopPlay();U.t=null;refresh();};
 $('#btnToStart').onclick=()=>{const P=plan(geom());tlSetT(Math.min(0,P.startF||0));};
 $('#tlFit').onclick=()=>tlFit();
+/* timeline zoom: a slider from "whole piece" (0) to ~1 second across (100), centred on the playhead */
+function tlFull(){const N=dopeRange();return {lo:Math.min(0,(plan(geom()).startF||0))-Math.max(2,N*.01),hi:N+Math.max(4,N*.02)};}
+function tlZoomTo(span,centre){const F=tlFull(), full=F.hi-F.lo, s=clamp(span,Math.max(8,(D.comp.fps||30)*.5),full); const V0=tlView();
+  const c=centre!=null?centre:(U.t!=null&&U.t>=V0.f0&&U.t<=V0.f1?U.t:(V0.f0+V0.f1)/2);
+  if(s>=full-1){tlFit();updTlZoom();return;} let f0=c-s/2; f0=clamp(f0,F.lo,F.hi-s); TL.f0=f0; TL.f1=f0+s; drawDope(); updTlZoom();}
+function updTlZoom(){const r=$('#tlZoomRange'); if(!r) return; const F=tlFull(), full=F.hi-F.lo, V0=tlView(), mn=Math.max(8,(D.comp.fps||30)*.5);
+  const k=Math.log(full/Math.max(mn,V0.f1-V0.f0))/Math.log(full/mn||2); if(document.activeElement!==r) r.value=Math.round(clamp(k,0,1)*100);
+  const lf=$('#tlLenF'); if(lf){const fps=D.comp.fps||30; lf.textContent=Math.round((D.comp.dur||0)*fps)+'f';}}
+$('#tlZoomRange').addEventListener('input',e=>{const F=tlFull(), full=F.hi-F.lo, mn=Math.max(8,(D.comp.fps||30)*.5); tlZoomTo(full*Math.pow(mn/full,(+e.target.value)/100));});
+$('#tlZoomIn').onclick=()=>{const V0=tlView();tlZoomTo((V0.f1-V0.f0)/1.5);};
+$('#tlZoomOut').onclick=()=>{const V0=tlView();tlZoomTo((V0.f1-V0.f0)*1.5);};
 $('#btnEase').onclick=()=>openCurveEditor('anim.sceneCurve',0,1,'Scene easing · re-times the whole scene');
 $('#btnSound').onclick=()=>setCtx('sound');
 $('#btnRetimeMenu').onclick=e=>{e.stopPropagation();const m=$('#retimeMenu');if(!m.hidden){m.hidden=true;return;}m.hidden=false;const r=e.currentTarget.getBoundingClientRect();m.style.left=Math.max(8,Math.min(innerWidth-m.offsetWidth-8,r.left))+'px';m.style.top=Math.max(8,r.top-m.offsetHeight-6)+'px';};

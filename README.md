@@ -186,3 +186,6 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.3
 - The Blocks row (On · Hold · Off), camera, content and block rows are drawn on the blocks' own clock, so changing the scene length or curve never changes their widths or proportions. The Scene row and Transitions sit on scene time above them.
 - The playhead shows both: scene time at the top, and a dashed line where that lands on the blocks' clock underneath.
+
+### v3.4
+- Timeline toolbar: zoom out / zoom slider / zoom in / fit (⌘-scroll still zooms), and **Length** — the comp length in seconds, with the frame count next to it.
