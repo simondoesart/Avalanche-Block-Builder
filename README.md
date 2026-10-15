@@ -182,3 +182,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - The **Scene** row is a layer on top, like time remapping a precomp: its length is the scene length (empty = the blocks play at their own speed) and its curve maps scene time onto the block timeline — flat = hold, steep = fast. Everything is re-timed through it: reveals, exits, camera, grid changes, content start/end, Lab. Transitions stay on real time.
 - Per-block timing offsets are on the blocks' own clock.
 - Known gap: sound/marker sync snaps on the blocks' clock, so with a non-linear scene curve the snapped reveals won't sit exactly on the beats.
+
+### v3.3
+- The Blocks row (On · Hold · Off), camera, content and block rows are drawn on the blocks' own clock, so changing the scene length or curve never changes their widths or proportions. The Scene row and Transitions sit on scene time above them.
+- The playhead shows both: scene time at the top, and a dashed line where that lands on the blocks' clock underneath.

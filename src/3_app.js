@@ -1226,12 +1226,17 @@ let DENSE_CAM=false;
 const isLinearCurve=c=>{c=c||[0,0,1,1];return !isPts(c)&&Math.abs(+c[0]-+c[1])<1e-6&&Math.abs(+c[2]-+c[3])<1e-6;};
 function remapActive(){return D.anim.mode!=='static'&&(!isLinearCurve(D.anim.sceneCurve)||+D.anim.remapLen>0);}
 function remappedPlan(G){
-  const A=D.anim, ident=P=>{const tail=Math.max(0,Math.round(A.tail)||0);P.toReal=P.toContent=t=>t;P.C=P.R=Math.max(1,(P.end||0)-tail-(P.startF||0));P.cEnd=(P.startF||0)+P.C;return P;};
+  const A=D.anim, ident=P=>{const tail=Math.max(0,Math.round(A.tail)||0);P.toReal=P.toContent=t=>t;P.C=P.R=Math.max(1,(P.end||0)-tail-(P.startF||0));P.cEnd=(P.startF||0)+P.C;P.c=P;return P;};
   if(!remapActive()) return ident(computePlan(G));
   const curve=A.sceneCurve; let P;
   A.sceneCurve=[0,0,1,1]; DENSE_CAM=true;
   try{ P=computePlan(G); } finally { A.sceneCurve=curve; DENSE_CAM=false; }
   if(!P.seq.length) return ident(P);
+  // keep the blocks' own timing (for the timeline rows under the Scene layer), then re-time the plan
+  P.c={startF:P.startF,L:P.L,T:P.T.slice(),T0:P.T0?P.T0.slice():null,done:P.done?P.done.slice():null,exitT:P.exitT?P.exitT.slice():null,
+    onEnd:P.onEnd,holdT:P.holdT,walkT:P.walkT,walkEnd:P.walkEnd,relT:P.relT,end:P.end,cam:P.cam,cutAt:P.cutAt,cutN:P.cutN,
+    fillBase:Object.assign({},P.fillBase||{}),fillEnd:Object.assign({},P.fillEnd||{}),gaps:(P.gaps||[]).map(it=>({t0:it.t0,tEnd:it.tEnd})),
+    echo:(P.echo||[]).map(e=>({K:{op:e.K.op}}))};
   remapPlan(P,curve); return P;
 }
 function remapPlan(P,curve){
@@ -2184,7 +2189,7 @@ function renderPace(){
 const TL={f0:null,f1:null,scrollY:0,blocksOpen:true,drag:null,hover:null,LW:150,items:[],rows:[],frozen:null};
 const DOPE=TL;   // older name, still used by a few helpers
 const BLOCK_RH=13, ROWS={ruler:22,sound:30,scene:56,phases:24,camera:30,trans:26,content:20,blocks:24};
-function dopeRange(){const G=geom(),fps=D.comp.fps||30;return Math.max(sceneEnd(G),Math.round((D.comp.dur||10)*fps),D.timing&&D.timing.media?Math.round(D.timing.media.dur*fps):0,10);}
+function dopeRange(){const G=geom(),fps=D.comp.fps||30,Pq=plan(G);return Math.max(sceneEnd(G),Pq.c&&Pq.c.end?Pq.c.end:0,Math.round((D.comp.dur||10)*fps),D.timing&&D.timing.media?Math.round(D.timing.media.dur*fps):0,10);}
 function tlView(){
   if(TL.frozen) return TL.frozen;
   const N=dopeRange(), P=plan(geom()), lo=Math.min(0,P.startF||0,D.trans&&D.trans.in&&D.trans.in.on?+D.trans.in.start||0:0);
@@ -2206,7 +2211,7 @@ function drawDope(){
   const c=$('#dopeCv'); if(!c) return; const r=c.getBoundingClientRect(); if(!r.width||!r.height) return;
   const dpr=window.devicePixelRatio||1; if(c.width!==Math.round(r.width*dpr)||c.height!==Math.round(r.height*dpr)){c.width=Math.round(r.width*dpr);c.height=Math.round(r.height*dpr);}
   const g=c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,r.width,r.height);
-  const G=geom(), P=plan(G), fps=D.comp.fps||30, N=dopeRange(), LW=TL.LW, Wt=Math.max(40,r.width-LW-8), V0=tlView();
+  const G=geom(), P=plan(G), Pc=P.c||P, fps=D.comp.fps||30, N=dopeRange(), LW=TL.LW, Wt=Math.max(40,r.width-LW-8), V0=tlView();
   const X=f=>LW+(f-V0.f0)/(V0.f1-V0.f0)*Wt, F=x=>V0.f0+(x-LW)/Wt*(V0.f1-V0.f0);
   TL.X=X; TL.F=F; TL.N=N; TL.P=P; TL.items=[]; TL.rows=[]; TL.W=r.width; TL.H=r.height;
   const item=o=>TL.items.push(o);
@@ -2216,9 +2221,10 @@ function drawDope(){
   row('ruler',ROWS.ruler);
   if(media) row('sound',ROWS.sound,{name:'Sound',ctx:'sound'});
   row('scene',ROWS.scene,{name:'Scene · time remap',ctx:'scene'});
+  row('trans',ROWS.trans,{name:'Transitions',ctx:'trans'});
+  TL.contentY0=y;
   if(anim) row('phases',ROWS.phases,{name:'Blocks · on hold off',ctx:'inout'});
   if(camOn) row('camera',ROWS.camera,{name:'Camera',ctx:'camera'});
-  row('trans',ROWS.trans,{name:'Transitions',ctx:'trans'});
   tlContentRows().forEach(cr=>row('content',ROWS.content,{name:cr.name,tab:cr.tab,ck:cr.k}));
   const hdr=row('blocks',ROWS.blocks,{name:'Blocks',stage:'layout'});
   const top=y, bottom=r.height, n=P.seq.length, listH=TL.blocksOpen?n*BLOCK_RH+6:0;
@@ -2259,7 +2265,7 @@ function drawDope(){
     const sf=curveFn(D.anim.sceneCurve||[0,0,1,1]);
     // phase boundaries projected onto the curve (where ON ends, where OFF starts)
     if(P.C>0){ const tick=(c,col)=>{const v=clamp((c-P.startF)/P.C,0,1); g.strokeStyle=col; g.setLineDash([3,3]); g.lineWidth=1; g.beginPath(); g.moveTo(cxp(0),cyp(v)); g.lineTo(cxp(1),cyp(v)); g.stroke(); g.setLineDash([]);};
-      const cOn=P.toContent(P.onEnd!=null?P.onEnd:s1), cHold=P.walkT!=null?P.toContent(P.walkT):null;
+      const cOn=Pc.onEnd!=null?Pc.onEnd:P.startF+P.C, cHold=Pc.walkT!=null?Pc.walkT:null;
       tick(cOn,'rgba(230,33,47,.35)'); if(cHold!=null) tick(cHold,'rgba(116,157,211,.45)'); }
     g.strokeStyle='rgba(255,255,255,.9)'; g.lineWidth=1.6; g.beginPath(); for(let k=0;k<=80;k++){const u=k/80,xx=cxp(u),yy=cyp(clamp(sf(u),-.2,1.2));k?g.lineTo(xx,yy):g.moveTo(xx,yy);} g.stroke();
     if(X(s1)-X(s0)>50){
@@ -2292,31 +2298,31 @@ function drawDope(){
     const C0=P.C; H(s1,RSc,'ew-resize',f=>{const r=Math.max(2,Math.round(f-D.anim.startF)); D.anim.remapLen=Math.abs(r-C0)<=1?0:r;},'scene length — squeezes or stretches the whole block timeline into it');
     // ---- the blocks' own timeline, three phases: ON · HOLD · OFF (shown where they land in the scene)
     if(RPh){ const X2=D.exit, yp=RPh.y0+4, hp=RPh.h-8, cs=P.startF;
-      const onEnd=P.onEnd!=null?P.onEnd:s1, WOn=X2.on&&X2.mode==='walk'&&P.walkT!=null;
+      const onEnd=Pc.onEnd!=null?Pc.onEnd:s1, WOn=X2.on&&X2.mode==='walk'&&Pc.walkT!=null;
       let holdEnd=null, offEnd=null;
-      if(WOn){ holdEnd=P.walkT; offEnd=Math.max(P.walkT+1,(P.walkEnd||P.end)); }
-      else if(X2.on&&P.exitT&&P.exitT.some(v=>v!=null)){ const ex=P.exitT.filter(v=>v!=null); holdEnd=Math.max(onEnd,Math.min(...ex)); offEnd=Math.max(holdEnd+1,Math.max(...ex)+(+X2.len||8)); }
+      if(WOn){ holdEnd=Pc.walkT; offEnd=Math.max(Pc.walkT+1,(Pc.walkEnd||Pc.end)); }
+      else if(X2.on&&Pc.exitT&&Pc.exitT.some(v=>v!=null)){ const ex=Pc.exitT.filter(v=>v!=null); holdEnd=Math.max(onEnd,Math.min(...ex)); offEnd=Math.max(holdEnd+1,Math.max(...ex)+(+X2.len||8)); }
       const seg=(f0,f1,col,txt,tcol)=>{if(f1==null||f1<=f0)return;g.fillStyle=col;g.fillRect(X(f0),yp,X(f1)-X(f0),hp);g.fillStyle='rgba(0,0,0,.35)';g.fillRect(X(f1)-1,yp,1,hp);if(X(f1)-X(f0)>30){g.font='600 10px sans-serif';label(txt,X(f0)+5,yp+hp/2,tcol||'#fff');}};
       seg(cs,onEnd,'rgba(230,33,47,.55)','On');
       if(holdEnd!=null){ seg(onEnd,holdEnd,'rgba(236,236,239,.16)','Hold','#ececef'); seg(holdEnd,offEnd,'rgba(116,157,211,.5)',WOn?'Off · walks off':'Off'); }
-      else seg(onEnd,Math.max(onEnd+1,P.end),'rgba(236,236,239,.08)','Stays','#a2a2ab');
+      else seg(onEnd,Math.max(onEnd+1,Pc.end),'rgba(236,236,239,.08)','Stays','#a2a2ab');
       // handles work on the blocks' own clock (converted from the scene time under the pointer)
-      const Lc=D.anim.lenF, onC=P.toContent(onEnd);
-      knob(onEnd,RPh.y0,RPh.h,'#E6212F'); H(onEnd,RPh,'ew-resize',f=>{D.anim.lenF=Math.max(2,Math.round(Lc+(P.toContent(f)-onC)));D.anim.toEnd=false;},'end of On — how long the line takes to build');
-      if(WOn){ const h0=+X2.walkHold||0, hC=P.toContent(holdEnd); knob(holdEnd,RPh.y0,RPh.h,'#FFFFFF'); H(holdEnd,RPh,'ew-resize',f=>{X2.walkHold=Math.max(0,Math.round(h0+(P.toContent(f)-hC)));},'end of Hold — how long the built line waits');
-        const wl=+X2.walkLen||48, rC=P.relT!=null?P.toContent(P.relT):null; if(P.relT!=null){knob(P.relT,RPh.y0,RPh.h,'#749DD3'); H(P.relT,RPh,'ew-resize',f=>{X2.walkLen=Math.max(6,Math.round(wl+(P.toContent(f)-rC)));},'camera lets go of the walking line');}}
-      else if(X2.on&&X2.mode==='end'&&holdEnd!=null){ const a0=+X2.at||0, hC=P.toContent(holdEnd); knob(holdEnd,RPh.y0,RPh.h,'#FFFFFF'); H(holdEnd,RPh,'ew-resize',f=>{X2.at=Math.round(a0+(P.toContent(f)-hC));},'end of Hold — when the clear-out starts'); }
-      else if(X2.on&&X2.mode==='hold'&&holdEnd!=null){ const h0=+X2.hold||0, hC=P.toContent(holdEnd); knob(holdEnd,RPh.y0,RPh.h,'#FFFFFF'); H(holdEnd,RPh,'ew-resize',f=>{X2.hold=Math.max(1,Math.round(h0+(P.toContent(f)-hC)));},'how long each block stays'); }
+      const Lc=D.anim.lenF, onC=(onEnd);
+      knob(onEnd,RPh.y0,RPh.h,'#E6212F'); H(onEnd,RPh,'ew-resize',f=>{D.anim.lenF=Math.max(2,Math.round(Lc+((f)-onC)));D.anim.toEnd=false;},'end of On — how long the line takes to build');
+      if(WOn){ const h0=+X2.walkHold||0, hC=(holdEnd); knob(holdEnd,RPh.y0,RPh.h,'#FFFFFF'); H(holdEnd,RPh,'ew-resize',f=>{X2.walkHold=Math.max(0,Math.round(h0+((f)-hC)));},'end of Hold — how long the built line waits');
+        const wl=+X2.walkLen||48, rC=Pc.relT!=null?(Pc.relT):null; if(Pc.relT!=null){knob(Pc.relT,RPh.y0,RPh.h,'#749DD3'); H(Pc.relT,RPh,'ew-resize',f=>{X2.walkLen=Math.max(6,Math.round(wl+((f)-rC)));},'camera lets go of the walking line');}}
+      else if(X2.on&&X2.mode==='end'&&holdEnd!=null){ const a0=+X2.at||0, hC=(holdEnd); knob(holdEnd,RPh.y0,RPh.h,'#FFFFFF'); H(holdEnd,RPh,'ew-resize',f=>{X2.at=Math.round(a0+((f)-hC));},'end of Hold — when the clear-out starts'); }
+      else if(X2.on&&X2.mode==='hold'&&holdEnd!=null){ const h0=+X2.hold||0, hC=(holdEnd); knob(holdEnd,RPh.y0,RPh.h,'#FFFFFF'); H(holdEnd,RPh,'ew-resize',f=>{X2.hold=Math.max(1,Math.round(h0+((f)-hC)));},'how long each block stays'); }
       item({type:'row',row:RPh,x0:LW,x1:r.width,y0:RPh.y0,y1:RPh.y1,cur:'pointer',tip:'Blocks: On · Hold · Off — click for their settings'});
     }
   } else {g.fillStyle='#686871';g.font='11px sans-serif';g.fillText(anim?'Generate a line to start — Blocks step, or press G':'Static — pick an animation style in Motion',LW+8,RSc.y0+RSc.h/2);}
   // ---- camera
   const RC=TL.rows.find(R=>R.k==='camera');
-  if(RC){ if(P.cam.length){const v=[];let mx=1;const a0=Math.floor(V0.f0),a1=Math.ceil(V0.f1);for(let f=a0;f<=a1;f++){const a=ev(P.cam,f,[0,0]),b=ev(P.cam,f+1,[0,0]);const s=Math.hypot(b[0]-a[0],b[1]-a[1]);v.push(s);mx=Math.max(mx,s);}
+  if(RC){ if(Pc.cam.length){const v=[];let mx=1;const a0=Math.floor(V0.f0),a1=Math.ceil(V0.f1);for(let f=a0;f<=a1;f++){const a=ev(Pc.cam,f,[0,0]),b=ev(Pc.cam,f+1,[0,0]);const s=Math.hypot(b[0]-a[0],b[1]-a[1]);v.push(s);mx=Math.max(mx,s);}
       g.fillStyle='rgba(116,157,211,.5)'; v.forEach((s,i)=>{const f=a0+i,hh=s/mx*(RC.h-8);g.fillRect(X(f),RC.y1-4-hh,Math.max(1,X(f+1)-X(f)),hh);});}
     else {g.fillStyle='#686871';g.font='11px sans-serif';g.fillText('camera is still',LW+8,RC.y0+RC.h/2);}
-    if(D.anim.relOn&&P.relT!=null&&!(D.exit.on&&D.exit.mode==='walk')){knob(P.relT,RC.y0,RC.h,'#749DD3'); label('let go',X(P.relT)+6,RC.y0+9,'#C5CFF5');
-      H(P.relT,RC,'ew-resize',f=>{D.anim.relAt=clamp(Math.round((P.toContent(f)-D.anim.startF)/Math.max(1,D.anim.lenF)*100),5,99);},'camera let-go');}}
+    if(D.anim.relOn&&Pc.relT!=null&&!(D.exit.on&&D.exit.mode==='walk')){knob(Pc.relT,RC.y0,RC.h,'#749DD3'); label('let go',X(Pc.relT)+6,RC.y0+9,'#C5CFF5');
+      H(Pc.relT,RC,'ew-resize',f=>{D.anim.relAt=clamp(Math.round(((f)-D.anim.startF)/Math.max(1,D.anim.lenF)*100),5,99);},'camera let-go');}}
   // ---- transitions: clips you can drag
   const RT=TL.rows.find(R=>R.k==='trans'), TP=transP(G);
   if(TP.groups.length){TP.groups.forEach(gr=>{const T=D.trans[gr.k], col=gr.k==='in'?'rgba(43,217,143,.5)':'rgba(255,194,26,.5)', sel=U.ctx==='trans-'+gr.k;
@@ -2330,7 +2336,7 @@ function drawDope(){
         drag:(f,f0,st)=>{T.atEnd=false;T.start=Math.round(st+(f-f0));}});});}
   else {g.fillStyle='#686871';g.font='11px sans-serif';g.fillText('none — click to add a transition in or out',LW+8,RT.y0+RT.h/2);}
   // ---- content overlays
-  const FB=P.fillBase||{}, FE=P.fillEnd||{};
+  const FB=Pc.fillBase||{}, FE=Pc.fillEnd||{};
   TL.rows.filter(R=>R.k==='content').forEach(R=>{
     const A=D.fill.anim;
     item({type:'row',row:R,x0:LW,x1:r.width,y0:R.y0,y1:R.y1,cur:'pointer',tip:R.name+' — click for its settings',tab:R.tab});
@@ -2342,16 +2348,16 @@ function drawDope(){
         g.fillStyle=A.live?'rgba(116,157,211,.55)':'rgba(255,255,255,.2)'; g.fillRect(X(on),R.y0+7,Math.max(1,X(off)-X(on)),R.h-11);
         if(isFinite(T0.off)){g.fillStyle='rgba(255,127,123,.6)';g.fillRect(X(off),R.y0+7,Math.max(1,X(end)-X(off)),R.h-11);knob(off,R.y0,R.h,'#FF7F7B');H(off,R,'ew-resize',f=>{A.hold=Math.max(0,Math.round(f-on));},'content hold');}
         if(X(off)-X(on)>50) label(A.live?'hold · live':'hold',X(on)+5,R.y0+R.h/2+2,'rgba(236,236,239,.8)');}
-    } else if(R.ck==='gaps'){ (P.gaps||[]).forEach((it,i)=>{const e=it.tEnd!=null?it.tEnd:N; g.fillStyle='rgba(230,33,47,.45)'; g.fillRect(X(it.t0),R.y0+4+(i%4)*3,Math.max(1,X(e)-X(it.t0)),2);}); }
-    else if(R.ck==='numbers'){ P.seq.forEach((b,i)=>{if(!numOn(b)) return; const t0=(P.done||[])[i]||P.T[i], e=P.exitT&&P.exitT[i]!=null?P.exitT[i]:N; g.fillStyle='rgba(197,207,245,.35)'; g.fillRect(X(t0),R.y0+5+(i%3)*3,Math.max(1,X(e)-X(t0)),2);}); }
-    else if(R.ck==='echo'){ P.echo.forEach((e,i)=>{const t0=e.K.op.length?e.K.op[0][0]:0, t1=e.K.op.length?e.K.op[e.K.op.length-1][0]:N, end=e.K.op.length&&e.K.op[e.K.op.length-1][1]===0?t1:N; g.fillStyle='rgba(162,175,178,.45)'; g.fillRect(X(t0),R.y0+5+(i%3)*3,Math.max(1,X(end)-X(t0)),2);}); }
+    } else if(R.ck==='gaps'){ (Pc.gaps||[]).forEach((it,i)=>{const e=it.tEnd!=null?it.tEnd:N; g.fillStyle='rgba(230,33,47,.45)'; g.fillRect(X(it.t0),R.y0+4+(i%4)*3,Math.max(1,X(e)-X(it.t0)),2);}); }
+    else if(R.ck==='numbers'){ P.seq.forEach((b,i)=>{if(!numOn(b)) return; const t0=(Pc.done||[])[i]||Pc.T[i], e=Pc.exitT&&Pc.exitT[i]!=null?Pc.exitT[i]:N; g.fillStyle='rgba(197,207,245,.35)'; g.fillRect(X(t0),R.y0+5+(i%3)*3,Math.max(1,X(e)-X(t0)),2);}); }
+    else if(R.ck==='echo'){ Pc.echo.forEach((e,i)=>{const t0=e.K.op.length?e.K.op[0][0]:0, t1=e.K.op.length?e.K.op[e.K.op.length-1][0]:N, end=e.K.op.length&&e.K.op[e.K.op.length-1][1]===0?t1:N; g.fillStyle='rgba(162,175,178,.45)'; g.fillRect(X(t0),R.y0+5+(i%3)*3,Math.max(1,X(end)-X(t0)),2);}); }
   });
   // ---- blocks header: summary + the end-of-build handle
   if(anim&&n){
     const nb=P.walkFrom!=null?P.walkFrom:n;
-    P.seq.forEach((b,i)=>{g.fillStyle=i<nb?'rgba(255,255,255,.6)':'rgba(116,157,211,.8)'; g.fillRect(X(P.T[i]),hdr.y0+hdr.h-8,1,5);});
-    if(isGenerated()&&nb>1){const tl=P.T[nb-1]; knob(tl,hdr.y0+2,hdr.h-4,'#FFC21A'); H(tl,hdr,'ew-resize',f=>{D.anim.cutAt=Math.max(Math.round(P.toContent(P.T[0]))+1,Math.round(P.toContent(f)));},'end of the build — drag left to drop the late blocks (the rest keep their timing)');
-      if(P.cutAt!=null){g.fillStyle='rgba(255,194,26,.12)';g.fillRect(X(tl)+4,hdr.y0,Math.max(0,X(P.startF+P.L)-X(tl)-4),hdr.h);if(X(P.startF+P.L)-X(tl)>60)label(`${P.cutN} dropped`,X(tl)+8,hdr.y0+hdr.h/2,'#FFC21A');}}
+    P.seq.forEach((b,i)=>{g.fillStyle=i<nb?'rgba(255,255,255,.6)':'rgba(116,157,211,.8)'; g.fillRect(X(Pc.T[i]),hdr.y0+hdr.h-8,1,5);});
+    if(isGenerated()&&nb>1){const tl=Pc.T[nb-1]; knob(tl,hdr.y0+2,hdr.h-4,'#FFC21A'); H(tl,hdr,'ew-resize',f=>{D.anim.cutAt=Math.max(Math.round((Pc.T[0]))+1,Math.round((f)));},'end of the build — drag left to drop the late blocks (the rest keep their timing)');
+      if(Pc.cutAt!=null){g.fillStyle='rgba(255,194,26,.12)';g.fillRect(X(tl)+4,hdr.y0,Math.max(0,X(P.startF+P.L)-X(tl)-4),hdr.h);if(X(P.startF+P.L)-X(tl)>60)label(`${Pc.cutN} dropped`,X(tl)+8,hdr.y0+hdr.h/2,'#FFC21A');}}
   }
   // ---- one row per block (scrolls)
   g.save(); g.beginPath(); g.rect(0,top,r.width,bottom-top); g.clip();
@@ -2359,7 +2365,7 @@ function drawDope(){
     const sel=new Set(tlSelIds()), exitLen=+D.exit.len||8, dt=D.anim.dt||{};
     P.seq.forEach((b,i)=>{
       const yy=top+3+i*BLOCK_RH-TL.scrollY; if(yy<top-BLOCK_RH||yy>bottom) return;
-      const t0=P.T[i], done=(P.done||[])[i]||t0, tE=P.exitT&&P.exitT[i]!=null?P.exitT[i]:null, t1=tE!=null?tE+exitLen:N, isSel=sel.has(b.id), walk=P.walkFrom!=null&&i>=P.walkFrom;
+      const t0=Pc.T[i], done=(Pc.done||[])[i]||t0, tE=Pc.exitT&&Pc.exitT[i]!=null?Pc.exitT[i]:null, t1=tE!=null?tE+exitLen:N, isSel=sel.has(b.id), walk=P.walkFrom!=null&&i>=P.walkFrom;
       if(isSel){g.fillStyle='rgba(255,255,255,.06)';g.fillRect(LW,yy-1,r.width-LW,BLOCK_RH);}
       const a=b.virtual?.75:1;
       g.globalAlpha=a; g.fillStyle=b.color; g.fillRect(X(t0),yy+2,Math.max(2,X(done)-X(t0)),BLOCK_RH-4);
@@ -2367,7 +2373,7 @@ function drawDope(){
       if(tE!=null){g.globalAlpha=a*.8; g.fillRect(X(tE),yy+2,Math.max(1,X(t1)-X(tE)),BLOCK_RH-4);}
       g.globalAlpha=1;
       if(isSel){g.strokeStyle='#fff';g.lineWidth=1.5;g.strokeRect(X(t0)+.5,yy+1.5,Math.max(2,X(t1)-X(t0))-1,BLOCK_RH-3);}
-      if((dt[b.id]||(D.anim.dx||{})[b.id])&&P.T0){const x0=X(P.T0[i]); g.strokeStyle='rgba(255,255,255,.45)'; g.setLineDash([3,2]); g.lineWidth=1; g.strokeRect(x0+.5,yy+2.5,Math.max(2,X(t1-(t0-P.T0[i]))-x0)-1,BLOCK_RH-5); g.setLineDash([]);}
+      if((dt[b.id]||(D.anim.dx||{})[b.id])&&Pc.T0){const x0=X(Pc.T0[i]); g.strokeStyle='rgba(255,255,255,.45)'; g.setLineDash([3,2]); g.lineWidth=1; g.strokeRect(x0+.5,yy+2.5,Math.max(2,X(t1-(t0-Pc.T0[i]))-x0)-1,BLOCK_RH-5); g.setLineDash([]);}
       if(isSel){g.fillStyle='#fff'; g.fillRect(X(t0)-1,yy+1,2.5,BLOCK_RH-2); if(tE!=null) g.fillRect(X(tE)-1,yy+1,2.5,BLOCK_RH-2);}
       const lab=`${bname(b)}${b.virtual?' (generated)':''} — in f${t0}${tE!=null?` · out f${tE}`:''}${dt[b.id]?` · moved ${dt[b.id]>0?'+':''}${dt[b.id]}f`:''}`;
       item({type:'block',id:b.id,i,x0:X(t0)-3,x1:X(t1)+2,y0:yy,y1:yy+BLOCK_RH,cur:'grab',tip:`${lab} · drag to move it (in and out together) · right-click for more`,t0});
@@ -2395,6 +2401,11 @@ function drawDope(){
   if(anim&&P.seq.length){g.fillStyle='rgba(230,33,47,.8)'; g.fillRect(X(P.startF),ROWS.ruler-3,Math.max(1,X(P.startF+(P.R||P.L))-X(P.startF)),3);}
   g.fillStyle='rgba(255,255,255,.35)'; g.fillRect(X(compF),0,1,r.height);
   const cues=timingCues(); g.fillStyle=D.timing&&D.timing.sync?'rgba(116,157,211,.7)':'rgba(116,157,211,.32)'; cues.forEach(f=>{g.fillRect(X(f),ROWS.ruler,1,r.height-ROWS.ruler);});
+  if(U.t!=null&&anim&&P.remapped&&TL.contentY0!=null){ const x=X(U.t), xc=X(P.toContent(U.t)), yC=TL.contentY0;
+    g.fillStyle='#E6212F'; g.fillRect(x-.5,0,1.5,yC-6); g.strokeStyle='#E6212F'; g.lineWidth=1.5; g.setLineDash([]); g.beginPath(); g.moveTo(x,yC-6); g.lineTo(xc,yC+2); g.stroke();
+    g.setLineDash([4,3]); g.beginPath(); g.moveTo(xc,yC+2); g.lineTo(xc,r.height); g.stroke(); g.setLineDash([]);
+    const fps2=D.comp.fps||30, lab=`${Math.round(U.t)}f · ${(U.t/fps2).toFixed(2)}s`; g.font='600 10px sans-serif'; const w=g.measureText(lab).width+10; const lx=clamp(x-w/2,LW,r.width-w); g.fillStyle='#E6212F'; if(g.roundRect){g.beginPath();g.roundRect(lx,2,w,17,4);g.fill();}else g.fillRect(lx,2,w,17); g.fillStyle='#fff'; g.fillText(lab,lx+5,11);
+  } else
   if(U.t!=null){const x=X(U.t); g.fillStyle='#E6212F'; g.fillRect(x-.5,0,1.5,r.height); const lab=`${Math.round(U.t)}f · ${(U.t/fps).toFixed(2)}s`; g.font='600 10px sans-serif'; const w=g.measureText(lab).width+10; const lx=clamp(x-w/2,LW,r.width-w); g.fillStyle='#E6212F'; if(g.roundRect){g.beginPath();g.roundRect(lx,2,w,17,4);g.fill();}else g.fillRect(lx,2,w,17); g.fillStyle='#fff'; g.fillText(lab,lx+5,11);}
   if(TL.hover&&!TL.drag&&TL.hover.x>LW){g.fillStyle='rgba(255,255,255,.22)';g.fillRect(TL.hover.x,ROWS.ruler,1,r.height-ROWS.ruler);}
   if(TL.drag&&TL.drag.marquee){const m=TL.drag.marquee; g.fillStyle='rgba(230,33,47,.12)'; g.strokeStyle='rgba(255,127,123,.9)'; g.lineWidth=1; g.fillRect(Math.min(m.x0,m.x1),Math.min(m.y0,m.y1),Math.abs(m.x1-m.x0),Math.abs(m.y1-m.y0)); g.strokeRect(Math.min(m.x0,m.x1)+.5,Math.min(m.y0,m.y1)+.5,Math.abs(m.x1-m.x0),Math.abs(m.y1-m.y0));}
@@ -2487,17 +2498,17 @@ function initDope(){
     if(h.type==='bhdr'){ if(p.x<TL.LW){TL.blocksOpen=!TL.blocksOpen;drawDope();} else setCtx(D.anim.mode==='static'?null:'inout'); return; }
     if(h.type==='row'){ tlOpenRow(h.row||{},h.tab); return; }
     if(p.y>=TL.listY0&&TL.blocksOpen){ freeze(); TL.drag={marquee:{x0:p.x,y0:p.y,x1:p.x,y1:p.y},keep:mods?tlSelIds():[]}; return; }   // drag a box to select several blocks
-    if(tlSelIds().length){U.dopeSel=[];U.selIds=[];refresh();} else { freeze(); TL.drag={scrub:true}; tlSetT(TL.F(p.x)); }
+    if(tlSelIds().length){U.dopeSel=[];U.selIds=[];refresh();} else { freeze(); TL.drag={scrub:true,content:p.y>=TL.contentY0}; tlSetT(TL.drag.content?TL.P.toReal(TL.F(p.x)):TL.F(p.x)); }
   });
   c.addEventListener('pointermove',e=>{const d=TL.drag; if(!d) return; const p=rect(e), f=TL.F(p.x);
-    if(d.scrub){tlSetT(f);return;}
+    if(d.scrub){tlSetT(d.content&&TL.P?TL.P.toReal(f):f);return;}
     if(d.marquee){ const m=d.marquee; m.x1=p.x; m.y1=p.y; const x0=Math.min(m.x0,m.x1),x1=Math.max(m.x0,m.x1),y0=Math.min(m.y0,m.y1),y1=Math.max(m.y0,m.y1);
       const hit=TL.items.filter(it=>it.type==='block'&&it.x1>=x0&&it.x0<=x1&&it.y1>=y0&&it.y0<=y1).map(it=>it.id);
       const ids=[...new Set(d.keep.concat(hit))]; U.dopeSel=ids; U.selIds=ids.filter(id=>byId(id)); drawDope(); showTip(`${ids.length} block${ids.length===1?'':'s'} selected`); return; }
     if(d.point){d.point.drag(p.x,p.y,e.shiftKey);}
     else if(d.handle){d.handle.apply(f);}
     else if(d.blocks){
-      const Pd=TL.dragP||TL.P, df=Math.round(Pd.toContent(f)-Pd.toContent(d.f0)); if(df) d.moved=true; D.anim.dt=D.anim.dt||{}; D.anim.dx=D.anim.dx||{};   // block offsets live on the blocks' own clock
+      const df=Math.round(f-d.f0); if(df) d.moved=true; D.anim.dt=D.anim.dt||{}; D.anim.dx=D.anim.dx||{};   // block offsets live on the blocks' own clock
       const keepOut=d.kind==='in'&&D.exit.mode!=='behind';
       d.blocks.forEach((id,k)=>{
         if(d.kind==='out'){const v=d.baseX[k]+df; if(v) D.anim.dx[id]=v; else delete D.anim.dx[id]; return;}
@@ -2506,7 +2517,7 @@ function initDope(){
       });
       // show the change: put the playhead where this block now comes in (or leaves)
       planCache.k=''; const P2=plan(geom()), i2=P2.seq.findIndex(b=>b.id===d.anchorId);
-      if(i2>=0){ const tt=d.kind==='out'&&P2.exitT&&P2.exitT[i2]!=null?P2.exitT[i2]+Math.round((+D.exit.len||8)/2):P2.T[i2]+Math.max(1,Math.round((+D.anim.trans||1)*.6)); U.t=tt; updTC(); updViewBadge(); }
+      if(i2>=0){ const tt=d.kind==='out'&&P2.exitT&&P2.exitT[i2]!=null?P2.exitT[i2]+Math.round((+D.exit.len||8)/2):P2.T[i2]+Math.max(1,Math.round((+D.anim.trans||1)*.6)); U.t=Math.round(tt); updTC(); updViewBadge(); }
     }
     else if(d.clip){if(Math.abs(f-d.f0)>.5) d.moved=true; d.clip.drag(f,d.f0,d.clip.start);}
     planCache.k=''; syncInputs(); render(); drawDope(); drawSpeedGraph();
