@@ -31,7 +31,7 @@ const jsStr=s=>JSON.stringify(s).split(LS1).join('\\u2028').split(LS2).join('\\u
 
 /* ------------------------------------------------------------------ document (saved) */
 const DEF={
-  v:4,
+  v:5,
   comp:{w:1920,h:1080,fps:24,dur:10,follow:true},
   grid:{rows:7,colsMode:'bleed',cols:12,gutter:1,margin:0,offsetX:0,snap:true,overX:8,overY:1},
   look:{bgOn:true,bg:'#1F1F1F',linesOn:true,line:'#3B484B',lineW:1,border:false,cellsMode:'none',cell:'#3B484B',
@@ -49,7 +49,7 @@ const DEF={
   echo:{on:false,dx:0,dy:2,last:0,fill:true,color:'#A2AFB2',opacity:100,stroke:false,sw:4,scolor:'#A2AFB2',align:'center',dash:false,dashL:12,dashG:8,content:false,
         timing:'with',offset:6,appear:'fade',out:'stay',hold:12,outF:8},
   rand:{pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
-        wander:1,climb:0,stackPct:20,stackGap:1,stairPct:15,jumpPct:5,multiCol:true},
+        wander:1,climb:0,stackPct:20,stackGap:0,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,tracking:0,leading:0,kern:'metrics',caps:'none'},
   anim:{seed:0,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
@@ -795,6 +795,8 @@ function setDoc(obj){
   if(obj&&Array.isArray(obj.blocks)) obj.blocks.forEach(toFono);
   if(obj&&obj.fill&&obj.fill.font==='CourierNewPSMT'){obj.fill.family='Aeonik Fono';obj.fill.style='Regular';obj.fill.font='AeonikFono-Regular';}
   D=merge(clone(DEF),obj);
+  if(obj&&(obj.v|0)<5&&D.rand&&+D.rand.stackGap===1) D.rand.stackGap=0;   // older layouts: pair gap follows the block height
+  D.v=DEF.v;
   if(obj&&obj.anim) ['dt','dx'].forEach(k=>{const m=obj.anim[k];D.anim[k]=m&&typeof m==='object'&&!Array.isArray(m)?Object.assign({},m):{};});
   if(!Array.isArray(D.palette)||!D.palette.length) D.palette=PALETTE.slice();
   D.blocks=(Array.isArray(obj.blocks)?obj.blocks:[]).map(normBlock);
@@ -969,7 +971,7 @@ function walkRow(r,rMax,rnd,h,rMin){
 }
 /* sometimes add a second block in the same column, "stackGap" rows away */
 function stackRow(r,bh,rMax,rnd,rMin){ rMin=rMin||0;
-  const R=D.rand, g=Math.max(0,Math.round(R.stackGap)||0);
+  const R=D.rand, g=Math.round(+R.stackGap||0)>0?Math.round(R.stackGap):Math.max(1,bh|0);   // pair gap: 0/empty = the block's own height
   if(R.multiCol===false||!(R.stackPct>0)||rnd()>=R.stackPct/100) return null;
   const opts=[r-(bh+g),r+(bh+g)].filter(x=>x>=rMin&&x<=rMax);
   return opts.length?opts[Math.floor(rnd()*opts.length)]:null;
@@ -4496,7 +4498,7 @@ const HELP={
   'rand.wander':'How many rows a block can move up or down from the previous one (never more than one block height, so neighbours always touch at least at a corner). 0 keeps them on one row.',
   'rand.climb':'Tilts the walk. Positive values drift upward, negative drift downward, 0 is balanced.',
   'rand.stackPct':'Chance that a column gets a second block above or below, so two blocks share the column.',
-  'rand.stackGap':'Empty rows between the two blocks in a pair. 1 leaves one square of space.',
+  'rand.stackGap':'Rows between the two blocks in a pair. Empty (auto) = the same as the block height, so the gap is one block tall.',
   'text.kern':'Kerning between letter pairs: the font’s own metrics, Optical (spacing judged by shape), or none.',
   'text.caps':'Show text as typed, in capitals, or in lowercase.',
   'text.leading':'Space between lines in pixels. 0 = automatic.',

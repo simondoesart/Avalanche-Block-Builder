@@ -704,7 +704,7 @@ body.nohelp .qm{display:none}
               <label class="check"><input type="checkbox" data-bind="rand.multiCol"> Allow multiple blocks in one column</label>
               <div class="field2" data-show="rand.multiCol=true">
                 <div class="field"><span class="lbl scrub">Pairs</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.stackPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
-                <div class="field"><span class="lbl scrub">Pair gap</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.stackGap" min="0" max="10" step="1"><button data-d="1">+</button></div></div>
+                <div class="field" data-adv><span class="lbl scrub" title="Rows between the two blocks in a pair. Empty = the same as the block height">Pair gap</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.stackGap" data-zero="auto" min="0" max="20" step="1"><span class="unit">rows</span><button data-d="1">+</button></div></div>
               </div>
             <div class="field"><span class="lbl scrub" title="0 = random">Start row</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.startRow" min="0" max="60" step="1"><span class="unit" id="rowUnit">random</span><button data-d="1">+</button></div></div>
             </div></details>
@@ -759,7 +759,7 @@ body.nohelp .qm{display:none}
               <label class="check"><input type="checkbox" data-bind="rand.multiCol"> Allow multiple blocks in one column</label>
               <div class="field2" data-show="rand.multiCol=true">
                 <div class="field"><span class="lbl scrub">Pairs</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.stackPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
-                <div class="field"><span class="lbl scrub">Pair gap</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.stackGap" min="0" max="10" step="1"><button data-d="1">+</button></div></div>
+                <div class="field" data-adv><span class="lbl scrub" title="Rows between the two blocks in a pair. Empty = the same as the block height">Pair gap</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.stackGap" data-zero="auto" min="0" max="20" step="1"><span class="unit">rows</span><button data-d="1">+</button></div></div>
               </div>
             </div>
             <div class="field2" data-show="rand.pattern=stairUp|stairDown">
