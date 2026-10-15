@@ -3843,8 +3843,9 @@ function renderGenStatus(G){
   const gen=isGenerated(), ed=!gen&&D.blocks.length>1;
   el.classList.toggle('edited',ed);
   el.innerHTML=!D.blocks.length?'Nothing yet. Pick a size and press <b>Generate</b> (G).':
-    gen?`<b>${n}</b> blocks over <b>${(P.L/fps).toFixed(2)}s</b> · seed <b>${D.rand.seed}${D.anim.seed?'·'+D.anim.seed:''}</b><br>Live — change anything below and the line regenerates. Drag a block to start editing by hand.`:
-    `<b>${D.blocks.length}</b> blocks, edited by hand${Object.keys(D.anim.dt||{}).length?` · ${Object.keys(D.anim.dt).length} retimed`:''}<br>Press <b>Generate</b> to start over from the settings below.`;
+    gen?`<b>${n}</b> blocks over <b>${(P.L/fps).toFixed(2)}s</b> · seed <b>${D.rand.seed}${D.anim.seed?'·'+D.anim.seed:''}</b>`:
+    `<b>${D.blocks.length}</b> blocks, edited by hand${Object.keys(D.anim.dt||{}).length?` · ${Object.keys(D.anim.dt).length} retimed`:''}`;
+  el.title=!D.blocks.length?'':gen?'Live — change any setting and the line regenerates. Drag a block on the canvas to start editing by hand.':'Edited by hand. Press Generate to start over from the settings.';
   const t=$('#genTag'); if(t) t.textContent=gen?'live':ed?'edited':'';
   const bk=$('#btnBake'); if(bk) bk.hidden=!gen;
   const ps=$('#btnPickStart'); if(ps){ ps.classList.toggle('primary',!!U.pickStart); ps.textContent=U.pickStart?'Click a square…':'◎ Pick start spot'; ps.classList.toggle('on',D.rand.startCol!=null&&!U.pickStart); }
