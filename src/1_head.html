@@ -535,7 +535,7 @@ body.nohelp .qm{display:none}
           <span class="tc" id="tc">0f</span>
           <input type="range" id="scrub" min="0" max="100" step="1" value="0" hidden>
           <div class="vsep"></div>
-          <div class="field tlf" title="Scene length — the red Build bar"><span class="lbl scrub">Scene</span><div class="num"><input type="number" data-bind="anim.lenF" min="2" max="99999" step="1"><span class="unit">fr</span></div></div>
+          <div class="field tlf" title="Scene length — the time-remap layer. Empty = play the blocks at their own speed"><span class="lbl scrub">Scene</span><div class="num"><input type="number" data-bind="anim.remapLen" data-zero="auto" min="0" max="99999" step="1"><span class="unit">fr</span></div></div>
           <div class="field tlf" title="Frame the scene starts on. Negative = already running at frame 0"><span class="lbl scrub">Starts</span><div class="num"><input type="number" data-bind="anim.startF" min="-9999" max="99999" step="1"><span class="unit">fr</span></div></div>
           <button class="btn ghost" id="btnEase" title="Edit the scene easing in the big editor (or drag the dots on the Scene row)">Easing…</button>
           <button class="btn ghost" id="btnRetimeMenu" title="Stretch or squeeze everything">Retime ▾</button>
@@ -1100,10 +1100,11 @@ body.nohelp .qm{display:none}
         <div class="pane" data-pane="timing">
           <div class="group" data-ctx="scene" data-show="anim.mode=reveal|camera|push">
             <div class="group-h">Scene</div>
-            <div class="note">When the build happens. The <b>Build</b> bar on the timeline is this scene: drag its ends.</div>
+            <div class="note">The <b>Scene</b> row is a layer over the blocks, like time remapping: drag its ends to set the scene length, and shape its curve to speed up or slow down the whole block timeline (On · Hold · Off) underneath.</div>
             <div class="field"><span class="lbl scrub">Frame rate</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="comp.fps" min="1" max="120" step="1"><span class="unit">fps</span><button data-d="1">+</button></div></div>
             <div data-adv class="field"><span class="lbl scrub" title="Negative = the scene is already running when the comp starts">Starts at</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.startF" min="-9999" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-            <div class="field"><span class="lbl scrub">Length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.lenF" min="2" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+            <div class="field"><span class="lbl scrub" title="Scene length. Empty = the blocks play at their own speed; set a length to squeeze or stretch everything into it">Scene length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.remapLen" data-zero="auto" min="0" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+            <div class="field"><span class="lbl scrub" title="How long the On phase (the build) takes on the blocks' own clock">On (build)</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.lenF" min="2" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
             <label data-adv class="check"><input type="checkbox" data-bind="anim.toEnd"> Run until the comp ends</label>
             <div style="display:grid;gap:9px">
               <div class="field stack"><span class="lbl">Number of blocks</span><div class="seg" data-seg="anim.countMode"><button data-v="fill">Fill the length</button><button data-v="exact">Exact number</button></div></div>
@@ -1111,7 +1112,7 @@ body.nohelp .qm{display:none}
               <div class="field" data-show="anim.countMode=exact"><span class="lbl scrub">Blocks</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.total" min="1" max="400" step="1"><button data-d="1">+</button></div></div>
             </div>
             <div class="readout" id="paceNote"></div>
-            <div class="curve" data-curve="anim.sceneCurve" data-ymin="0" data-ymax="1" data-title="Scene easing · re-times the whole scene: reveals, camera, grid changes"></div>
+            <div class="curve" data-curve="anim.sceneCurve" data-ymin="0" data-ymax="1" data-title="Time remap · x = scene time, y = how far through the blocks (On · Hold · Off). Flat = holds, steep = fast"></div>
             <div data-adv class="field stack"><span class="lbl">Motion</span><div class="seg" data-seg="anim.motion"><button data-v="smooth">Smooth</button><button data-v="stop">Stop-motion</button></div></div>
             <div class="field" data-show="anim.motion=stop"><span class="lbl scrub">Hold</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.stepEvery" min="1" max="60" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
           </div>
