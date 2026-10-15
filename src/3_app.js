@@ -99,8 +99,7 @@ const RAIL_ICON={
 const CTX={
   scene:{t:'Scene timing',e:'Timeline · Scene',d:'The red Build bar is the scene. Drag its ends, and drag the dots on the Scene row to ease it.'},
   camera:{t:'Camera',e:'Timeline · Camera',d:'How the view travels with the line. The Camera row shows its speed.'},
-  after:{t:'After the build',e:'Timeline · Scene',d:'What the blocks do once the line has built.'},
-  reveal:{t:'Block reveal',e:'Motion',d:'How each block appears.'},
+  inout:{t:'Blocks in & out',e:'Timeline · Blocks',d:'How each block comes in, what happens once the line is built, and how blocks leave.'},
   sound:{t:'Sync to sound',e:'Timeline · Sound',d:'Load audio or video, or read markers from After Effects, and snap the reveals to the beat.'},
   'trans-in':{t:'Transition in',e:'Timeline · Transitions',d:'Drag the green clip on the timeline to move it; drag its ends to change its length.'},
   'trans-out':{t:'Transition out',e:'Timeline · Transitions',d:'Drag the yellow clip on the timeline to move it; drag its ends to change its length.'}
@@ -1252,7 +1251,11 @@ function computePlan(G){
   // blocks while the camera follows + enough for the head to run off frame with its whole trail after the camera lets go
   const woOff=Math.ceil(.45*G.W/Math.max(1,Math.max(1,D.block.w|0)*G.p))+woK+2;
   const woN=WO?Math.max(1,Math.round(woLen/pace2))+(A.mode==='camera'||A.mode==='push'?woOff:0):0;
-  const exts=manual?[]:extension(G,base,Math.max(0,want-baseMain)); P.endCol=exts.__endCol; P.endReach=exts.__reach; P.endRowUsed=exts.__endRow;
+  const woH=WO?Math.max(0,Math.round(+D.exit.walkHold||0)):0;
+  // with a walk-off the scene length covers everything: build + hold + walk-off. The build gets what's left.
+  const wantB=WO&&A.countMode!=='exact'&&!cuesIn?Math.max(2,Math.round((L-woH-woN*pace2)/Math.max(1,+A.pace||6))):want;
+  P.woN=woN;
+  const exts=manual?[]:extension(G,base,Math.max(0,wantB-baseMain)); P.endCol=exts.__endCol; P.endReach=exts.__reach; P.endRowUsed=exts.__endRow;
   if(WO&&!manual){ // the walk-off continues the pattern from where the build ended (an end row only applies to the build)
     const sv=A.ending, svOn=A.extendOn; A.ending='count'; A.extendOn=true;
     const more=extension(G,base.concat(exts),woN); A.ending=sv; A.extendOn=svOn;
@@ -1330,14 +1333,14 @@ function computePlan(G){
     }
     step=Math.min(step,(L-tr0)/Math.max(1,usedB-1));
   } else step=Math.max(1,L-tr0)/Math.max(1,usedB-1);
+  // walk-off inside the scene: build steps, then the hold, then the walk at its own pace — all on the one linear clock
+  const wp=Math.max(.1,+D.exit.walkPace||1), nW=used-usedB;
+  let sWalk=null;
+  if(WO&&nW>0){ step=Math.max(.25,(L-2*tr0-woH)/Math.max(1,(usedB-1)+(nW-1)*wp)); sWalk=(usedB-1)*step+tr0+woH; }
   // reveal times on the linear clock, then re-timed by the scene curve (one at a time, in order)
   const sg=[], Tg=[]; const spread=(used-1)<=L;
   for(let g=0;g<used;g++){
-    if(g>=usedB){ // walk-off: after the hold, one block every pace2 frames
-      const tW=Tg[usedB-1]+tr0+Math.max(0,Math.round(+D.exit.walkHold||0));
-      const t=Math.round(tW+(g-usedB)*pace2); Tg.push(t); sg.push(S(t)); continue;
-    }
-    const s=Math.min(L,step*g); sg.push(s);
+    const s=Math.min(L,g>=usedB&&sWalk!=null?sWalk+(g-usedB)*step*wp:step*g); sg.push(s);
     let t=Math.round(W(s)); if(spread&&g>0&&t<=Tg[g-1]) t=Tg[g-1]+1; Tg.push(Math.min(t,startF+L));
   }
   // drop the late blocks: everything in the build landing after cutAt goes, the rest keep their timing exactly
@@ -1349,14 +1352,11 @@ function computePlan(G){
       const nseq=[], ngi=[]; seq.forEach((b,i)=>{const g=gi[i]; if(g>=gCut&&g<usedB) return; nseq.push(b); ngi.push(g>=usedB?g-k:g);});
       seq=nseq; gi=ngi; Tg.splice(gCut,k); sg.splice(gCut,k); if(camOn){tg.splice(gCut,k); P.offs.splice(gCut,k);}
       used-=k; usedB=gCut; P.cutAt=cutAt; P.cutN=k;
-      if(WO){ // the walk-off starts from the new last block
-        const tW=Tg[usedB-1]+tr0+Math.max(0,Math.round(+D.exit.walkHold||0));
-        for(let g=usedB;g<used;g++){Tg[g]=Math.round(tW+(g-usedB)*pace2); sg[g]=S(Tg[g]);}
-        P.walkFrom=seq.findIndex((b,i)=>gi[i]>=usedB); if(P.walkFrom<0) P.walkFrom=seq.length;
-      }
+      if(WO){ P.walkFrom=seq.findIndex((b,i)=>gi[i]>=usedB); if(P.walkFrom<0) P.walkFrom=seq.length; }
     }
   }
-  P.walkT=WO?Tg[usedB-1]+tr0+Math.max(0,Math.round(+D.exit.walkHold||0)):null;
+  P.walkT=WO?(sWalk!=null?Math.max(Tg[usedB-1]+1,Math.round(W(sWalk))):Tg[usedB-1]+tr0+woH):null;
+  P.holdT=WO?Tg[usedB-1]+tr0:null;
   P.walkEnd=WO?Tg[used-1]+tr0:null;
   // sync to sound: each reveal moves to the nearest cue (beat / marker), keeping the order
   const CUES=timingCues();
@@ -1461,15 +1461,23 @@ function computePlan(G){
         const at=dd=>{if(pts.length<2||tot<=0)return pts[0];let k=1;while(k<cum.length-1&&cum[k]<dd)k++;const seg=Math.max(1e-9,cum[k]-cum[k-1]),f=clamp((dd-cum[k-1])/seg,0,1);return[pts[k-1][0]+(pts[k][0]-pts[k-1][0])*f,pts[k-1][1]+(pts[k][1]-pts[k-1][1])*f];};
         for(let i=0;i<N;i++){const t=a+i, u=clamp((t-t0c)/Math.max(1,t1c-t0c),0,1), o=at(tot*clamp(E(u),0,1)); xs[i]=o[0]; ys[i]=o[1];}
         if(WO&&keyAll.length>usedB){
-          // walk-off: from the hold, the camera eases back up to the line's speed and travels with it
-          const kb=[[P.walkT,keyAll[usedB-1][1],keyAll[usedB-1][2]]].concat(keyAll.slice(usedB).map(k=>[k[0],k[1],k[2]]));
-          const pB=[], cB=[0]; kb.forEach(k=>pB.push([k[1],k[2]])); for(let k=1;k<pB.length;k++) cB.push(cB[k-1]+Math.hypot(pB[k][0]-pB[k-1][0],pB[k][1]-pB[k-1][1]));
-          const totB=cB[cB.length-1], tB0=P.walkT, tB1=Math.max(tB0+1,kb[kb.length-1][0]), vB=totB/Math.max(1,tB1-tB0), ramp=Math.max(6,Math.round(pace2*2.5));
-          const atB=dd=>{if(pB.length<2||totB<=0)return pB[0];let k=1;while(k<cB.length-1&&cB[k]<dd)k++;const sgm=Math.max(1e-9,cB[k]-cB[k-1]),f=clamp((dd-cB[k-1])/sgm,0,1);return[pB[k-1][0]+(pB[k][0]-pB[k-1][0])*f,pB[k-1][1]+(pB[k][1]-pB[k-1][1])*f];};
-          for(let i=0;i<N;i++){const t=a+i; if(t<tB0) continue; const e=t-tB0, dd=e<ramp?vB*e*e/(2*ramp):vB*(e-ramp/2); const o=atB(Math.min(totB,dd)); xs[i]=o[0]; ys[i]=o[1];}
+          /* walk-off inside the scene: one path for the frame (frontier on the line) through build → hold → walk.
+             Distance runs evenly on the scene's linear clock (so the real speed follows the scene easing, and pairs or
+             stairs never make it stall), easing out into the hold and back up to speed into the walk. */
+          const pA=[], cA=[0], kd=[];
+          keyAll.forEach(k=>{const l=pA[pA.length-1]; if(!l){pA.push([k[1],k[2]]);} else {const d=Math.hypot(l[0]-k[1],l[1]-k[2]); if(d>1e-6){pA.push([k[1],k[2]]);cA.push(cA[cA.length-1]+d);}} kd.push(cA[cA.length-1]);});
+          const totA=cA[cA.length-1], DB=kd[usedB-1], DW=Math.max(0,totA-DB);
+          let g0=0; while(g0+1<usedB&&kd[g0+1]<=1e-6) g0++;
+          const sB0=sg[g0], sB1=Math.max(sB0+1,sg[usedB-1]), Rb=Math.min((sB1-sB0)/2,Math.max(1,step*2));
+          const sW1=sg[used-1], Rw=Math.max(1,step*wp*2.5), sW0=Math.max(sB1,sg[usedB]-Rw), TW=Math.max(1,sW1-sW0);
+          const trap=(e,T,Dd,R)=>{ if(T<=0||Dd<=0) return e>0?Dd:0; e=clamp(e,0,T); const v=Dd/Math.max(1e-6,T-R); return e<R?v*e*e/(2*R):e<T-R?v*(e-R/2):Dd-v*(T-e)*(T-e)/(2*R); };
+          const accel=(e,T,Dd,R)=>{ if(e<=0) return 0; const v=Dd/Math.max(1e-6,T-R/2); return Math.min(Dd,e<R?v*e*e/(2*R):v*(e-R/2)); };
+          const dAt=t=>{ const sl=S(t); if(sl<=sB0) return 0; if(sl<=sB1) return trap(sl-sB0,sB1-sB0,DB,Rb); if(sl<=sW0) return DB; return DB+accel(sl-sW0,TW,DW,Rw); };
+          const atA=dd=>{if(pA.length<2||totA<=0)return pA[0];let k=1;while(k<cA.length-1&&cA[k]<dd)k++;const sgm=Math.max(1e-9,cA[k]-cA[k-1]),q=clamp((dd-cA[k-1])/sgm,0,1);return[pA[k-1][0]+(pA[k][0]-pA[k-1][0])*q,pA[k-1][1]+(pA[k][1]-pA[k-1][1])*q];};
+          for(let i=0;i<N;i++){const o=atA(clamp(dAt(a+i),0,totA)); xs[i]=o[0]; ys[i]=o[1];}
         }
         P.curveLine=lineX;
-        const sg=A.axis==='xy'?Math.max(1,(+A.motionBlurF||4)*.5):0.8, R=Math.ceil(3*sg), kk=[]; let ks=0; for(let j=-R;j<=R;j++){const v=Math.exp(-j*j/(2*sg*sg));kk.push(v);ks+=v;}
+        const gsg=A.axis==='xy'?Math.max(1,(+A.motionBlurF||4)*.5):0.8, R=Math.ceil(3*gsg), kk=[]; let ks=0; for(let j=-R;j<=R;j++){const v=Math.exp(-j*j/(2*gsg*gsg));kk.push(v);ks+=v;}
         const sm=arr=>{const o=new Float64Array(N);for(let i=0;i<N;i++){let acc=0;for(let j=-R;j<=R;j++)acc+=arr[clamp(i+j,0,N-1)]*kk[j+R];o[i]=acc/ks;}return o;};
         const sx=sm(xs), sy=sm(ys); for(let i=0;i<N;i++){xs[i]=sx[i];ys[i]=sy[i];}
       } else {
@@ -1618,7 +1626,9 @@ function computePlan(G){
   });
   // exits (un-reveal): appended after the reveal, in real frames
   P.exitT=exitTimes(P,G,seq,P.done||[]);
-  if(P.exitT&&A.dx&&Object.keys(A.dx).length){ seq.forEach((b,i)=>{const d=+A.dx[b.id]||0; if(d&&P.exitT[i]!=null) P.exitT[i]=Math.max(Math.round(((P.done||[])[i]||P.T[i]))+1,Math.round(P.exitT[i]+d));}); }
+  // a retimed block takes its exit with it (it moves as a whole); 'Shift out' (dx) moves just the exit
+  if(P.exitT){ const XM=D.exit.mode; seq.forEach((b,i)=>{ if(P.exitT[i]==null) return; const sh=(XM==='walk'||XM==='end')?(P.T[i]-P.T0[i]):0, d=+((A.dx||{})[b.id])||0;
+    if(sh||d) P.exitT[i]=Math.max(Math.round(((P.done||[])[i]||P.T[i]))+1,Math.round(P.exitT[i]+sh+d)); }); }
   if(P.exitT){
     seq.forEach((b,i)=>{const tE=P.exitT[i]; if(tE==null) return; const K=P.tracks[b.id], r=cellRect(G,b.c,b.r,b.w,b.h);
       const fin=exitKeys(K,tE,r,D.exit,stop,st,!!b.text); lastT=Math.max(lastT,fin); });
@@ -2144,10 +2154,10 @@ function dopeRange(){const G=geom(),fps=D.comp.fps||30;return Math.max(sceneEnd(
 function tlView(){
   if(TL.frozen) return TL.frozen;
   const N=dopeRange(), P=plan(geom()), lo=Math.min(0,P.startF||0,D.trans&&D.trans.in&&D.trans.in.on?+D.trans.in.start||0:0);
-  if(TL.f0==null||TL.f1==null) return {f0:lo-Math.max(2,N*.01),f1:N+Math.max(4,N*.02)};
+  if(TL.f0==null||TL.f1==null){ const NN=Math.max(N,TL.autoN||0); TL.autoN=NN; return {f0:lo-Math.max(2,NN*.01),f1:NN+Math.max(4,NN*.02)}; }
   return {f0:TL.f0,f1:TL.f1};
 }
-function tlFit(){TL.f0=TL.f1=null;drawDope();}
+function tlFit(){TL.f0=TL.f1=null;TL.autoN=0;drawDope();}
 const tlSelIds=()=>{const s=new Set((U.dopeSel||[]).concat(U.selIds||[]));return [...s];};
 function tlContentRows(){
   const r=[];
@@ -2188,7 +2198,7 @@ function drawDope(){
     g.fillStyle=on?'#ececef':'#a2a2ab'; g.font=(R.k==='scene'||R.k==='blocks'?'600 ':'')+'11px sans-serif';
     let lab=R.name; if(R.k==='blocks') lab=`${TL.blocksOpen?'▾':'▸'}  Blocks · ${P.seq.length}`;
     g.fillText(lab,10,R.k==='scene'?R.y0+14:R.y0+R.h/2);
-    if(R.k==='scene'){g.fillStyle='#686871';g.font='10px sans-serif';g.fillText('drag the dots to ease',10,R.y0+30);g.fillText('dbl-click: big editor',10,R.y0+43);}
+    if(R.k==='scene'){g.fillStyle='#686871';g.font='10px sans-serif';g.fillText('drag dots · ⇧ keeps angle',10,R.y0+30);g.fillText('dbl-click adds a point',10,R.y0+43);}
   });
   g.fillStyle='#17171a'; g.fillRect(LW-1,ROWS.ruler,1,r.height);
   // ---- clip to the track area
@@ -2207,15 +2217,22 @@ function drawDope(){
   if(anim&&P.seq.length){
     const s0=P.startF, s1=P.startF+P.L, X2=D.exit, yb=RSc.y0+6, hb=RSc.h-12;
     let holdEnd=Math.max(N,s1), holdKnob=null;
-    if(X2.on&&X2.mode==='walk'&&P.walkT!=null){holdEnd=P.walkT; holdKnob=f=>{X2.walkHold=Math.max(0,Math.round(f-(P.walkT-(+X2.walkHold||0))));};}
+    const WOn=X2.on&&X2.mode==='walk'&&P.walkT!=null;
+    if(WOn){holdEnd=s1;}
     else if(X2.on&&X2.mode==='end'&&P.exitT&&P.exitT.some(v=>v!=null)){holdEnd=Math.min(...P.exitT.filter(v=>v!=null)); holdKnob=f=>{X2.at=Math.round(f-(D.anim.startF+D.anim.lenF));};}
     const seg=(f0,f1,col,lab)=>{if(f1<=f0)return;g.fillStyle=col;g.fillRect(X(f0),yb,X(f1)-X(f0),hb);const w=X(f1)-X(f0);if(w>40){const t=`${lab} ${((f1-f0)/fps).toFixed(1)}s`;g.font='600 10px sans-serif';label(w>g.measureText(t).width+12?t:lab,X(f0)+6,yb+10,'rgba(236,236,239,.85)');}};
-    seg(s1,holdEnd,'rgba(236,236,239,.07)',X2.on&&X2.mode==='hold'?`each stays ${X2.hold}f`:'Hold');
-    if(X2.on&&X2.mode==='walk'&&P.walkT!=null){const rel=P.relT!=null?P.relT:P.walkT; seg(P.walkT,rel,'rgba(116,157,211,.30)','Camera follows'); seg(rel,Math.max(rel+1,P.walkEnd||N),'rgba(116,157,211,.14)','Walks off');
-      knob(rel,RSc.y0+4,RSc.h-8,'#749DD3'); H(rel,RSc,'ew-resize',f=>{X2.walkLen=Math.max(6,Math.round(f-P.walkT));},'how long the camera follows the walk-off');}
+    if(!WOn) seg(s1,holdEnd,'rgba(236,236,239,.07)',X2.on&&X2.mode==='hold'?`each stays ${X2.hold}f`:'Hold');
     else if(X2.on&&X2.mode==='end'&&isFinite(holdEnd)) seg(holdEnd,Math.max(holdEnd+1,N),'rgba(255,127,123,.18)','Clear-out');
     g.fillStyle='rgba(230,33,47,.20)'; g.fillRect(X(s0),yb,X(s1)-X(s0),hb); g.strokeStyle='rgba(230,33,47,.75)'; g.lineWidth=1; g.strokeRect(X(s0)+.5,yb+.5,X(s1)-X(s0)-1,hb-1);
-    if(X(s1)-X(s0)>60) label(`Build ${((s1-s0)/fps).toFixed(2)}s`,X(s0)+6,yb+10,'#ffd5d3');
+    if(WOn){ // the scene holds the whole story: build · hold · camera follows the walk · walks off
+      const hS=Math.max(s0,P.holdT!=null?P.holdT:P.walkT), rel=P.relT!=null?Math.min(s1,P.relT):s1;
+      const part=(f0,f1,col,lab)=>{if(f1<=f0)return;g.fillStyle=col;g.fillRect(X(f0),yb,X(f1)-X(f0),hb);if(X(f1)-X(f0)>34){g.font='600 10px sans-serif';label(lab,X(f0)+5,yb+hb-8,'rgba(236,236,239,.75)');}};
+      part(hS,P.walkT,'rgba(10,10,12,.45)','Hold'); part(P.walkT,rel,'rgba(116,157,211,.28)','Walk'); part(rel,s1,'rgba(116,157,211,.12)','Walks off');
+      g.fillStyle='rgba(255,255,255,.5)'; g.fillRect(X(P.walkT),yb,1,hb);
+      const hold0=+X2.walkHold||0, wT0=P.walkT; knob(P.walkT,RSc.y0+4,RSc.h-8,'#FFFFFF'); H(P.walkT,RSc,'ew-resize',f=>{X2.walkHold=Math.max(0,Math.round(hold0+(f-wT0)));},'hold — how long the built line waits before it walks off');
+      if(P.relT!=null&&P.relT<s1+60){knob(P.relT,RSc.y0+4,RSc.h-8,'#749DD3'); H(P.relT,RSc,'ew-resize',f=>{X2.walkLen=Math.max(6,Math.round(f-P.walkT));},'camera lets go of the walking line');}
+    }
+    if(X(s1)-X(s0)>60) label(WOn?`Scene ${((s1-s0)/fps).toFixed(2)}s`:`Build ${((s1-s0)/fps).toFixed(2)}s`,X(s0)+6,yb+10,'#ffd5d3');
     // easing: real time (x) → scene progress (y). White dots = points, coral = bezier handles
     const cy0=yb+hb-3, ch=hb-18, cxp=u=>X(s0+(s1-s0)*u), cyp=v=>cy0-ch*v;
     const sf=curveFn(D.anim.sceneCurve||[0,0,1,1]);
@@ -2228,10 +2245,13 @@ function drawDope(){
         const ax=cxp(p.x), ay=cyp(p.y);
         const hd=(dx,dy,which)=>{const hx=cxp(p.x+dx), hy=cyp(p.y+dy); g.strokeStyle='rgba(255,127,123,.6)'; g.lineWidth=1; g.beginPath(); g.moveTo(ax,ay); g.lineTo(hx,hy); g.stroke();
           g.fillStyle='#FF7F7B'; g.beginPath(); g.arc(hx,hy,3.5,0,7); g.fill();
-          item({type:'point',x:hx,y:hy,cur:'move',tip:'easing handle — drag to shape the curve',drag:(fx,fy)=>{const h=toH(D.anim.sceneCurve||[0,0,1,1]),q=h[k]; if(!q) return;
+          const a0=Math.atan2(dy,dx);
+          item({type:'point',x:hx,y:hy,cur:'move',tip:'easing handle — drag to shape the curve · hold ⇧ to keep its angle',drag:(fx,fy,sh)=>{const h=toH(D.anim.sceneCurve||[0,0,1,1]),q=h[k]; if(!q) return;
             const u=(fx-cxp(0))/Math.max(1,cxp(1)-cxp(0)), v=(cy0-fy)/Math.max(1,ch);
-            if(which==='o'){q.ox=clamp(u-q.x,0,(k<h.length-1?h[k+1].x:1)-q.x); q.oy=clamp(v-q.y,-1.5,1.5);}
-            else {q.ix=clamp(u-q.x,-(q.x-(k>0?h[k-1].x:0)),0); q.iy=clamp(v-q.y,-1.5,1.5);}
+            let ddx=u-q.x, ddy=v-q.y;
+            if(sh&&(dx||dy)){const cx=Math.cos(a0), cy=Math.sin(a0), len=Math.max(0,ddx*cx+ddy*cy); ddx=cx*len; ddy=cy*len;}
+            if(which==='o'){const mx=(k<h.length-1?h[k+1].x:1)-q.x; if(sh&&ddx>mx&&ddx>0){ddy*=mx/ddx;ddx=mx;} q.ox=clamp(ddx,0,mx); q.oy=clamp(ddy,-1.5,1.5);}
+            else {const mn=-(q.x-(k>0?h[k-1].x:0)); if(sh&&ddx<mn&&ddx<0){ddy*=mn/ddx;ddx=mn;} q.ix=clamp(ddx,mn,0); q.iy=clamp(ddy,-1.5,1.5);}
             save(h);}});};
         if(k>0) hd(p.ix,p.iy,'i'); if(k<Hs.length-1) hd(p.ox,p.oy,'o');
         g.fillStyle='#fff'; g.beginPath(); g.arc(ax,ay,4,0,7); g.fill(); g.strokeStyle='#E6212F'; g.lineWidth=1.5; g.stroke();
@@ -2246,7 +2266,7 @@ function drawDope(){
     }
     knob(s0,RSc.y0+4,RSc.h-8,'#E6212F'); knob(s1,RSc.y0+4,RSc.h-8,'#E6212F');
     H(s0,RSc,'ew-resize',f=>{const e=D.anim.startF+D.anim.lenF;D.anim.startF=Math.round(f);D.anim.lenF=Math.max(2,e-D.anim.startF);},'scene start');
-    H(s1,RSc,'ew-resize',f=>{D.anim.lenF=Math.max(2,Math.round(f-D.anim.startF));D.anim.toEnd=false;},'build length');
+    H(s1,RSc,'ew-resize',f=>{D.anim.lenF=Math.max(2,Math.round(f-D.anim.startF));D.anim.toEnd=false;},WOn?'scene length (build, hold and walk-off)':'build length');
     if(holdKnob&&isFinite(holdEnd)&&holdEnd<N){knob(holdEnd,RSc.y0+4,RSc.h-8,'#FFFFFF'); H(holdEnd,RSc,'ew-resize',holdKnob,'hold before they leave');}
   } else {g.fillStyle='#686871';g.font='11px sans-serif';g.fillText(anim?'Generate a line to start — Blocks step, or press G':'Static — pick an animation style in Motion',LW+8,RSc.y0+RSc.h/2);}
   // ---- camera
@@ -2306,9 +2326,12 @@ function drawDope(){
       if(tE!=null){g.globalAlpha=a*.8; g.fillRect(X(tE),yy+2,Math.max(1,X(t1)-X(tE)),BLOCK_RH-4);}
       g.globalAlpha=1;
       if(isSel){g.strokeStyle='#fff';g.lineWidth=1.5;g.strokeRect(X(t0)+.5,yy+1.5,Math.max(2,X(t1)-X(t0))-1,BLOCK_RH-3);}
-      if(dt[b.id]&&P.T0){const x0=X(P.T0[i]); g.strokeStyle='rgba(255,255,255,.55)'; g.setLineDash([2,2]); g.beginPath(); g.moveTo(x0,yy+BLOCK_RH/2); g.lineTo(X(t0),yy+BLOCK_RH/2); g.stroke(); g.setLineDash([]); g.fillStyle='#fff'; g.fillRect(x0-.5,yy+2,1,BLOCK_RH-4);}
-      item({type:'block',id:b.id,i,x0:X(t0)-3,x1:X(t1)+2,y0:yy,y1:yy+BLOCK_RH,cur:'grab',tip:`${bname(b)}${b.virtual?' (generated)':''} — appears f${t0}${dt[b.id]?` (moved ${dt[b.id]>0?'+':''}${dt[b.id]}f)`:''}${tE!=null?`, leaves f${tE}`:''} · drag to retime · right-click for more`,t0});
-      if(tE!=null) item({type:'exit',id:b.id,i,x:X(tE),y0:yy,y1:yy+BLOCK_RH,cur:'ew-resize',tip:`when ${bname(b)} leaves — drag`,dx0:+(D.anim.dx||{})[b.id]||0});
+      if((dt[b.id]||(D.anim.dx||{})[b.id])&&P.T0){const x0=X(P.T0[i]); g.strokeStyle='rgba(255,255,255,.45)'; g.setLineDash([3,2]); g.lineWidth=1; g.strokeRect(x0+.5,yy+2.5,Math.max(2,X(t1-(t0-P.T0[i]))-x0)-1,BLOCK_RH-5); g.setLineDash([]);}
+      if(isSel){g.fillStyle='#fff'; g.fillRect(X(t0)-1,yy+1,2.5,BLOCK_RH-2); if(tE!=null) g.fillRect(X(tE)-1,yy+1,2.5,BLOCK_RH-2);}
+      const lab=`${bname(b)}${b.virtual?' (generated)':''} — in f${t0}${tE!=null?` · out f${tE}`:''}${dt[b.id]?` · moved ${dt[b.id]>0?'+':''}${dt[b.id]}f`:''}`;
+      item({type:'block',id:b.id,i,x0:X(t0)-3,x1:X(t1)+2,y0:yy,y1:yy+BLOCK_RH,cur:'grab',tip:`${lab} · drag to move it (in and out together) · right-click for more`,t0});
+      item({type:'inedge',id:b.id,i,x:X(t0),y0:yy,y1:yy+BLOCK_RH,cur:'ew-resize',tip:`${lab} · drag to change when it comes in`});
+      if(tE!=null) item({type:'exit',id:b.id,i,x:X(tE),y0:yy,y1:yy+BLOCK_RH,cur:'ew-resize',tip:`${lab} · drag to change when it leaves`,dx0:+(D.anim.dx||{})[b.id]||0});
       if(walk&&i===P.walkFrom){g.fillStyle='rgba(116,157,211,.6)';g.fillRect(LW,yy-1,r.width-LW,1);}
     });
   }
@@ -2333,6 +2356,7 @@ function drawDope(){
   const cues=timingCues(); g.fillStyle=D.timing&&D.timing.sync?'rgba(116,157,211,.7)':'rgba(116,157,211,.32)'; cues.forEach(f=>{g.fillRect(X(f),ROWS.ruler,1,r.height-ROWS.ruler);});
   if(U.t!=null){const x=X(U.t); g.fillStyle='#E6212F'; g.fillRect(x-.5,0,1.5,r.height); const lab=`${Math.round(U.t)}f · ${(U.t/fps).toFixed(2)}s`; g.font='600 10px sans-serif'; const w=g.measureText(lab).width+10; const lx=clamp(x-w/2,LW,r.width-w); g.fillStyle='#E6212F'; if(g.roundRect){g.beginPath();g.roundRect(lx,2,w,17,4);g.fill();}else g.fillRect(lx,2,w,17); g.fillStyle='#fff'; g.fillText(lab,lx+5,11);}
   if(TL.hover&&!TL.drag&&TL.hover.x>LW){g.fillStyle='rgba(255,255,255,.22)';g.fillRect(TL.hover.x,ROWS.ruler,1,r.height-ROWS.ruler);}
+  if(TL.drag&&TL.drag.marquee){const m=TL.drag.marquee; g.fillStyle='rgba(230,33,47,.12)'; g.strokeStyle='rgba(255,127,123,.9)'; g.lineWidth=1; g.fillRect(Math.min(m.x0,m.x1),Math.min(m.y0,m.y1),Math.abs(m.x1-m.x0),Math.abs(m.y1-m.y0)); g.strokeRect(Math.min(m.x0,m.x1)+.5,Math.min(m.y0,m.y1)+.5,Math.abs(m.x1-m.x0),Math.abs(m.y1-m.y0));}
   g.restore();
   g.fillStyle='#19191c'; g.fillRect(0,0,LW-1,ROWS.ruler); g.fillStyle='#9a9aa3'; g.font='600 10px sans-serif'; g.textBaseline='middle'; g.fillText(anim&&P.seq.length?`${P.seq.length} blocks · ${(P.L/fps).toFixed(1)}s scene`:'Timeline',10,ROWS.ruler/2);
 }
@@ -2341,10 +2365,10 @@ function tlHit(x,y){
   const inList=y>=TL.listY0;
   let best=null;
   TL.items.forEach(it=>{
-    if((it.type==='block'||it.type==='exit')&&!inList) return;
+    if((it.type==='block'||it.type==='exit'||it.type==='inedge')&&!inList) return;
     if(it.type==='point'){const d=Math.hypot(it.x-x,it.y-y); if(d<=7&&(!best||best.pr<4||d<best.d)) best=Object.assign({pr:4,d},it);}
     else if(it.type==='handle'){const d=Math.abs(it.x-x); if(y>=it.y0&&y<=it.y1&&d<=6&&(!best||best.pr<3||(best.pr===3&&d<best.d))) best=Object.assign({pr:3,d},it);}
-    else if(it.type==='exit'){const d=Math.abs(it.x-x); if(y>=it.y0&&y<it.y1&&d<=4&&(!best||best.pr<2.5)) best=Object.assign({pr:2.5,d},it);}
+    else if(it.type==='exit'||it.type==='inedge'){const d=Math.abs(it.x-x); if(y>=it.y0&&y<it.y1&&d<=4&&(!best||best.pr<2.5||(best.pr===2.5&&d<best.d))) best=Object.assign({pr:2.5,d},it);}
   });
   if(best) return best;
   TL.items.forEach(it=>{
@@ -2354,7 +2378,7 @@ function tlHit(x,y){
   });
   if(best) return best;
   const cvv=TL.items.find(it=>it.type==='curve'&&x>=it.x0&&x<=it.x1&&y>=it.y0&&y<=it.y1);
-  if(cvv){const u=cvv.u(x); if(Math.abs(cvv.cy(u)-y)<=5) return Object.assign({pr:1},cvv);}
+  if(cvv){const u=cvv.u(x); if(Math.abs(cvv.cy(u)-y)<=8) return Object.assign({pr:1},cvv);}
   if(y<ROWS.ruler) return {type:'ruler',cur:'col-resize',tip:'drag to scrub'};
   if(inList){ if(TL.blocksOpen&&TL.P){const i=Math.floor((y-TL.listY0-3+TL.scrollY)/BLOCK_RH); if(TL.P.seq[i]&&x<TL.LW) return {type:'blabel',i,id:TL.P.seq[i].id,cur:'pointer',tip:'click to select this block (⇧ to add)'};} return {type:'empty',cur:'default'}; }
   const R=TL.rows.find(R=>y>=R.y0&&y<R.y1);
@@ -2374,49 +2398,82 @@ function tlSelect(id,add){
   if(add&&s.indexOf(id)>=0) s=s.filter(x=>x!==id); else if(s.indexOf(id)<0) s.push(id);
   U.dopeSel=s; U.selIds=s.filter(x=>byId(x)); U.ctx=null; U.sel=null; refresh();
 }
+/* pick a block on the timeline: plain = just it, toggle (⌘) = add/remove, range (⇧) = everything from the last pick */
+function tlPick(id,mode){
+  const P=TL.P||plan(geom()); let s=tlSelIds();
+  if(mode==='range'&&TL.anchor!=null){ const a=P.seq.findIndex(b=>b.id===TL.anchor), b=P.seq.findIndex(x=>x.id===id);
+    if(a>=0&&b>=0){ const lo=Math.min(a,b), hi=Math.max(a,b); s=[...new Set(s.concat(P.seq.slice(lo,hi+1).map(x=>x.id)))]; } else s=[id]; }
+  else if(mode==='toggle'||mode==='range'){ s=s.indexOf(id)>=0?s.filter(x=>x!==id):s.concat([id]); TL.anchor=id; }
+  else { s=[id]; TL.anchor=id; }
+  U.dopeSel=s; U.selIds=s.filter(x=>byId(x)); U.ctx=null; U.sel=null; refresh();
+}
+/* add a point to the scene easing at u (0–1 across the scene), on the curve, with a smooth tangent */
+function tlAddPoint(u){
+  const cur=D.anim.sceneCurve||[0,0,1,1], hh=toH(cur); u=clamp(u,.02,.98);
+  if(hh.some(q=>Math.abs(q.x-u)<.025)) return;
+  pushHist(true); const fn=curveFn(cur), v=fn(u);
+  let k=hh.findIndex(q=>q.x>u); if(k<1)k=hh.length-1; const a=hh[k-1], b=hh[k], w=Math.min(u-a.x,b.x-u)/3, sl=(fn(Math.min(1,u+.01))-fn(Math.max(0,u-.01)))/.02;
+  a.ox=Math.min(a.ox,(u-a.x)*.9); b.ix=Math.max(b.ix,-(b.x-u)*.9);
+  hh.splice(k,0,{x:u,y:v,ix:-w,iy:-w*sl,ox:w,oy:w*sl}); D.anim.sceneCurve=hPack(hh); planCache.k=''; refresh();
+  toast('Added an easing point — drag it on the Scene row','⌥-click a point to remove it',true);
+}
 function initDope(){
   const c=$('#dopeCv'); if(!c||!c.addEventListener) return;
   const tip=$('#dopeTip');
-  const showTip=t=>{if(!tip)return;tip.textContent=t||'';tip.hidden=!t;};
+  const showTip=t=>{if(!tip)return;tip.textContent=t||'';tip.hidden=!t;}; TL.showTip=showTip;
   const rect=e=>{const r=c.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};};
   c.addEventListener('pointermove',e=>{ if(TL.drag) return; const p=rect(e), h=tlHit(p.x,p.y); c.style.cursor=h.cur||'default'; TL.hover=p.x>TL.LW?{x:p.x}:null; showTip(tlInfo(p.x,p.y,h)); drawDope(); });
   c.addEventListener('pointerleave',()=>{if(TL.drag)return;TL.hover=null;showTip('');drawDope();});
   c.addEventListener('contextmenu',e=>{e.preventDefault(); const p=rect(e), h=tlHit(p.x,p.y); tlMenu(e,h);});
-  c.addEventListener('dblclick',e=>{const p=rect(e), h=tlHit(p.x,p.y); const R=TL.rows.find(R=>R.k==='scene'); if(R&&p.y>=R.y0&&p.y<R.y1&&h.type!=='handle') openCurveEditor('anim.sceneCurve',0,1,'Scene easing · re-times the whole scene');});
+  c.addEventListener('dblclick',e=>{const p=rect(e), h=tlHit(p.x,p.y); const R=TL.rows.find(R=>R.k==='scene'); const cvv=TL.items.find(it=>it.type==='curve');
+    if(R&&cvv&&p.y>=R.y0&&p.y<R.y1&&h.type!=='handle'&&h.type!=='point'&&p.x>=cvv.x0&&p.x<=cvv.x1) tlAddPoint(cvv.u(p.x)); });
   c.addEventListener('pointerdown',e=>{
     if(e.button!==0) return; const p=rect(e), h=tlHit(p.x,p.y); closeTlMenu();
     c.setPointerCapture&&c.setPointerCapture(e.pointerId);
     const freeze=()=>{TL.frozen=tlView();};
     if(h.type==='ruler'){ freeze(); TL.drag={scrub:true}; tlSetT(TL.F(p.x)); return; }
     if(h.type==='point'){ if(e.altKey&&h.alt){h.alt();return;} pushHist(true); freeze(); TL.drag={point:h}; return; }
-    if(h.type==='curve'){ // add an easing point on the line
-      pushHist(true); const cur=D.anim.sceneCurve||[0,0,1,1], hh=toH(cur), u=clamp(h.u(p.x),.02,.98), fn=curveFn(cur), v=fn(u);
-      let k=hh.findIndex(q=>q.x>u); if(k<1)k=hh.length-1; const a=hh[k-1], b=hh[k], w=Math.min(u-a.x,b.x-u)/3, sl=(fn(Math.min(1,u+.01))-fn(Math.max(0,u-.01)))/.02;
-      hh.splice(k,0,{x:u,y:v,ix:-w,iy:-w*sl,ox:w,oy:w*sl}); D.anim.sceneCurve=hPack(hh); planCache.k=''; refresh(); return; }
+    if(h.type==='curve'){ tlAddPoint(h.u(p.x)); return; }
     if(h.type==='handle'){ pushHist(true); freeze(); TL.drag={handle:h}; return; }
-    if(h.type==='exit'){ pushHist(true); freeze(); TL.drag={exit:h,f0:TL.F(p.x)}; if(tlSelIds().indexOf(h.id)<0) tlSelect(h.id,false); return; }
+    const mods=e.shiftKey?'range':(e.metaKey||e.ctrlKey)?'toggle':null;
+    const grab=(kind)=>{ pushHist(true); freeze(); const ids=tlSelIds(), dt=D.anim.dt||{}, dx=D.anim.dx||{}; TL.drag={kind,blocks:ids,f0:TL.F(p.x),base:ids.map(id=>+dt[id]||0),baseX:ids.map(id=>+dx[id]||0),moved:false,anchorId:h.id}; };
+    if(h.type==='exit'||h.type==='inedge'){ if(tlSelIds().indexOf(h.id)<0) tlPick(h.id,null); grab(h.type==='exit'?'out':'in'); return; }
     if(h.type==='block'||h.type==='blabel'){
-      const add=e.shiftKey||e.metaKey||e.ctrlKey;
-      if(add||tlSelIds().indexOf(h.id)<0) tlSelect(h.id,add);
-      if(h.type==='block'&&!add){ pushHist(true); freeze(); const ids=tlSelIds(), dt=D.anim.dt||{}; TL.drag={blocks:ids,f0:TL.F(p.x),base:ids.map(id=>+dt[id]||0),moved:false}; c.style.cursor='grabbing'; }
+      if(mods||tlSelIds().indexOf(h.id)<0) tlPick(h.id,mods);
+      if(h.type==='block'&&!mods){ grab('move'); c.style.cursor='grabbing'; }
       return; }
     if(h.type==='clip'){ pushHist(true); freeze(); TL.drag={clip:h,f0:TL.F(p.x),moved:false}; return; }
-    if(h.type==='bhdr'){ if(p.x<TL.LW){TL.blocksOpen=!TL.blocksOpen;drawDope();} else {U.dopeSel=[];U.selIds=[];U.ctx=null;goStep(SI('layout'));refresh();} return; }
+    if(h.type==='bhdr'){ if(p.x<TL.LW){TL.blocksOpen=!TL.blocksOpen;drawDope();} else setCtx(D.anim.mode==='static'?null:'inout'); return; }
     if(h.type==='row'){ tlOpenRow(h.row||{},h.tab); return; }
+    if(p.y>=TL.listY0&&TL.blocksOpen){ freeze(); TL.drag={marquee:{x0:p.x,y0:p.y,x1:p.x,y1:p.y},keep:mods?tlSelIds():[]}; return; }   // drag a box to select several blocks
     if(tlSelIds().length){U.dopeSel=[];U.selIds=[];refresh();} else { freeze(); TL.drag={scrub:true}; tlSetT(TL.F(p.x)); }
   });
   c.addEventListener('pointermove',e=>{const d=TL.drag; if(!d) return; const p=rect(e), f=TL.F(p.x);
     if(d.scrub){tlSetT(f);return;}
-    if(d.point){d.point.drag(p.x,p.y);}
+    if(d.marquee){ const m=d.marquee; m.x1=p.x; m.y1=p.y; const x0=Math.min(m.x0,m.x1),x1=Math.max(m.x0,m.x1),y0=Math.min(m.y0,m.y1),y1=Math.max(m.y0,m.y1);
+      const hit=TL.items.filter(it=>it.type==='block'&&it.x1>=x0&&it.x0<=x1&&it.y1>=y0&&it.y0<=y1).map(it=>it.id);
+      const ids=[...new Set(d.keep.concat(hit))]; U.dopeSel=ids; U.selIds=ids.filter(id=>byId(id)); drawDope(); showTip(`${ids.length} block${ids.length===1?'':'s'} selected`); return; }
+    if(d.point){d.point.drag(p.x,p.y,e.shiftKey);}
     else if(d.handle){d.handle.apply(f);}
-    else if(d.exit){const df=Math.round(f-d.f0); D.anim.dx=D.anim.dx||{}; const v=d.exit.dx0+df; if(v) D.anim.dx[d.exit.id]=v; else delete D.anim.dx[d.exit.id];}
-    else if(d.blocks){const df=Math.round(f-d.f0); if(df) d.moved=true; D.anim.dt=D.anim.dt||{}; d.blocks.forEach((id,k)=>{const v=d.base[k]+df; if(v) D.anim.dt[id]=v; else delete D.anim.dt[id];});}
+    else if(d.blocks){
+      const df=Math.round(f-d.f0); if(df) d.moved=true; D.anim.dt=D.anim.dt||{}; D.anim.dx=D.anim.dx||{};
+      const keepOut=d.kind==='in'&&D.exit.mode!=='behind';
+      d.blocks.forEach((id,k)=>{
+        if(d.kind==='out'){const v=d.baseX[k]+df; if(v) D.anim.dx[id]=v; else delete D.anim.dx[id]; return;}
+        const v=d.base[k]+df; if(v) D.anim.dt[id]=v; else delete D.anim.dt[id];
+        if(keepOut){const w=d.baseX[k]-df; if(w) D.anim.dx[id]=w; else delete D.anim.dx[id];}
+      });
+      // show the change: put the playhead where this block now comes in (or leaves)
+      planCache.k=''; const P2=plan(geom()), i2=P2.seq.findIndex(b=>b.id===d.anchorId);
+      if(i2>=0){ const tt=d.kind==='out'&&P2.exitT&&P2.exitT[i2]!=null?P2.exitT[i2]+Math.round((+D.exit.len||8)/2):P2.T[i2]+Math.max(1,Math.round((+D.anim.trans||1)*.6)); U.t=tt; updTC(); updViewBadge(); }
+    }
     else if(d.clip){if(Math.abs(f-d.f0)>.5) d.moved=true; d.clip.drag(f,d.f0,d.clip.start);}
     planCache.k=''; syncInputs(); render(); drawDope(); drawSpeedGraph();
     const fps=D.comp.fps||30, df=Math.round(f-(d.f0||0));
-    showTip(d.blocks?`move ${d.blocks.length>1?d.blocks.length+' blocks':'block'} ${df>=0?'+':''}${df}f`:d.handle?`${d.handle.tip} → f${Math.round(f)} (${(f/fps).toFixed(2)}s)`:d.exit?`leaves ${df>=0?'+':''}${df}f`:d.point?d.point.tip:'');
+    showTip(d.blocks?`${d.kind==='out'?'leave':d.kind==='in'?'come in':'move'} ${d.blocks.length>1?d.blocks.length+' blocks ':''}${df>=0?'+':''}${df}f${d.kind==='move'?' (in and out together)':''}`:d.handle?`${d.handle.tip} → f${Math.round(f)} (${(f/fps).toFixed(2)}s)`:d.exit?`leaves ${df>=0?'+':''}${df}f`:d.point?d.point.tip:'');
   });
   const up=()=>{const d=TL.drag; TL.drag=null; TL.frozen=null; if(!d) return;
+    if(d.marquee){ const m=d.marquee; if(Math.abs(m.x1-m.x0)<3&&Math.abs(m.y1-m.y0)<3&&!d.keep.length){U.dopeSel=[];U.selIds=[];} TL.anchor=(U.dopeSel||[])[0]; refresh(); return; }
     if(d.clip&&!d.moved){ H.u.pop(); updUndo(); setCtx(d.clip.ctx); return; }
     if(d.blocks&&!d.moved){ H.u.pop(); updUndo(); drawDope(); return; }
     if(!d.scrub) refresh(); else drawDope(); };
@@ -2489,23 +2546,24 @@ function dopeRemove(after){
 function exitTimes(P,G,seq,done){
   const X=D.exit; if(!X||!X.on||!seq.length) return null;
   const out=new Array(seq.length).fill(null), fps=D.comp.fps||30;
+  const TB=P.T0||P.T, done0=done.map((d,i)=>d-((P.T[i]||0)-(TB[i]||0)));   // exits are worked out on the un-retimed schedule
   if(X.mode==='hold'){ seq.forEach((b,i)=>{out[i]=Math.round(done[i]+Math.max(1,+X.hold||0));}); }
   else if(X.mode==='end'){
     const t0=Math.round(P.startF+P.L+(+X.at||0)), stg=Math.max(0,+X.stagger||0);
     const order=seq.map((b,i)=>i); if(X.order==='reverse') order.reverse();
-    order.forEach((i,k)=>{out[i]=Math.max(done[i]+1,Math.round(t0+k*stg));});
+    order.forEach((i,k)=>{out[i]=Math.max(done0[i]+1,Math.round(t0+k*stg));});
   } else if(X.mode==='walk'){
     // walk-off: after the hold the line keeps walking; the oldest blocks leave first so only a short trail follows the head
     // snake: a block leaves when the block K places ahead of it lands, so exactly K follow the head.
     // At the start of the walk the surplus old blocks peel away quickly, oldest first.
     const tW=P.walkT!=null?P.walkT:Math.round(Math.max(...done)+Math.max(0,+X.walkHold||0)), pc=Math.max(1,(+D.anim.pace||6)*Math.max(.1,+X.walkPace||1));
     const K=Math.max(1,Math.round(+X.trail||6)), n=seq.length, Nb=P.walkFrom!=null?P.walkFrom:n, surplus=Math.max(0,Nb-K), peel=Math.max(8,Math.round(pc*3));
-    const lastT=P.T[n-1];
+    const lastT=TB[n-1];
     seq.forEach((b,i)=>{
       let t;
       if(i<surplus) t=tW+Math.round(i/Math.max(1,surplus)*peel);
-      else t=i+K<n?P.T[i+K]:lastT+(i+K-n+1)*pc;
-      out[i]=Math.max(Math.round(done[i]!=null?done[i]+1:P.T[i]+1),Math.round(Math.max(t,tW)));
+      else t=i+K<n?TB[i+K]:lastT+(i+K-n+1)*pc;
+      out[i]=Math.max(Math.round(done0[i]!=null?done0[i]+1:TB[i]+1),Math.round(Math.max(t,tW)));
     });
   } else if(X.mode==='behind'){
     // leaves when its right edge passes the exit line (X% of the frame from the left) — blocks trail away behind the camera
@@ -3447,7 +3505,7 @@ function buildStepper(){
   $('#rail').addEventListener('click',e=>{const b=e.target.closest('[data-step]');if(!b)return;U.ctx=null;U.dopeSel=[];U.selIds=[];U.sel=null;goStep(+b.dataset.step);refresh();});
 }
 /* contexts: a timeline row's settings in the properties panel */
-function setCtx(c){ U.ctx=c||null; if(c){U.dopeSel=[];U.selIds=[];U.sel=null;} const sb=$('#left .step-body'); if(sb) sb.scrollTop=0; refresh(); }
+function setCtx(c){ if(c==='after'||c==='reveal') c='inout'; U.ctx=c||null; if(c){U.dopeSel=[];U.selIds=[];U.sel=null;} const sb=$('#left .step-body'); if(sb) sb.scrollTop=0; refresh(); }
 function renderProps(){
   const left=$('#left'), st=STEPS[U.step], sel=tlSelIds(), blk=(sel.length>0||!!U.sel)&&!U.ctx;
   left.classList.toggle('ctxmode',!!U.ctx&&!blk); left.classList.toggle('blockmode',blk);
@@ -3913,7 +3971,8 @@ function openCurveEditor(path,ymin,ymax,title){
       remember(); drag={k:'pull',i:t.i,moved:false}; c.setPointerCapture(e.pointerId); draw(); return; }
     if(!t){const q=onLine(g,mx,my); if(!q) return; remember(); t={k:'pt',i:addAt(q[0])};}
     else remember();
-    drag=t; CE.hover=null; c.setPointerCapture(e.pointerId); draw();
+    drag=t; if(t.k==='out'||t.k==='in'){const p0=H()[t.i]; if(p0){const vx=t.k==='out'?p0.ox:p0.ix, vy=t.k==='out'?p0.oy:p0.iy; drag.a0=Math.hypot(vx,vy)>1e-6?Math.atan2(vy,vx):null;}}
+    CE.hover=null; c.setPointerCapture(e.pointerId); draw();
   };
   c.onpointermove=e=>{ const g=geo(), mx=e.clientX-g.r.left, my=e.clientY-g.r.top;
     CE.mouse=[mx,my]; CE.alt=e.altKey;
@@ -3925,7 +3984,8 @@ function openCurveEditor(path,ymin,ymax,title){
       save(h); draw(); render(); return; }
     if(drag.k==='pt'){ const lo=drag.i>0?h[drag.i-1].x+.01:0, hi=drag.i<h.length-1?h[drag.i+1].x-.01:1;
       p.x=drag.i===0?0:drag.i===h.length-1?1:clamp(q[0],lo,hi); p.y=clamp(q[1],ymin,ymax); }
-    else { let dx=q[0]-p.x, dy=q[1]-p.y; if(e.shiftKey) dy=0;
+    else { let dx=q[0]-p.x, dy=q[1]-p.y;
+      if(e.shiftKey){ if(drag.a0!=null){const cx=Math.cos(drag.a0),cy=Math.sin(drag.a0),L=Math.max(0,dx*cx+dy*cy);dx=cx*L;dy=cy*L;} else dy=0; }   // ⇧ keeps the handle's angle
       if(drag.k==='out'){p.ox=Math.max(0,dx);p.oy=dy; if(!e.altKey&&drag.i>0){const L=Math.hypot(p.ix,p.iy),a=Math.atan2(dy,Math.max(1e-6,dx));p.ix=-L*Math.cos(a);p.iy=-L*Math.sin(a);}}
       else {p.ix=Math.min(0,dx);p.iy=dy; if(!e.altKey&&drag.i<h.length-1){const L=Math.hypot(p.ox,p.oy),a=Math.atan2(-dy,Math.max(1e-6,-dx));p.ox=L*Math.cos(a);p.oy=L*Math.sin(a);}} }
     save(h); draw(); render(); try{drawDope();}catch(x){} };
@@ -4016,7 +4076,7 @@ function drawCurve(el){
   const f=curveFn(cur); x.fillStyle='rgba(255,255,255,.55)';
   for(let i=0;i<=16;i++){const u=i/16,p=cToPx(g,u,f(u));x.beginPath();x.arc(p[0],p[1],1.4,0,7);x.fill();}
   [P1,P2].forEach(p=>{x.fillStyle='#fff';x.strokeStyle='#E6212F';x.lineWidth=2;x.beginPath();x.arc(p[0],p[1],5,0,7);x.fill();x.stroke();});
-  el.querySelector('.cv-val').textContent=`cubic-bezier(${cur.map(v=>+(+v).toFixed(2)).join(', ')}) · drag the dots · hold Shift or ⌘ to snap to 0/45/90°`;
+  el.querySelector('.cv-val').textContent=`cubic-bezier(${cur.map(v=>+(+v).toFixed(2)).join(', ')}) · drag the dots · ⇧ keeps a handle's angle`;
   const pr=el._presets||CURVE_PRESETS;
   $$('[data-cp]',el).forEach(b=>{const pc=pr[+b.dataset.cp][1];b.classList.toggle('on',pc.every((v,i)=>Math.abs(v-cur[i])<1e-3));});
 }
@@ -4421,9 +4481,14 @@ const animSeed=()=>{pushHist();D.anim.seed=(D.anim.seed|0)+1;D.anim.skip=[];if(i
 $('#btnAnimSeed').onclick=animSeed; $('#btnAnimSeed2').onclick=animSeed;
 $('#btnUnskip').onclick=()=>{pushHist();D.anim.skip=[];D.anim.cutAt=null;planCache.k='';refresh();};
 $('#cvPlay').onclick=()=>{U.playing?stopPlay():play();};
-document.addEventListener('click',e=>{const l=e.target.closest('[data-goto]');if(!l)return;e.preventDefault();const g=l.dataset.goto;if(g==='timing'){setCtx(/After the build/.test(l.textContent)?'after':'scene');return;}const i=STEPS.findIndex(s=>s.id===g);if(i>=0){U.ctx=null;goStep(i);refresh();}});
+document.addEventListener('click',e=>{const l=e.target.closest('[data-goto]');if(!l)return;e.preventDefault();const g=l.dataset.goto;if(g==='timing'){setCtx(/After the build/.test(l.textContent)?'inout':'scene');return;}const i=STEPS.findIndex(s=>s.id===g);if(i>=0){U.ctx=null;goStep(i);refresh();}});
 $('#afterSeg').addEventListener('click',e=>{const b=e.target.closest('[data-after]');if(!b)return;const v=b.dataset.after;pushHist();
+  const wasWalk=D.exit.on&&D.exit.mode==='walk'; planCache.k=''; const woBefore=plan(geom()).woN||0;
   if(v==='stay') D.exit.on=false; else Object.assign(D.exit,{on:true,mode:v});
+  // the walk-off lives inside the scene: make the scene longer by the walk-off so the build keeps its pace
+  const nowWalk=D.exit.on&&D.exit.mode==='walk';
+  if(nowWalk!==wasWalk&&D.anim.mode!=='static'){ planCache.k=''; const P=plan(geom()), add=Math.round((+D.exit.walkHold||0)+(nowWalk?(P.woN||0):woBefore)*Math.max(1,(+D.anim.pace||6)*Math.max(.1,+D.exit.walkPace||1)));
+    D.anim.lenF=Math.max(12,D.anim.lenF+(nowWalk?add:-add)); TL.autoN=0; TL.f0=TL.f1=null; }
   planCache.k='';syncInputs(true);refresh();});
 aiInit();
 $('#mediaIn').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(f)loadMediaFile(f);e.target.value='';});
