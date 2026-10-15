@@ -3670,7 +3670,7 @@ function renderStepUI(){
   if(tp){tp.className='toolpill'+(U.picking?' pick':'');tp.innerHTML=U.picking?`<span class="ic">◎</span>Picking end spot <span class="k">click a square</span>`:`<span class="ic">${ICON[U.tool]}</span>${TOOLS[U.tool].name} <span class="k">${TOOLS[U.tool].key}</span>`;}
   cv.className='t-'+U.tool+(U.space?' panning':'')+(U.drag&&(U.drag.type==='move'||U.drag.type==='pan')?' grabbing':'');
   setHTML($('#toolcards'),['select','stamp','draw','erase'].map(t=>`<button class="toolcard${U.tool===t?' on':''}" data-tool="${t}"><span class="ic">${ICON[t]}</span><span><div class="t">${TOOLS[t].name}</div><div class="d">${TOOLS[t].desc}</div></span><kbd>${TOOLS[t].key}</kbd></button>`).join(''));
-  if(U.ctx==='scene'){ renderPace(); const rt=$('#retimeTarget'); if(rt&&document.activeElement!==rt) rt.value=+(D.anim.lenF/(D.comp.fps||30)).toFixed(2); }
+
   if(U.ctx==='sound'&&!U._mediaUI){U._mediaUI=1;renderMedia();}
   $('#hint').textContent=st.id==='grid'?'Scroll to pan · ⌘/Ctrl + scroll or pinch to zoom':TOOLS[U.tool].desc;
 }
@@ -4600,7 +4600,7 @@ function resetDefaults(withHist){
 $('#btnDefaults').onclick=()=>resetDefaults();
 initDope();
 const animSeed=()=>{pushHist();D.anim.seed=(D.anim.seed|0)+1;D.anim.skip=[];if(isGenerated()){D.anim.dt={};D.anim.dx={};D.anim.cutAt=null;U.dopeSel=[];}planCache.k='';refresh();toast(isGenerated()?'New walk':'New continuation of the walk','⌘Z to undo',true);};
-$('#btnAnimSeed').onclick=animSeed; $('#btnAnimSeed2').onclick=animSeed;
+$('#btnAnimSeed').onclick=animSeed;
 $('#btnUnskip').onclick=()=>{pushHist();D.anim.skip=[];D.anim.cutAt=null;planCache.k='';refresh();};
 $('#cvPlay').onclick=()=>{U.playing?stopPlay():play();};
 document.addEventListener('click',e=>{const l=e.target.closest('[data-goto]');if(!l)return;e.preventDefault();const g=l.dataset.goto;if(g==='timing'){setCtx(/After the build/.test(l.textContent)?'inout':'scene');return;}const i=STEPS.findIndex(s=>s.id===g);if(i>=0){U.ctx=null;goStep(i);refresh();}});
@@ -4611,8 +4611,8 @@ $('#afterSeg').addEventListener('click',e=>{const b=e.target.closest('[data-afte
 aiInit();
 $('#mediaIn').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(f)loadMediaFile(f);e.target.value='';});
 $$('[data-retime]').forEach(b=>b.addEventListener('click',()=>{const m=$('#retimeMenu');if(m)m.hidden=true;retime(+b.dataset.retime);}));
-$('#btnRetimeTo').onclick=()=>{const fps=D.comp.fps||30,tgt=Math.round((+$('#retimeTarget').value||0)*fps);if(tgt>1)retime(tgt/Math.max(1,D.anim.lenF));};
-$('#btnRetimeComp').onclick=$('#mRetimeComp').onclick=()=>{$('#retimeMenu').hidden=true;const fps=D.comp.fps||30,tgt=Math.round((D.comp.dur||10)*fps)-Math.max(0,D.anim.startF);if(tgt>1)retime(tgt/Math.max(1,D.anim.lenF));};
+$('#btnRetimeComp').onclick=$('#mRetimeComp').onclick=()=>{$('#retimeMenu').hidden=true;const fps=D.comp.fps||30,tgt=Math.round((D.comp.dur||10)*fps)-Math.max(0,+D.anim.startF||0);if(tgt>1){pushHist(true);D.anim.remapLen=tgt;planCache.k='';syncInputs(true);refresh();toast(`Scene fits the comp: ${(tgt/fps).toFixed(2)}s`,'',true);}};
+$('#btnSceneAuto').onclick=()=>{pushHist(true);D.anim.remapLen=0;planCache.k='';syncInputs(true);refresh();};
 /* collapsible sub-sections: remember what's open, redraw canvases that were hidden */
 U.subs=U.subs||{};
 document.addEventListener('toggle',e=>{const d=e.target; if(!d||!d.matches||!d.matches('details.sub')) return;
