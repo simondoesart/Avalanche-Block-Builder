@@ -214,3 +214,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 
 ### v3.10
 - Walk with tall blocks (3×2, 3×3, 2×2…): each next block either sits beside the last or steps a whole block height up/down, so it always touches at a side or a corner (no more half-block offsets). Stair runs and jumps step by the block height too; 1-row blocks still wander up to the Wander setting.
+
+### v3.11
+- Tall blocks that don't have room to step a whole block up/down inside the frame (e.g. 3×5 in 7 rows) now run partly off the top/bottom — cropped by the frame, with at least half the frame's rows covered — so the line still climbs and falls instead of staying flat.
+- All walk moves (steps, stairs, jumps, pairs, ending on a chosen row) stay on whole-block steps for tall blocks; checked 210 generated lines across sizes with no overlapping blocks.
