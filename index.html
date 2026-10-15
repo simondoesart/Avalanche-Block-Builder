@@ -665,6 +665,7 @@ body.nohelp .qm{display:none}
             <div class="group-h">Generate<span class="tag" id="genTag"></span></div>
             <div class="genstat" id="genStatus"></div>
             <div class="row-btns"><button class="btn primary" id="btnGenLine" title="Make a new walking line from the settings below (G)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m3 13 7-7M11 2v2M14 5h-2M13.5 2.5 12 4"/></svg>Generate</button><button class="btn" id="btnAnimSeed" title="Same settings, a different walk (R)">↻ New seed</button><button class="btn icon" id="btnGenClear" title="Clear all blocks (⌘Z to undo)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></button></div>
+            <div class="row-btns"><button class="btn" id="btnPickStart" title="Click a square on the canvas: the first block goes there">◎ Pick start spot</button><button class="btn ghost" id="btnStartAuto" title="Start at the frame edge on a random row">Auto</button></div>
             <details class="sub" data-sub="gen-size" open><summary>Block size <span class="note" id="pickPx"></span></summary><div class="subbody">
             <div class="pick-label"><span class="big" id="pickBig">3 × 1</span></div>
             <div class="picker" id="picker"></div>
@@ -2287,7 +2288,7 @@ const DEF={
         gap:{on:true,amount:3,seed:0,color:'#E6212F',mods:{log:true,phrase:true,barcode:true,hashes:false,dots:true,logo:true,icons:true,stream:false,rpc:false}}},
   echo:{on:false,dx:0,dy:2,last:0,fill:true,color:'#A2AFB2',opacity:100,stroke:false,sw:4,scolor:'#A2AFB2',align:'center',dash:false,dashL:12,dashG:8,content:false,
         timing:'with',offset:6,appear:'fade',out:'stay',hold:12,outF:8},
-  rand:{pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
+  rand:{pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
         wander:1,climb:0,stackPct:20,stackGap:0,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,tracking:0,leading:0,kern:'metrics',caps:'none'},
   anim:{seed:0,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,settleX:50,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
@@ -5208,7 +5209,11 @@ function drawOverlays(G,A){
     ctx.setLineDash([]); ctx.fillStyle='rgba(43,217,143,.9)'; ctx.font=`${11/sc}px sans-serif`; ctx.fillText('reveal zone',G.W*(1-bx)+6/sc,G.H*(1-by)+14/sc);
     ctx.restore();
   }
-  if(!live&&U.hover&&!U.drag&&!U.space){
+  if(!live&&U.pickStart&&U.hover){ const q=cellRect(G,U.hover.c,U.hover.r,Math.max(1,D.block.w|0),Math.max(1,D.block.h|0));
+    ctx.fillStyle='rgba(43,217,143,.35)'; ctx.fillRect(q.x,q.y,q.w,q.h); ctx.lineWidth=2/sc; ctx.strokeStyle='#2BD98F'; ctx.strokeRect(q.x,q.y,q.w,q.h); pill('first block',q.x+q.w/2,q.y-14/sc,sc,'#2BD98F','#000',true); }
+  else if(!live&&STEPS[U.step].id==='layout'&&D.rand.startCol!=null){ const q=cellRect(G,+D.rand.startCol,D.rand.startR!=null?+D.rand.startR:Math.max(0,(D.rand.startRow|0)-1),Math.max(1,D.block.w|0),Math.max(1,D.block.h|0));
+    ctx.setLineDash([6/sc,4/sc]); ctx.lineWidth=2/sc; ctx.strokeStyle='#2BD98F'; ctx.strokeRect(q.x,q.y,q.w,q.h); ctx.setLineDash([]); pill('START',q.x+5/sc,q.y+q.h-24/sc,sc,'#2BD98F','#000',false); }
+  if(!live&&U.hover&&!U.drag&&!U.space&&!U.pickStart){
     const h=U.hover;
     if(tool==='stamp'){
       const sp=stampSpot(h,G);
@@ -5326,6 +5331,7 @@ cv.addEventListener('pointerdown',e=>{
   let b=inR?blockAt(cell.c,cell.r):null;
   if(b&&isGenerated()&&(plan(G).lineShift||0)) b=null;   // the line is drawn slid up/down: hit-test the drawn blocks instead
   const tool=U.tool;
+  if(U.pickStart){ finishPickStart(cell); return; }
   if(tool==='select'&&!b&&inR&&!e.shiftKey){ const vb=virtualAt(G,cell);
     if(vb){ U.dopeSel=[vb.id]; U.selIds=[]; U.sel=null; U.ctx=null;
       if(!animActive()) U.drag={type:'vmove',vid:vb.id,sc:cell.c,sr:cell.r};
@@ -5450,6 +5456,11 @@ function finishPick(cell){
   fitView('comp'); syncInputs(); refresh();
   toast(`The pattern will end on row ${D.anim.endRow}. Switched back to the Select tool.`);
 }
+/* pick where the first block goes (before generating) */
+function startPickStart(){ U.pickStart=true; U.preview=false; stopPlay(); refresh(); toast('Click where the first block should go','Esc to cancel'); }
+function finishPickStart(cell){ U.pickStart=false; pushHist(true); D.rand.startCol=cell.c; D.rand.startR=cell.r; D.rand.startRow=clamp(cell.r+1,0,60);
+  if(isGenerated()||!D.blocks.length) generateLine(false,false); else refresh(); syncInputs(true); toast(`The line starts at column ${cell.c+1}, row ${cell.r+1}`,'⌘Z to undo',true); }
+function clearPickStart(){ pushHist(true); D.rand.startCol=null; D.rand.startR=null; D.rand.startRow=0; if(isGenerated()) generateLine(false,true); syncInputs(true); refresh(); }
 function cancelPick(){U.picking=false;U.tool='select';refresh();toast('End spot picking cancelled');}
 function endDrag(e){
   const d=U.drag; if(!d) return; U.drag=null; cv.classList.remove('grabbing');
@@ -5973,6 +5984,8 @@ function updCtx(){
     h=`<span class="msg"><b>${s.w} × ${s.h}</b> selected</span><button class="btn primary" data-act2="merge">Merge <kbd>M</kbd></button><button class="btn" data-act2="erase">Unmerge <kbd>Del</kbd></button><button class="btn ghost icon" data-act2="desel" title="Deselect (Esc)">✕</button>`;
   } else if(U.drag&&U.sel){
     const s=normSel(); h=`<span class="msg"><b>${s.w} × ${s.h}</b> · let go to ${U.drag.type==='draw'?'make a block':U.drag.type==='erase'?'unmerge':'select'}</span>`;
+  } else if(U.pickStart){
+    h=`<span class="msg"><b>Pick the start</b> · click the square where the first block goes</span>`; quiet=false;
   } else if(U.picking){
     h=`<span class="msg"><b>Picking the end spot</b> · drag to pan · scroll/pinch to zoom · <b>click a square</b> to set it</span><button class="btn ghost" data-act2="cancelpick">Cancel <kbd>Esc</kbd></button>`; quiet=false;
   } else if(U.tool==='paint'){
@@ -6073,6 +6086,8 @@ function renderGenStatus(G){
     `<b>${D.blocks.length}</b> blocks, edited by hand${Object.keys(D.anim.dt||{}).length?` · ${Object.keys(D.anim.dt).length} retimed`:''}<br>Press <b>Generate</b> to start over from the settings below.`;
   const t=$('#genTag'); if(t) t.textContent=gen?'live':ed?'edited':'';
   const bk=$('#btnBake'); if(bk) bk.hidden=!gen;
+  const ps=$('#btnPickStart'); if(ps){ ps.classList.toggle('primary',!!U.pickStart); ps.textContent=U.pickStart?'Click a square…':(D.rand.startCol!=null?`◎ Start: col ${(+D.rand.startCol)+1}, row ${(+D.rand.startR)+1}`:'◎ Pick start spot'); }
+  const sa=$('#btnStartAuto'); if(sa) sa.hidden=D.rand.startCol==null;
 }
 
 /* ------------------------------------------------------------------ extend pattern */
@@ -6100,10 +6115,10 @@ function generateLine(newSeed,quiet){
   if(newSeed){D.rand.seed=Math.floor(Math.random()*99999)+1; D.anim.seed=0;}
   const rnd=rng(D.rand.seed), bw=clamp(Math.round(D.block.w)||1,1,G.C), bh=Math.max(1,Math.round(D.block.h)||1), WB=walkBounds(G,bh), rMax=WB.hi;
   const hiStart=WB.ext?Math.max(WB.lo,WB.hi-bh):rMax;
-  const row=D.rand.startRow>0?clamp(D.rand.startRow-1,WB.lo,rMax):WB.lo+Math.floor(rnd()*(hiStart-WB.lo+1));
+  const row=D.rand.startCol!=null&&D.rand.startR!=null?Math.round(+D.rand.startR):D.rand.startRow>0?clamp(D.rand.startRow-1,WB.lo,rMax):WB.lo+Math.floor(rnd()*(hiStart-WB.lo+1));
   if(['manual','ttb','random'].indexOf(D.anim.order)>=0) D.anim.order='ltr';
   const dir=D.anim.order==='rtl'?-1:1;
-  const c0=dir>0?Math.max(G.cLo,G.firstFull):Math.min(G.cHi-bw+1,G.lastFull-bw+1);
+  const c0=D.rand.startCol!=null&&isFinite(+D.rand.startCol)?Math.round(+D.rand.startCol):(dir>0?Math.max(G.cLo,G.firstFull):Math.min(G.cHi-bw+1,G.lastFull-bw+1));   // a picked start spot, or the frame edge the line walks from
   uid=1; D.blocks=[newBlock(c0,row,bw,bh,mixColor(0,rnd))];
   Object.assign(D.anim,{extendOn:true,extendMode:'walk'}); if(!quiet) Object.assign(D.anim,{skip:[],cutAt:null,dt:{},dx:{}});
   if(D.anim.mode==='static') D.anim.mode='camera';
@@ -6175,6 +6190,8 @@ function clearLayout(){
   syncInputs(); refresh(); toast(`Cleared ${n} block${n===1?'':'s'}`,'',true);
 }
 $('#btnClearLayout').onclick=clearLayout;
+$('#btnPickStart').onclick=()=>{U.pickStart?(U.pickStart=false,refresh()):startPickStart();};
+$('#btnStartAuto').onclick=clearPickStart;
 $('#btnGenClear').onclick=()=>{if(!D.blocks.length)return toast('No blocks to clear');D.anim.dt={};D.anim.dx={};D.anim.skip=[];D.anim.cutAt=null;clearLayout();};
 $('#btnGen').onclick=()=>generate(false);
 $('#btnShuffle').onclick=shuffle;
@@ -6214,7 +6231,7 @@ document.addEventListener('keydown',e=>{
   if(kl==='m'||k==='Enter'){if(U.sel){e.preventDefault();mergeSel();}}
   else if((k==='Delete'||k==='Backspace')&&tsel.length&&(virtSel||e.shiftKey||(U.dopeSel||[]).length)){e.preventDefault();dopeRemove(e.shiftKey);}
   else if(k==='Delete'||k==='Backspace'){e.preventDefault();deleteSelected();}
-  else if(k==='Escape'){if(!$('#clearMenu').hidden){closeMenu();return;}if(U.picking){cancelPick();return;}closeTlMenu();
+  else if(k==='Escape'){if(!$('#clearMenu').hidden){closeMenu();return;}if(U.picking){cancelPick();return;}if(U.pickStart){U.pickStart=false;refresh();return;}closeTlMenu();
     if(tsel.length||U.sel){U.sel=null;U.selIds=[];U.dopeSel=[];refresh();} else if(U.preview&&STEPS[U.step].id==='layout'){U.preview=false;stopPlay();refresh();} else if(U.ctx){U.ctx=null;refresh();} else if(U.t!=null){stopPlay();U.t=null;refresh();}}
   else if(kl==='d'){duplicate();}
   else if(kl==='g'){if(STEPS[U.step].id!=='layout'){U.ctx=null;goStep(SI('layout'));}generateLine(true);}
