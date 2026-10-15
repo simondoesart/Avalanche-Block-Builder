@@ -3511,7 +3511,7 @@ function renderStepUI(){
 /* the little badge under the canvas: which frame you're looking at */
 function updViewBadge(){const el=$('#viewBadge'); if(!el) return; const fps=D.comp.fps||30;
   if(D.anim.mode==='static'&&!transOn()){el.innerHTML='';return;}
-  el.innerHTML=U.t==null?'<b>Layout view</b> · every block, no camera · click the timeline ruler or press Space to preview':`<b>Frame ${Math.round(U.t)}</b> · ${(U.t/fps).toFixed(2)}s · Esc for layout view`;}
+  el.innerHTML=U.t==null?'<b>Layout view</b> · Space to preview':`<b>f${Math.round(U.t)}</b> · ${(U.t/fps).toFixed(2)}s · Esc = layout view`;}
 document.addEventListener('pointerdown',e=>{if(e.button)return;const b=e.target.closest&&e.target.closest('[data-tool]');if(b){e.preventDefault();setTool(b.dataset.tool);}});
 $('#btnBack').onclick=()=>goStep(U.step-1);
 $('#btnNext').onclick=()=>{if(U.step<STEPS.length-1)goStep(U.step+1);else build();};
@@ -3981,7 +3981,7 @@ function updPaceTotal(){
   const P=plan(geom()), fps=D.comp.fps||30, n=P.groups;
   const sec=f=>`f${f} (${+(f/fps).toFixed(2)}s)`;
   const total=(P.walkFrom!=null?P.seq.slice(0,P.walkFrom):P.seq).filter(b=>!b.echo&&!b.stack).length;
-  el.innerHTML=n?`<b>${total}</b> blocks${P.ext?` (${P.baseMain} in your layout + ${total-P.baseMain} more)`:''} over <b>${sec(P.L)}</b> · about one every <b>${Math.max(1,Math.round(P.L/Math.max(1,total)))}</b> frames${P.walkFrom!=null?` · then ${P.seq.length-P.walkFrom} more walk off`:""}<br>Scene runs ${sec(P.startF)} → ${sec(P.startF+P.L)}${P.startF<0?' · already running at frame 0':''}${D.anim.ending==='spot'&&P.endReach===false?'<br><span class="warn">That row is too far to reach with this many blocks — the pattern gets as close as it can. Raise Wander or add blocks.</span>':''}${D.anim.order==='manual'?`<br>Manual: <b>${P.seq.length}</b> picked block${P.seq.length===1?'':'s'} animate${P.unpicked.length?`, ${P.unpicked.length} ${D.anim.unpicked==='visible'?'stay visible':'stay hidden'}`:''}.`:''}${D.anim.countMode==='exact'&&D.anim.total<P.baseMain&&D.anim.ending==='count'?'<br><span class="warn">Your layout has more blocks than this, so all of them are used.</span>':''}`:'Add some blocks first.';
+  el.innerHTML=n?`<b>${total}</b> blocks${P.ext?(isGenerated()?' (generated)':` (${P.baseMain} in your layout + ${total-P.baseMain} more)`):''} over <b>${sec(P.L)}</b> · about one every <b>${Math.max(1,Math.round(P.L/Math.max(1,total)))}</b> frames${P.walkFrom!=null?` · then ${P.seq.length-P.walkFrom} more walk off`:""}<br>Scene runs ${sec(P.startF)} → ${sec(P.startF+P.L)}${P.startF<0?' · already running at frame 0':''}${D.anim.ending==='spot'&&P.endReach===false?'<br><span class="warn">That row is too far to reach with this many blocks — the pattern gets as close as it can. Raise Wander or add blocks.</span>':''}${D.anim.order==='manual'?`<br>Manual: <b>${P.seq.length}</b> picked block${P.seq.length===1?'':'s'} animate${P.unpicked.length?`, ${P.unpicked.length} ${D.anim.unpicked==='visible'?'stay visible':'stay hidden'}`:''}.`:''}${D.anim.countMode==='exact'&&D.anim.total<P.baseMain&&D.anim.ending==='count'?'<br><span class="warn">Your layout has more blocks than this, so all of them are used.</span>':''}`:'Add some blocks first.';
 }
 function updRuleNote(G){
   const el=$('#ruleNote'); if(!el) return;
