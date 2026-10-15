@@ -669,7 +669,20 @@ body.nohelp .qm{display:none}
             <div class="genstat" id="genStatus"></div>
             <div class="row-btns"><button class="btn primary" id="btnGenLine" title="Make a new walking line from the settings below (G)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m3 13 7-7M11 2v2M14 5h-2M13.5 2.5 12 4"/></svg>Generate</button><button class="btn" id="btnAnimSeed" title="Same settings, a different walk (R)">↻ New seed</button><button class="btn icon" id="btnGenClear" title="Clear all blocks (⌘Z to undo)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></button></div>
             <div class="startrow"><div class="row-btns"><button class="btn" id="btnPickStart" title="Click a square on the canvas: the first block goes there">◎ Pick start spot</button><button class="btn ghost" id="btnStartAuto" title="Start at the frame edge on a random row">Auto</button></div>
-            <div class="field"><span class="lbl scrub" title="Row of the first block (1 = top). Empty = random">Start row</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.startRow" min="0" max="60" step="1"><span class="unit" id="rowUnit">random</span><button data-d="1">+</button></div></div></div>
+            
+            <div class="field stack"><span class="lbl">Ending</span><div class="seg" data-seg="anim.ending"><button data-v="count">Wherever it lands</button><button data-v="spot">On a chosen row</button></div></div>
+            <div class="field" data-show="anim.ending=spot"><span class="lbl scrub">End row</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endRow" min="1" max="60" step="1"><button data-d="1">+</button></div></div>
+            <div class="target-chip" data-show="anim.ending=spot"><button class="btn" id="btnPickEnd">◎ Pick the row on the canvas</button><span class="note" id="endNote"></span></div>
+            <div class="note" data-show="anim.ending=spot">The end column comes from your grid rules and block count, so spacing never breaks. You choose the row.</div>
+            <div data-show="anim.ending=spot" style="display:grid;gap:9px">
+                <div class="field stack"><span class="lbl">Last block ends up</span><div class="seg" id="endPreset"><button data-ex="-25" title="Just past the left edge">Off left</button><button data-ex="20">Left</button><button data-ex="50">Centre</button><button data-ex="80">Right</button><button data-ex="125" title="Just past the right edge">Off right</button></div></div>
+                <div class="field2">
+                  <div class="field"><span class="lbl scrub" title="0 = left edge, 100 = right edge, below 0 or above 100 = off screen">X</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endX" min="-200" max="300" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
+                  <div class="field"><span class="lbl scrub" title="0 = top, 100 = bottom, outside 0–100 = off screen">Y</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endY" min="-200" max="300" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
+                </div>
+                <div class="field"><span class="lbl scrub">Final move</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.finalMove" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              </div>
+          </div>
             <details class="sub" data-sub="gen-size" open><summary>Block size <span class="note" id="pickPx"></span></summary><div class="subbody">
             <div class="pick-label"><span class="big" id="pickBig">3 × 1</span></div>
             <div class="picker" id="picker"></div>
@@ -690,14 +703,7 @@ body.nohelp .qm{display:none}
               <div class="readout" id="paceNote"></div>
               <div class="note">How long the build takes is the red <b>On</b> part of the Blocks row on the timeline — drag its end. The <b>Scene</b> row above fits the whole thing (On · Hold · Off) into the scene length.</div>
               <div class="field stack" data-show="anim.ending=count&amp;anim.mode=camera|push"><span class="lbl" title="Where the camera leaves the last block of the build. The line keeps its rhythm and the last block lands inside the frame instead of popping in late at the edge">Last block settles</span><div class="seg" data-seg="anim.settleX"><button data-v="0" title="Stop as soon as the last block reaches the reveal line">At the reveal line</button><button data-v="40">Left of centre</button><button data-v="50">Centre</button><button data-v="60">Right of centre</button></div></div>
-              <div class="field stack"><span class="lbl">Ending</span><div class="seg" data-seg="anim.ending"><button data-v="count">Wherever it lands</button><button data-v="spot">On a chosen row</button></div></div><div class="field" data-show="anim.ending=spot"><span class="lbl scrub">End row</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endRow" min="1" max="60" step="1"><button data-d="1">+</button></div></div><div class="target-chip" data-show="anim.ending=spot"><button class="btn" id="btnPickEnd">◎ Pick the row on the canvas</button><span class="note" id="endNote"></span></div><div class="note" data-show="anim.ending=spot">The end column comes from your grid rules and block count, so spacing never breaks. You choose the row.</div><div data-show="anim.ending=spot" style="display:grid;gap:9px">
-                <div class="field stack"><span class="lbl">Last block ends up</span><div class="seg" id="endPreset"><button data-ex="-25" title="Just past the left edge">Off left</button><button data-ex="20">Left</button><button data-ex="50">Centre</button><button data-ex="80">Right</button><button data-ex="125" title="Just past the right edge">Off right</button></div></div>
-                <div class="field2">
-                  <div class="field"><span class="lbl scrub" title="0 = left edge, 100 = right edge, below 0 or above 100 = off screen">X</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endX" min="-200" max="300" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
-                  <div class="field"><span class="lbl scrub" title="0 = top, 100 = bottom, outside 0–100 = off screen">Y</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endY" min="-200" max="300" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
-                </div>
-                <div class="field"><span class="lbl scrub">Final move</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.finalMove" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-              </div>
+              
             </div></details>
             <details class="sub" data-sub="gen-walk" open><summary>Walk <span class="note">how the line moves</span></summary><div class="subbody">
               
@@ -716,6 +722,7 @@ body.nohelp .qm{display:none}
                 <div class="field" data-adv><span class="lbl scrub" title="Rows between the two blocks in a pair. Empty = the same as the block height">Pair gap</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.stackGap" data-zero="auto" min="0" max="20" step="1"><span class="unit">rows</span><button data-d="1">+</button></div></div>
               </div>
             
+            <div class="field"><span class="lbl scrub" title="0 = random">Start row</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.startRow" min="0" max="60" step="1"><span class="unit" id="rowUnit">random</span><button data-d="1">+</button></div></div>
             </div></details>
           </div>
           <div class="group" data-ctx="blocks">
