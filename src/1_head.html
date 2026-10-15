@@ -93,12 +93,53 @@ kbd{font:inherit;font-size:10px;padding:0 4px;line-height:15px;border-radius:4px
 .btn.primary kbd{background:rgba(0,0,0,.2);border-color:rgba(255,255,255,.28);color:#fff}
 
 /* ---------- layout ---------- */
-main{display:grid;grid-template-columns:320px minmax(0,1fr) 276px;grid-template-areas:"l s i";min-height:0}
-main.noinsp{grid-template-columns:320px minmax(0,1fr)}
-main.noinsp #insp{display:none}
-#left{grid-area:l;display:grid;grid-template-rows:auto minmax(0,1fr) auto;border-right:1px solid var(--line);background:var(--panel);min-height:0}
-.stage{grid-area:s;display:grid;grid-template-rows:minmax(0,1fr) auto auto 30px;min-width:0;min-height:0;background:#0e0e10}
-#insp{grid-area:i;overflow:auto;border-left:1px solid var(--line);background:var(--panel);padding:10px}
+main{display:grid;grid-template-columns:68px minmax(0,1fr) 336px;grid-template-areas:"r c p";min-height:0}
+#rail{grid-area:r;display:flex;flex-direction:column;gap:2px;padding:8px 6px;border-right:1px solid var(--line);background:var(--panel);overflow:auto}
+.railbtn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 2px 7px;border:0;border-radius:9px;background:transparent;color:var(--muted);cursor:pointer;font-size:10px;font-weight:600;letter-spacing:.01em;position:relative}
+.railbtn:hover{background:var(--panel2);color:var(--text)}
+.railbtn.on{background:var(--accentA);color:var(--text)}
+.railbtn.on svg{color:var(--accent2)}
+.railbtn .n{position:absolute;top:4px;right:6px;font-size:8.5px;color:var(--dim);font-weight:700}
+.railbtn.done .n{color:var(--ok)}
+.railsep{height:1px;background:var(--line);margin:6px 8px}
+.center{grid-area:c;display:grid;grid-template-rows:minmax(120px,1fr) 7px var(--tlh,320px) 26px;min-width:0;min-height:0;background:#0e0e10}
+#left{grid-area:p;display:grid;grid-template-rows:auto minmax(0,1fr) auto;border-left:1px solid var(--line);background:var(--panel);min-height:0}
+#insp{padding:10px 12px 0}
+#insp:empty{display:none}
+#insp .card{margin-bottom:10px}
+.tlsplit{cursor:ns-resize;background:var(--panel);border-top:1px solid var(--line);border-bottom:1px solid var(--line);position:relative}
+.tlsplit:after{content:'';position:absolute;left:50%;top:2px;width:36px;height:2px;margin-left:-18px;border-radius:2px;background:var(--line2)}
+.tlsplit:hover:after,.tlsplit.drag:after{background:var(--accent2)}
+.tl{display:grid;grid-template-rows:38px minmax(0,1fr);min-height:0;background:#121214}
+.tlbar{display:flex;align-items:center;gap:6px;padding:0 8px;border-bottom:1px solid var(--line);background:var(--panel);min-width:0;overflow:hidden}
+.tlbar .tc{font-variant-numeric:tabular-nums;color:var(--text);min-width:92px;font-weight:600;font-size:11.5px}
+.tlbar .tlf{grid-template-columns:auto 74px;gap:5px}
+.tlbar .tlf .num{height:26px}
+.tlbar .check{align-items:center;white-space:nowrap;font-size:11px}
+.tlbar .btn{height:26px}
+.viewbadge{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);padding:5px 11px;border-radius:999px;background:rgba(27,27,30,.92);border:1px solid var(--line2);color:var(--muted);font-size:11px;white-space:nowrap;pointer-events:none}
+.viewbadge b{color:var(--text)}
+.viewbadge:empty{display:none}
+.ph-row{display:flex;align-items:center;gap:6px;min-height:22px}
+.ctxback{height:22px!important;width:24px;padding:0!important;margin-left:-6px}
+.genstat{padding:8px 10px;border-radius:8px;background:var(--bg);border:1px solid var(--line);color:var(--muted);line-height:1.5}
+.genstat b{color:var(--text)}
+.genstat.edited{border-color:rgba(255,180,77,.35)}
+.ctabs{display:flex;flex-wrap:wrap;gap:2px;margin:10px 12px 2px;background:var(--field);border:1px solid var(--line);border-radius:8px;padding:2px}
+.ctabs button{flex:1 1 auto;border:0;background:transparent;color:var(--muted);height:26px;border-radius:6px;cursor:pointer;padding:0 8px;font-weight:600;font-size:11px;white-space:nowrap}
+.ctabs button:hover{color:var(--text)}
+.ctabs button.on{background:#3b3b42;color:var(--text)}
+.ctabs button .d{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--dim);margin-right:5px;vertical-align:1px}
+.ctabs button .d.on{background:var(--ok)}
+#left .pane[data-pane="content"] .group[data-ctab]{display:none}
+#left .pane[data-pane="content"].tab-hud .group[data-ctab="hud"],#left .pane[data-pane="content"].tab-gaps .group[data-ctab="gaps"],#left .pane[data-pane="content"].tab-numbers .group[data-ctab="numbers"],#left .pane[data-pane="content"].tab-echo .group[data-ctab="echo"],#left .pane[data-pane="content"].tab-text .group[data-ctab="text"]{display:grid}
+#left.ctxmode .pane{display:none}
+#left.ctxmode .pane.ctxhost{display:block}
+#left.ctxmode .pane.ctxhost > .group:not(.ctxshow),#left.ctxmode .pane.ctxhost > .ctabs{display:none!important}
+#left.ctxmode .pane.ctxhost > .group.ctxshow{display:grid}
+#left.blockmode .pane{display:none}
+.mgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding:2px 4px}
+.mgrid button{justify-content:center!important;height:28px!important;border:1px solid var(--line2)!important;padding:0!important}
 
 .step-head{padding:16px 16px 12px;border-bottom:1px solid var(--line)}
 .eyebrow{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
@@ -272,8 +313,7 @@ textarea{height:auto;min-height:64px;padding:7px 8px;resize:vertical;line-height
 .sumrow b{color:var(--text);font-weight:600}
 .sumrow .ok{color:var(--ok)}
 .sumrow.off{opacity:.4}
-.dope{border-top:1px solid var(--line);background:#121214;height:178px;flex:0 0 auto}
-.dope{position:relative}
+.dope{background:#121214;position:relative;min-height:0;overflow:hidden}
 .modal.cvfloat{background:transparent;pointer-events:none;align-items:flex-end;justify-content:flex-end;padding:12px}
 .modal.cvfloat .cvbig-card{pointer-events:auto;width:min(560px,96vw)}
 .modal.cvfloat #cvBig{height:min(300px,40vh)}
@@ -306,7 +346,7 @@ textarea{height:auto;min-height:64px;padding:7px 8px;resize:vertical;line-height
 .legend i{display:inline-block;width:22px;height:9px;border-radius:2px;flex:0 0 auto}
 .legend i.knobi{width:7px;height:14px;border-radius:3px;background:#FF7F7B}
 .dope canvas{width:100%;height:100%;display:block}
-.dopetip{position:absolute;left:92px;right:10px;bottom:4px;padding:4px 8px;border-radius:6px;background:rgba(0,0,0,.75);color:#ececef;font-size:11px;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dopetip{position:absolute;left:150px;right:10px;bottom:4px;padding:4px 8px;border-radius:6px;background:rgba(0,0,0,.75);color:#ececef;font-size:11px;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .phases{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:-2px 0 2px}
 .phases i{flex:1;height:1px;background:var(--line2)}
 details.sub{border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.015)}
@@ -434,21 +474,15 @@ body.nohelp .qm{display:none}
 ::-webkit-scrollbar{width:10px;height:10px}
 ::-webkit-scrollbar-thumb{background:#38383e;border-radius:10px;border:3px solid transparent;background-clip:padding-box}
 
-@media (max-width:1280px){ .stepbtn .lbl2{display:none} .stepbtn.on .lbl2{display:inline} }
-@media (max-width:1140px){
-  main,main.noinsp{grid-template-columns:284px minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"l s" "l i"}
-  #insp{border-left:0;border-top:1px solid var(--line);max-height:280px;display:grid;grid-template-columns:1fr 1fr;gap:10px;align-content:start}
-  #insp:empty{display:none}
-  #insp .card{margin:0}
-}
-@media (max-width:860px){ .stepbtn .lbl2,.stepbtn.on .lbl2{display:none} .chip{display:none} }
+@media (max-width:1180px){ main{grid-template-columns:60px minmax(0,1fr) 300px} .tlbar .tlf{display:none} }
+@media (max-width:860px){ .chip{display:none} .tlbar .check{display:none} }
 @media (max-width:720px){
   body{overflow:auto}
   .app{height:auto;min-height:100vh}
-  main,main.noinsp{grid-template-columns:minmax(0,1fr);grid-template-rows:60vh auto auto;grid-template-areas:"s" "l" "i"}
-  #left{border-right:0}
+  main{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 80vh auto;grid-template-areas:"r" "c" "p"}
+  #rail{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line)}
+  #left{border-left:0}
   .step-body{overflow:visible}
-  #insp{grid-template-columns:1fr;max-height:none}
   .logo span,.hide-sm{display:none}
 }
 </style>
@@ -460,7 +494,6 @@ body.nohelp .qm{display:none}
       <div class="mark"><svg width="12" height="12" viewBox="0 0 12 12" fill="#fff"><rect width="5" height="5"/><rect x="7" width="5" height="5" opacity=".55"/><rect y="7" width="12" height="5"/></svg></div>
       <span>Grid Blocks</span>
     </div>
-    <nav class="steps" id="steps"></nav>
     <div class="spacer"></div>
     <div class="chip" id="compChip" title="Composition"><span class="dot" id="liveDot"></span><b id="compName">Preview</b><span id="compMeta">1920×1080</span></div>
     <button class="btn icon ghost" id="btnUndo" title="Undo (⌘Z)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3 2 6l3 3"/><path d="M2 6h7.5a4.5 4.5 0 0 1 0 9H6"/></svg></button>
@@ -476,10 +509,55 @@ body.nohelp .qm{display:none}
   </header>
 
   <main id="main">
-    <!-- ================= LEFT: step panels ================= -->
-    <section id="left">
-      <div class="step-head"><div class="seg mini" id="advSeg" title="Essential hides the fine-tuning controls. All shows everything."><button data-adv-v="0">Essential</button><button data-adv-v="1">All controls</button></div><div class="eyebrow" id="stepEyebrow">Step 1 of 8</div><h2 id="stepTitle">Grid</h2><p id="stepDesc"></p></div>
+    <nav id="rail"></nav>
+    <section class="center">
+      <div id="wrap">
+        <canvas id="cv"></canvas>
+        <div class="toolbox" id="toolbox"></div>
+        <div class="ctxbar" id="ctxbar"></div>
+        <div class="toolpill" id="toolPill"></div>
+        <button class="backbtn" id="backBtn" hidden title="Back to the frame (F)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3 2 7l4 4"/><path d="M2 7h8a4 4 0 0 1 0 8H8"/></svg>Back to frame <kbd>F</kbd></button>
+        <div class="viewbadge" id="viewBadge"></div>
+        <div class="zoombox">
+          <button id="zFit" title="Back to the frame, centred (F)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3.5" y="4.5" width="9" height="7" rx="1"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg></button>
+          <span style="width:1px;height:16px;background:var(--line2)"></span>
+          <button id="zOut" title="Zoom out (−)">−</button>
+          <button class="pct" id="zPct" title="Fit the frame (F)">100%</button>
+          <button id="zIn" title="Zoom in (+)">+</button>
+          <button id="zAll" title="Show off-screen area (Shift+F)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"/></svg></button>
+        </div>
+      </div>
+      <div class="tlsplit" id="tlSplit" title="Drag to resize the timeline"></div>
+      <section class="tl" id="tl">
+        <div class="tlbar">
+          <button class="btn icon" id="btnPlay" title="Play / pause (Space)"><svg id="icoPlay" width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg></button>
+          <button class="btn icon ghost" id="btnToStart" title="Go to the start (Home)"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2.5h2v11H3zM14 2.5v11L6 8z"/></svg></button>
+          <span class="tc" id="tc">0f</span>
+          <input type="range" id="scrub" min="0" max="100" step="1" value="0" hidden>
+          <div class="vsep"></div>
+          <div class="field tlf" title="Scene length — the red Build bar"><span class="lbl scrub">Scene</span><div class="num"><input type="number" data-bind="anim.lenF" min="2" max="99999" step="1"><span class="unit">fr</span></div></div>
+          <div class="field tlf" title="Frame the scene starts on. Negative = already running at frame 0"><span class="lbl scrub">Starts</span><div class="num"><input type="number" data-bind="anim.startF" min="-9999" max="99999" step="1"><span class="unit">fr</span></div></div>
+          <button class="btn ghost" id="btnEase" title="Edit the scene easing in the big editor (or drag the dots on the Scene row)">Easing…</button>
+          <button class="btn ghost" id="btnRetimeMenu" title="Stretch or squeeze everything">Retime ▾</button>
+          <button class="btn ghost" id="btnSound" title="Sync to a sound or video, or AE markers">♪ Sound</button>
+          <span class="spacer"></span>
+          <label class="check" title="Play the preview over and over"><input type="checkbox" id="chkLoop" checked> Loop</label>
+          <label class="check" title="Preview with the AE build's motion blur"><input type="checkbox" id="chkMB" checked> Blur</label>
+          <button class="btn ghost" id="btnLayoutView" title="Show the whole layout (Esc)">Layout view</button>
+          <button class="btn icon ghost" id="tlFit" title="Fit the whole piece (⇧F)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.5 8h13M4 5.5 1.5 8 4 10.5M12 5.5 14.5 8 12 10.5"/></svg></button>
+        </div>
+        <div class="dope" id="dope"><canvas id="dopeCv"></canvas><div class="dopetip" id="dopeTip" hidden></div></div>
+      </section>
+      <div class="status">
+        <span class="pos" id="hPos">—</span>
+        <label class="check"><input type="checkbox" id="chkOrder"> Show order numbers</label>
+        <span class="hide-sm" id="hint"></span>
+      </div>
+    </section>
+    <aside id="left">
+      <div class="step-head"><div class="ph-row"><button class="btn ghost ctxback" id="ctxBack" hidden>←</button><div class="eyebrow" id="stepEyebrow"></div><span class="spacer"></span><div class="seg mini" id="advSeg" title="Essential hides the fine-tuning controls. All shows everything."><button data-adv-v="0">Essential</button><button data-adv-v="1">All</button></div></div><h2 id="stepTitle">Setup</h2><p id="stepDesc"></p></div>
       <div class="step-body">
+        <div id="insp"></div>
 
         <!-- 1 GRID -->
         <div class="pane" data-pane="grid">
@@ -579,26 +657,84 @@ body.nohelp .qm{display:none}
 
         <!-- 2 BLOCKS: size + layout -->
         <div class="pane" data-pane="layout">
-          <div class="group">
-            <div class="group-h">Block size<span class="tag">click the canvas to stamp</span></div>
-            <div class="pick-label"><span class="big" id="pickBig">3 × 1</span><span class="note" id="pickPx"></span></div>
+          <div class="group" data-ctx="blocks">
+            <div class="group-h">Generate<span class="tag" id="genTag"></span></div>
+            <div class="genstat" id="genStatus"></div>
+            <div class="row-btns"><button class="btn primary" id="btnGenLine" title="Make a new walking line from the settings below (G)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m3 13 7-7M11 2v2M14 5h-2M13.5 2.5 12 4"/></svg>Generate</button><button class="btn" id="btnAnimSeed" title="Same settings, a different walk (R)">↻ New seed</button></div>
+            <details class="sub" data-sub="gen-size" open><summary>Block size <span class="note" id="pickPx"></span></summary><div class="subbody">
+            <div class="pick-label"><span class="big" id="pickBig">3 × 1</span></div>
             <div class="picker" id="picker"></div>
             <div class="field2">
               <div class="field"><span class="lbl scrub">W</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="block.w" min="1" max="60" step="1"><button data-d="1">+</button></div></div>
               <div class="field"><span class="lbl scrub">H</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="block.h" min="1" max="60" step="1"><button data-d="1">+</button></div></div>
             </div>
             <div class="chips" id="sizeChips"></div>
-            <label class="check"><input type="checkbox" data-bind="block.sync"> Apply size &amp; colour changes to existing blocks</label>
-            <button class="btn wide" id="btnResizeAll">Resize existing blocks</button>
+            
+            </div></details>
+            <details class="sub" data-sub="gen-count" open><summary>How many <span class="note">count &amp; ending</span></summary><div class="subbody">
+              
+              <div class="field stack"><span class="lbl">Number of blocks</span><div class="seg" data-seg="anim.countMode"><button data-v="fill">Fill the length</button><button data-v="exact">Exact number</button></div></div>
+              <div class="field" data-show="anim.countMode=fill"><span class="lbl scrub" title="Average frames between blocks">One every</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.pace" min="1" max="120" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              <div class="field" data-show="anim.countMode=exact"><span class="lbl scrub">Blocks</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.total" min="1" max="400" step="1"><button data-d="1">+</button></div></div>
+            
+              <div class="note">The scene length is the red <b>Build</b> bar on the timeline — drag its ends.</div>
+              <div class="field stack"><span class="lbl">Ending</span><div class="seg" data-seg="anim.ending"><button data-v="count">Wherever it lands</button><button data-v="spot">On a chosen row</button></div></div><div class="field" data-show="anim.ending=spot"><span class="lbl scrub">End row</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endRow" min="1" max="60" step="1"><button data-d="1">+</button></div></div><div class="target-chip" data-show="anim.ending=spot"><button class="btn" id="btnPickEnd">◎ Pick the row on the canvas</button><span class="note" id="endNote"></span></div><div class="note" data-show="anim.ending=spot">The end column comes from your grid rules and block count, so spacing never breaks. You choose the row.</div><div data-show="anim.ending=spot" style="display:grid;gap:9px">
+                <div class="field stack"><span class="lbl">Last block ends up</span><div class="seg" id="endPreset"><button data-ex="-25" title="Just past the left edge">Off left</button><button data-ex="20">Left</button><button data-ex="50">Centre</button><button data-ex="80">Right</button><button data-ex="125" title="Just past the right edge">Off right</button></div></div>
+                <div class="field2">
+                  <div class="field"><span class="lbl scrub" title="0 = left edge, 100 = right edge, below 0 or above 100 = off screen">X</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endX" min="-200" max="300" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
+                  <div class="field"><span class="lbl scrub" title="0 = top, 100 = bottom, outside 0–100 = off screen">Y</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endY" min="-200" max="300" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
+                </div>
+                <div class="field"><span class="lbl scrub">Final move</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.finalMove" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              </div>
+            </div></details>
+            <details class="sub" data-sub="gen-walk" open><summary>Walk <span class="note">how the line moves</span></summary><div class="subbody">
+              
+              <div class="field2">
+                <div class="field"><span class="lbl scrub">Gap</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.gap" min="0" max="40" step="1"><button data-d="1">+</button></div></div>
+                <div class="field"><span class="lbl scrub">Wander</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.wander" min="0" max="4" step="1"><button data-d="1">+</button></div></div>
+              </div>
+              <div class="field"><span class="lbl scrub">Up ↔ down</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.climb" min="-100" max="100" step="10"><span class="unit">%</span><button data-d="1">+</button></div></div>
+              <div class="field2">
+                <div class="field"><span class="lbl scrub">Stairs</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.stairPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
+                <div class="field"><span class="lbl scrub">Jumps</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.jumpPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
+              </div>
+              <label class="check"><input type="checkbox" data-bind="rand.multiCol"> Allow multiple blocks in one column</label>
+              <div class="field2" data-show="rand.multiCol=true">
+                <div class="field"><span class="lbl scrub">Pairs</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.stackPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
+                <div class="field"><span class="lbl scrub">Pair gap</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.stackGap" min="0" max="10" step="1"><button data-d="1">+</button></div></div>
+              </div>
+            <div class="field"><span class="lbl scrub" title="0 = random">Start row</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.startRow" min="0" max="60" step="1"><span class="unit" id="rowUnit">random</span><button data-d="1">+</button></div></div>
+            </div></details>
           </div>
-          <div class="group">
+          <div class="group" data-ctx="blocks">
+            <div class="group-h">Edit blocks</div>
+            <div class="note" id="editNote">Drag a block on the canvas to move it — the generated line becomes editable. Select blocks on the timeline to change when each one appears.</div>
             <div class="group-h">Place by hand</div>
             <div class="toolcards" id="toolcards"></div>
             <div class="row-btns"><button class="btn" id="btnClearLayout"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg>Clear layout</button></div>
             <div class="note">Stamp: click or drag on the canvas. If a block doesn’t fit where you click, it slides over to the nearest spot that does. ⌘Z undoes.</div>
+            <button class="btn" id="btnBake" title="Turn the generated line into normal blocks you can edit">Make the line editable</button>
+            <label class="check"><input type="checkbox" data-bind="block.sync"> Apply size &amp; colour changes to existing blocks</label>
+            <button class="btn wide" id="btnResizeAll">Resize existing blocks</button>
+          
           </div>
           <div class="group">
-            <div class="group-h">Generate from rules<span class="tag" id="sizeTag"></span></div>
+            <div class="group-h">Colours</div>
+            <div class="field stack"><span class="lbl">Main</span><div class="swatches" data-pal="block.color"></div></div>
+            <div class="field stack"><span class="lbl">Second</span><div class="swatches" data-pal="block.color2"></div></div>
+            <div class="field stack"><span class="lbl">Colour mix for new blocks</span>
+              <div class="seg" data-seg="block.mix"><button data-v="single">Main only</button><button data-v="alternate">Alternate</button><button data-v="random">Random mix</button></div></div>
+            <div class="field" data-show="block.mix=random"><span class="lbl scrub">Second</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="block.mixPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
+            <button class="btn wide" id="btnRecolour">Recolour existing blocks with this mix</button>
+          </div>
+          <div class="group">
+            <div class="group-h">Palette</div>
+            <div class="swatches palette-edit" id="paletteEdit"></div>
+            <div class="row-btns"><button class="btn" id="btnPalAdd">+ Add main colour</button><button class="btn ghost" id="btnPalReset">Reset</button></div>
+            <div class="note">These colours appear in every colour picker. Alt-click a colour here to remove it.</div>
+          </div>
+          <div class="group" data-adv>
+            <div class="group-h">Fill the frame (classic)<span class="tag" id="sizeTag"></span></div>
             <div class="seg tall" data-seg="rand.pattern">
               <button data-v="walk" title="Each block sits next to the last one, same row or one up/down"><svg width="22" height="14" viewBox="0 0 22 14" fill="currentColor"><rect y="6" width="6" height="4"/><rect x="6.5" y="2" width="6" height="4"/><rect x="13" y="6" width="6" height="4"/><rect x="6.5" y="10" width="6" height="4" opacity=".55"/></svg>Walk</button>
               <button data-v="stairUp" title="Each block steps right and up"><svg width="22" height="14" viewBox="0 0 22 14" fill="currentColor"><rect y="10" width="6" height="4"/><rect x="8" y="5" width="6" height="4"/><rect x="16" width="6" height="4"/></svg>Stairs ↗</button>
@@ -631,7 +767,7 @@ body.nohelp .qm{display:none}
               <div class="field"><span class="lbl scrub" title="Min empty columns between blocks">Gap ≥</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.gapMin" min="0" max="40" step="1"><button data-d="1">+</button></div></div>
               <div class="field"><span class="lbl scrub" title="Max empty columns between blocks">≤</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.gapMax" min="0" max="40" step="1"><button data-d="1">+</button></div></div>
             </div>
-            <div class="field"><span class="lbl scrub" title="0 = random">Start row</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.startRow" min="0" max="60" step="1"><span class="unit" id="rowUnit">random</span><button data-d="1">+</button></div></div>
+            <div class="field"><span class="lbl scrub" title="0 = random">Start row</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.startRow" min="0" max="60" step="1"><span class="unit" id="rowUnit2">random</span><button data-d="1">+</button></div></div>
             <label class="check"><input type="checkbox" data-bind="rand.bleed"> Use partial edge columns</label>
             <div class="seg" data-seg="rand.mode"><button data-v="replace">Replace blocks</button><button data-v="add">Add to existing</button></div>
             <div class="row-btns">
@@ -640,77 +776,12 @@ body.nohelp .qm{display:none}
             </div>
             <div class="note" id="seedNote">Blocks are all the same size and run left to right. After generating, any change here updates the layout straight away.</div>
           </div>
-          <div class="group">
-            <div class="group-h">Colours</div>
-            <div class="field stack"><span class="lbl">Main</span><div class="swatches" data-pal="block.color"></div></div>
-            <div class="field stack"><span class="lbl">Second</span><div class="swatches" data-pal="block.color2"></div></div>
-            <div class="field stack"><span class="lbl">Colour mix for new blocks</span>
-              <div class="seg" data-seg="block.mix"><button data-v="single">Main only</button><button data-v="alternate">Alternate</button><button data-v="random">Random mix</button></div></div>
-            <div class="field" data-show="block.mix=random"><span class="lbl scrub">Second</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="block.mixPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
-            <button class="btn wide" id="btnRecolour">Recolour existing blocks with this mix</button>
-          </div>
-          <div class="group">
-            <div class="group-h">Palette</div>
-            <div class="swatches palette-edit" id="paletteEdit"></div>
-            <div class="row-btns"><button class="btn" id="btnPalAdd">+ Add main colour</button><button class="btn ghost" id="btnPalReset">Reset</button></div>
-            <div class="note">These colours appear in every colour picker. Alt-click a colour here to remove it.</div>
-          </div>
-          <div class="group">
-            <div class="group-h">Echo</div>
-            <div class="layer" data-layer="echo.on">
-              <label class="switch"><input type="checkbox" data-bind="echo.on"><span></span></label>
-              <div><div class="ln">Echo</div><div class="ls">A styled copy behind each block</div></div>
-              <span></span>
-              <div class="extra" data-show="echo.on=true">
-                <div class="field3">
-                  <div class="field"><span class="lbl scrub">Shift X</span><div class="num"><input type="number" data-bind="echo.dx" min="-60" max="60" step="1"></div></div>
-                  <div class="field"><span class="lbl scrub">Shift Y</span><div class="num"><input type="number" data-bind="echo.dy" min="-60" max="60" step="1"></div></div>
-                  <div class="field"><span class="lbl scrub" title="0 = every block">Last N</span><div class="num"><input type="number" data-bind="echo.last" data-zero="all" min="0" max="400" step="1"></div></div>
-                </div>
-                <div class="field"><span class="lbl scrub">Opacity</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="echo.opacity" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
-                <label class="check"><input type="checkbox" data-bind="echo.fill"> Fill</label>
-                <div class="field stack" data-show="echo.fill=true"><span class="lbl">Fill colour</span><div class="swatches" data-pal="echo.color"></div></div>
-                <label class="check"><input type="checkbox" data-bind="echo.stroke"> Stroke</label>
-                <div data-show="echo.stroke=true" style="display:grid;gap:9px">
-                  <div class="field stack"><span class="lbl">Stroke colour</span><div class="swatches" data-pal="echo.scolor"></div></div>
-                  <div class="field"><span class="lbl scrub">Width</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="echo.sw" min="0" max="200" step="1"><span class="unit">px</span><button data-d="1">+</button></div></div>
-                  <div class="field stack"><span class="lbl">Align</span><div class="seg" data-seg="echo.align"><button data-v="inner">Inside</button><button data-v="center">Centre</button><button data-v="outer">Outside</button></div></div>
-                  <label class="check"><input type="checkbox" data-bind="echo.dash"> Dashed</label>
-                  <div class="field2" data-show="echo.dash=true">
-                    <div class="field"><span class="lbl scrub">Dash</span><div class="num"><input type="number" data-bind="echo.dashL" min="1" max="500" step="1"></div></div>
-                    <div class="field"><span class="lbl scrub">Gap</span><div class="num"><input type="number" data-bind="echo.dashG" min="1" max="500" step="1"></div></div>
-                  </div>
-                </div>
-                <div class="field stack"><span class="lbl">Timing</span><div class="seg" data-seg="echo.timing"><button data-v="before">Leads (before)</button><button data-v="with">With block</button><button data-v="after">Trails (after)</button></div></div>
-                <div class="field" data-show="echo.timing=before|after"><span class="lbl scrub">By</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="echo.offset" min="0" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-                <div class="field stack"><span class="lbl">Appears</span><div class="seg" data-seg="echo.appear"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe →</button><button data-v="scale">Scale</button></div></div>
-                <div class="field stack"><span class="lbl">Then</span><div class="seg" data-seg="echo.out"><button data-v="stay">Stays</button><button data-v="fade">Fades out</button><button data-v="cut">Cuts out</button></div></div>
-                <div class="field2" data-show="echo.out=fade|cut">
-                  <div class="field"><span class="lbl scrub">Hold</span><div class="num"><input type="number" data-bind="echo.hold" min="0" max="2000" step="1"></div></div>
-                  <div class="field" data-show="echo.out=fade"><span class="lbl scrub">Fade</span><div class="num"><input type="number" data-bind="echo.outF" min="1" max="600" step="1"></div></div>
-                </div>
-                <label class="check"><input type="checkbox" data-bind="echo.content"> Eligible for content (images / video later)</label>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- 4 CONTENT -->
         <div class="pane" data-pane="content">
-          <div class="group">
-            <div class="group-h">Block numbers<label class="switch hswitch" title="A number in the top-right corner of every block"><input type="checkbox" data-bind="num.on"><span></span></label></div>
-            <div data-show="num.on=true" style="display:grid;gap:9px">
-              <div class="field stack"><span class="lbl">Format</span><div class="seg" data-seg="num.fmt"><button data-v="01">01</button><button data-v="001">001</button><button data-v="#01">#01</button><button data-v="BLK 001">BLK 001</button><button data-v="height" title="Block height with thousands separators">#4,812,337</button></div></div>
-              <div class="field2">
-                <div class="field"><span class="lbl scrub" title="Number of the first block">Start at</span><div class="num"><input type="number" data-bind="num.start" min="0" max="999999999" step="1"></div></div>
-                <div class="field"><span class="lbl scrub">Size</span><div class="num"><input type="number" data-bind="num.size" min="4" max="200" step="1"><span class="unit">px</span></div></div>
-              </div>
-              <div data-adv class="field"><span class="lbl scrub">Opacity</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="num.opacity" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
-              <div class="field stack"><span class="lbl">Colour</span><div class="swatches" data-pal="num.color"></div></div>
-              <div class="note">Numbers follow the reveal order. Turn them off for single blocks in the block inspector (select a block). Content keeps clear of the corner.</div>
-            </div>
-          </div>
-          <div class="group">
+          <div class="ctabs" id="ctabs"><button data-ctab-btn="hud">Text HUD</button><button data-ctab-btn="gaps">Between blocks</button><button data-ctab-btn="numbers">Numbers</button><button data-ctab-btn="echo">Echo</button><button data-ctab-btn="text">Your text</button></div>
+          <div class="group" data-ctab="hud">
             <div class="group-h">Auto-fill blocks</div>
             <div class="layer" data-layer="fill.on">
               <label class="switch"><input type="checkbox" data-bind="fill.on"><span></span></label>
@@ -765,7 +836,7 @@ body.nohelp .qm{display:none}
               </div></details>
             </div>
           </div>
-          <div class="group" data-show="fill.on=true">
+          <div class="group" data-ctab="hud" data-show="fill.on=true">
             <div class="group-h">Content animation</div>
             <div class="phases"><span>Animate on</span><i></i><span>Hold</span><i></i><span>Animate off</span></div>
             <details class="sub" data-sub="anim-on" open><summary>Animate on</summary><div class="subbody">
@@ -809,7 +880,7 @@ body.nohelp .qm{display:none}
               <div class="field" data-show="fill.anim.outMode=fade|typeoff"><span class="lbl scrub" title="Frames it takes to go">Off length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.anim.outDur" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
             </div></details>
           </div>
-          <div class="group" data-show="fill.on=true">
+          <div class="group" data-ctab="gaps" data-show="fill.on=true">
             <div class="group-h">Text between blocks</div>
             <div class="layer" data-layer="fill.gap.on">
               <label class="switch"><input type="checkbox" data-bind="fill.gap.on"><span></span></label>
@@ -823,11 +894,63 @@ body.nohelp .qm{display:none}
               </div>
             </div>
           </div>
-          <div class="group">
+          <div class="group" data-ctab="gaps" data-show="fill.on=false"><div class="note">Text between blocks uses the Text HUD content settings. Turn on <b>Fill blocks with content</b> in the Text HUD tab first.</div></div>
+          <div class="group" data-ctab="numbers">
+            <div class="group-h">Block numbers<label class="switch hswitch" title="A number in the top-right corner of every block"><input type="checkbox" data-bind="num.on"><span></span></label></div>
+            <div data-show="num.on=true" style="display:grid;gap:9px">
+              <div class="field stack"><span class="lbl">Format</span><div class="seg" data-seg="num.fmt"><button data-v="01">01</button><button data-v="001">001</button><button data-v="#01">#01</button><button data-v="BLK 001">BLK 001</button><button data-v="height" title="Block height with thousands separators">#4,812,337</button></div></div>
+              <div class="field2">
+                <div class="field"><span class="lbl scrub" title="Number of the first block">Start at</span><div class="num"><input type="number" data-bind="num.start" min="0" max="999999999" step="1"></div></div>
+                <div class="field"><span class="lbl scrub">Size</span><div class="num"><input type="number" data-bind="num.size" min="4" max="200" step="1"><span class="unit">px</span></div></div>
+              </div>
+              <div data-adv class="field"><span class="lbl scrub">Opacity</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="num.opacity" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
+              <div class="field stack"><span class="lbl">Colour</span><div class="swatches" data-pal="num.color"></div></div>
+              <div class="note">Numbers follow the reveal order. Turn them off for single blocks in the block inspector (select a block). Content keeps clear of the corner.</div>
+            </div>
+          </div>
+          <div class="group" data-ctab="echo">
+            <div class="group-h">Echo</div>
+            <div class="layer" data-layer="echo.on">
+              <label class="switch"><input type="checkbox" data-bind="echo.on"><span></span></label>
+              <div><div class="ln">Echo</div><div class="ls">A styled copy behind each block</div></div>
+              <span></span>
+              <div class="extra" data-show="echo.on=true">
+                <div class="field3">
+                  <div class="field"><span class="lbl scrub">Shift X</span><div class="num"><input type="number" data-bind="echo.dx" min="-60" max="60" step="1"></div></div>
+                  <div class="field"><span class="lbl scrub">Shift Y</span><div class="num"><input type="number" data-bind="echo.dy" min="-60" max="60" step="1"></div></div>
+                  <div class="field"><span class="lbl scrub" title="0 = every block">Last N</span><div class="num"><input type="number" data-bind="echo.last" data-zero="all" min="0" max="400" step="1"></div></div>
+                </div>
+                <div class="field"><span class="lbl scrub">Opacity</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="echo.opacity" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
+                <label class="check"><input type="checkbox" data-bind="echo.fill"> Fill</label>
+                <div class="field stack" data-show="echo.fill=true"><span class="lbl">Fill colour</span><div class="swatches" data-pal="echo.color"></div></div>
+                <label class="check"><input type="checkbox" data-bind="echo.stroke"> Stroke</label>
+                <div data-show="echo.stroke=true" style="display:grid;gap:9px">
+                  <div class="field stack"><span class="lbl">Stroke colour</span><div class="swatches" data-pal="echo.scolor"></div></div>
+                  <div class="field"><span class="lbl scrub">Width</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="echo.sw" min="0" max="200" step="1"><span class="unit">px</span><button data-d="1">+</button></div></div>
+                  <div class="field stack"><span class="lbl">Align</span><div class="seg" data-seg="echo.align"><button data-v="inner">Inside</button><button data-v="center">Centre</button><button data-v="outer">Outside</button></div></div>
+                  <label class="check"><input type="checkbox" data-bind="echo.dash"> Dashed</label>
+                  <div class="field2" data-show="echo.dash=true">
+                    <div class="field"><span class="lbl scrub">Dash</span><div class="num"><input type="number" data-bind="echo.dashL" min="1" max="500" step="1"></div></div>
+                    <div class="field"><span class="lbl scrub">Gap</span><div class="num"><input type="number" data-bind="echo.dashG" min="1" max="500" step="1"></div></div>
+                  </div>
+                </div>
+                <div class="field stack"><span class="lbl">Timing</span><div class="seg" data-seg="echo.timing"><button data-v="before">Leads (before)</button><button data-v="with">With block</button><button data-v="after">Trails (after)</button></div></div>
+                <div class="field" data-show="echo.timing=before|after"><span class="lbl scrub">By</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="echo.offset" min="0" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+                <div class="field stack"><span class="lbl">Appears</span><div class="seg" data-seg="echo.appear"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe →</button><button data-v="scale">Scale</button></div></div>
+                <div class="field stack"><span class="lbl">Then</span><div class="seg" data-seg="echo.out"><button data-v="stay">Stays</button><button data-v="fade">Fades out</button><button data-v="cut">Cuts out</button></div></div>
+                <div class="field2" data-show="echo.out=fade|cut">
+                  <div class="field"><span class="lbl scrub">Hold</span><div class="num"><input type="number" data-bind="echo.hold" min="0" max="2000" step="1"></div></div>
+                  <div class="field" data-show="echo.out=fade"><span class="lbl scrub">Fade</span><div class="num"><input type="number" data-bind="echo.outF" min="1" max="600" step="1"></div></div>
+                </div>
+                <label class="check"><input type="checkbox" data-bind="echo.content"> Eligible for content (images / video later)</label>
+              </div>
+            </div>
+          </div>
+          <div class="group" data-ctab="text">
             <div class="group-h">How it works</div>
             <div class="note">Click a block to select it, then type in the panel on the right. <b>Shift-click</b> to style several blocks at once. <b>Double-click</b> a block to jump to its text.</div>
           </div>
-          <div class="group">
+          <div class="group" data-ctab="text">
             <div class="group-h">Default text style</div>
             <datalist id="fontFamilies"></datalist>
             <div class="fontrow"><input class="text-in" id="fontFam" list="fontFamilies" placeholder="Font family" autocomplete="off" spellcheck="false"><select id="fontStyle"></select></div>
@@ -846,13 +969,9 @@ body.nohelp .qm{display:none}
             <label class="check"><input type="checkbox" id="chkStyleSel" checked> Changes here also restyle the selected blocks</label>
             <button class="btn wide" id="btnApplyStyle">Apply style to all blocks</button>
           </div>
-          <div class="group">
+          <div class="group" data-ctab="text">
             <div class="group-h">Quick fill</div>
             <div class="row-btns"><button class="btn" id="btnNumber">Number blocks</button><button class="btn" id="btnClearText">Clear all text</button></div>
-          </div>
-          <div class="group">
-            <div class="group-h">Coming soon</div>
-            <div class="note">Images and video clipped inside blocks.</div>
           </div>
         </div>
 
@@ -867,11 +986,7 @@ body.nohelp .qm{display:none}
               <button class="modecard" data-v="push"><svg width="34" height="20" viewBox="0 0 34 20" fill="none" stroke="currentColor"><rect x=".5" y=".5" width="33" height="19" rx="2"/><path d="M9 3H3m2-2L3 3l2 2"/><rect x="2" y="9" width="7" height="4" fill="currentColor" stroke="none" opacity=".45"/><rect x="13" y="9" width="8" height="4" fill="currentColor" stroke="none"/></svg><div class="t">Conveyor</div><div class="d">Grid stays still. New blocks land in the centre and push the rest out.</div></button>
             </div>
           </div>
-
-          <div class="group" data-show="anim.mode=reveal|camera|push">
-            <div class="note">⏱ Scene length, pace, easing, holds and what happens after the build all live in <a href="#" data-goto="timing" style="color:var(--accent2)"><b>Timing</b></a>. This step is about where the blocks go and how they appear and leave.</div>
-          </div>
-          <div class="group" data-show="anim.mode=camera|push">
+          <div class="group" data-ctx="camera" data-show="anim.mode=camera|push">
             <div class="group-h">Camera<span id="camHead" class="note" style="margin-left:6px;text-transform:none;letter-spacing:0"></span></div>
             <details class="sub" data-sub="cam-move" open><summary>How it moves <span class="note">movement, feel</span></summary><div class="subbody">
               <div class="field stack" data-show="anim.motion=smooth"><span class="lbl">Movement</span><div class="seg" data-seg="anim.camMove"><button data-v="curve" title="Moves along the line at exactly the pace of your scene easing curve">Follow the easing</button><button data-v="follow" title="Trails behind the newest block and reacts to it — starts gently">Glide behind</button><button data-v="step">Step &amp; settle</button></div></div>
@@ -890,8 +1005,7 @@ body.nohelp .qm{display:none}
               <div class="speedgraph"><div class="lbl">Camera speed <span class="note" id="speedNote"></span></div><canvas id="speedCv"></canvas></div>
             </div></details>
           </div>
-
-          <div class="group" data-show="anim.mode=reveal|camera|push">
+          <div class="group" data-ctx="reveal" data-show="anim.mode=reveal|camera|push">
             <div class="group-h">Block reveal</div>
             <div class="field stack"><span class="lbl">Blocks appear</span>
               <div class="seg" data-seg="anim.appear"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe →</button><button data-v="scale">Scale</button></div></div>
@@ -907,8 +1021,29 @@ body.nohelp .qm{display:none}
             <div class="field"><span class="lbl scrub">Reveal length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.trans" min="1" max="1000" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
             <div data-adv class="curve" data-curve="anim.revCurve" data-show="anim.motion=smooth" data-title="Reveal easing · each block"></div>
           </div>
-
-          <div class="group" data-show="anim.mode=reveal|camera|push">
+          <div class="group" data-ctx="after" data-show="anim.mode=reveal|camera|push">
+            <div class="group-h">After the build</div>
+            <div class="seg" id="afterSeg"><button data-after="stay" title="Blocks stay once they land">Stay</button><button data-after="walk" title="Hold, then the line keeps walking off frame with a short trail">Walk off</button><button data-after="hold" title="Each block leaves a set time after it landed">Each leaves</button><button data-after="behind" title="Each block leaves once the camera has carried it past the exit line">Behind camera</button><button data-after="end" title="Everything clears out at the end">Clear out</button></div>
+            <div class="note" data-show="exit.on=false">Blocks stay. On the timeline the <b>Hold</b> bar runs to the end of the piece.</div>
+            <div data-show="exit.on=true" style="display:grid;gap:9px">
+              <div class="field stack" hidden><span class="lbl">When they leave</span><div class="seg" data-seg="exit.mode"><button data-v="hold" title="Each block leaves a set time after it appeared — a moving trail">After a hold</button><button data-v="walk" title="The finished build holds, then walks off in the order it walked on">Walk off</button><button data-v="behind" title="Each block leaves once the camera has carried it past the exit line">Behind camera</button><button data-v="end" title="Everything clears out at the end, one after another">All at end</button></div></div>
+              <div class="field" data-show="exit.mode=hold"><span class="lbl scrub" title="Frames a block stays fully visible before leaving">Stays for</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.hold" min="0" max="2000" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              <div data-show="exit.mode=walk" style="display:grid;gap:9px">
+                <div class="note">The build finishes and holds, then the line <b>keeps walking</b>: the oldest blocks peel away so only a short trail follows the head, the camera picks up and travels with it, then lets go — and the line with its trail walks off the edge of frame.</div>
+                <div class="field2"><div class="field"><span class="lbl scrub" title="Frames the finished build holds before walking on">Hold</span><div class="num"><input type="number" data-bind="exit.walkHold" min="0" max="2000" step="1"><span class="unit">fr</span></div></div><div class="field"><span class="lbl scrub" title="How long the camera keeps following the line before it lets go and the line walks off screen">Camera follows for</span><div class="num"><input type="number" data-bind="exit.walkLen" min="6" max="5000" step="1"><span class="unit">fr</span></div></div></div>
+                <div class="field2"><div class="field"><span class="lbl scrub" title="Blocks left visible behind the head">Trail</span><div class="num"><input type="number" data-bind="exit.trail" min="1" max="60" step="1"><span class="unit">blocks</span></div></div><div class="field"><span class="lbl scrub" title="1 = same rhythm as the build; 0.5 = twice as fast">Pace</span><div class="num"><input type="number" data-bind="exit.walkPace" min="0.1" max="5" step="0.1"><span class="unit">×</span></div></div></div>
+              </div>
+              <div class="field" data-show="exit.mode=behind"><span class="lbl scrub" title="A block leaves when its right edge passes this line (% of the frame width from the left)">Exit line</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.line" min="-50" max="100" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
+              <div data-show="exit.mode=end" style="display:grid;gap:9px">
+                <div class="field2">
+                  <div class="field"><span class="lbl scrub" title="Frames after the scene end (negative = before)">Starts</span><div class="num"><input type="number" data-bind="exit.at" min="-2000" max="2000" step="1"><span class="unit">fr</span></div></div>
+                  <div class="field"><span class="lbl scrub" title="Frames between one block leaving and the next">Stagger</span><div class="num"><input type="number" data-bind="exit.stagger" min="0" max="120" step="1"><span class="unit">fr</span></div></div>
+                </div>
+                <div class="field stack"><span class="lbl">Order</span><div class="seg" data-seg="exit.order"><button data-v="same">First in, first out</button><button data-v="reverse">Last in, first out</button></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="group" data-ctx="after" data-show="anim.mode=reveal|camera|push">
             <div class="group-h">Block exit</div>
             <div class="note" data-show="exit.on=false">Blocks stay once they’ve appeared. Choose what happens after the build in <a href="#" data-goto="timing" style="color:var(--accent2)">Timing › After the build</a>; this section then sets <i>how</i> they leave.</div>
             <div class="note" data-show="exit.on=true">When they leave is set in <a href="#" data-goto="timing" style="color:var(--accent2)">Timing › After the build</a>.</div>
@@ -932,31 +1067,6 @@ body.nohelp .qm{display:none}
               <label data-adv class="check"><input type="checkbox" data-bind="exit.echo"> Echoes leave too</label>
             </div>
           </div>
-
-          <div class="group" data-show="anim.mode=reveal|camera|push">
-            <div class="group-h">Keep building</div>
-            <label class="check"><input type="checkbox" data-bind="anim.extendOn"> Keep adding blocks after your layout</label>
-            <div data-show="anim.extendOn=true" style="display:grid;gap:9px">
-              <div class="field stack"><span class="lbl">How</span><div class="seg" data-seg="anim.extendMode"><button data-v="walk">Walk</button><button data-v="repeat">Repeat layout</button><button data-v="continue">Same step</button></div></div>
-              <div class="field stack"><span class="lbl">Ending</span><div class="seg" data-seg="anim.ending"><button data-v="count">Wherever it lands</button><button data-v="spot">On a chosen row</button></div></div>
-              <div class="row-btns"><button class="btn" id="btnAnimSeed" title="A new random continuation of the pattern (your layout stays the same)">↻ Shuffle the walk</button></div>
-              <div class="note">How many blocks and when they land is set in <a href="#" data-goto="timing" style="color:var(--accent2)">Timing</a>.</div>
-              <div class="field" data-show="anim.ending=spot"><span class="lbl scrub">End row</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endRow" min="1" max="60" step="1"><button data-d="1">+</button></div></div>
-              <div class="target-chip" data-show="anim.ending=spot"><button class="btn" id="btnPickEnd">◎ Pick the row on the canvas</button><span class="note" id="endNote"></span></div>
-              <div class="note" data-show="anim.ending=spot">The end column comes from your grid rules and block count, so spacing never breaks. You choose the row.</div>
-              <div data-show="anim.ending=spot" style="display:grid;gap:9px">
-                <div class="field stack"><span class="lbl">Last block ends up</span><div class="seg" id="endPreset"><button data-ex="-25" title="Just past the left edge">Off left</button><button data-ex="20">Left</button><button data-ex="50">Centre</button><button data-ex="80">Right</button><button data-ex="125" title="Just past the right edge">Off right</button></div></div>
-                <div class="field2">
-                  <div class="field"><span class="lbl scrub" title="0 = left edge, 100 = right edge, below 0 or above 100 = off screen">X</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endX" min="-200" max="300" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
-                  <div class="field"><span class="lbl scrub" title="0 = top, 100 = bottom, outside 0–100 = off screen">Y</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endY" min="-200" max="300" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
-                </div>
-                <div class="field"><span class="lbl scrub">Final move</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.finalMove" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-              </div>
-              <label class="check" data-show="anim.extendMode=continue"><input type="checkbox" data-bind="anim.wrap"> Loop back to the bottom row at the top</label>
-              <button class="btn" id="btnBake" title="Turn the extra blocks into normal blocks you can edit">Add extra blocks to the layout</button>
-            </div>
-          </div>
-
           <div class="group" data-show="anim.mode=reveal|camera|push">
             <div class="group-h">Order</div>
             <div class="seg" data-seg="anim.order">
@@ -974,14 +1084,12 @@ body.nohelp .qm{display:none}
             </div>
             <div class="note" data-show="anim.order=random"><a href="#" id="lnkReshuffleOrder" style="color:var(--accent2)">Shuffle order</a></div>
           </div>
-
           <div class="group" data-show="anim.mode=reveal|camera|push">
             <div class="group-h">Grid size over time<label class="switch hswitch" title="Turn all grid changes on or off"><input type="checkbox" data-bind="anim.zoomOn"><span></span></label></div>
             <div id="zoomList" style="display:grid;gap:6px"></div>
             <button class="btn" id="btnAddZoom">+ Add a grid change</button>
             <div class="curve" data-curve="anim.zoomCurve" data-title="Grid change easing" hidden></div>
           </div>
-
           <div class="group" data-show="anim.mode=reveal|camera|push">
             <div class="readout" id="animReadout"></div>
           </div>
@@ -990,7 +1098,7 @@ body.nohelp .qm{display:none}
         <!-- 5b TRANSITIONS -->
         <!-- 5b TIMING -->
         <div class="pane" data-pane="timing">
-          <div class="group" data-show="anim.mode=reveal|camera|push">
+          <div class="group" data-ctx="scene" data-show="anim.mode=reveal|camera|push">
             <div class="group-h">Scene</div>
             <div class="note">When the build happens. The <b>Build</b> bar on the timeline is this scene: drag its ends.</div>
             <div class="field"><span class="lbl scrub">Frame rate</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="comp.fps" min="1" max="120" step="1"><span class="unit">fps</span><button data-d="1">+</button></div></div>
@@ -1007,30 +1115,22 @@ body.nohelp .qm{display:none}
             <div data-adv class="field stack"><span class="lbl">Motion</span><div class="seg" data-seg="anim.motion"><button data-v="smooth">Smooth</button><button data-v="stop">Stop-motion</button></div></div>
             <div class="field" data-show="anim.motion=stop"><span class="lbl scrub">Hold</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.stepEvery" min="1" max="60" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
           </div>
-
-          <div class="group" data-show="anim.mode=reveal|camera|push">
-            <div class="group-h">After the build</div>
-            <div class="seg" id="afterSeg"><button data-after="stay" title="Blocks stay once they land">Stay</button><button data-after="walk" title="Hold, then the line keeps walking off frame with a short trail">Walk off</button><button data-after="hold" title="Each block leaves a set time after it landed">Each leaves</button><button data-after="behind" title="Each block leaves once the camera has carried it past the exit line">Behind camera</button><button data-after="end" title="Everything clears out at the end">Clear out</button></div>
-            <div class="note" data-show="exit.on=false">Blocks stay. On the timeline the <b>Hold</b> bar runs to the end of the piece.</div>
-            <div data-show="exit.on=true" style="display:grid;gap:9px">
-              <div class="field stack" hidden><span class="lbl">When they leave</span><div class="seg" data-seg="exit.mode"><button data-v="hold" title="Each block leaves a set time after it appeared — a moving trail">After a hold</button><button data-v="walk" title="The finished build holds, then walks off in the order it walked on">Walk off</button><button data-v="behind" title="Each block leaves once the camera has carried it past the exit line">Behind camera</button><button data-v="end" title="Everything clears out at the end, one after another">All at end</button></div></div>
-              <div class="field" data-show="exit.mode=hold"><span class="lbl scrub" title="Frames a block stays fully visible before leaving">Stays for</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.hold" min="0" max="2000" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-              <div data-show="exit.mode=walk" style="display:grid;gap:9px">
-                <div class="note">The build finishes and holds, then the line <b>keeps walking</b>: the oldest blocks peel away so only a short trail follows the head, the camera picks up and travels with it, then lets go — and the line with its trail walks off the edge of frame.</div>
-                <div class="field2"><div class="field"><span class="lbl scrub" title="Frames the finished build holds before walking on">Hold</span><div class="num"><input type="number" data-bind="exit.walkHold" min="0" max="2000" step="1"><span class="unit">fr</span></div></div><div class="field"><span class="lbl scrub" title="How long the camera keeps following the line before it lets go and the line walks off screen">Camera follows for</span><div class="num"><input type="number" data-bind="exit.walkLen" min="6" max="5000" step="1"><span class="unit">fr</span></div></div></div>
-                <div class="field2"><div class="field"><span class="lbl scrub" title="Blocks left visible behind the head">Trail</span><div class="num"><input type="number" data-bind="exit.trail" min="1" max="60" step="1"><span class="unit">blocks</span></div></div><div class="field"><span class="lbl scrub" title="1 = same rhythm as the build; 0.5 = twice as fast">Pace</span><div class="num"><input type="number" data-bind="exit.walkPace" min="0.1" max="5" step="0.1"><span class="unit">×</span></div></div></div>
-              </div>
-              <div class="field" data-show="exit.mode=behind"><span class="lbl scrub" title="A block leaves when its right edge passes this line (% of the frame width from the left)">Exit line</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.line" min="-50" max="100" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
-              <div data-show="exit.mode=end" style="display:grid;gap:9px">
-                <div class="field2">
-                  <div class="field"><span class="lbl scrub" title="Frames after the scene end (negative = before)">Starts</span><div class="num"><input type="number" data-bind="exit.at" min="-2000" max="2000" step="1"><span class="unit">fr</span></div></div>
-                  <div class="field"><span class="lbl scrub" title="Frames between one block leaving and the next">Stagger</span><div class="num"><input type="number" data-bind="exit.stagger" min="0" max="120" step="1"><span class="unit">fr</span></div></div>
-                </div>
-                <div class="field stack"><span class="lbl">Order</span><div class="seg" data-seg="exit.order"><button data-v="same">First in, first out</button><button data-v="reverse">Last in, first out</button></div></div>
-              </div>
-            </div>
+          <div class="group" data-ctx="scene">
+            <div class="group-h">Pace</div>
+            <div class="readout" id="paceRead"></div>
+            <div class="note">On the timeline, <b>click a block</b> in the Blocks row to select it, then <b>Delete</b> to remove it (⇧Delete = it and everything after). Drag the <b style="color:#FFC21A">yellow handle</b> left to drop the late blocks at the end of the build — the rest keep their timing.</div>
+            <div class="row-btns"><button class="btn" id="btnAnimSeed2" title="A new random continuation of the pattern">↻ Shuffle the walk</button><button class="btn" id="btnUnskip" data-show-skip>Bring back skipped blocks</button></div>
+            <div id="camPair"></div>
+            <div class="field" data-show="fill.anim.outMode=fade|typeoff|cut"><span class="lbl scrub" title="How long content stays fully on before animating off">Content holds</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.anim.hold" min="0" max="9999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
           </div>
-          <div class="group" data-show="anim.mode=camera|push">
+          <div class="group" data-ctx="scene">
+            <div class="group-h">Retime everything</div>
+            <div class="note">Stretches or squeezes the whole piece — scene, reveals, camera, exits, content, transitions, Lab — keeping every relationship.</div>
+            <div class="seg"><button data-retime="0.5">×0.5</button><button data-retime="0.75">×0.75</button><button data-retime="0.9">×0.9</button><button data-retime="1.1">×1.1</button><button data-retime="1.25">×1.25</button><button data-retime="1.5">×1.5</button><button data-retime="2">×2</button></div>
+            <div class="field" style="grid-template-columns:auto 1fr auto"><span class="lbl">Scene length to</span><div class="num"><input type="number" id="retimeTarget" min="0.1" max="600" step="0.1" value="3"><span class="unit">s</span></div><button class="btn" id="btnRetimeTo">Retime</button></div>
+            <button class="btn" id="btnRetimeComp" title="Stretch the scene so it ends with the comp">Fit the scene to the comp length</button>
+          </div>
+          <div class="group" data-ctx="camera" data-show="anim.mode=camera|push">
             <div class="group-h">Camera timing</div>
             <div class="note" data-show="exit.mode=walk">With Walk off, the camera follows the walking line for <b>Camera follows for</b>, then lets it run off.</div>
             <details class="sub" data-sub="cam-letgo" open data-show="anim.motion=smooth&amp;anim.camMove=follow|curve"><summary>Let go before the end <span class="note">coast to a stop</span></summary><div class="subbody">
@@ -1043,46 +1143,18 @@ body.nohelp .qm{display:none}
               </div>
             </div></details>
           </div>
-          <div class="group">
-            <div class="group-h">Pace</div>
-            <div class="readout" id="paceRead"></div>
-            <div class="note">On the timeline, <b>click a block</b> in the Blocks row to select it, then <b>Delete</b> to remove it (⇧Delete = it and everything after). Drag the <b style="color:#FFC21A">yellow handle</b> left to drop the late blocks at the end of the build — the rest keep their timing.</div>
-            <div class="row-btns"><button class="btn" id="btnAnimSeed2" title="A new random continuation of the pattern">↻ Shuffle the walk</button><button class="btn" id="btnUnskip" data-show-skip>Bring back skipped blocks</button></div>
-            <div id="camPair"></div>
-            <div class="field" data-show="fill.anim.outMode=fade|typeoff|cut"><span class="lbl scrub" title="How long content stays fully on before animating off">Content holds</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.anim.hold" min="0" max="9999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-          </div>
-          <div class="group">
-            <div class="group-h">Retime everything</div>
-            <div class="note">Stretches or squeezes the whole piece — scene, reveals, camera, exits, content, transitions, Lab — keeping every relationship.</div>
-            <div class="seg"><button data-retime="0.5">×0.5</button><button data-retime="0.75">×0.75</button><button data-retime="0.9">×0.9</button><button data-retime="1.1">×1.1</button><button data-retime="1.25">×1.25</button><button data-retime="1.5">×1.5</button><button data-retime="2">×2</button></div>
-            <div class="field" style="grid-template-columns:auto 1fr auto"><span class="lbl">Scene length to</span><div class="num"><input type="number" id="retimeTarget" min="0.1" max="600" step="0.1" value="3"><span class="unit">s</span></div><button class="btn" id="btnRetimeTo">Retime</button></div>
-            <button class="btn" id="btnRetimeComp" title="Stretch the scene so it ends with the comp">Fit the scene to the comp length</button>
-          </div>
-          <div class="group">
-            <div class="group-h">Reading the timeline</div>
-            <div class="note">Time runs left → right under the canvas. <b>Hover anything</b> for a plain-English readout; <b>drag the handles</b> to change timings; click to scrub.</div>
-            <div class="legend">
-              <div><i style="background:linear-gradient(90deg,rgba(230,33,47,.55) 0 40%,rgba(236,236,239,.3) 40% 65%,rgba(116,157,211,.6) 65%)"></i><b>Phases</b> Build (blocks landing) · Hold · Camera follows · Walks off — drag the handles between them</div>
-              <div><i style="background:rgba(116,157,211,.6)"></i><b>Camera speed</b> taller = faster</div>
-              <div><i style="background:#E6212F"></i><b>Blocks</b> one line per block, from appearing to leaving</div>
-              <div><i style="background:linear-gradient(90deg,rgba(230,33,47,.7) 0 33%,rgba(255,255,255,.25) 33% 66%,rgba(255,127,123,.7) 66%)"></i><b>Content</b> animate on · hold · animate off</div>
-              <div><i style="background:linear-gradient(90deg,rgba(43,217,143,.6) 0 50%,rgba(255,194,26,.6) 50%)"></i><b>Transitions</b> in · out</div>
-              <div><i style="background:#749DD3;width:2px"></i><b>Cues</b> beats / markers from sound</div>
-              <div><i class="knobi"></i><b>Handles</b> drag these</div>
-            </div>
-          </div>
-          <div class="group">
+          <div class="group" data-ctx="sound scene">
             <div class="group-h">Sync to sound</div>
             <div id="mediaBox"></div>
           </div>
         </div>
 
         <div class="pane" data-pane="transitions">
-          <div class="group">
+          <div class="group" data-ctx="trans-in trans-out">
             <div class="group-h">How it works</div>
             <div class="note">Transition blocks tile the whole frame. <b>Clear away</b> starts with the frame covered and reveals your scene; <b>Build up</b> covers it. Choose <b>Matte precomp</b> to get a white precomp you can use as a track matte for other footage. Press ▶ to preview. Green outlines = In, yellow = Out.</div>
           </div>
-          <div class="group">
+          <div class="group" data-ctx="trans-in">
             <div class="group-h">Transition in</div>
             <div class="layer" data-layer="trans.in.on">
               <label class="switch"><input type="checkbox" data-bind="trans.in.on"><span></span></label>
@@ -1095,13 +1167,14 @@ body.nohelp .qm{display:none}
                   <div class="field"><span class="lbl scrub" title="Frames from the first block to the last">Length</span><div class="num"><input type="number" data-bind="trans.in.dur" min="1" max="9999" step="1"><span class="unit">fr</span></div></div>
                   <div class="field"><span class="lbl scrub" title="Frames each block takes">Each</span><div class="num"><input type="number" data-bind="trans.in.len" min="1" max="600" step="1"><span class="unit">fr</span></div></div>
                 </div>
-                <div class="field stack"><span class="lbl">Pattern</span><div class="seg" data-seg="trans.in.pattern"><button data-v="sweep">Sweep</button><button data-v="diag">Diagonal</button><button data-v="rows">Rows</button><button data-v="center">Centre out</button><button data-v="random">Random</button></div></div>
+                <div class="field stack"><span class="lbl">Pattern</span><div class="seg" data-seg="trans.in.pattern"><button data-v="walk" title="Sweeps the way the line walks, on the scene's own grid, with a stepped block-shaped front">Walk</button><button data-v="sweep">Sweep</button><button data-v="diag">Diagonal</button><button data-v="rows">Rows</button><button data-v="center">Centre out</button><button data-v="random">Random</button></div></div>
                 <div class="field stack"><span class="lbl">Direction</span><div class="seg" data-seg="trans.in.dir"><button data-v="fwd">Forward</button><button data-v="rev">Reverse</button></div></div>
                 <div class="field stack"><span class="lbl">Each block</span><div class="seg" data-seg="trans.in.appear"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe</button><button data-v="scale">Scale</button></div></div>
                 <div class="field2">
                   <div class="field"><span class="lbl scrub" title="0 = same as your blocks">W</span><div class="num"><input type="number" data-bind="trans.in.w" data-zero="auto" min="0" max="60" step="1"><span class="unit">cells</span></div></div>
                   <div class="field"><span class="lbl scrub" title="0 = same as your blocks">H</span><div class="num"><input type="number" data-bind="trans.in.h" data-zero="auto" min="0" max="60" step="1"><span class="unit">cells</span></div></div>
                 </div>
+                <label class="check"><input type="checkbox" data-bind="trans.in.blockColors"> Use the block colours (your colour mix)</label>
                 <label class="check"><input type="checkbox" data-bind="trans.in.cover"> Cover the gutters (solid, no grid lines)</label>
                 <div class="field stack"><span class="lbl">Build as</span><div class="seg" data-seg="trans.in.output"><button data-v="blocks">Blocks in the comp</button><button data-v="matte">Matte precomp</button></div></div>
                 <div class="curve" data-curve="trans.in.curve" data-title="Transition in easing"></div>
@@ -1109,7 +1182,7 @@ body.nohelp .qm{display:none}
               </div>
             </div>
           </div>
-          <div class="group">
+          <div class="group" data-ctx="trans-out">
             <div class="group-h">Transition out</div>
             <div class="layer" data-layer="trans.out.on">
               <label class="switch"><input type="checkbox" data-bind="trans.out.on"><span></span></label>
@@ -1123,13 +1196,14 @@ body.nohelp .qm{display:none}
                   <div class="field"><span class="lbl scrub" title="Frames from the first block to the last">Length</span><div class="num"><input type="number" data-bind="trans.out.dur" min="1" max="9999" step="1"><span class="unit">fr</span></div></div>
                   <div class="field"><span class="lbl scrub" title="Frames each block takes">Each</span><div class="num"><input type="number" data-bind="trans.out.len" min="1" max="600" step="1"><span class="unit">fr</span></div></div>
                 </div>
-                <div class="field stack"><span class="lbl">Pattern</span><div class="seg" data-seg="trans.out.pattern"><button data-v="sweep">Sweep</button><button data-v="diag">Diagonal</button><button data-v="rows">Rows</button><button data-v="center">Centre out</button><button data-v="random">Random</button></div></div>
+                <div class="field stack"><span class="lbl">Pattern</span><div class="seg" data-seg="trans.out.pattern"><button data-v="walk" title="Sweeps the way the line walks, on the scene's own grid, with a stepped block-shaped front">Walk</button><button data-v="sweep">Sweep</button><button data-v="diag">Diagonal</button><button data-v="rows">Rows</button><button data-v="center">Centre out</button><button data-v="random">Random</button></div></div>
                 <div class="field stack"><span class="lbl">Direction</span><div class="seg" data-seg="trans.out.dir"><button data-v="fwd">Forward</button><button data-v="rev">Reverse</button></div></div>
                 <div class="field stack"><span class="lbl">Each block</span><div class="seg" data-seg="trans.out.appear"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe</button><button data-v="scale">Scale</button></div></div>
                 <div class="field2">
                   <div class="field"><span class="lbl scrub" title="0 = same as your blocks">W</span><div class="num"><input type="number" data-bind="trans.out.w" data-zero="auto" min="0" max="60" step="1"><span class="unit">cells</span></div></div>
                   <div class="field"><span class="lbl scrub" title="0 = same as your blocks">H</span><div class="num"><input type="number" data-bind="trans.out.h" data-zero="auto" min="0" max="60" step="1"><span class="unit">cells</span></div></div>
                 </div>
+                <label class="check"><input type="checkbox" data-bind="trans.out.blockColors"> Use the block colours (your colour mix)</label>
                 <label class="check"><input type="checkbox" data-bind="trans.out.cover"> Cover the gutters (solid, no grid lines)</label>
                 <div class="field stack"><span class="lbl">Build as</span><div class="seg" data-seg="trans.out.output"><button data-v="blocks">Blocks in the comp</button><button data-v="matte">Matte precomp</button></div></div>
                 <div class="curve" data-curve="trans.out.curve" data-title="Transition out easing"></div>
@@ -1220,44 +1294,7 @@ body.nohelp .qm{display:none}
         <button class="btn" id="btnBack">← Back</button>
         <button class="btn primary" id="btnNext">Next →</button>
       </div>
-    </section>
-
-    <!-- ================= STAGE ================= -->
-    <section class="stage">
-      <div id="wrap">
-        <canvas id="cv"></canvas>
-        <div class="toolbox" id="toolbox"></div>
-        <div class="ctxbar" id="ctxbar"></div>
-        <div class="toolpill" id="toolPill"></div>
-        <button class="backbtn" id="backBtn" hidden title="Back to the frame (F)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3 2 7l4 4"/><path d="M2 7h8a4 4 0 0 1 0 8H8"/></svg>Back to frame <kbd>F</kbd></button>
-        <div class="zoombox">
-          <button id="zFit" title="Back to the frame, centred (F)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3.5" y="4.5" width="9" height="7" rx="1"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg></button>
-          <span style="width:1px;height:16px;background:var(--line2)"></span>
-          <button id="zOut" title="Zoom out (−)">−</button>
-          <button class="pct" id="zPct" title="Fit the frame (F)">100%</button>
-          <button id="zIn" title="Zoom in (+)">+</button>
-          <button id="zAll" title="Show off-screen area (Shift+F)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"/></svg></button>
-        </div>
-      </div>
-      <div class="dope" id="dope" hidden><canvas id="dopeCv"></canvas><div class="dopetip" id="dopeTip" hidden></div></div>
-      <div class="timeline" id="timeline" hidden>
-        <button class="btn icon" id="btnPlay" title="Play / pause (Space or P)"><svg id="icoPlay" width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg></button>
-        <input type="range" id="scrub" min="0" max="100" step="1" value="0">
-        <span class="tc" id="tc">0f</span>
-        <div class="field" style="grid-template-columns:auto 78px;gap:6px" title="Frame the scene starts on. Negative = already running at frame 0"><span class="lbl scrub">Scene starts</span><div class="num"><input type="number" data-bind="anim.startF" min="-9999" max="99999" step="1"><span class="unit">fr</span></div></div>
-        <label class="check" style="align-items:center" title="Play the preview over and over"><input type="checkbox" id="chkLoop" checked> Loop preview</label>
-        <label class="check" style="align-items:center" title="Preview with the same motion blur the AE build gets (Build › Motion blur). Plays real frames, like AE."><input type="checkbox" id="chkMB" checked> Motion blur</label>
-        <button class="btn ghost" id="btnLayoutView" title="Stop preview and show the full layout">Show layout</button>
-      </div>
-      <div class="status">
-        <span class="pos" id="hPos">—</span>
-        <label class="check"><input type="checkbox" id="chkOrder"> Show order numbers</label>
-        <span class="hide-sm" id="hint"></span>
-      </div>
-    </section>
-
-    <!-- ================= INSPECTOR ================= -->
-    <div id="insp"></div>
+    </aside>
   </main>
 </div>
 
@@ -1273,6 +1310,14 @@ body.nohelp .qm{display:none}
     </div>
   </div>
 </div>
+<div class="menu" id="retimeMenu" hidden>
+  <div class="mh">Retime everything</div>
+  <div class="mgrid"><button data-retime="0.5">×0.5</button><button data-retime="0.75">×0.75</button><button data-retime="0.9">×0.9</button><button data-retime="1.1">×1.1</button><button data-retime="1.25">×1.25</button><button data-retime="1.5">×1.5</button><button data-retime="2">×2</button></div>
+  <div class="msep"></div>
+  <button id="mRetimeComp">Fit the scene to the comp length</button>
+  <button id="mRetimeMore">More timing settings…</button>
+</div>
+<div class="menu" id="tlMenu" hidden></div>
 <div class="menu" id="clearMenu" hidden>
   <div class="mh">Clear</div>
   <button data-clear="sel">Selection <kbd>Esc</kbd></button>

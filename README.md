@@ -11,13 +11,22 @@ After Effects via **File › Scripts › Run Script File…**
 The panel follows the active comp, autosaves your work, and keeps a layouts library in
 `~/Library/Application Support/GridBlocks/`.
 
-## The steps
-1. **Grid**: comp size, rows, gutter, margin, columns, off-screen area, look
-2. **Blocks**: pick a W × H block size, then Select (V), Stamp (S), Draw (B), Unmerge (E) by hand or generate from rules · Clear layout
-3. **Content**: text inside blocks
-4. **Animate**: Reveal, Camera follow, Conveyor · Keep building (repeat or continue the pattern) · same-column grouping · speed ramp · smooth / step / stop-motion · grid size over time · live preview (P)
-5. **Timing** · 6. **Transitions**: full-frame block transitions in and out, as coloured blocks or a white matte precomp
-7. **Lab** · 8. **Build**: layers + keyframes in one undo step
+## How v3 works
+The **timeline** under the canvas is the main screen. The **rail** on the left picks a step; the **properties panel** on the right shows that step — or, when you click something on the timeline, just that thing's settings.
+
+1. **Setup** — comp, grid, look, column rules
+2. **Blocks** — pick a block size and **Generate** a walking line from a seed (↻ New seed for another). It stays live until you drag a block on the canvas; then the line becomes normal, editable blocks with the same timing.
+3. **Motion** — camera, how blocks appear, what happens after the build, how they leave, order, grid size over time
+4. **Content** — overlays in tabs: Text HUD · Between blocks · Numbers · Echo · Your text
+5. **Transitions** — in & out. **Walk** transitions sit on the scene's grid and sweep the way the line walks, in your block colours.
+6. **Lab** — experiments
+7. **Output** — build into After Effects / export .jsx
+
+### Timeline
+- **Scene** row: the red Build bar (drag its ends) with the easing drawn on it — drag the white points / coral handles, click the line to add a point, ⌥-click a point to remove it, double-click for the big editor.
+- **Camera** row: speed, and the let-go handle. **Transitions**: drag the clips. **Content** rows: one per overlay.
+- **Blocks**: one row per block. Drag a bar to retime that block (⇧-click to select several), drag its right end to change when it leaves, right-click for more. ⌥←/⌥→ nudge by a frame, Delete removes, ⇧Delete removes it and everything after.
+- Ruler: drag to scrub. ⌘-scroll to zoom, scroll to pan, ⇧F to fit. Esc goes back to the layout view.
 
 ## What gets built
 | Layer | Notes |
@@ -153,3 +162,10 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - Stamp slides to the nearest spot that fits instead of refusing; tool buttons react on press.
 - Panel draws immediately and no longer waits on After Effects before it becomes clickable.
 - Grid lines on by default. Startup errors show in a red box; `.debug` enables Chrome debugging on port 8088.
+
+### v3.0
+- Timeline-first redesign: rail of steps, contextual properties panel, full-height resizable timeline.
+- Generate the line from a seed, then edit any block; per-block timing offsets (anim.dt / anim.dx) built into AE.
+- Inline scene-easing editing on the timeline; transition clips you can drag; content overlay rows and tabs.
+- Walk transitions aligned to the scene grid, using the block colours.
+- v2.3.3 is kept at `v2/index.html` (and git tag v2.3.3).
