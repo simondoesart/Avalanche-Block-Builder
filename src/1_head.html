@@ -117,6 +117,10 @@ main{display:grid;grid-template-columns:68px minmax(0,1fr) 336px;grid-template-a
 .tlbar .tlf .num{height:26px}
 .tlbar .check{align-items:center;white-space:nowrap;font-size:11px}
 .tlbar .btn{height:26px}
+.tlzoom{display:flex;align-items:center;gap:2px;flex:none}
+.tlzoom input[type=range]{width:90px;accent-color:var(--accent)}
+.tllen{grid-template-columns:auto 70px auto!important}
+.tllen .note{white-space:nowrap;font-variant-numeric:tabular-nums}
 .viewbadge{position:absolute;left:50%;top:52px;transform:translateX(-50%);padding:5px 11px;border-radius:999px;background:rgba(27,27,30,.92);border:1px solid var(--line2);color:var(--muted);font-size:11px;white-space:nowrap;pointer-events:none}
 .viewbadge b{color:var(--text)}
 .viewbadge:empty{display:none}
@@ -544,7 +548,13 @@ body.nohelp .qm{display:none}
           <label class="check" title="Play the preview over and over"><input type="checkbox" id="chkLoop" checked> Loop</label>
           <label class="check" title="Preview with the AE build's motion blur"><input type="checkbox" id="chkMB" checked> Blur</label>
           <button class="btn ghost" id="btnLayoutView" title="Show the whole layout (Esc)">Layout view</button>
-          <button class="btn icon ghost" id="tlFit" title="Fit the whole piece (⇧F)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.5 8h13M4 5.5 1.5 8 4 10.5M12 5.5 14.5 8 12 10.5"/></svg></button>
+          <div class="tlzoom" title="Zoom the timeline (⌘-scroll also zooms)">
+            <button class="btn icon ghost" id="tlZoomOut" title="Zoom out (⌘-scroll)">−</button>
+            <input type="range" id="tlZoomRange" min="0" max="100" step="1" value="0">
+            <button class="btn icon ghost" id="tlZoomIn" title="Zoom in">+</button>
+            <button class="btn icon ghost" id="tlFit" title="Fit the whole piece (⇧F)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.5 8h13M4 5.5 1.5 8 4 10.5M12 5.5 14.5 8 12 10.5"/></svg></button>
+          </div>
+          <div class="field tlf tllen" title="Comp length — how long the timeline is"><span class="lbl scrub">Length</span><div class="num"><input type="number" data-bind="comp.dur" min="0.1" max="3600" step="0.1"><span class="unit">s</span></div><span class="note" id="tlLenF"></span></div>
         </div>
         <div class="dope" id="dope"><canvas id="dopeCv"></canvas><div class="dopetip" id="dopeTip" hidden></div></div>
       </section>
