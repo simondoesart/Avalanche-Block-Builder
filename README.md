@@ -189,3 +189,8 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 
 ### v3.4
 - Timeline toolbar: zoom out / zoom slider / zoom in / fit (⌘-scroll still zooms), and **Length** — the comp length in seconds, with the frame count next to it.
+
+### v3.5
+- Scene row is taller; the remap curve can't go backwards or overshoot (points stay between their neighbours, handles can't push past the next point).
+- Markers on the curve show when **On is done** and when **Off starts** in scene time.
+- Right-click the Scene row: Linear · Ease in-out · **Ease each phase** (a point at each phase boundary, easing through each).
