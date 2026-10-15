@@ -51,7 +51,7 @@ const DEF={
   rand:{pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
         wander:1,climb:0,stackPct:20,stackGap:1,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,tracking:0,leading:0,kern:'metrics',caps:'none'},
-  anim:{seed:0,skip:[],cutAt:null,dt:{},dx:{},mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
+  anim:{seed:0,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.45,0,0.55,1],camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zoomOn:false,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
@@ -97,9 +97,9 @@ const RAIL_ICON={
 };
 /* contexts: what the properties panel shows when you click a timeline row */
 const CTX={
-  scene:{t:'Scene timing',e:'Timeline · Scene',d:'The red Build bar is the scene. Drag its ends, and drag the dots on the Scene row to ease it.'},
+  scene:{t:'Scene · time remap',e:'Timeline · Scene',d:'A layer over the blocks: its length is the scene, and its curve speeds up or slows down the whole block timeline (On · Hold · Off) — like time remapping in AE.'},
   camera:{t:'Camera',e:'Timeline · Camera',d:'How the view travels with the line. The Camera row shows its speed.'},
-  inout:{t:'Blocks in & out',e:'Timeline · Blocks',d:'How each block comes in, what happens once the line is built, and how blocks leave.'},
+  inout:{t:'Blocks · On, Hold, Off',e:'Timeline · Blocks',d:'The blocks run on their own steady clock: On (the build), Hold, Off. The Scene layer above then re-times all of it.'},
   sound:{t:'Sync to sound',e:'Timeline · Sound',d:'Load audio or video, or read markers from After Effects, and snap the reveals to the beat.'},
   'trans-in':{t:'Transition in',e:'Timeline · Transitions',d:'Drag the green clip on the timeline to move it; drag its ends to change its length.'},
   'trans-out':{t:'Transition out',e:'Timeline · Transitions',d:'Drag the yellow clip on the timeline to move it; drag its ends to change its length.'}
@@ -1216,7 +1216,40 @@ let planCache={k:'',v:null};
 function plan(G){
   const key=JSON.stringify(D)+'|'+G.W+'|'+G.H;
   if(planCache.k===key) return planCache.v;
-  const v=computePlan(G); planCache={k:key,v}; return v;
+  const v=remappedPlan(G); planCache={k:key,v}; return v;
+}
+/* ---- TIME REMAP: the scene layer on top.
+   The blocks are timed on their own clock (ON · HOLD · OFF, all at a steady pace). The scene layer then maps
+   that whole story onto the scene length with the scene easing — like time-remapping a precomp in AE.
+   Everything that has a time (reveals, exits, camera, grid changes, content start/end, lab) is re-timed. */
+let DENSE_CAM=false;
+const isLinearCurve=c=>{c=c||[0,0,1,1];return !isPts(c)&&Math.abs(+c[0]-+c[1])<1e-6&&Math.abs(+c[2]-+c[3])<1e-6;};
+function remapActive(){return D.anim.mode!=='static'&&(!isLinearCurve(D.anim.sceneCurve)||+D.anim.remapLen>0);}
+function remappedPlan(G){
+  const A=D.anim, ident=P=>{const tail=Math.max(0,Math.round(A.tail)||0);P.toReal=P.toContent=t=>t;P.C=P.R=Math.max(1,(P.end||0)-tail-(P.startF||0));P.cEnd=(P.startF||0)+P.C;return P;};
+  if(!remapActive()) return ident(computePlan(G));
+  const curve=A.sceneCurve; let P;
+  A.sceneCurve=[0,0,1,1]; DENSE_CAM=true;
+  try{ P=computePlan(G); } finally { A.sceneCurve=curve; DENSE_CAM=false; }
+  if(!P.seq.length) return ident(P);
+  remapPlan(P,curve); return P;
+}
+function remapPlan(P,curve){
+  const tail=Math.max(0,Math.round(D.anim.tail)||0), c0=P.startF, cEnd=Math.max(c0+2,P.end-tail), C=cEnd-c0, R=+D.anim.remapLen>0?Math.max(2,Math.round(+D.anim.remapLen)):C;
+  const f=curveFn(curve), inv=invCurve(curve);
+  const toReal=c=>c<=c0?c:c>=cEnd?c0+R+(c-cEnd):c0+R*inv((c-c0)/C);
+  const toContent=t=>t<=c0?t:t>=c0+R?cEnd+(t-c0-R):c0+C*clamp(f((t-c0)/R),0,1);
+  const ks=list=>{ if(!list||!list.length) return list; let prev=-1e9; return list.map(k=>{const n=k.slice(); let t=r3(toReal(k[0])); if(t<=prev) t=r3(prev+.001); prev=t; n[0]=t; return n;}); };
+  const rn=v=>v==null?v:Math.round(toReal(v));
+  P.T=P.T.map(rn); if(P.T0) P.T0=P.T0.map(rn); if(P.done) P.done=P.done.map(rn); if(P.exitT) P.exitT=P.exitT.map(rn);
+  Object.values(P.tracks).forEach(K=>Object.keys(K).forEach(k=>{if(Array.isArray(K[k])) K[k]=ks(K[k]);}));
+  (P.echo||[]).forEach(e=>Object.keys(e.K).forEach(k=>{e.K[k]=ks(e.K[k]);}));
+  if(P.lab){['pulses','trails','bars'].forEach(n=>(P.lab[n]||[]).forEach(x=>{x.t0=rn(x.t0);Object.keys(x.K).forEach(k=>{x.K[k]=ks(x.K[k]);});})); if(P.lab.end) P.lab.end=rn(P.lab.end);}
+  P.cam=ks(P.cam); P.zs=ks(P.zs); P.pan=ks(P.pan); P.ruleOp=ks(P.ruleOp);
+  ['fillBase','fillEnd'].forEach(n=>{const m=P[n]||{}; Object.keys(m).forEach(id=>{m[id]=rn(m[id]);});});
+  (P.gaps||[]).forEach(it=>{it.t0=rn(it.t0); if(it.tEnd!=null) it.tEnd=rn(it.tEnd);});
+  ['relT','walkT','holdT','walkEnd','onEnd'].forEach(n=>{if(P[n]!=null) P[n]=rn(P[n]);});
+  P.end=Math.ceil(toReal(cEnd))+tail; P.C=C; P.R=R; P.cEnd=cEnd; P.toReal=toReal; P.toContent=toContent; P.remapped=true;
 }
 function clip0(list){
   if(!list||!list.length||list[0][0]>=0) return list;
@@ -1252,8 +1285,8 @@ function computePlan(G){
   const woOff=Math.ceil(.45*G.W/Math.max(1,Math.max(1,D.block.w|0)*G.p))+woK+2;
   const woN=WO?Math.max(1,Math.round(woLen/pace2))+(A.mode==='camera'||A.mode==='push'?woOff:0):0;
   const woH=WO?Math.max(0,Math.round(+D.exit.walkHold||0)):0;
-  // with a walk-off the scene length covers everything: build + hold + walk-off. The build gets what's left.
-  const wantB=WO&&A.countMode!=='exact'&&!cuesIn?Math.max(2,Math.round((L-woH-woN*pace2)/Math.max(1,+A.pace||6))):want;
+  // phases on the content clock: ON (the build, length L) · HOLD (woH) · OFF (the walk-off, at its own pace)
+  const wantB=want;
   P.woN=woN;
   const exts=manual?[]:extension(G,base,Math.max(0,wantB-baseMain)); P.endCol=exts.__endCol; P.endReach=exts.__reach; P.endRowUsed=exts.__endRow;
   if(WO&&!manual){ // the walk-off continues the pattern from where the build ended (an end row only applies to the build)
@@ -1336,12 +1369,12 @@ function computePlan(G){
   // walk-off inside the scene: build steps, then the hold, then the walk at its own pace — all on the one linear clock
   const wp=Math.max(.1,+D.exit.walkPace||1), nW=used-usedB;
   let sWalk=null;
-  if(WO&&nW>0){ step=Math.max(.25,(L-2*tr0-woH)/Math.max(1,(usedB-1)+(nW-1)*wp)); sWalk=(usedB-1)*step+tr0+woH; }
+  if(WO&&nW>0){ sWalk=(usedB-1)*step+tr0+woH; }
   // reveal times on the linear clock, then re-timed by the scene curve (one at a time, in order)
   const sg=[], Tg=[]; const spread=(used-1)<=L;
   for(let g=0;g<used;g++){
-    const s=Math.min(L,g>=usedB&&sWalk!=null?sWalk+(g-usedB)*step*wp:step*g); sg.push(s);
-    let t=Math.round(W(s)); if(spread&&g>0&&t<=Tg[g-1]) t=Tg[g-1]+1; Tg.push(Math.min(t,startF+L));
+    const walkG=g>=usedB&&sWalk!=null, s=walkG?sWalk+(g-usedB)*pace2:Math.min(L,step*g); sg.push(s);
+    let t=Math.round(W(s)); if(spread&&g>0&&t<=Tg[g-1]) t=Tg[g-1]+1; Tg.push(walkG?t:Math.min(t,startF+L));
   }
   // drop the late blocks: everything in the build landing after cutAt goes, the rest keep their timing exactly
   const cutAt=A.cutAt!=null&&A.cutAt!==''?+A.cutAt:null; P.cutAt=null;
@@ -1357,6 +1390,7 @@ function computePlan(G){
   }
   P.walkT=WO?(sWalk!=null?Math.max(Tg[usedB-1]+1,Math.round(W(sWalk))):Tg[usedB-1]+tr0+woH):null;
   P.holdT=WO?Tg[usedB-1]+tr0:null;
+  P.onEnd=Math.round(Math.max(startF+1,...Tg.slice(0,usedB))+tr0);   // end of the ON phase (content clock)
   P.walkEnd=WO?Tg[used-1]+tr0:null;
   // sync to sound: each reveal moves to the nearest cue (beat / marker), keeping the order
   const CUES=timingCues();
@@ -1469,7 +1503,7 @@ function computePlan(G){
           const totA=cA[cA.length-1], DB=kd[usedB-1], DW=Math.max(0,totA-DB);
           let g0=0; while(g0+1<usedB&&kd[g0+1]<=1e-6) g0++;
           const sB0=sg[g0], sB1=Math.max(sB0+1,sg[usedB-1]), Rb=Math.min((sB1-sB0)/2,Math.max(1,step*2));
-          const sW1=sg[used-1], Rw=Math.max(1,step*wp*2.5), sW0=Math.max(sB1,sg[usedB]-Rw), TW=Math.max(1,sW1-sW0);
+          const sW1=sg[used-1], Rw=Math.max(1,pace2*2.5), sW0=Math.max(sB1,sg[usedB]-Rw), TW=Math.max(1,sW1-sW0);
           const trap=(e,T,Dd,R)=>{ if(T<=0||Dd<=0) return e>0?Dd:0; e=clamp(e,0,T); const v=Dd/Math.max(1e-6,T-R); return e<R?v*e*e/(2*R):e<T-R?v*(e-R/2):Dd-v*(T-e)*(T-e)/(2*R); };
           const accel=(e,T,Dd,R)=>{ if(e<=0) return 0; const v=Dd/Math.max(1e-6,T-R/2); return Math.min(Dd,e<R?v*e*e/(2*R):v*(e-R/2)); };
           const dAt=t=>{ const sl=S(t); if(sl<=sB0) return 0; if(sl<=sB1) return trap(sl-sB0,sB1-sB0,DB,Rb); if(sl<=sW0) return DB; return DB+accel(sl-sW0,TW,DW,Rw); };
@@ -1512,7 +1546,7 @@ function computePlan(G){
       if(cm==='follow'||cm==='curve'){
         // sampled every frame; only near-straight runs are merged (≤0.02px error) so the motion stays exact in AE
         const pts=[]; for(let i=0;i<N;i++) pts.push([a+i,[xs[i],ys[i]]]);
-        cam=simplify(pts,.02).map(p=>[p[0],[r3(p[1][0]),r3(p[1][1])],'l']);
+        cam=(DENSE_CAM?pts:simplify(pts,.02)).map(p=>[p[0],[r3(p[1][0]),r3(p[1][1])],'l']);
       } else {
         for(let i=0;i<N;i+=st) cam.push([a+i,[r3(xs[i]),r3(ys[i])],'h']);
         cam.push([b,[r3(xs[N-1]),r3(ys[N-1])],'h']);
@@ -2110,7 +2144,7 @@ function renderMedia(){
 }
 
 /* ==================================================================== TIMING: master retime + dope sheet */
-const TIME_PATHS=['anim.startF','anim.lenF','anim.trans','anim.settle','anim.relSlow','anim.finalMove','anim.stepEvery',
+const TIME_PATHS=['anim.startF','anim.lenF','anim.remapLen','anim.trans','anim.settle','anim.relSlow','anim.finalMove','anim.stepEvery',
   'trans.in.start','trans.in.dur','trans.in.len','trans.out.start','trans.out.dur','trans.out.len',
   'exit.hold','exit.at','exit.stagger','exit.len','exit.walkHold','exit.walkLen','look.ruleFadeAt','look.ruleFadeLen',
   'fill.anim.delay','fill.anim.stagger','fill.anim.hold','fill.anim.outDur','fill.anim.inDur','fill.anim.countDur','fill.anim.scrDur',
@@ -2149,7 +2183,7 @@ function renderPace(){
    Clicking a row opens its settings in the properties panel. */
 const TL={f0:null,f1:null,scrollY:0,blocksOpen:true,drag:null,hover:null,LW:150,items:[],rows:[],frozen:null};
 const DOPE=TL;   // older name, still used by a few helpers
-const BLOCK_RH=13, ROWS={ruler:22,sound:30,scene:56,camera:30,trans:26,content:20,blocks:24};
+const BLOCK_RH=13, ROWS={ruler:22,sound:30,scene:56,phases:24,camera:30,trans:26,content:20,blocks:24};
 function dopeRange(){const G=geom(),fps=D.comp.fps||30;return Math.max(sceneEnd(G),Math.round((D.comp.dur||10)*fps),D.timing&&D.timing.media?Math.round(D.timing.media.dur*fps):0,10);}
 function tlView(){
   if(TL.frozen) return TL.frozen;
@@ -2181,7 +2215,8 @@ function drawDope(){
   let y=0; const row=(k,h,o)=>{const R=Object.assign({k,y0:y,y1:y+h,h},o||{});TL.rows.push(R);y+=h;return R;};
   row('ruler',ROWS.ruler);
   if(media) row('sound',ROWS.sound,{name:'Sound',ctx:'sound'});
-  row('scene',ROWS.scene,{name:'Scene',ctx:'scene'});
+  row('scene',ROWS.scene,{name:'Scene · time remap',ctx:'scene'});
+  if(anim) row('phases',ROWS.phases,{name:'Blocks · on hold off',ctx:'inout'});
   if(camOn) row('camera',ROWS.camera,{name:'Camera',ctx:'camera'});
   row('trans',ROWS.trans,{name:'Transitions',ctx:'trans'});
   tlContentRows().forEach(cr=>row('content',ROWS.content,{name:cr.name,tab:cr.tab,ck:cr.k}));
@@ -2198,7 +2233,7 @@ function drawDope(){
     g.fillStyle=on?'#ececef':'#a2a2ab'; g.font=(R.k==='scene'||R.k==='blocks'?'600 ':'')+'11px sans-serif';
     let lab=R.name; if(R.k==='blocks') lab=`${TL.blocksOpen?'▾':'▸'}  Blocks · ${P.seq.length}`;
     g.fillText(lab,10,R.k==='scene'?R.y0+14:R.y0+R.h/2);
-    if(R.k==='scene'){g.fillStyle='#686871';g.font='10px sans-serif';g.fillText('drag dots · ⇧ keeps angle',10,R.y0+30);g.fillText('dbl-click adds a point',10,R.y0+43);}
+    if(R.k==='scene'){g.fillStyle='#686871';g.font='10px sans-serif';g.fillText('length + easing for all',10,R.y0+30);g.fillText('dbl-click adds a point',10,R.y0+43);}
   });
   g.fillStyle='#17171a'; g.fillRect(LW-1,ROWS.ruler,1,r.height);
   // ---- clip to the track area
@@ -2212,32 +2247,21 @@ function drawDope(){
   const RS=TL.rows.find(R=>R.k==='sound');
   if(RS){const pk=U.media.peaks, d=U.media.dur*fps, off=+(D.timing.offset||0); g.fillStyle='rgba(162,175,178,.6)';
     for(let px=LW;px<r.width;px++){const f=F(px)-off; if(f<0||f>d) continue; const v=pk[Math.min(pk.length-1,Math.floor(f/d*pk.length))]||0; g.fillRect(px,RS.y0+RS.h/2-v*RS.h*.42,1,Math.max(1,v*RS.h*.84));}}
-  // ---- scene: build bar + easing + phases
-  const RSc=TL.rows.find(R=>R.k==='scene');
+  // ---- SCENE = the time-remap layer: its length is the scene, its curve maps scene time → block time
+  const RSc=TL.rows.find(R=>R.k==='scene'), RPh=TL.rows.find(R=>R.k==='phases');
   if(anim&&P.seq.length){
-    const s0=P.startF, s1=P.startF+P.L, X2=D.exit, yb=RSc.y0+6, hb=RSc.h-12;
-    let holdEnd=Math.max(N,s1), holdKnob=null;
-    const WOn=X2.on&&X2.mode==='walk'&&P.walkT!=null;
-    if(WOn){holdEnd=s1;}
-    else if(X2.on&&X2.mode==='end'&&P.exitT&&P.exitT.some(v=>v!=null)){holdEnd=Math.min(...P.exitT.filter(v=>v!=null)); holdKnob=f=>{X2.at=Math.round(f-(D.anim.startF+D.anim.lenF));};}
-    const seg=(f0,f1,col,lab)=>{if(f1<=f0)return;g.fillStyle=col;g.fillRect(X(f0),yb,X(f1)-X(f0),hb);const w=X(f1)-X(f0);if(w>40){const t=`${lab} ${((f1-f0)/fps).toFixed(1)}s`;g.font='600 10px sans-serif';label(w>g.measureText(t).width+12?t:lab,X(f0)+6,yb+10,'rgba(236,236,239,.85)');}};
-    if(!WOn) seg(s1,holdEnd,'rgba(236,236,239,.07)',X2.on&&X2.mode==='hold'?`each stays ${X2.hold}f`:'Hold');
-    else if(X2.on&&X2.mode==='end'&&isFinite(holdEnd)) seg(holdEnd,Math.max(holdEnd+1,N),'rgba(255,127,123,.18)','Clear-out');
-    g.fillStyle='rgba(230,33,47,.20)'; g.fillRect(X(s0),yb,X(s1)-X(s0),hb); g.strokeStyle='rgba(230,33,47,.75)'; g.lineWidth=1; g.strokeRect(X(s0)+.5,yb+.5,X(s1)-X(s0)-1,hb-1);
-    if(WOn){ // the scene holds the whole story: build · hold · camera follows the walk · walks off
-      const hS=Math.max(s0,P.holdT!=null?P.holdT:P.walkT), rel=P.relT!=null?Math.min(s1,P.relT):s1;
-      const part=(f0,f1,col,lab)=>{if(f1<=f0)return;g.fillStyle=col;g.fillRect(X(f0),yb,X(f1)-X(f0),hb);if(X(f1)-X(f0)>34){g.font='600 10px sans-serif';label(lab,X(f0)+5,yb+hb-8,'rgba(236,236,239,.75)');}};
-      part(hS,P.walkT,'rgba(10,10,12,.45)','Hold'); part(P.walkT,rel,'rgba(116,157,211,.28)','Walk'); part(rel,s1,'rgba(116,157,211,.12)','Walks off');
-      g.fillStyle='rgba(255,255,255,.5)'; g.fillRect(X(P.walkT),yb,1,hb);
-      const hold0=+X2.walkHold||0, wT0=P.walkT; knob(P.walkT,RSc.y0+4,RSc.h-8,'#FFFFFF'); H(P.walkT,RSc,'ew-resize',f=>{X2.walkHold=Math.max(0,Math.round(hold0+(f-wT0)));},'hold — how long the built line waits before it walks off');
-      if(P.relT!=null&&P.relT<s1+60){knob(P.relT,RSc.y0+4,RSc.h-8,'#749DD3'); H(P.relT,RSc,'ew-resize',f=>{X2.walkLen=Math.max(6,Math.round(f-P.walkT));},'camera lets go of the walking line');}
-    }
-    if(X(s1)-X(s0)>60) label(WOn?`Scene ${((s1-s0)/fps).toFixed(2)}s`:`Build ${((s1-s0)/fps).toFixed(2)}s`,X(s0)+6,yb+10,'#ffd5d3');
-    // easing: real time (x) → scene progress (y). White dots = points, coral = bezier handles
+    const s0=P.startF, s1=P.startF+P.R, yb=RSc.y0+6, hb=RSc.h-12, rem=!!P.remapped;
+    g.fillStyle='rgba(230,33,47,.18)'; g.fillRect(X(s0),yb,X(s1)-X(s0),hb); g.strokeStyle='rgba(230,33,47,.8)'; g.lineWidth=1; g.strokeRect(X(s0)+.5,yb+.5,X(s1)-X(s0)-1,hb-1);
+    const sp=P.C/Math.max(1,P.R);
+    if(X(s1)-X(s0)>60) label(`Scene ${(P.R/fps).toFixed(2)}s${Math.abs(sp-1)>.02?` · plays the ${(P.C/fps).toFixed(1)}s of blocks at ×${sp.toFixed(2)}`:''}`,X(s0)+6,yb+10,'#ffd5d3');
+    // curve: x = scene time, y = how far through the blocks' timeline
     const cy0=yb+hb-3, ch=hb-18, cxp=u=>X(s0+(s1-s0)*u), cyp=v=>cy0-ch*v;
     const sf=curveFn(D.anim.sceneCurve||[0,0,1,1]);
-    g.strokeStyle='rgba(255,255,255,.85)'; g.lineWidth=1.6; g.beginPath(); for(let k=0;k<=80;k++){const u=k/80,xx=cxp(u),yy=cyp(sf(u));k?g.lineTo(xx,yy):g.moveTo(xx,yy);} g.stroke();
-    g.fillStyle='rgba(255,255,255,.75)'; [...new Set(P.T.slice(0,P.walkFrom!=null?P.walkFrom:P.T.length))].forEach(t=>g.fillRect(X(t),yb+hb-4,1,4));
+    // phase boundaries projected onto the curve (where ON ends, where OFF starts)
+    if(P.C>0){ const tick=(c,col)=>{const v=clamp((c-P.startF)/P.C,0,1); g.strokeStyle=col; g.setLineDash([3,3]); g.lineWidth=1; g.beginPath(); g.moveTo(cxp(0),cyp(v)); g.lineTo(cxp(1),cyp(v)); g.stroke(); g.setLineDash([]);};
+      const cOn=P.toContent(P.onEnd!=null?P.onEnd:s1), cHold=P.walkT!=null?P.toContent(P.walkT):null;
+      tick(cOn,'rgba(230,33,47,.35)'); if(cHold!=null) tick(cHold,'rgba(116,157,211,.45)'); }
+    g.strokeStyle='rgba(255,255,255,.9)'; g.lineWidth=1.6; g.beginPath(); for(let k=0;k<=80;k++){const u=k/80,xx=cxp(u),yy=cyp(clamp(sf(u),-.2,1.2));k?g.lineTo(xx,yy):g.moveTo(xx,yy);} g.stroke();
     if(X(s1)-X(s0)>50){
       const Hs=toH(D.anim.sceneCurve||[0,0,1,1]);
       const save=h=>{D.anim.sceneCurve=hPack(h);};
@@ -2256,18 +2280,35 @@ function drawDope(){
         if(k>0) hd(p.ix,p.iy,'i'); if(k<Hs.length-1) hd(p.ox,p.oy,'o');
         g.fillStyle='#fff'; g.beginPath(); g.arc(ax,ay,4,0,7); g.fill(); g.strokeStyle='#E6212F'; g.lineWidth=1.5; g.stroke();
         const end=k===0||k===Hs.length-1;
-        if(!end) item({type:'point',x:ax,y:ay,cur:end?'ns-resize':'move',tip:end?'easing end — drag up/down':'easing point — drag it · ⌥-click removes it',
+        if(!end) item({type:'point',x:ax,y:ay,cur:'move',tip:'easing point — drag it · ⌥-click removes it',
           drag:(fx,fy)=>{const h=toH(D.anim.sceneCurve||[0,0,1,1]),q=h[k]; if(!q) return; let u=(fx-cxp(0))/Math.max(1,cxp(1)-cxp(0)); const v=clamp((cy0-fy)/Math.max(1,ch),-.25,1.25);
-            if(!end){u=clamp(u,h[k-1].x+.01,h[k+1].x-.01); q.ox=Math.min(q.ox,h[k+1].x-u); q.ix=Math.max(q.ix,-(u-h[k-1].x)); q.x=u;}
-            q.y=v; save(h);},
-          alt:()=>{const h=toH(D.anim.sceneCurve||[0,0,1,1]); if(!end){pushHist(true);h.splice(k,1);save(h);planCache.k='';refresh();}}});
+            u=clamp(u,h[k-1].x+.01,h[k+1].x-.01); q.ox=Math.min(q.ox,h[k+1].x-u); q.ix=Math.max(q.ix,-(u-h[k-1].x)); q.x=u; q.y=v; save(h);},
+          alt:()=>{const h=toH(D.anim.sceneCurve||[0,0,1,1]); pushHist(true);h.splice(k,1);save(h);planCache.k='';refresh();}});
       });
-      item({type:'curve',x0:cxp(0),x1:cxp(1),y0:yb,y1:yb+hb,cy:u=>cyp(sf(u)),u:x=>(x-cxp(0))/Math.max(1,cxp(1)-cxp(0)),cur:'copy',tip:'click the line to add an easing point'});
+      item({type:'curve',x0:cxp(0),x1:cxp(1),y0:yb,y1:yb+hb,cy:u=>cyp(sf(u)),u:x=>(x-cxp(0))/Math.max(1,cxp(1)-cxp(0)),cur:'copy',tip:'click the line (or double-click the row) to add an easing point'});
     }
     knob(s0,RSc.y0+4,RSc.h-8,'#E6212F'); knob(s1,RSc.y0+4,RSc.h-8,'#E6212F');
-    H(s0,RSc,'ew-resize',f=>{const e=D.anim.startF+D.anim.lenF;D.anim.startF=Math.round(f);D.anim.lenF=Math.max(2,e-D.anim.startF);},'scene start');
-    H(s1,RSc,'ew-resize',f=>{D.anim.lenF=Math.max(2,Math.round(f-D.anim.startF));D.anim.toEnd=false;},WOn?'scene length (build, hold and walk-off)':'build length');
-    if(holdKnob&&isFinite(holdEnd)&&holdEnd<N){knob(holdEnd,RSc.y0+4,RSc.h-8,'#FFFFFF'); H(holdEnd,RSc,'ew-resize',holdKnob,'hold before they leave');}
+    H(s0,RSc,'ew-resize',f=>{D.anim.startF=Math.round(f);},'scene start (moves everything)');
+    const C0=P.C; H(s1,RSc,'ew-resize',f=>{const r=Math.max(2,Math.round(f-D.anim.startF)); D.anim.remapLen=Math.abs(r-C0)<=1?0:r;},'scene length — squeezes or stretches the whole block timeline into it');
+    // ---- the blocks' own timeline, three phases: ON · HOLD · OFF (shown where they land in the scene)
+    if(RPh){ const X2=D.exit, yp=RPh.y0+4, hp=RPh.h-8, cs=P.startF;
+      const onEnd=P.onEnd!=null?P.onEnd:s1, WOn=X2.on&&X2.mode==='walk'&&P.walkT!=null;
+      let holdEnd=null, offEnd=null;
+      if(WOn){ holdEnd=P.walkT; offEnd=Math.max(P.walkT+1,(P.walkEnd||P.end)); }
+      else if(X2.on&&P.exitT&&P.exitT.some(v=>v!=null)){ const ex=P.exitT.filter(v=>v!=null); holdEnd=Math.max(onEnd,Math.min(...ex)); offEnd=Math.max(holdEnd+1,Math.max(...ex)+(+X2.len||8)); }
+      const seg=(f0,f1,col,txt,tcol)=>{if(f1==null||f1<=f0)return;g.fillStyle=col;g.fillRect(X(f0),yp,X(f1)-X(f0),hp);g.fillStyle='rgba(0,0,0,.35)';g.fillRect(X(f1)-1,yp,1,hp);if(X(f1)-X(f0)>30){g.font='600 10px sans-serif';label(txt,X(f0)+5,yp+hp/2,tcol||'#fff');}};
+      seg(cs,onEnd,'rgba(230,33,47,.55)','On');
+      if(holdEnd!=null){ seg(onEnd,holdEnd,'rgba(236,236,239,.16)','Hold','#ececef'); seg(holdEnd,offEnd,'rgba(116,157,211,.5)',WOn?'Off · walks off':'Off'); }
+      else seg(onEnd,Math.max(onEnd+1,P.end),'rgba(236,236,239,.08)','Stays','#a2a2ab');
+      // handles work on the blocks' own clock (converted from the scene time under the pointer)
+      const Lc=D.anim.lenF, onC=P.toContent(onEnd);
+      knob(onEnd,RPh.y0,RPh.h,'#E6212F'); H(onEnd,RPh,'ew-resize',f=>{D.anim.lenF=Math.max(2,Math.round(Lc+(P.toContent(f)-onC)));D.anim.toEnd=false;},'end of On — how long the line takes to build');
+      if(WOn){ const h0=+X2.walkHold||0, hC=P.toContent(holdEnd); knob(holdEnd,RPh.y0,RPh.h,'#FFFFFF'); H(holdEnd,RPh,'ew-resize',f=>{X2.walkHold=Math.max(0,Math.round(h0+(P.toContent(f)-hC)));},'end of Hold — how long the built line waits');
+        const wl=+X2.walkLen||48, rC=P.relT!=null?P.toContent(P.relT):null; if(P.relT!=null){knob(P.relT,RPh.y0,RPh.h,'#749DD3'); H(P.relT,RPh,'ew-resize',f=>{X2.walkLen=Math.max(6,Math.round(wl+(P.toContent(f)-rC)));},'camera lets go of the walking line');}}
+      else if(X2.on&&X2.mode==='end'&&holdEnd!=null){ const a0=+X2.at||0, hC=P.toContent(holdEnd); knob(holdEnd,RPh.y0,RPh.h,'#FFFFFF'); H(holdEnd,RPh,'ew-resize',f=>{X2.at=Math.round(a0+(P.toContent(f)-hC));},'end of Hold — when the clear-out starts'); }
+      else if(X2.on&&X2.mode==='hold'&&holdEnd!=null){ const h0=+X2.hold||0, hC=P.toContent(holdEnd); knob(holdEnd,RPh.y0,RPh.h,'#FFFFFF'); H(holdEnd,RPh,'ew-resize',f=>{X2.hold=Math.max(1,Math.round(h0+(P.toContent(f)-hC)));},'how long each block stays'); }
+      item({type:'row',row:RPh,x0:LW,x1:r.width,y0:RPh.y0,y1:RPh.y1,cur:'pointer',tip:'Blocks: On · Hold · Off — click for their settings'});
+    }
   } else {g.fillStyle='#686871';g.font='11px sans-serif';g.fillText(anim?'Generate a line to start — Blocks step, or press G':'Static — pick an animation style in Motion',LW+8,RSc.y0+RSc.h/2);}
   // ---- camera
   const RC=TL.rows.find(R=>R.k==='camera');
@@ -2275,7 +2316,7 @@ function drawDope(){
       g.fillStyle='rgba(116,157,211,.5)'; v.forEach((s,i)=>{const f=a0+i,hh=s/mx*(RC.h-8);g.fillRect(X(f),RC.y1-4-hh,Math.max(1,X(f+1)-X(f)),hh);});}
     else {g.fillStyle='#686871';g.font='11px sans-serif';g.fillText('camera is still',LW+8,RC.y0+RC.h/2);}
     if(D.anim.relOn&&P.relT!=null&&!(D.exit.on&&D.exit.mode==='walk')){knob(P.relT,RC.y0,RC.h,'#749DD3'); label('let go',X(P.relT)+6,RC.y0+9,'#C5CFF5');
-      H(P.relT,RC,'ew-resize',f=>{D.anim.relAt=clamp(Math.round((f-D.anim.startF)/Math.max(1,D.anim.lenF)*100),5,99);},'camera let-go');}}
+      H(P.relT,RC,'ew-resize',f=>{D.anim.relAt=clamp(Math.round((P.toContent(f)-D.anim.startF)/Math.max(1,D.anim.lenF)*100),5,99);},'camera let-go');}}
   // ---- transitions: clips you can drag
   const RT=TL.rows.find(R=>R.k==='trans'), TP=transP(G);
   if(TP.groups.length){TP.groups.forEach(gr=>{const T=D.trans[gr.k], col=gr.k==='in'?'rgba(43,217,143,.5)':'rgba(255,194,26,.5)', sel=U.ctx==='trans-'+gr.k;
@@ -2309,7 +2350,7 @@ function drawDope(){
   if(anim&&n){
     const nb=P.walkFrom!=null?P.walkFrom:n;
     P.seq.forEach((b,i)=>{g.fillStyle=i<nb?'rgba(255,255,255,.6)':'rgba(116,157,211,.8)'; g.fillRect(X(P.T[i]),hdr.y0+hdr.h-8,1,5);});
-    if(isGenerated()&&nb>1){const tl=P.T[nb-1]; knob(tl,hdr.y0+2,hdr.h-4,'#FFC21A'); H(tl,hdr,'ew-resize',f=>{D.anim.cutAt=Math.max(P.T[0]+1,Math.round(f));},'end of the build — drag left to drop the late blocks (the rest keep their timing)');
+    if(isGenerated()&&nb>1){const tl=P.T[nb-1]; knob(tl,hdr.y0+2,hdr.h-4,'#FFC21A'); H(tl,hdr,'ew-resize',f=>{D.anim.cutAt=Math.max(Math.round(P.toContent(P.T[0]))+1,Math.round(P.toContent(f)));},'end of the build — drag left to drop the late blocks (the rest keep their timing)');
       if(P.cutAt!=null){g.fillStyle='rgba(255,194,26,.12)';g.fillRect(X(tl)+4,hdr.y0,Math.max(0,X(P.startF+P.L)-X(tl)-4),hdr.h);if(X(P.startF+P.L)-X(tl)>60)label(`${P.cutN} dropped`,X(tl)+8,hdr.y0+hdr.h/2,'#FFC21A');}}
   }
   // ---- one row per block (scrolls)
@@ -2351,14 +2392,14 @@ function drawDope(){
   const spanS=(V0.f1-V0.f0)/fps, stepS=[.1,.25,.5,1,2,5,10,30,60].find(s=>spanS/s<=Math.max(4,Wt/70))||60, sub=stepS/5;
   g.fillStyle='#5c5c66'; for(let s=Math.ceil(V0.f0/fps/sub)*sub;s*fps<=V0.f1;s+=sub) g.fillRect(X(s*fps),ROWS.ruler-4,1,4);
   g.fillStyle='#9a9aa3'; g.font='10px sans-serif'; g.textBaseline='middle'; for(let s=Math.ceil(V0.f0/fps/stepS)*stepS;s*fps<=V0.f1;s+=stepS){const x=X(s*fps); g.fillRect(x,ROWS.ruler-9,1,9); g.fillText((+s.toFixed(2))+'s',x+3,8);}
-  if(anim&&P.seq.length){g.fillStyle='rgba(230,33,47,.8)'; g.fillRect(X(P.startF),ROWS.ruler-3,Math.max(1,X(P.startF+P.L)-X(P.startF)),3);}
+  if(anim&&P.seq.length){g.fillStyle='rgba(230,33,47,.8)'; g.fillRect(X(P.startF),ROWS.ruler-3,Math.max(1,X(P.startF+(P.R||P.L))-X(P.startF)),3);}
   g.fillStyle='rgba(255,255,255,.35)'; g.fillRect(X(compF),0,1,r.height);
   const cues=timingCues(); g.fillStyle=D.timing&&D.timing.sync?'rgba(116,157,211,.7)':'rgba(116,157,211,.32)'; cues.forEach(f=>{g.fillRect(X(f),ROWS.ruler,1,r.height-ROWS.ruler);});
   if(U.t!=null){const x=X(U.t); g.fillStyle='#E6212F'; g.fillRect(x-.5,0,1.5,r.height); const lab=`${Math.round(U.t)}f · ${(U.t/fps).toFixed(2)}s`; g.font='600 10px sans-serif'; const w=g.measureText(lab).width+10; const lx=clamp(x-w/2,LW,r.width-w); g.fillStyle='#E6212F'; if(g.roundRect){g.beginPath();g.roundRect(lx,2,w,17,4);g.fill();}else g.fillRect(lx,2,w,17); g.fillStyle='#fff'; g.fillText(lab,lx+5,11);}
   if(TL.hover&&!TL.drag&&TL.hover.x>LW){g.fillStyle='rgba(255,255,255,.22)';g.fillRect(TL.hover.x,ROWS.ruler,1,r.height-ROWS.ruler);}
   if(TL.drag&&TL.drag.marquee){const m=TL.drag.marquee; g.fillStyle='rgba(230,33,47,.12)'; g.strokeStyle='rgba(255,127,123,.9)'; g.lineWidth=1; g.fillRect(Math.min(m.x0,m.x1),Math.min(m.y0,m.y1),Math.abs(m.x1-m.x0),Math.abs(m.y1-m.y0)); g.strokeRect(Math.min(m.x0,m.x1)+.5,Math.min(m.y0,m.y1)+.5,Math.abs(m.x1-m.x0),Math.abs(m.y1-m.y0));}
   g.restore();
-  g.fillStyle='#19191c'; g.fillRect(0,0,LW-1,ROWS.ruler); g.fillStyle='#9a9aa3'; g.font='600 10px sans-serif'; g.textBaseline='middle'; g.fillText(anim&&P.seq.length?`${P.seq.length} blocks · ${(P.L/fps).toFixed(1)}s scene`:'Timeline',10,ROWS.ruler/2);
+  g.fillStyle='#19191c'; g.fillRect(0,0,LW-1,ROWS.ruler); g.fillStyle='#9a9aa3'; g.font='600 10px sans-serif'; g.textBaseline='middle'; g.fillText(anim&&P.seq.length?`${P.seq.length} blocks · ${((P.R||P.L)/fps).toFixed(1)}s scene`:'Timeline',10,ROWS.ruler/2);
 }
 /* what's under the pointer */
 function tlHit(x,y){
@@ -2436,7 +2477,7 @@ function initDope(){
     if(h.type==='curve'){ tlAddPoint(h.u(p.x)); return; }
     if(h.type==='handle'){ pushHist(true); freeze(); TL.drag={handle:h}; return; }
     const mods=e.shiftKey?'range':(e.metaKey||e.ctrlKey)?'toggle':null;
-    const grab=(kind)=>{ pushHist(true); freeze(); const ids=tlSelIds(), dt=D.anim.dt||{}, dx=D.anim.dx||{}; TL.drag={kind,blocks:ids,f0:TL.F(p.x),base:ids.map(id=>+dt[id]||0),baseX:ids.map(id=>+dx[id]||0),moved:false,anchorId:h.id}; };
+    const grab=(kind)=>{ pushHist(true); freeze(); TL.dragP=TL.P; const ids=tlSelIds(), dt=D.anim.dt||{}, dx=D.anim.dx||{}; TL.drag={kind,blocks:ids,f0:TL.F(p.x),base:ids.map(id=>+dt[id]||0),baseX:ids.map(id=>+dx[id]||0),moved:false,anchorId:h.id}; };
     if(h.type==='exit'||h.type==='inedge'){ if(tlSelIds().indexOf(h.id)<0) tlPick(h.id,null); grab(h.type==='exit'?'out':'in'); return; }
     if(h.type==='block'||h.type==='blabel'){
       if(mods||tlSelIds().indexOf(h.id)<0) tlPick(h.id,mods);
@@ -2456,7 +2497,7 @@ function initDope(){
     if(d.point){d.point.drag(p.x,p.y,e.shiftKey);}
     else if(d.handle){d.handle.apply(f);}
     else if(d.blocks){
-      const df=Math.round(f-d.f0); if(df) d.moved=true; D.anim.dt=D.anim.dt||{}; D.anim.dx=D.anim.dx||{};
+      const Pd=TL.dragP||TL.P, df=Math.round(Pd.toContent(f)-Pd.toContent(d.f0)); if(df) d.moved=true; D.anim.dt=D.anim.dt||{}; D.anim.dx=D.anim.dx||{};   // block offsets live on the blocks' own clock
       const keepOut=d.kind==='in'&&D.exit.mode!=='behind';
       d.blocks.forEach((id,k)=>{
         if(d.kind==='out'){const v=d.baseX[k]+df; if(v) D.anim.dx[id]=v; else delete D.anim.dx[id]; return;}
@@ -4485,10 +4526,6 @@ document.addEventListener('click',e=>{const l=e.target.closest('[data-goto]');if
 $('#afterSeg').addEventListener('click',e=>{const b=e.target.closest('[data-after]');if(!b)return;const v=b.dataset.after;pushHist();
   const wasWalk=D.exit.on&&D.exit.mode==='walk'; planCache.k=''; const woBefore=plan(geom()).woN||0;
   if(v==='stay') D.exit.on=false; else Object.assign(D.exit,{on:true,mode:v});
-  // the walk-off lives inside the scene: make the scene longer by the walk-off so the build keeps its pace
-  const nowWalk=D.exit.on&&D.exit.mode==='walk';
-  if(nowWalk!==wasWalk&&D.anim.mode!=='static'){ planCache.k=''; const P=plan(geom()), add=Math.round((+D.exit.walkHold||0)+(nowWalk?(P.woN||0):woBefore)*Math.max(1,(+D.anim.pace||6)*Math.max(.1,+D.exit.walkPace||1)));
-    D.anim.lenF=Math.max(12,D.anim.lenF+(nowWalk?add:-add)); TL.autoN=0; TL.f0=TL.f1=null; }
   planCache.k='';syncInputs(true);refresh();});
 aiInit();
 $('#mediaIn').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(f)loadMediaFile(f);e.target.value='';});

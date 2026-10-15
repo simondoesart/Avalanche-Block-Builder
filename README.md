@@ -176,3 +176,9 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - Select several blocks: drag a box in the block rows, ⇧-click for a range, ⌘-click to add/remove.
 - Easing: double-click (or click the line) on the Scene row to add a point; hold ⇧ while dragging a handle to keep its angle (also in the big editor).
 - Motion: Block reveal / After the build / Block exit are one "Blocks in & out" panel (In · Then · Out). Click the Blocks row on the timeline to open it.
+
+### v3.2 — Scene as a time-remap layer
+- The blocks now run on their own steady clock in three phases: **On** (the build) · **Hold** · **Off** (walk-off / exits). They show as the "Blocks · on hold off" row; drag the phase handles to change each.
+- The **Scene** row is a layer on top, like time remapping a precomp: its length is the scene length (empty = the blocks play at their own speed) and its curve maps scene time onto the block timeline — flat = hold, steep = fast. Everything is re-timed through it: reveals, exits, camera, grid changes, content start/end, Lab. Transitions stay on real time.
+- Per-block timing offsets are on the blocks' own clock.
+- Known gap: sound/marker sync snaps on the blocks' clock, so with a non-linear scene curve the snapped reveals won't sit exactly on the beats.
