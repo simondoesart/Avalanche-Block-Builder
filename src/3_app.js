@@ -1425,6 +1425,15 @@ function computePlan(G){
       if(WO){ P.walkFrom=seq.findIndex((b,i)=>gi[i]>=usedB); if(P.walkFrom<0) P.walkFrom=seq.length; }
     }
   }
+  // ending on a chosen row: if blocks were dropped (removed / cut), the line's last block moved — slide the whole
+  // line up or down so the build still ends on that row (blocks may run off the frame; they're cropped)
+  P.lineShift=0;
+  if(A.extendOn&&A.ending==='spot'&&!manual&&(skip.size||P.cutAt!=null)){
+    const nB=P.walkFrom!=null?P.walkFrom:seq.length, mb=seq.slice(0,nB).filter(b=>!b.stack), lastB=mb[mb.length-1];
+    const tr=P.endRowUsed!=null?P.endRowUsed:clamp(Math.round((A.endRow||1)-1),0,G.R-1);
+    const dr=lastB?tr-lastB.r:0;
+    if(dr){ seq=seq.map(b=>{ if(b.virtual){b.r+=dr;return b;} return Object.assign({},b,{r:b.r+dr,_shift:dr}); }); P.lineShift=dr; }
+  }
   P.walkT=WO?(sWalk!=null?Math.max(Tg[usedB-1]+1,Math.round(W(sWalk))):Tg[usedB-1]+tr0+woH):null;
   P.holdT=WO?Tg[usedB-1]+tr0:null;
   P.onEnd=Math.round(Math.max(startF+1,...Tg.slice(0,usedB))+tr0);   // end of the ON phase (content clock)
@@ -2925,7 +2934,7 @@ function drawWorld(g,G,o){
     A.P.seq.forEach(b=>{const q=cellRect(G,b.c,b.r,b.w,b.h);drawBlock(g,G,b,o,off[0],off[1],blockState(A.P.tracks[b.id],A.t,q),false);});
     drawLabWorld(g,A.P.lab,A.t,off[0],off[1],o.alpha);
   } else {
-    const realB=D.blocks.filter(b=>valid(b,G));
+    const realB=A&&A.P.lineShift?A.P.seq.filter(b=>!b.virtual):D.blocks.filter(b=>valid(b,G));   // the whole line slid to keep its end row
     if(D.echo.on) echoTargets(A?A.P.seq:realB).forEach(b=>{const r=echoRect(G,b);drawEcho(g,r,null,o,0,0,b.virtual);});
     const dimmed=A&&D.anim.order==='manual'&&D.anim.unpicked!=='visible';
     realB.forEach(b=>{ if(dimmed&&!(b.mo>0)){g.save();g.globalAlpha=.35;drawBlock(g,G,b,o,0,0,null,true);g.restore();} else drawBlock(g,G,b,o,0,0,null,false); });
@@ -2984,7 +2993,7 @@ function drawOverlays(G,A){
   ctx.save(); zoomXf(ctx,G,s,live?A.pan:null);
   const ssc=sc*s;
   const bad=U.drag&&(U.drag.type==='move'||U.drag.type==='resize')&&U.drag.bad;
-  const list=live?A.P.seq:(A?D.blocks.filter(b=>valid(b,G)).concat(A.P.seq.filter(b=>b.virtual)):D.blocks.filter(b=>valid(b,G)));
+  const list=live||(A&&A.P.lineShift)?A.P.seq:(A?D.blocks.filter(b=>valid(b,G)).concat(A.P.seq.filter(b=>b.virtual)):D.blocks.filter(b=>valid(b,G)));
   const selSet=new Set(tlSelIds());
   list.forEach(b=>{
     const q=cellRect(G,b.c,b.r,b.w,b.h), x=q.x+bo[0], y=q.y+bo[1];
@@ -3075,7 +3084,8 @@ cv.addEventListener('pointerdown',e=>{
   const G=geom(), w=localPt(G,toWorld(e)), cell=cellAt(G,w), inR=inRange(G,cell.c,cell.r);
   const hd=handleAt(G,w);
   if(hd){U.drag={type:'resize',k:hd.k,id:hd.b.id,orig:{c:hd.b.c,r:hd.b.r,w:hd.b.w,h:hd.b.h},moved:false};return;}
-  const b=inR?blockAt(cell.c,cell.r):null;
+  let b=inR?blockAt(cell.c,cell.r):null;
+  if(b&&isGenerated()&&(plan(G).lineShift||0)) b=null;   // the line is drawn slid up/down: hit-test the drawn blocks instead
   const tool=U.tool;
   if(tool==='select'&&!b&&inR&&!e.shiftKey){ const vb=virtualAt(G,cell);
     if(vb){ U.dopeSel=[vb.id]; U.selIds=[]; U.sel=null; U.ctx=null;
@@ -3868,6 +3878,7 @@ function materialize(){
   if(!v.length) return null;
   pushHist();
   const map={}; let ox=D.grid.overX, oy=D.grid.overY;
+  if(P.lineShift){ D.blocks.forEach(b=>{b.r+=P.lineShift; map[b.id]=b.id;}); }   // keep the slid line where it's drawn
   v.forEach(b=>{
     ox=Math.max(ox,b.c+b.w-1-(G.C-1),-b.c); oy=Math.max(oy,-b.r,b.r+b.h-1-(G.R-1));
     const n=newBlock(b.c,b.r,b.w,b.h,b.color); n.stack=!!b.stack; n.textColor=b.textColor; map[b.id]=n.id; D.blocks.push(n);
@@ -3882,7 +3893,7 @@ function materialize(){
 /* generated (virtual) block under a cell in the current view, or null */
 function virtualAt(G,cell){
   if(!isGenerated()) return null; const P=plan(G);
-  return P.seq.find(b=>b.virtual&&cell.c>=b.c&&cell.c<b.c+b.w&&cell.r>=b.r&&cell.r<b.r+b.h)||null;
+  return P.seq.find(b=>(b.virtual||b._shift)&&cell.c>=b.c&&cell.c<b.c+b.w&&cell.r>=b.r&&cell.r<b.r+b.h)||null;
 }
 $('#lnkRestartOrder').onclick=e=>{e.preventDefault();pushHist(true);D.blocks.forEach(b=>b.mo=0);U.moNext=1;U.tool='order';refresh();};
 $('#lnkReshuffleOrder').onclick=e=>{e.preventDefault();pushHist(true);D.anim.orderSeed=Math.floor(Math.random()*1e5);refresh();};
