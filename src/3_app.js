@@ -3517,6 +3517,7 @@ function onChange(path){
   if(path.indexOf('text.')===0&&STEPS[U.step].id==='content'&&$('#chkStyleSel').checked){
     const k=path.split('.')[1], map={size:'fontSize'}; selBlocks().forEach(b=>{b[map[k]||k]=D.text[k];});
   }
+  if(path==='rand.startRow'&&D.rand.startCol!=null){ if(+D.rand.startRow>0) D.rand.startR=Math.round(D.rand.startRow)-1; else {D.rand.startCol=null;D.rand.startR=null;} }
   if(isGenerated()&&D.blocks.length===1&&(path==='block.w'||path==='block.h'||path==='rand.startRow')){generateLine(false,true);return;}
   if(isGenerated()&&D.blocks.length===1&&(path==='block.color'||path==='block.mix'||path==='block.color2')){const b0=D.blocks[0];b0.color=mixColor(0,rng(D.rand.seed));b0.textColor=contrast(b0.color);}
   if(path.indexOf('rand.')===0&&U.live){generate(true);return;}
@@ -3846,7 +3847,7 @@ function renderGenStatus(G){
     `<b>${D.blocks.length}</b> blocks, edited by hand${Object.keys(D.anim.dt||{}).length?` · ${Object.keys(D.anim.dt).length} retimed`:''}<br>Press <b>Generate</b> to start over from the settings below.`;
   const t=$('#genTag'); if(t) t.textContent=gen?'live':ed?'edited':'';
   const bk=$('#btnBake'); if(bk) bk.hidden=!gen;
-  const ps=$('#btnPickStart'); if(ps){ ps.classList.toggle('primary',!!U.pickStart); ps.textContent=U.pickStart?'Click a square…':(D.rand.startCol!=null?`◎ Start: col ${(+D.rand.startCol)+1}, row ${(+D.rand.startR)+1}`:'◎ Pick start spot'); }
+  const ps=$('#btnPickStart'); if(ps){ ps.classList.toggle('primary',!!U.pickStart); ps.textContent=U.pickStart?'Click a square…':'◎ Pick start spot'; ps.classList.toggle('on',D.rand.startCol!=null&&!U.pickStart); }
   const sa=$('#btnStartAuto'); if(sa) sa.hidden=D.rand.startCol==null;
 }
 
