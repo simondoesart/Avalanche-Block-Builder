@@ -3200,6 +3200,7 @@ function generate(fromLive){
       c+=bw+ri(gMin,gMax);
     }
   }
+  { const pr=pruneStacks(list,[]); list.length=0; pr.forEach(b=>list.push(b)); }
   if(!fromLive){pushHist();U.genBase=clone(D.blocks);}
   const next=R.mode==='add'?clone(U.genBase||[]):[];
   list.forEach(b=>{if(!next.some(x=>hits(x,b)))next.push(b);});
@@ -3283,7 +3284,20 @@ function makeWalker(rnd,rMax,h,rMin){ rMin=rMin||0;
   };
 }
 /* "Keep building": virtual blocks that continue the layout in the order's direction */
-function extension(G,base,capOverride){
+/* a second block in the same column (a 'pair') is only kept if it touches — at a side or a corner — the block
+   before or after it in the line. Otherwise it would float on its own. */
+const touches=(a,b)=>!hits(a,b)&&a.c<=b.c+b.w&&b.c<=a.c+a.w&&a.r<=b.r+b.h&&b.r<=a.r+a.h;
+function pruneStacks(out,base){
+  const all=base.concat(out), mains=all.filter(b=>!b.stack), drop=new Set();
+  all.forEach((s,i)=>{ if(!s.stack) return;
+    let k=-1; for(let j=i-1;j>=0;j--){ if(!all[j].stack){ k=mains.indexOf(all[j]); break; } }
+    const prev=k>=1?mains[k-1]:null, next=k>=0&&k+1<mains.length?mains[k+1]:null;
+    if(!((prev&&touches(s,prev))||(next&&touches(s,next)))) drop.add(s); });
+  if(!drop.size) return out;
+  const res=out.filter(b=>!drop.has(b)); ['__endCol','__reach','__endRow'].forEach(k=>{if(k in out) res[k]=out[k];}); return res;
+}
+function extension(G,base,capOverride){ return pruneStacks(extensionRaw(G,base,capOverride),base); }
+function extensionRaw(G,base,capOverride){
   const A=D.anim; if(!A.extendOn||!base.length) return [];
   const spot=A.ending==='spot';
   const cap=capOverride!=null?capOverride:Math.max(0,Math.round(A.extendN)||0); if(!cap) return [];
