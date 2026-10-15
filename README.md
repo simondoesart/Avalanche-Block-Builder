@@ -211,3 +211,6 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.9
 - Workshop mode: **Setup** and **Blocks** are visible.
 - In the Blocks step, generated blocks draw solid (they're the line you're editing); walk-off blocks stay ghosted.
+
+### v3.10
+- Walk with tall blocks (3×2, 3×3, 2×2…): each next block either sits beside the last or steps a whole block height up/down, so it always touches at a side or a corner (no more half-block offsets). Stair runs and jumps step by the block height too; 1-row blocks still wander up to the Wander setting.
