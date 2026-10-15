@@ -3211,13 +3211,15 @@ function shuffle(){D.rand.seed=Math.floor(Math.random()*99999)+1;generate(false)
 /* colour for the i-th block under the colour-mix rule */
 function mixColor(i,rnd){const B=D.block;if(B.mix==='alternate')return i%2?B.color2:B.color;if(B.mix==='random')return rnd()<(B.mixPct/100)?B.color2:B.color;return B.color;}
 /* walk: next row is the same, or up/down by up to "wander" rows (biased by "climb") */
+/* walk: the next block is beside the last (same row) or steps a whole block height up/down, so it always
+   touches at a side or a corner — never half-overlapping. Tall blocks (3×2, 3×3…) step by their height. */
 function walkRow(r,rMax,rnd,h){
-  const R=D.rand, w=Math.min(clamp(Math.round(R.wander)||0,0,4),Math.max(1,h||D.block.h||1)); if(!w||rMax<=0) return r;
+  const R=D.rand, w=clamp(Math.round(R.wander)||0,0,4); h=Math.max(1,h||D.block.h||1); if(!w||rMax<=0) return r;
   const b=clamp((+R.climb||0)/100,-1,1), pU=(1+b)/3, pD=(1-b)/3, u=rnd();
-  let dir=u<pU?-1:u<pU+pD?1:0;
-  if(r+dir<0||r+dir>rMax) dir=-dir;
-  const mag=dir?1+Math.floor(rnd()*w):0;
-  return clamp(r+dir*mag,0,rMax);
+  let dir=u<pU?-1:u<pU+pD?1:0; if(!dir) return r;
+  const mag=h===1?1+Math.floor(rnd()*w):1;   // 1-row blocks may wander up to `w` rows; taller blocks step exactly one block height
+  let n=r+dir*mag*h; if(n<0||n>rMax) n=r-dir*mag*h;
+  return n<0||n>rMax?r:n;
 }
 /* sometimes add a second block in the same column, "stackGap" rows away */
 function stackRow(r,bh,rMax,rnd){
@@ -3262,12 +3264,12 @@ function makeWalker(rnd,rMax,h){
   const R=D.rand; let run=0, runDir=-1; h=Math.max(1,h||D.block.h||1);
   return r=>{
     let extra=0;
-    if(run>0){run--; r=clamp(r+runDir,0,rMax); if(r===0||r===rMax) run=0; return {r,extra};}
+    if(run>0){run--; const n=r+runDir*h; if(n<0||n>rMax){run=0;return {r,extra};} r=n; if(r-h<0||r+h>rMax) run=0; return {r,extra};}
     const u=rnd();
     if(u<(R.stairPct||0)/100&&rMax>0){
       const b=clamp((+R.climb||0)/100,-1,1); runDir=rnd()<(1+b)/2?-1:1;
-      if(r+runDir<0||r+runDir>rMax) runDir=-runDir;
-      run=1+Math.floor(rnd()*3); r=clamp(r+runDir,0,rMax); return {r,extra};
+      if(r+runDir*h<0||r+runDir*h>rMax) runDir=-runDir;
+      run=1+Math.floor(rnd()*3); const n=r+runDir*h; if(n>=0&&n<=rMax) r=n; return {r,extra};
     }
     if(u<((R.stairPct||0)+(R.jumpPct||0))/100&&rMax>0){
       // corner hop: a full block-height step up or down, still touching at the corner
@@ -3308,7 +3310,7 @@ function extension(G,base,capOverride){
   const walker=makeWalker(rnd,rMax,last.h);
   if(mode==='steer'){
     // exactly `cap` more blocks, evenly stepped (no gaps), steering the rows to land on the chosen end row
-    const tr=clamp(Math.round((A.endRow||1)-1),0,rMax), wmax=Math.max(1,Math.min(Math.round(D.rand.wander)||1,last.h));
+    const tr=clamp(Math.round((A.endRow||1)-1),0,rMax), wmax=last.h>1?last.h:Math.max(1,Math.round(D.rand.wander)||1);
     out.__endRow=tr; out.__reach=Math.abs(tr-r)<=cap*wmax;
     for(let j=1;j<=cap;j++){
       c+=step; const rem=cap-j;
