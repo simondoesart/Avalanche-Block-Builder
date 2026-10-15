@@ -4726,7 +4726,7 @@ function tlInfo(x,y,h){
   return h&&h.tip?`${tc} — ${h.tip}`:tc;
 }
 function updTC(){const el=$('#tc'); if(!el) return; const fps=D.comp.fps||30; el.textContent=U.t==null?'layout':`${Math.round(U.t)}f · ${(U.t/fps).toFixed(2)}s`;}
-function tlSetT(f){stopPlay();U.t=Math.round(f);$('#scrub').value=U.t;mediaSync(false);updTC();updViewBadge();render();drawDope();drawSpeedGraph();}
+function tlSetT(f){stopPlay();U.preview=true;U.t=Math.round(f);$('#scrub').value=U.t;mediaSync(false);updTC();updViewBadge();render();drawDope();drawSpeedGraph();}
 function tlSelect(id,add){
   let s=add?tlSelIds():[];
   if(add&&s.indexOf(id)>=0) s=s.filter(x=>x!==id); else if(s.indexOf(id)<0) s.push(id);
@@ -4766,6 +4766,8 @@ function initDope(){
     c.setPointerCapture&&c.setPointerCapture(e.pointerId);
     const freeze=()=>{TL.frozen=tlView();};
     if(h.type==='ruler'){ freeze(); TL.drag={scrub:true}; tlSetT(TL.F(p.x)); return; }
+    if(U.t!=null&&h.type!=='point'&&h.type!=='handle'&&h.type!=='exit'&&h.type!=='inedge'){ const content=p.y>=TL.contentY0&&TL.P&&TL.P.remapped, px=content?TL.X(TL.P.toContent(U.t)):TL.X(U.t);
+      if(Math.abs(p.x-px)<=5&&p.x>TL.LW){ freeze(); TL.drag={scrub:true,content}; return; } }
     if(h.type==='point'){ if(e.altKey&&h.alt){h.alt();return;} pushHist(true); freeze(); TL.drag={point:h}; return; }
     if(h.type==='curve'){ tlAddPoint(h.u(p.x)); return; }
     if(h.type==='handle'){ pushHist(true); freeze(); TL.drag={handle:h}; return; }
@@ -4917,12 +4919,12 @@ function exitTimes(P,G,seq,done){
   return out;
 }
 function animOn(){return D.anim.mode!=='static'||transOn();}
-function animActive(){return animOn()&&U.t!==null&&!(STEPS[U.step].id==='layout'&&!U.playing);}
+function animActive(){return animOn()&&U.t!==null&&!(STEPS[U.step].id==='layout'&&!U.playing&&!U.preview);}
 /* current preview state: null (editing), ghost (animate step, layout view), or live (scrubbing/playing) */
 function animState(G){
   if(!animOn()) return null;
   const P=plan(G);
-  if(STEPS[U.step].id==='layout'&&!U.playing) return {P,live:false,t:0,off:[0,0],s:1,pan:[0,0]};   // Blocks step: see every block, wherever the playhead is
+  if(STEPS[U.step].id==='layout'&&!U.playing&&!U.preview) return {P,live:false,t:0,off:[0,0],s:1,pan:[0,0]};   // Blocks step: see every block, wherever the playhead is
   if(U.t===null) return {P,live:false,t:0,off:[0,0],s:1,pan:[0,0]};
   return {P,live:true,t:U.t,off:ev(P.cam,U.t,[0,0]),s:ev(P.zs,U.t,100)/100,pan:ev(P.pan,U.t,[0,0])};
 }
@@ -5298,6 +5300,7 @@ function clampCell(G,c){return{c:clamp(c.c,G.cLo,G.cHi),r:clamp(c.r,G.rLo,G.rHi)
 
 cv.addEventListener('pointerdown',e=>{
   cv.setPointerCapture(e.pointerId);
+  if(U.preview&&!U.playing&&STEPS[U.step].id==='layout'&&!U.space&&e.button===0&&U.tool!=='hand'){U.preview=false;refresh();}   // back to every block for editing
   if(U.space) U.spacePanned=true;
   if(e.button===1||e.button===2||U.space||U.tool==='hand'){
     U.drag={type:'pan',x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY};cv.classList.add('grabbing');return;
@@ -5914,7 +5917,8 @@ function renderStepUI(){
 }
 /* the little badge under the canvas: which frame you're looking at */
 function updViewBadge(){const el=$('#viewBadge'); if(!el) return; const fps=D.comp.fps||30;
-  if(STEPS[U.step].id==='layout'&&!U.playing&&animOn()){el.innerHTML='<b>All blocks</b> · Space to preview';return;}
+  if(STEPS[U.step].id==='layout'&&!U.playing&&!U.preview&&animOn()){el.innerHTML='<b>All blocks</b> · scrub the timeline or press Space to preview';return;}
+  if(STEPS[U.step].id==='layout'&&U.preview&&!U.playing&&U.t!=null){el.innerHTML=`<b>f${Math.round(U.t)}</b> · ${(U.t/fps).toFixed(2)}s · Esc or click the canvas for all blocks`;return;}
   if(D.anim.mode==='static'&&!transOn()){el.innerHTML='';return;}
   el.innerHTML=U.t==null?'<b>Layout view</b> · Space to preview':`<b>f${Math.round(U.t)}</b> · ${(U.t/fps).toFixed(2)}s · Esc = layout view`;}
 document.addEventListener('pointerdown',e=>{if(e.button)return;const b=e.target.closest&&e.target.closest('[data-tool]');if(b){e.preventDefault();setTool(b.dataset.tool);}});
@@ -6089,7 +6093,7 @@ function generateLine(newSeed,quiet){
   uid=1; D.blocks=[newBlock(c0,row,bw,bh,mixColor(0,rnd))];
   Object.assign(D.anim,{extendOn:true,extendMode:'walk'}); if(!quiet) Object.assign(D.anim,{skip:[],cutAt:null,dt:{},dx:{}});
   if(D.anim.mode==='static') D.anim.mode='camera';
-  U.selIds=[]; U.dopeSel=[]; U.sel=null; U.live=false; planCache.k=''; fillCache.clear();
+  U.selIds=[]; U.dopeSel=[]; U.sel=null; U.live=false; U.preview=false; planCache.k=''; fillCache.clear();
   syncInputs(true); refresh();
   if(!quiet){const P=plan(G); toast(`Generated ${P.seq.length} blocks · seed ${D.rand.seed}`,'Drag any block to edit it',true);}
 }
@@ -6196,7 +6200,7 @@ document.addEventListener('keydown',e=>{
   else if((k==='Delete'||k==='Backspace')&&tsel.length&&(virtSel||e.shiftKey||(U.dopeSel||[]).length)){e.preventDefault();dopeRemove(e.shiftKey);}
   else if(k==='Delete'||k==='Backspace'){e.preventDefault();deleteSelected();}
   else if(k==='Escape'){if(!$('#clearMenu').hidden){closeMenu();return;}if(U.picking){cancelPick();return;}closeTlMenu();
-    if(tsel.length||U.sel){U.sel=null;U.selIds=[];U.dopeSel=[];refresh();} else if(U.ctx){U.ctx=null;refresh();} else if(U.t!=null){stopPlay();U.t=null;refresh();}}
+    if(tsel.length||U.sel){U.sel=null;U.selIds=[];U.dopeSel=[];refresh();} else if(U.preview&&STEPS[U.step].id==='layout'){U.preview=false;stopPlay();refresh();} else if(U.ctx){U.ctx=null;refresh();} else if(U.t!=null){stopPlay();U.t=null;refresh();}}
   else if(kl==='d'){duplicate();}
   else if(kl==='g'){if(STEPS[U.step].id!=='layout'){U.ctx=null;goStep(SI('layout'));}generateLine(true);}
   else if(kl==='r'){if(STEPS[U.step].id!=='layout'){U.ctx=null;goStep(SI('layout'));}animSeed();}
