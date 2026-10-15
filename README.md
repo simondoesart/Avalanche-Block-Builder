@@ -169,3 +169,10 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - Inline scene-easing editing on the timeline; transition clips you can drag; content overlay rows and tabs.
 - Walk transitions aligned to the scene grid, using the block colours.
 - v2.3.3 is kept at `v2/index.html` (and git tag v2.3.3).
+
+### v3.1
+- Walk-off now lives inside the scene: the Scene bar is Build · Hold · Walk · Walks off, and the scene easing shapes all of it. Turning Walk off on lengthens the scene so the build keeps its pace.
+- Timeline blocks: drag the bar to move the whole block (in and out together), its left end for when it comes in, its right end for when it leaves. The playhead follows so you see the change; a dashed outline shows where it was. The view no longer re-fits while you edit (⇧F fits).
+- Select several blocks: drag a box in the block rows, ⇧-click for a range, ⌘-click to add/remove.
+- Easing: double-click (or click the line) on the Scene row to add a point; hold ⇧ while dragging a handle to keep its angle (also in the big editor).
+- Motion: Block reveal / After the build / Block exit are one "Blocks in & out" panel (In · Then · Out). Click the Blocks row on the timeline to open it.
