@@ -230,3 +230,6 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 
 ### v3.15
 - Ending "On a chosen row": when blocks are dropped (removed on the timeline, or cut with the yellow end handle), the whole line slides up or down so its new last block still lands on that row. Blocks pushed past the top/bottom are cropped by the frame. Making the line editable keeps it where it's drawn.
+
+### v3.16
+- **Pick start spot** (Blocks › Generate): click a square and the line's first block goes there — on or off frame. It's marked START on the canvas, kept through Generate / New seed, and **Auto** goes back to starting at the frame edge on a random row.
