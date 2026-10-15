@@ -51,7 +51,7 @@ const DEF={
   rand:{pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
         wander:1,climb:0,stackPct:20,stackGap:1,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,tracking:0,leading:0,kern:'metrics',caps:'none'},
-  anim:{seed:0,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
+  anim:{seed:0,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.45,0,0.55,1],camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zoomOn:false,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
@@ -1234,7 +1234,7 @@ function remappedPlan(G){
   if(!P.seq.length) return ident(P);
   // keep the blocks' own timing (for the timeline rows under the Scene layer), then re-time the plan
   P.c={startF:P.startF,L:P.L,T:P.T.slice(),T0:P.T0?P.T0.slice():null,done:P.done?P.done.slice():null,exitT:P.exitT?P.exitT.slice():null,
-    onEnd:P.onEnd,holdT:P.holdT,walkT:P.walkT,walkEnd:P.walkEnd,relT:P.relT,end:P.end,cam:P.cam,cutAt:P.cutAt,cutN:P.cutN,
+    onEnd:P.onEnd,holdT:P.holdT,walkT:P.walkT,walkEnd:P.walkEnd,relT:P.relT,end:P.end,cam:P.cam,camPh:P.camPh?Object.assign({},P.camPh):null,cutAt:P.cutAt,cutN:P.cutN,
     fillBase:Object.assign({},P.fillBase||{}),fillEnd:Object.assign({},P.fillEnd||{}),gaps:(P.gaps||[]).map(it=>({t0:it.t0,tEnd:it.tEnd})),
     echo:(P.echo||[]).map(e=>({K:{op:e.K.op}}))};
   remapPlan(P,curve); return P;
@@ -1254,6 +1254,7 @@ function remapPlan(P,curve){
   ['fillBase','fillEnd'].forEach(n=>{const m=P[n]||{}; Object.keys(m).forEach(id=>{m[id]=rn(m[id]);});});
   (P.gaps||[]).forEach(it=>{it.t0=rn(it.t0); if(it.tEnd!=null) it.tEnd=rn(it.tEnd);});
   ['relT','walkT','holdT','walkEnd','onEnd'].forEach(n=>{if(P[n]!=null) P[n]=rn(P[n]);});
+  if(P.camPh) P.camPh={start:rn(P.camPh.start),stop:rn(P.camPh.stop),go:rn(P.camPh.go)};
   P.end=Math.ceil(toReal(cEnd))+tail; P.C=C; P.R=R; P.cEnd=cEnd; P.toReal=toReal; P.toContent=toContent; P.remapped=true;
 }
 function clip0(list){
@@ -1499,16 +1500,20 @@ function computePlan(G){
         // the whole easing curve is laid over the camera's travel (first move → last block)
         const at=dd=>{if(pts.length<2||tot<=0)return pts[0];let k=1;while(k<cum.length-1&&cum[k]<dd)k++;const seg=Math.max(1e-9,cum[k]-cum[k-1]),f=clamp((dd-cum[k-1])/seg,0,1);return[pts[k-1][0]+(pts[k][0]-pts[k-1][0])*f,pts[k-1][1]+(pts[k][1]-pts[k-1][1])*f];};
         for(let i=0;i<N;i++){const t=a+i, u=clamp((t-t0c)/Math.max(1,t1c-t0c),0,1), o=at(tot*clamp(E(u),0,1)); xs[i]=o[0]; ys[i]=o[1];}
-        if(WO&&keyAll.length>usedB){
-          /* walk-off inside the scene: one path for the frame (frontier on the line) through build → hold → walk.
+        if(!fin&&keyAll.length>1){
+          /* camera = the blocks (On · Hold · Off): one path for the frame (frontier on the line) through build → hold → walk.
              Distance runs evenly on the scene's linear clock (so the real speed follows the scene easing, and pairs or
              stairs never make it stall), easing out into the hold and back up to speed into the walk. */
           const pA=[], cA=[0], kd=[];
           keyAll.forEach(k=>{const l=pA[pA.length-1]; if(!l){pA.push([k[1],k[2]]);} else {const d=Math.hypot(l[0]-k[1],l[1]-k[2]); if(d>1e-6){pA.push([k[1],k[2]]);cA.push(cA[cA.length-1]+d);}} kd.push(cA[cA.length-1]);});
           const totA=cA[cA.length-1], DB=kd[usedB-1], DW=Math.max(0,totA-DB);
           let g0=0; while(g0+1<usedB&&kd[g0+1]<=1e-6) g0++;
-          const sB0=sg[g0], sB1=Math.max(sB0+1,sg[usedB-1]), Rb=Math.min((sB1-sB0)/2,Math.max(1,step*2));
-          const sW1=sg[used-1], Rw=Math.max(1,pace2*2.5), sW0=Math.max(sB1,sg[usedB]-Rw), TW=Math.max(1,sW1-sW0);
+          // steady speed on the blocks' clock while they build and while they walk, still while they hold.
+          // Only a short ease at each start/stop (anim.camEase); everything else comes from the Scene curve.
+          const ez=Math.max(0,+A.camEase||0);
+          const sB0=sg[g0], sB1=Math.max(sB0+1,sg[usedB-1]), Rb=Math.max(.5,Math.min((sB1-sB0)/2,ez));
+          const hasW=WO&&used>usedB, sW1=hasW?sg[used-1]:Infinity, Rw=Math.max(.5,ez), sW0=hasW?Math.max(sB1,sg[usedB]-Rw):Infinity, TW=hasW?Math.max(1,sW1-sW0):1;
+          P.camPh={start:Math.round(W(sB0)),stop:Math.round(W(sB1)),go:hasW?Math.round(W(sW0)):null};
           const trap=(e,T,Dd,R)=>{ if(T<=0||Dd<=0) return e>0?Dd:0; e=clamp(e,0,T); const v=Dd/Math.max(1e-6,T-R); return e<R?v*e*e/(2*R):e<T-R?v*(e-R/2):Dd-v*(T-e)*(T-e)/(2*R); };
           const accel=(e,T,Dd,R)=>{ if(e<=0) return 0; const v=Dd/Math.max(1e-6,T-R/2); return Math.min(Dd,e<R?v*e*e/(2*R):v*(e-R/2)); };
           const dAt=t=>{ const sl=S(t); if(sl<=sB0) return 0; if(sl<=sB1) return trap(sl-sB0,sB1-sB0,DB,Rb); if(sl<=sW0) return DB; return DB+accel(sl-sW0,TW,DW,Rw); };
@@ -2327,6 +2332,8 @@ function drawDope(){
   if(RC){ if(Pc.cam.length){const v=[];let mx=1;const a0=Math.floor(V0.f0),a1=Math.ceil(V0.f1);for(let f=a0;f<=a1;f++){const a=ev(Pc.cam,f,[0,0]),b=ev(Pc.cam,f+1,[0,0]);const s=Math.hypot(b[0]-a[0],b[1]-a[1]);v.push(s);mx=Math.max(mx,s);}
       g.fillStyle='rgba(116,157,211,.5)'; v.forEach((s,i)=>{const f=a0+i,hh=s/mx*(RC.h-8);g.fillRect(X(f),RC.y1-4-hh,Math.max(1,X(f+1)-X(f)),hh);});}
     else {g.fillStyle='#686871';g.font='11px sans-serif';g.fillText('camera is still',LW+8,RC.y0+RC.h/2);}
+    if(Pc.camPh){ const ph=Pc.camPh, lb=(f0,f1,t,col)=>{if(f1==null||f0==null||X(f1)-X(f0)<46)return; g.font='600 10px sans-serif'; label(t,X(f0)+5,RC.y0+9,col);};
+      lb(Pc.startF,ph.start,'waits for the line','#8a8a94'); lb(ph.start,ph.stop,'moves with the build','#C5CFF5'); if(ph.go!=null){lb(ph.stop,ph.go,'holds','#8a8a94'); lb(ph.go,Pc.relT!=null?Pc.relT:ph.go+200,'moves with the walk','#C5CFF5');} }
     if(D.anim.relOn&&Pc.relT!=null&&!(D.exit.on&&D.exit.mode==='walk')){knob(Pc.relT,RC.y0,RC.h,'#749DD3'); label('let go',X(Pc.relT)+6,RC.y0+9,'#C5CFF5');
       H(Pc.relT,RC,'ew-resize',f=>{D.anim.relAt=clamp(Math.round(((f)-D.anim.startF)/Math.max(1,D.anim.lenF)*100),5,99);},'camera let-go');}}
   // ---- transitions: clips you can drag
