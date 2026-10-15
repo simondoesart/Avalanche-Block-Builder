@@ -3213,19 +3213,23 @@ function mixColor(i,rnd){const B=D.block;if(B.mix==='alternate')return i%2?B.col
 /* walk: next row is the same, or up/down by up to "wander" rows (biased by "climb") */
 /* walk: the next block is beside the last (same row) or steps a whole block height up/down, so it always
    touches at a side or a corner — never half-overlapping. Tall blocks (3×2, 3×3…) step by their height. */
-function walkRow(r,rMax,rnd,h){
-  const R=D.rand, w=clamp(Math.round(R.wander)||0,0,4); h=Math.max(1,h||D.block.h||1); if(!w||rMax<=0) return r;
+/* rows a walking block may use. Normally it stays inside the frame. If the block is too tall to step a whole
+   block up or down inside the frame (e.g. 3×5 in 7 rows), it may run partly off the top/bottom (cropped by the
+   frame) — at least half the frame's rows stay covered — so the line can still climb and fall. */
+function walkBounds(G,h){ h=Math.max(1,h|0); if(G.R-h>=h) return {lo:0,hi:Math.max(0,G.R-h),ext:false}; const mv=Math.max(1,Math.floor(G.R/2)); return {lo:mv-h,hi:G.R-mv,ext:true}; }
+function walkRow(r,rMax,rnd,h,rMin){
+  rMin=rMin||0; const R=D.rand, w=clamp(Math.round(R.wander)||0,0,4); h=Math.max(1,h||D.block.h||1); if(!w||rMax<=rMin) return r;
   const b=clamp((+R.climb||0)/100,-1,1), pU=(1+b)/3, pD=(1-b)/3, u=rnd();
   let dir=u<pU?-1:u<pU+pD?1:0; if(!dir) return r;
   const mag=h===1?1+Math.floor(rnd()*w):1;   // 1-row blocks may wander up to `w` rows; taller blocks step exactly one block height
-  let n=r+dir*mag*h; if(n<0||n>rMax) n=r-dir*mag*h;
-  return n<0||n>rMax?r:n;
+  let n=r+dir*mag*h; if(n<rMin||n>rMax) n=r-dir*mag*h;
+  return n<rMin||n>rMax?r:n;
 }
 /* sometimes add a second block in the same column, "stackGap" rows away */
-function stackRow(r,bh,rMax,rnd){
+function stackRow(r,bh,rMax,rnd,rMin){ rMin=rMin||0;
   const R=D.rand, g=Math.max(0,Math.round(R.stackGap)||0);
   if(R.multiCol===false||!(R.stackPct>0)||rnd()>=R.stackPct/100) return null;
-  const opts=[r-(bh+g),r+(bh+g)].filter(x=>x>=0&&x<=rMax);
+  const opts=[r-(bh+g),r+(bh+g)].filter(x=>x>=rMin&&x<=rMax);
   return opts.length?opts[Math.floor(rnd()*opts.length)]:null;
 }
 /* recolour existing blocks with the current mix rule */
@@ -3260,22 +3264,22 @@ function speedAt(u){
 /* "Keep building": virtual blocks that continue the layout */
 /* shared walker: mostly a walk (next to the last block, same row or ±wander),
    mixed with short stair runs and occasional jumps */
-function makeWalker(rnd,rMax,h){
+function makeWalker(rnd,rMax,h,rMin){ rMin=rMin||0;
   const R=D.rand; let run=0, runDir=-1; h=Math.max(1,h||D.block.h||1);
   return r=>{
     let extra=0;
-    if(run>0){run--; const n=r+runDir*h; if(n<0||n>rMax){run=0;return {r,extra};} r=n; if(r-h<0||r+h>rMax) run=0; return {r,extra};}
+    if(run>0){run--; const n=r+runDir*h; if(n<rMin||n>rMax){run=0;return {r,extra};} r=n; if(r-h<rMin||r+h>rMax) run=0; return {r,extra};}
     const u=rnd();
-    if(u<(R.stairPct||0)/100&&rMax>0){
+    if(u<(R.stairPct||0)/100&&rMax>rMin){
       const b=clamp((+R.climb||0)/100,-1,1); runDir=rnd()<(1+b)/2?-1:1;
-      if(r+runDir*h<0||r+runDir*h>rMax) runDir=-runDir;
-      run=1+Math.floor(rnd()*3); const n=r+runDir*h; if(n>=0&&n<=rMax) r=n; return {r,extra};
+      if(r+runDir*h<rMin||r+runDir*h>rMax) runDir=-runDir;
+      run=1+Math.floor(rnd()*3); const n=r+runDir*h; if(n>=rMin&&n<=rMax) r=n; return {r,extra};
     }
-    if(u<((R.stairPct||0)+(R.jumpPct||0))/100&&rMax>0){
+    if(u<((R.stairPct||0)+(R.jumpPct||0))/100&&rMax>rMin){
       // corner hop: a full block-height step up or down, still touching at the corner
-      let j=rnd()<.5?-h:h; if(r+j<0||r+j>rMax) j=-j; r=clamp(r+j,0,rMax); return {r,extra};
+      let j=rnd()<.5?-h:h; if(r+j<rMin||r+j>rMax) j=-j; if(r+j>=rMin&&r+j<=rMax) r+=j; return {r,extra};
     }
-    return {r:walkRow(r,rMax,rnd,h),extra};
+    return {r:walkRow(r,rMax,rnd,h,rMin),extra};
   };
 }
 /* "Keep building": virtual blocks that continue the layout in the order's direction */
@@ -3291,7 +3295,7 @@ function extension(G,base,capOverride){
   // continue from the block furthest along in the build direction
   const main=base.filter(b=>!b.stack).slice().sort((a,b)=>dir*(a.c-b.c)||a.order-b.order);
   const last=main[main.length-1]||base[base.length-1], prev=main[main.length-2];
-  const rMax=Math.max(0,G.R-last.h);
+  const WB=walkBounds(G,last.h), rMax=WB.hi, rMin=WB.lo;
   const mode=spot?'steer':A.extendMode;
   if(mode==='repeat'){
     const m=base.filter(b=>!b.stack).sort((a,b)=>a.c-b.c);
@@ -3307,17 +3311,20 @@ function extension(G,base,capOverride){
   const step=(last.w+Math.max(0,Math.round(D.rand.gap)||0))*dir;
   let dc=prev?last.c-prev.c:step, dr=prev?last.r-prev.r:0; if(!dc&&!dr) dc=step;
   let c=last.c, r=last.r, i=main.length;
-  const walker=makeWalker(rnd,rMax,last.h);
+  const walker=makeWalker(rnd,rMax,last.h,rMin);
   if(mode==='steer'){
     // exactly `cap` more blocks, evenly stepped (no gaps), steering the rows to land on the chosen end row
-    const tr=clamp(Math.round((A.endRow||1)-1),0,rMax), wmax=last.h>1?last.h:Math.max(1,Math.round(D.rand.wander)||1);
+    let tr=clamp(Math.round((A.endRow||1)-1),rMin,rMax); const wmax=last.h>1?last.h:Math.max(1,Math.round(D.rand.wander)||1);
+    if(last.h>1){ tr=r+Math.round((tr-r)/last.h)*last.h; while(tr>rMax) tr-=last.h; while(tr<rMin) tr+=last.h; }   // tall blocks: the end row sits on the line's own lattice
     out.__endRow=tr; out.__reach=Math.abs(tr-r)<=cap*wmax;
     for(let j=1;j<=cap;j++){
       c+=step; const rem=cap-j;
-      const pr=r, nr=j===cap?(out.__reach?tr:r+Math.sign(tr-r)*wmax):clamp(walkRow(r,rMax,rnd,last.h),Math.max(0,tr-rem*wmax),Math.min(rMax,tr+rem*wmax));
-      r=clamp(clamp(nr,pr-wmax,pr+wmax),0,rMax);   // never more than one block height from the last one
+      const pr=r; let nr;
+      if(last.h>1){ const d=tr-r; nr=Math.abs(d)>=rem*last.h+last.h?r+Math.sign(d)*last.h:(j===cap?tr:walkRow(r,rMax,rnd,last.h,rMin)); if(Math.abs(tr-nr)>rem*last.h) nr=r+Math.sign(tr-r)*last.h; }
+      else nr=j===cap?(out.__reach?tr:r+Math.sign(tr-r)*wmax):clamp(walkRow(r,rMax,rnd,last.h,rMin),Math.max(rMin,tr-rem*wmax),Math.min(rMax,tr+rem*wmax));
+      r=clamp(clamp(nr,pr-wmax,pr+wmax),rMin,rMax);   // never more than one block height from the last one
       const nb=mk(last,c,r,mixColor(i++,rnd));
-      if(add(nb)&&j<cap){const sr=stackRow(r,last.h,rMax,rnd);if(sr!==null){const p2=mk(last,c,sr,mixColor(i++,rnd));p2.stack=true;add(p2);}}
+      if(add(nb)&&j<cap){const sr=stackRow(r,last.h,rMax,rnd,rMin);if(sr!==null){const p2=mk(last,c,sr,mixColor(i++,rnd));p2.stack=true;add(p2);}}
     }
     out.__endCol=c;
     return out;
@@ -3326,7 +3333,7 @@ function extension(G,base,capOverride){
     if(mode==='continue'){c+=dc;r+=dr;if(A.wrap&&A.axis==='x'){if(r<0)r=rMax;else if(r>rMax)r=0;}}
     else {const w=walker(r);c+=step+w.extra*dir;r=w.r;}
     const nb=mk(last,c,r,mixColor(i++,rnd));
-    if(add(nb)&&mode!=='continue'){const sr=stackRow(r,last.h,rMax,rnd);if(sr!==null){const p=mk(last,c,sr,mixColor(i++,rnd));p.stack=true;add(p);}}
+    if(add(nb)&&mode!=='continue'){const sr=stackRow(r,last.h,rMax,rnd,rMin);if(sr!==null){const p=mk(last,c,sr,mixColor(i++,rnd));p.stack=true;add(p);}}
   }
   return out;
 }
@@ -6078,8 +6085,9 @@ $('#btnBake').onclick=bakeExtension;
 function generateLine(newSeed,quiet){
   const G=geom(); if(!quiet) pushHist();
   if(newSeed){D.rand.seed=Math.floor(Math.random()*99999)+1; D.anim.seed=0;}
-  const rnd=rng(D.rand.seed), bw=clamp(Math.round(D.block.w)||1,1,G.C), bh=clamp(Math.round(D.block.h)||1,1,G.R), rMax=Math.max(0,G.R-bh);
-  const row=D.rand.startRow>0?clamp(D.rand.startRow-1,0,rMax):Math.floor(rnd()*(rMax+1));
+  const rnd=rng(D.rand.seed), bw=clamp(Math.round(D.block.w)||1,1,G.C), bh=Math.max(1,Math.round(D.block.h)||1), WB=walkBounds(G,bh), rMax=WB.hi;
+  const hiStart=WB.ext?Math.max(WB.lo,WB.hi-bh):rMax;
+  const row=D.rand.startRow>0?clamp(D.rand.startRow-1,WB.lo,rMax):WB.lo+Math.floor(rnd()*(hiStart-WB.lo+1));
   if(['manual','ttb','random'].indexOf(D.anim.order)>=0) D.anim.order='ltr';
   const dir=D.anim.order==='rtl'?-1:1;
   const c0=dir>0?Math.max(G.cLo,G.firstFull):Math.min(G.cHi-bw+1,G.lastFull-bw+1);
