@@ -117,6 +117,9 @@ main{display:grid;grid-template-columns:68px minmax(0,1fr) 336px;grid-template-a
 .tlbar .tlf .num{height:26px}
 .tlbar .check{align-items:center;white-space:nowrap;font-size:11px}
 .tlbar .btn{height:26px}
+#btnPickStart.on{border-color:#2BD98F;color:#2BD98F;background:rgba(43,217,143,.1)}
+.startrow{display:grid;gap:8px}
+#left .startrow #btnStartAuto{flex:0 0 auto;padding:0 12px}
 .tlzoom{display:flex;align-items:center;gap:2px;flex:none}
 .tlzoom input[type=range]{width:90px;accent-color:var(--accent)}
 .tllen{grid-template-columns:auto 70px auto!important}
@@ -665,7 +668,8 @@ body.nohelp .qm{display:none}
             <div class="group-h">Generate<span class="tag" id="genTag"></span></div>
             <div class="genstat" id="genStatus"></div>
             <div class="row-btns"><button class="btn primary" id="btnGenLine" title="Make a new walking line from the settings below (G)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m3 13 7-7M11 2v2M14 5h-2M13.5 2.5 12 4"/></svg>Generate</button><button class="btn" id="btnAnimSeed" title="Same settings, a different walk (R)">↻ New seed</button><button class="btn icon" id="btnGenClear" title="Clear all blocks (⌘Z to undo)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></button></div>
-            <div class="row-btns"><button class="btn" id="btnPickStart" title="Click a square on the canvas: the first block goes there">◎ Pick start spot</button><button class="btn ghost" id="btnStartAuto" title="Start at the frame edge on a random row">Auto</button></div>
+            <div class="startrow"><div class="row-btns"><button class="btn" id="btnPickStart" title="Click a square on the canvas: the first block goes there">◎ Pick start spot</button><button class="btn ghost" id="btnStartAuto" title="Start at the frame edge on a random row">Auto</button></div>
+            <div class="field"><span class="lbl scrub" title="Row of the first block (1 = top). Empty = random">Start row</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.startRow" min="0" max="60" step="1"><span class="unit" id="rowUnit">random</span><button data-d="1">+</button></div></div></div>
             <details class="sub" data-sub="gen-size" open><summary>Block size <span class="note" id="pickPx"></span></summary><div class="subbody">
             <div class="pick-label"><span class="big" id="pickBig">3 × 1</span></div>
             <div class="picker" id="picker"></div>
@@ -711,7 +715,7 @@ body.nohelp .qm{display:none}
                 <div class="field"><span class="lbl scrub">Pairs</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.stackPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
                 <div class="field" data-adv><span class="lbl scrub" title="Rows between the two blocks in a pair. Empty = the same as the block height">Pair gap</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.stackGap" data-zero="auto" min="0" max="20" step="1"><span class="unit">rows</span><button data-d="1">+</button></div></div>
               </div>
-            <div class="field"><span class="lbl scrub" title="0 = random">Start row</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.startRow" min="0" max="60" step="1"><span class="unit" id="rowUnit">random</span><button data-d="1">+</button></div></div>
+            
             </div></details>
           </div>
           <div class="group" data-ctx="blocks">
@@ -5757,6 +5761,7 @@ function onChange(path){
   if(path.indexOf('text.')===0&&STEPS[U.step].id==='content'&&$('#chkStyleSel').checked){
     const k=path.split('.')[1], map={size:'fontSize'}; selBlocks().forEach(b=>{b[map[k]||k]=D.text[k];});
   }
+  if(path==='rand.startRow'&&D.rand.startCol!=null){ if(+D.rand.startRow>0) D.rand.startR=Math.round(D.rand.startRow)-1; else {D.rand.startCol=null;D.rand.startR=null;} }
   if(isGenerated()&&D.blocks.length===1&&(path==='block.w'||path==='block.h'||path==='rand.startRow')){generateLine(false,true);return;}
   if(isGenerated()&&D.blocks.length===1&&(path==='block.color'||path==='block.mix'||path==='block.color2')){const b0=D.blocks[0];b0.color=mixColor(0,rng(D.rand.seed));b0.textColor=contrast(b0.color);}
   if(path.indexOf('rand.')===0&&U.live){generate(true);return;}
@@ -6086,7 +6091,7 @@ function renderGenStatus(G){
     `<b>${D.blocks.length}</b> blocks, edited by hand${Object.keys(D.anim.dt||{}).length?` · ${Object.keys(D.anim.dt).length} retimed`:''}<br>Press <b>Generate</b> to start over from the settings below.`;
   const t=$('#genTag'); if(t) t.textContent=gen?'live':ed?'edited':'';
   const bk=$('#btnBake'); if(bk) bk.hidden=!gen;
-  const ps=$('#btnPickStart'); if(ps){ ps.classList.toggle('primary',!!U.pickStart); ps.textContent=U.pickStart?'Click a square…':(D.rand.startCol!=null?`◎ Start: col ${(+D.rand.startCol)+1}, row ${(+D.rand.startR)+1}`:'◎ Pick start spot'); }
+  const ps=$('#btnPickStart'); if(ps){ ps.classList.toggle('primary',!!U.pickStart); ps.textContent=U.pickStart?'Click a square…':'◎ Pick start spot'; ps.classList.toggle('on',D.rand.startCol!=null&&!U.pickStart); }
   const sa=$('#btnStartAuto'); if(sa) sa.hidden=D.rand.startCol==null;
 }
 
