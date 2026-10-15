@@ -207,3 +207,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.8
 - The grid is effectively infinite: no more Off-screen area setting. Blocks can sit anywhere; the canvas draws grid wherever you look (pan/zoom out to see more). "Show whole area" (⇧F on the canvas) frames 2× the frame, grown to fit every block.
 - The AE build only lays down grid as wide as the frame plus the blocks (or the camera's travel), not the infinite range.
+
+### v3.9
+- Workshop mode: **Setup** and **Blocks** are visible.
+- In the Blocks step, generated blocks draw solid (they're the line you're editing); walk-off blocks stay ghosted.

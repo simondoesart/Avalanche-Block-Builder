@@ -79,7 +79,7 @@ const U={step:0,ctx:null,ctab:'hud',dopeSel:[],mbPrev:true,tool:'select',sel:nul
 const SI=id=>STEPS.findIndex(s=>s.id===id);
 /* steps shown while we workshop the UX one step at a time — add ids to bring a step back.
    ?steps=all in the URL (or localStorage gridblocks.steps='all') shows everything */
-const VISIBLE_STEPS=['grid'];
+const VISIBLE_STEPS=['grid','layout'];
 const stepVisible=i=>{try{if(/[?&]steps=all/.test(location.search||'')||localStorage.getItem('gridblocks.steps')==='all')return true;}catch(e){} return !!STEPS[i]&&VISIBLE_STEPS.indexOf(STEPS[i].id)>=0;};
 const nextVisible=(i,d)=>{for(let j=i+d;j>=0&&j<STEPS.length;j+=d) if(stepVisible(j)) return j; return -1;};
 const STEPS=[
@@ -2899,7 +2899,9 @@ function drawWorld(g,G,o){
     if(D.echo.on) echoTargets(A?A.P.seq:realB).forEach(b=>{const r=echoRect(G,b);drawEcho(g,r,null,o,0,0,b.virtual);});
     const dimmed=A&&D.anim.order==='manual'&&D.anim.unpicked!=='visible';
     realB.forEach(b=>{ if(dimmed&&!(b.mo>0)){g.save();g.globalAlpha=.35;drawBlock(g,G,b,o,0,0,null,true);g.restore();} else drawBlock(g,G,b,o,0,0,null,false); });
-    if(A) (D.anim.order==='manual'?A.P.ghosts:A.P.seq.filter(b=>b.virtual)).forEach(b=>drawBlock(g,G,b,o,0,0,null,true));
+    // generated blocks: solid in the Blocks step (they're the line you're editing), ghosted elsewhere; walk-off blocks always ghosted
+    if(A){ const solid=STEPS[U.step].id==='layout'&&D.anim.order!=='manual', wf=A.P.walkFrom;
+      (D.anim.order==='manual'?A.P.ghosts:A.P.seq.filter(b=>b.virtual)).forEach(b=>{const walk=wf!=null&&A.P.seq.indexOf(b)>=wf; drawBlock(g,G,b,o,0,0,null,!(solid&&!walk));}); }
   }
   // text in the gaps between blocks
   if(D.fill.on&&D.fill.gap.on&&o.inside){
