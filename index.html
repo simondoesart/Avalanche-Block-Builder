@@ -5159,15 +5159,15 @@ function drawDope(){
     if(R.ck==='none'){g.fillStyle='#686871';g.font='11px sans-serif';g.fillText('no overlays — click to add content',LW+8,R.y0+R.h/2);return;}
     const col=LAYER_COL[R.ck]||'#a2a2ab', rgba=(hx,a)=>{const n=parseInt(hx.slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;};
     /* on / hold / off of one representative item, with a draggable hold end (and start for gaps) */
-    const phases=(it,AA,onHold,onStart)=>{ const T0=it.kind==='shape'?shapeTiming(it,fps):fillTiming(Object.assign({kind:'text',type:true},it),24,fps), t0=it.t0, on=t0+T0.on*fps, off=isFinite(T0.off)?t0+T0.off*fps:N, end=isFinite(T0.off)?off+T0.outLen*fps:N;
+    const phases=(it,AA,onHold,onStart,startTip)=>{ const T0=it.kind==='shape'?shapeTiming(it,fps):fillTiming(Object.assign({kind:'text',type:true},it),24,fps), t0=it.t0, on=t0+T0.on*fps, off=isFinite(T0.off)?t0+T0.off*fps:N, end=isFinite(T0.off)?off+T0.outLen*fps:N;
       g.fillStyle=rgba(col,.75); g.fillRect(X(t0),R.y0+7,Math.max(2,X(on)-X(t0)),R.h-11);
       g.fillStyle=AA.live?'rgba(116,157,211,.55)':rgba(col,.28); g.fillRect(X(on),R.y0+7,Math.max(1,X(off)-X(on)),R.h-11);
-      if(onStart){knob(t0,R.y0,R.h,col);H(t0,R,'ew-resize',onStart,'when it starts (after its nearest block lands)');}
+      if(onStart){knob(t0,R.y0,R.h,col);H(t0,R,'ew-resize',onStart,startTip||'when it starts (after its nearest block lands)');}
       if(isFinite(T0.off)){g.fillStyle=rgba(col,.5);g.fillRect(X(off),R.y0+7,Math.max(1,X(end)-X(off)),R.h-11);knob(off,R.y0,R.h,col);H(off,R,'ew-resize',f=>onHold(Math.max(0,Math.round(f-on))),'drag to change how long it holds');}
       if(X(off)-X(on)>50) label(AA.live?'hold · live':'hold',X(on)+5,R.y0+R.h/2+2,'rgba(236,236,239,.8)'); };
     if(R.ck==='hud'){
       P.seq.forEach((b,i)=>{const t0=FB[b.id]; if(t0==null) return; const end=FE[b.id]!=null?FE[b.id]:N; g.fillStyle=rgba(col,.22); g.fillRect(X(t0),R.y0+3+(i%3)*2,Math.max(1,X(end)-X(t0)),1.5);});
-      const b=P.seq[0]; if(b&&FB[b.id]!=null) phases({t0:FB[b.id],tEnd:FE[b.id],lines:['x'.repeat(24)]},A,v=>{A.hold=v;});
+      const b=P.seq[0]; if(b&&FB[b.id]!=null) {const t0h=FB[b.id]; phases({t0:t0h,tEnd:FE[b.id],lines:['x'.repeat(24)]},A,v=>{A.hold=v;},f=>{const st=t0h-(+A.delay||0);A.delay=Math.max(0,Math.round(f-st));},'Animate on delay — drag to change how long after each block lands its content starts');}
     } else if(R.ck==='gaps'){
       const gl=Pc.gaps||[], GA=D.fill.gap.anim||{}, own=GA.own!==false, AA=gapA();
       gl.forEach((it,i)=>{const T1=fillTiming(Object.assign({kind:'text',type:true},it,{A:AA}),24,fps), e=isFinite(T1.off)?it.t0+(T1.off+T1.outLen)*fps:(it.tEnd!=null?it.tEnd:N); g.fillStyle=rgba(col,.4); g.fillRect(X(it.t0),R.y0+3+(i%4)*1.6,Math.max(1,X(e)-X(it.t0)),1.2);});
