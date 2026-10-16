@@ -51,7 +51,7 @@ const DEF={
   rand:{pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
         wander:1,climb:0,stackPct:20,stackGap:0,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,tracking:0,leading:0,kern:'metrics',caps:'none'},
-  anim:{seed:0,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
+  anim:{seed:0,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.45,0,0.55,1],camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zoomOn:false,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
@@ -3908,7 +3908,7 @@ function renderGenStatus(G){
     `<b>${D.blocks.length}</b> blocks, edited by hand${Object.keys(D.anim.dt||{}).length?` · ${Object.keys(D.anim.dt).length} retimed`:''}`;
   el.title=!D.blocks.length?'':gen?'Live — change any setting and the line regenerates. Drag a block on the canvas to start editing by hand.':'Edited by hand. Press Generate to start over from the settings.';
   const t=$('#genTag'); if(t) t.textContent=gen?'live':ed?'edited':'';
-  const bk=$('#btnBake'); if(bk) bk.hidden=!gen;
+  const bk=$('#btnBake'); if(bk) bk.hidden=!gen; paceShow();
   const ps=$('#btnPickStart'); if(ps){ ps.classList.toggle('primary',!!U.pickStart); ps.textContent=U.pickStart?'Click a square…':'◎ Pick start spot'; ps.classList.toggle('on',D.rand.startCol!=null&&!U.pickStart); }
   const sa=$('#btnStartAuto'); if(sa) sa.hidden=D.rand.startCol==null;
 }
@@ -4017,6 +4017,16 @@ function clearLayout(){
 $('#btnClearLayout').onclick=clearLayout;
 $('#btnPickStart').onclick=()=>{U.pickStart?(U.pickStart=false,refresh()):startPickStart();};
 $('#btnStartAuto').onclick=clearPickStart;
+/* 'One every': stored in frames (anim.pace), shown in frames, seconds or % of the scene */
+function paceScene(){ return Math.max(1,+D.anim.lenF||72); }   // % of the On (build) bar — the blocks' own clock, before the Scene remap
+function paceShow(){ const inp=$('#paceIn'), sel=$('#paceUnit'); if(!inp||!sel) return; const u=D.anim.paceUnit||'f', f=+D.anim.pace||5, fps=D.comp.fps||30;
+  sel.value=u; inp.step=u==='f'?'1':u==='s'?'0.05':'0.5';
+  if(document.activeElement!==inp) inp.value=u==='f'?f:u==='s'?+(f/fps).toFixed(3):+(f/paceScene()*100).toFixed(2); }
+$('#paceIn').addEventListener('input',e=>{ const v=parseFloat(e.target.value); if(!(v>0)) return; const u=D.anim.paceUnit||'f', fps=D.comp.fps||30;
+  const f=u==='f'?v:u==='s'?v*fps:v/100*paceScene(); if(U.editing!==e.target){pushHist(true);U.editing=e.target;}
+  D.anim.pace=Math.max(1,Math.round(f*100)/100); planCache.k=''; refresh(); });
+$('#paceIn').addEventListener('change',()=>{U.editing=null;paceShow();});
+$('#paceUnit').addEventListener('change',e=>{ D.anim.paceUnit=e.target.value; paceShow(); autosave(); });
 $('#btnGenClear').onclick=()=>{if(!D.blocks.length)return toast('No blocks to clear');D.anim.dt={};D.anim.dx={};D.anim.skip=[];D.anim.cutAt=null;clearLayout();};
 $('#btnGen').onclick=()=>generate(false);
 $('#btnShuffle').onclick=shuffle;
