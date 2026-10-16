@@ -5127,6 +5127,11 @@ function drawDope(){
         const wl=+X2.walkLen||48, rC=Pc.relT!=null?(Pc.relT):null; if(Pc.relT!=null){knob(Pc.relT,RPh.y0,RPh.h,'#749DD3'); H(Pc.relT,RPh,'ew-resize',f=>{X2.walkLen=Math.max(6,Math.round(wl+((f)-rC)));},'camera lets go of the walking line');}}
       else if(X2.on&&X2.mode==='end'&&holdEnd!=null){ const a0=+X2.at||0, hC=(holdEnd); knob(holdEnd,RPh.y0,RPh.h,'#FFFFFF'); H(holdEnd,RPh,'ew-resize',f=>{X2.at=Math.round(a0+((f)-hC));},'end of Hold — when the clear-out starts'); }
       else if(X2.on&&X2.mode==='hold'&&holdEnd!=null){ const h0=+X2.hold||0, hC=(holdEnd); knob(holdEnd,RPh.y0,RPh.h,'#FFFFFF'); H(holdEnd,RPh,'ew-resize',f=>{X2.hold=Math.max(1,Math.round(h0+((f)-hC)));},'how long each block stays'); }
+      // Off: end-of-Off knob (how long each block takes to leave) — or, while blocks stay, a ghost knob that turns the clear-out on
+      if(X2.on&&!WOn&&offEnd!=null){ const l0=+X2.len||8, oC=offEnd; knob(offEnd,RPh.y0,RPh.h,'#749DD3'); H(offEnd,RPh,'ew-resize',f=>{X2.len=clamp(Math.round(l0+(f-oC)),1,600);},'end of Off — how long each block takes to leave'); }
+      if(!X2.on){ const gk=onEnd+Math.max(12,Math.round(fps)); g.globalAlpha=.55; knob(gk,RPh.y0,RPh.h,'#FFFFFF'); g.globalAlpha=1;
+        let base=null; H(gk,RPh,'ew-resize',f=>{ if(base==null){ X2.on=true; X2.mode='end'; X2.at=0; const P2=plan(geom()), Q=P2.c||P2, ex=(Q.exitT||[]).filter(v=>v!=null); base=ex.length?Math.min(...ex):onEnd; }
+          X2.at=Math.round(f-base); },'drag to make the blocks leave — sets when the clear-out starts (Hold), then Off appears'); }
       item({type:'row',row:RPh,x0:LW,x1:r.width,y0:RPh.y0,y1:RPh.y1,cur:'pointer',tip:'Blocks: On · Hold · Off — click for their settings'});
     }
   } else {g.fillStyle='#686871';g.font='11px sans-serif';g.fillText(anim?'Generate a line to start — Blocks step, or press G':'Static — pick an animation style in Motion',LW+8,RSc.y0+RSc.h/2);}
