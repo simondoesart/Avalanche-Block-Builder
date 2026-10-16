@@ -2863,22 +2863,27 @@ function drawDope(){
     if(R.ck==='none'){g.fillStyle='#686871';g.font='11px sans-serif';g.fillText('no overlays — click to add content',LW+8,R.y0+R.h/2);return;}
     const col=LAYER_COL[R.ck]||'#a2a2ab', rgba=(hx,a)=>{const n=parseInt(hx.slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;};
     /* on / hold / off of one representative item, with a draggable hold end (and start for gaps) */
-    const phases=(it,AA,onHold,onStart,startTip)=>{ const T0=it.kind==='shape'?shapeTiming(it,fps):fillTiming(Object.assign({kind:'text',type:true},it),24,fps), t0=it.t0, on=t0+T0.on*fps, off=isFinite(T0.off)?t0+T0.off*fps:N, end=isFinite(T0.off)?off+T0.outLen*fps:N;
+    /* one representative item (the first block's content): [animate on] ▮ fully on … hold … ▮ out starts [animate off]
+       The animation lengths come from the settings; the two knobs only place things in time:
+       ▮ fully on — drag to move when the content is fully on (changes the delay)
+       ▮ out starts — drag to change how long it holds (drop it on the dashed Out line = hold until Out) */
+    const phases=(it,AA,onHold,onDelay)=>{ const T0=fillTiming(Object.assign({kind:'text',type:true},it),24,fps), t0=it.t0, onLen=T0.on*fps, on=t0+onLen, off=isFinite(T0.off)?t0+T0.off*fps:N, end=isFinite(T0.off)?off+T0.outLen*fps:N;
       g.fillStyle=rgba(col,.75); g.fillRect(X(t0),R.y0+7,Math.max(2,X(on)-X(t0)),R.h-11);
       g.fillStyle=AA.live?'rgba(116,157,211,.55)':rgba(col,.28); g.fillRect(X(on),R.y0+7,Math.max(1,X(off)-X(on)),R.h-11);
-      if(onStart){knob(t0,R.y0,R.h,col);H(t0,R,'ew-resize',onStart,startTip||'when it starts (after its nearest block lands)');}
-      if(isFinite(T0.off)){g.fillStyle=rgba(col,.5);g.fillRect(X(off),R.y0+7,Math.max(1,X(end)-X(off)),R.h-11);knob(off,R.y0,R.h,col);H(off,R,'ew-resize',f=>onHold(Math.max(0,Math.round(f-on)),f),AA.anchor==='phases'?'holds until the blocks go Out — drag left for a set hold':'drag to change how long it holds · drag onto the Out line to hold until Out');}
-      if(X(off)-X(on)>50) label((AA.anchor==='phases'?'until Out':'hold')+(AA.live?' · live':''),X(on)+5,R.y0+R.h/2+2,'rgba(236,236,239,.8)'); };
+      if(isFinite(T0.off)){g.fillStyle=rgba(col,.75);g.fillRect(X(off),R.y0+7,Math.max(1,X(end)-X(off)),R.h-11);}
+      if(onDelay){knob(on,R.y0,R.h,col);H(on,R,'ew-resize',(st=>f=>onDelay(Math.round(f-onLen-st)))(t0-(+onDelay.cur||0)),`fully on (animate-on ${Math.round(onLen)}f before it) — drag to move when it's fully on`);}
+      if(isFinite(T0.off)){knob(off,R.y0,R.h,col);H(off,R,'ew-resize',f=>onHold(Math.max(0,Math.round(f-on)),f),AA.anchor==='phases'?'out starts — holding until the blocks go Out · drag left for a set hold':`out starts (animate-off ${Math.round(T0.outLen*fps)}f after it) — drag to change the hold · drop on the dashed Out line to hold until Out`);}
+      if(X(off)-X(on)>50) label((AA.anchor==='phases'?'until Out':'hold')+(AA.live?' · live':''),X(on)+6,R.y0+R.h/2+2,'rgba(236,236,239,.85)'); };
     const outLine=Pc.fillOut!=null?Pc.fillOut:null, snapHold=(obj,v,f)=>{ if(outLine!=null&&f>=outLine-3){obj.anchor='phases';} else {obj.anchor='block';obj.hold=v;} };
     if(outLine!=null){g.strokeStyle='rgba(159,187,230,.55)';g.setLineDash([3,3]);g.lineWidth=1;g.beginPath();g.moveTo(X(outLine)+.5,R.y0);g.lineTo(X(outLine)+.5,R.y1);g.stroke();g.setLineDash([]);}
     if(R.ck==='hud'){
       P.seq.forEach((b,i)=>{const t0=FB[b.id]; if(t0==null) return; const end=FE[b.id]!=null?FE[b.id]:N; g.fillStyle=rgba(col,.22); g.fillRect(X(t0),R.y0+3+(i%3)*2,Math.max(1,X(end)-X(t0)),1.5);});
-      const b=P.seq[0]; if(b&&FB[b.id]!=null) {const t0h=FB[b.id]; phases({t0:t0h,tEnd:FE[b.id],lines:['x'.repeat(24)]},A,(v,f)=>snapHold(A,v,f),(st=>f=>{A.delay=clamp(Math.round(f-st),0,600);})(t0h-(+A.delay||0)),'Animate on delay — drag to change how long after each block lands its content starts');}
+      const b=P.seq[0]; if(b&&FB[b.id]!=null) {const t0h=FB[b.id]; const dl=v=>{A.delay=clamp(v,0,600);}; dl.cur=+A.delay||0; phases({t0:t0h,tEnd:FE[b.id],lines:['x'.repeat(24)]},A,(v,f)=>snapHold(A,v,f),dl);}
     } else if(R.ck==='gaps'){
       const gl=Pc.gaps||[], GA=D.fill.gap.anim||{}, own=GA.own!==false, AA=gapA();
       gl.forEach((it,i)=>{const T1=fillTiming(Object.assign({kind:'text',type:true},it,{A:AA}),24,fps), e=isFinite(T1.off)?it.t0+(T1.off+T1.outLen)*fps:(it.tEnd!=null?it.tEnd:N); g.fillStyle=rgba(col,.4); g.fillRect(X(it.t0),R.y0+3+(i%4)*1.6,Math.max(1,X(e)-X(it.t0)),1.2);});
       const it0=gl.slice().sort((a,b)=>a.t0-b.t0)[0];
-      if(it0) phases(Object.assign({},it0,{A:AA,lines:it0.lines||['x'.repeat(24)]}),AA,(v,f)=>snapHold(own?GA:A,v,f),own?(st=>f=>{GA.delay=clamp(Math.round(f-st),-240,600);})(it0.t0-(+GA.delay||0)):null);
+      if(it0) phases(Object.assign({},it0,{A:AA,lines:it0.lines||['x'.repeat(24)]}),AA,(v,f)=>snapHold(own?GA:A,v,f),own?Object.assign(v=>{GA.delay=clamp(v,-240,600);},{cur:+GA.delay||0}):null);
     }
     else if(R.ck==='numbers'){ P.seq.forEach((b,i)=>{if(!numOn(b)) return; const t0=(Pc.done||[])[i]||Pc.T[i], e=Pc.exitT&&Pc.exitT[i]!=null?Pc.exitT[i]:N; g.fillStyle=rgba(col,.55); g.fillRect(X(t0),R.y0+5+(i%3)*3,Math.max(1,X(e)-X(t0)),2);}); }
     else if(R.ck==='echo'){ Pc.echo.forEach((e,i)=>{const t0=e.K.op.length?e.K.op[0][0]:0, t1=e.K.op.length?e.K.op[e.K.op.length-1][0]:N, end=e.K.op.length&&e.K.op[e.K.op.length-1][1]===0?t1:N; g.fillStyle=rgba(col,.55); g.fillRect(X(t0),R.y0+5+(i%3)*3,Math.max(1,X(end)-X(t0)),2);}); }
