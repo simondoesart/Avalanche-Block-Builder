@@ -53,7 +53,7 @@ const DEF={
         timing:'with',offset:6,appear:'fade',out:'stay',hold:12,outF:8},
   rand:{pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
         wander:1,climb:0,stackPct:20,stackGap:0,stairPct:15,jumpPct:5,multiCol:true},
-  text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,tracking:0,leading:0,kern:'metrics',caps:'none'},
+  text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,offX:0,offY:0,tracking:0,leading:0,kern:'metrics',caps:'none'},
   anim:{seed:0,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.45,0,0.55,1],sceneEase:{on:true,onAt:null,holdAt:null,start:40,land:75,leave:60,end:40},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
@@ -196,20 +196,19 @@ function cssFont(family,style,size){
 function casedText(b){const t=b.text||'';return b.caps==='upper'?t.toUpperCase():b.caps==='lower'?t.toLowerCase():t;}
 /* draws block text the way After Effects lays it out (tracking in 1/1000 em, leading in px) */
 /* a block's text style: its own (ownStyle) or the global one from Content → Your text */
-function txtStyle(b){ if(!b||b.ownStyle) return b; const o=Object.assign({},b,{fontSize:D.text.size,align:D.text.align,pad:D.text.pad}); TEXT_KEYS.forEach(k=>o[k]=D.text[k]); return o; }
+function txtStyle(b){ if(!b||b.ownStyle) return b; const o=Object.assign({},b,{fontSize:D.text.size,align:D.text.align,pad:D.text.pad,offX:+D.text.offX||0,offY:+D.text.offY||0}); TEXT_KEYS.forEach(k=>o[k]=D.text[k]); return o; }
+/* text position in the block: 3×3 (tl tc tr / ml center mr / bl bc br) */
+function posOf(al){al=al||'center'; if(al==='center') return {h:'c',v:'m'}; const v=al[0]==='m'?'m':al[0]==='b'?'b':'t', h=al[1]==='c'?'c':al[1]==='r'?'r':'l'; return {h,v};}
 function drawText(g,b,qx,qy,qw,qh){
   b=txtStyle(b);
-  const fs=b.fontSize, tr=(+b.tracking||0)/1000*fs, lh=b.leading>0?b.leading:fs*1.2;
+  const fs=b.fontSize, tr=(+b.tracking||0)/1000*fs, lh=b.leading>0?b.leading:fs*1.2, pad=+b.pad||0, ox=+b.offX||0, oy=+b.offY||0, ps=posOf(b.align);
   g.font=cssFont(b.family,b.style,fs); g.fillStyle=b.textColor; g.textBaseline='middle'; g.textAlign='left';
   const lines=casedText(b).split('\n');
   const widthOf=l=>{let w=0;for(let i=0;i<l.length;i++)w+=g.measureText(l[i]).width;return w+tr*Math.max(0,l.length-1);};
   const total=(lines.length-1)*lh;
-  let y0;
-  if(b.align==='center') y0=qy+qh/2-total/2;
-  else if(b.align==='bl') y0=qy+qh-b.pad-lh/2-total;
-  else y0=qy+b.pad+lh/2;
+  const y0=(ps.v==='m'?qy+qh/2-total/2:ps.v==='b'?qy+qh-pad-lh/2-total:qy+pad+lh/2)+oy;
   lines.forEach((l,li)=>{
-    const w=widthOf(l); let x=b.align==='center'?qx+qw/2-w/2:qx+b.pad; const y=y0+li*lh;
+    const w=widthOf(l); let x=(ps.h==='c'?qx+qw/2-w/2:ps.h==='r'?qx+qw-pad-w:qx+pad)+ox; const y=y0+li*lh;
     if(!tr){g.fillText(l,x,y);return;}
     for(let i=0;i<l.length;i++){g.fillText(l[i],x,y);x+=g.measureText(l[i]).width+tr;}
   });
@@ -3881,10 +3880,16 @@ function typeControls(b,multi){
     </div>
     <div class="seg" data-bseg="kern"><button data-v="metrics"${on(kern,'metrics')}>Metrics</button><button data-v="optical"${on(kern,'optical')}>Optical</button><button data-v="none"${on(kern,'none')}>No kern</button></div>
     <div class="seg" data-bseg="caps"><button data-v="none"${on(caps,'none')}>As typed</button><button data-v="upper"${on(caps,'upper')}>UPPER</button><button data-v="lower"${on(caps,'lower')}>lower</button></div>
-    <div class="seg" data-bseg="align"><button data-v="tl"${on(b.align,'tl')}>Top left</button><button data-v="center"${on(b.align,'center')}>Centre</button><button data-v="bl"${on(b.align,'bl')}>Bottom left</button></div>
-    ${numF('Padding','pad',b.pad,0)}`;
+    <div class="field"><span class="lbl">Position</span>${posGrid(b.align,'data-bseg="align"')}</div>
+    <div class="field3">
+      <div class="field"><span class="lbl scrub" title="Distance from the block edge">Padding</span><div class="num"><input type="number" data-f="pad" value="${+b.pad||0}" min="0" step="1"></div></div>
+      <div class="field"><span class="lbl scrub" title="Nudge right (+) or left (−)">Offset X</span><div class="num"><input type="number" data-f="offX" value="${+b.offX||0}" step="1"></div></div>
+      <div class="field"><span class="lbl scrub" title="Nudge down (+) or up (−)">Offset Y</span><div class="num"><input type="number" data-f="offY" value="${+b.offY||0}" step="1"></div></div>
+    </div>`;
 }
-function globalStyleLine(){const t=D.text;return `${esc(t.family)} ${esc(t.style)} · ${t.size}px · ${({tl:'top left',center:'centre',bl:'bottom left'})[t.align]||t.align}${t.caps==='upper'?' · UPPER':''}`;}
+function posGrid(cur,attr){cur=cur||'center';const ks=['tl','tc','tr','ml','center','mr','bl','bc','br'],nm={tl:'Top left',tc:'Top centre',tr:'Top right',ml:'Middle left',center:'Centre',mr:'Middle right',bl:'Bottom left',bc:'Bottom centre',br:'Bottom right'};
+  return `<div class="posgrid" ${attr}>${ks.map(k=>`<button data-v="${k}" title="${nm[k]}"${k===cur?' class="on"':''}><i></i></button>`).join('')}</div>`;}
+function globalStyleLine(){const t=D.text;return `${esc(t.family)} ${esc(t.style)} · ${t.size}px · ${({tl:'top left',tc:'top centre',tr:'top right',ml:'middle left',center:'centre',mr:'middle right',bl:'bottom left',bc:'bottom centre',br:'bottom right'})[t.align]||t.align}${t.caps==='upper'?' · UPPER':''}`;}
 function styleBlock(b,multi){
   const own=multi?multi.every(x=>x.ownStyle):!!b.ownStyle;
   return `<label class="check"><input type="checkbox" data-bown="1"${own?'':' checked'}> Use the global text style</label>
@@ -3933,7 +3938,7 @@ function renderInsp(){
   const el=$('#insp'), st=STEPS[U.step], ids=tlSelIds();
   if(U.ctx||(!ids.length&&!U.sel)){el.innerHTML='';return;}
   const a=document.activeElement;
-  if(a&&el.contains(a)&&(a.tagName==='TEXTAREA'||(a.tagName==='INPUT'&&a.type!=='color'))) return;
+  if(a&&el.contains(a)&&(a.tagName==='TEXTAREA'||(a.tagName==='INPUT'&&!/^(color|checkbox|radio|button)$/.test(a.type)))) return;
   const G=geom(), sel=selBlocks(); let h='';
   if(U.sel) h+=cardCells(G);
   else {
@@ -3985,6 +3990,7 @@ $('#insp').addEventListener('input',e=>{
   if(f==='leading'){sel.forEach(b=>b.leading=clamp(v,0,5000));render();return;}
   if(f==='tracking'){sel.forEach(b=>b.tracking=clamp(v,-1000,5000));render();return;}
   if(f==='pad'){sel.forEach(b=>b.pad=clamp(v,0,2000));render();return;}
+  if(f==='offX'||f==='offY'){sel.forEach(b=>b[f]=clamp(v,-5000,5000));render();return;}
   if(f==='mw'||f==='mh'){
     const G=geom(); let skip=0;
     sel.forEach(b=>{const n={c:b.c,r:b.r,w:f==='mw'?Math.max(1,v):b.w,h:f==='mh'?Math.max(1,v):b.h};
@@ -4000,7 +4006,7 @@ $('#insp').addEventListener('change',e=>{
   if(e.target.dataset&&e.target.dataset.bnum){const s2=ensureReal();pushHist();s2.forEach(b=>b.num=e.target.checked);fillCache.clear();refresh();return;}
   if(e.target.dataset&&e.target.dataset.bfill){const s2=ensureReal();pushHist();s2.forEach(b=>b.noFill=!e.target.checked);fillCache.clear();refresh();return;}
   if(e.target.dataset&&e.target.dataset.bown){const s2=ensureReal();if(!s2.length)return;pushHist();const own=!e.target.checked;
-    s2.forEach(b=>{ if(own&&!b.ownStyle){ b.fontSize=D.text.size;b.align=D.text.align;b.pad=D.text.pad;TEXT_KEYS.forEach(k=>b[k]=D.text[k]); } b.ownStyle=own; });
+    s2.forEach(b=>{ if(own&&!b.ownStyle){ b.fontSize=D.text.size;b.align=D.text.align;b.pad=D.text.pad;b.offX=+D.text.offX||0;b.offY=+D.text.offY||0;TEXT_KEYS.forEach(k=>b[k]=D.text[k]); } b.ownStyle=own; });
     renderInsp();render();return;}
   const tf=e.target.dataset&&e.target.dataset.tf;
   if(tf){const sel=ensureReal();if(!sel.length)return;pushHist();
@@ -4448,7 +4454,7 @@ function virtualAt(G,cell){
 /* ------------------------------------------------------------------ content quick actions */
 $('#btnNumber').onclick=()=>{pushHist();ordered(geom()).forEach(b=>b.text=String(b.order).padStart(2,'0'));refresh();};
 $('#btnClearText').onclick=()=>{if(!D.blocks.some(b=>b.text))return toast('No text to clear');pushHist();D.blocks.forEach(b=>b.text='');refresh();toast('Cleared all text','',true);};
-$('#btnApplyStyle').onclick=()=>{pushHist();D.blocks.forEach(b=>{b.fontSize=D.text.size;b.align=D.text.align;b.pad=D.text.pad;TEXT_KEYS.forEach(k=>b[k]=D.text[k]);});refresh();toast('Applied to all blocks','',true);};
+$('#btnApplyStyle').onclick=()=>{pushHist();D.blocks.forEach(b=>{b.fontSize=D.text.size;b.align=D.text.align;b.pad=D.text.pad;b.offX=D.text.offX;b.offY=D.text.offY;TEXT_KEYS.forEach(k=>b[k]=D.text[k]);});refresh();toast('Applied to all blocks','',true);};
 $('#fontFam').addEventListener('change',e=>{pushHist(true);setFamily(D.text,e.target.value.trim());
   if($('#chkStyleSel').checked&&STEPS[U.step].id==='content') selBlocks().forEach(b=>setFamily(b,D.text.family));
   renderFontUI();refresh();});
@@ -5436,7 +5442,7 @@ function payload(){
   const blocks=P.seq.map(b=>{
     const q=cellRect(G,b.c,b.r,b.w,b.h);
     return{name:bname(b),order:b.order,c:b.c+1,r:b.r+1,w:b.w,h:b.h,x:r3(q.x),y:r3(q.y),bw:r3(q.w),bh:r3(q.h),
-      color:hexRgb(b.color),text:casedText(txtStyle(b)).replace(/\n/g,'\r'),fontSize:txtStyle(b).fontSize,textColor:hexRgb(b.textColor),align:txtStyle(b).align,pad:txtStyle(b).pad,
+      color:hexRgb(b.color),text:casedText(txtStyle(b)).replace(/\n/g,'\r'),fontSize:txtStyle(b).fontSize,textColor:hexRgb(b.textColor),align:txtStyle(b).align,pad:txtStyle(b).pad,offX:+txtStyle(b).offX||0,offY:+txtStyle(b).offY||0,
       font:txtStyle(b).font||'',tracking:+txtStyle(b).tracking||0,leading:+txtStyle(b).leading||0,kern:txtStyle(b).kern||'metrics',
       num:numOn(b)?(()=>{const s=numStr(NUMS[b.id]||0),q2=cellRect(G,b.c,b.r,b.w,b.h),L=numLayout(q2,s);return {text:s,x:r3(L.x),y:r3(L.y),size:L.size,color:hexRgb(D.num.color),font:D.fill.font,opacity:clamp(+D.num.opacity||100,0,100),keys:animOn&&P.tracks[b.id]&&P.tracks[b.id].num&&P.tracks[b.id].num.length?P.tracks[b.id].num.map(k=>[k[0],r3(k[1]*clamp(+D.num.opacity||100,0,100)/100),k[2],k[3]]):null};})():null,
       keys:animOn?P.tracks[b.id]:null, tIn:animOn?Math.round(P.T[P.seq.indexOf(b)]):null, tOut:exitEnd(P,P.seq.indexOf(b),animOn)};
@@ -5465,7 +5471,7 @@ function payload(){
   });
   // manual order: blocks you didn't pick but chose to keep visible
   P.statics.forEach(b=>{const q=cellRect(G,b.c,b.r,b.w,b.h);blocks.push({name:bname(b),order:0,c:b.c+1,r:b.r+1,w:b.w,h:b.h,x:r3(q.x),y:r3(q.y),bw:r3(q.w),bh:r3(q.h),
-    color:hexRgb(b.color),text:casedText(txtStyle(b)).replace(/\n/g,'\r'),fontSize:txtStyle(b).fontSize,textColor:hexRgb(b.textColor),align:txtStyle(b).align,pad:txtStyle(b).pad,font:txtStyle(b).font||'',tracking:+txtStyle(b).tracking||0,leading:+txtStyle(b).leading||0,kern:txtStyle(b).kern||'metrics',keys:null});});
+    color:hexRgb(b.color),text:casedText(txtStyle(b)).replace(/\n/g,'\r'),fontSize:txtStyle(b).fontSize,textColor:hexRgb(b.textColor),align:txtStyle(b).align,pad:txtStyle(b).pad,offX:+txtStyle(b).offX||0,offY:+txtStyle(b).offY||0,font:txtStyle(b).font||'',tracking:+txtStyle(b).tracking||0,leading:+txtStyle(b).leading||0,kern:txtStyle(b).kern||'metrics',keys:null});});
   // echoes
   const E=D.echo; let echoes=[];
   if(E.on&&(E.fill||(E.stroke&&+E.sw>0))){

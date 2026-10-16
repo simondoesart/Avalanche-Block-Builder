@@ -190,12 +190,12 @@ function GB_text(comp,B,b){
     else if(b.kern=="none") td.autoKernType=AutoKernType.NO_AUTO_KERN;
     else td.autoKernType=AutoKernType.METRIC_KERN;
   }catch(eK){}
-  td.justification=(b.align=="center")?ParagraphJustification.CENTER_JUSTIFY:ParagraphJustification.LEFT_JUSTIFY;
+  var al=b.align||"center", ph=al=="center"?"c":(al.charAt(1)=="c"?"c":al.charAt(1)=="r"?"r":"l"), pv=al=="center"?"m":(al.charAt(0)=="m"?"m":al.charAt(0)=="b"?"b":"t");
+  td.justification=ph=="c"?ParagraphJustification.CENTER_JUSTIFY:ph=="r"?ParagraphJustification.RIGHT_JUSTIFY:ParagraphJustification.LEFT_JUSTIFY;
   p.setValue(td);
-  var r=T.sourceRectAtTime(0,false), ap, pos;
-  if(b.align=="center"){ap=[r.left+r.width/2,r.top+r.height/2];pos=[b.x+b.bw/2,b.y+b.bh/2];}
-  else if(b.align=="bl"){ap=[r.left,r.top+r.height];pos=[b.x+b.pad,b.y+b.bh-b.pad];}
-  else{ap=[r.left,r.top];pos=[b.x+b.pad,b.y+b.pad];}
+  var r=T.sourceRectAtTime(0,false), pad=b.pad||0, ox=b.offX||0, oy=b.offY||0;
+  var ap=[ph=="c"?r.left+r.width/2:ph=="r"?r.left+r.width:r.left, pv=="m"?r.top+r.height/2:pv=="b"?r.top+r.height:r.top];
+  var pos=[(ph=="c"?b.x+b.bw/2:ph=="r"?b.x+b.bw-pad:b.x+pad)+ox, (pv=="m"?b.y+b.bh/2:pv=="b"?b.y+b.bh-pad:b.y+pad)+oy];
   GB_xf(T).property("ADBE Anchor Point").setValue(ap);
   GB_xf(T).property("ADBE Position").setValue(pos);
   T.parent=B;

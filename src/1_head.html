@@ -488,6 +488,12 @@ button.mini:hover{color:var(--text)}
 .xfx .note{font-size:10.5px}
 .iconset.px button svg{shape-rendering:crispEdges}
 .lcol{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:0}
+.posgrid{display:grid;grid-template-columns:repeat(3,24px);gap:3px;justify-content:end}
+.posgrid button{width:24px;height:20px;border:1px solid var(--line2);background:var(--field);border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.posgrid button i{width:6px;height:6px;border-radius:1px;background:var(--dim)}
+.posgrid button:hover i{background:var(--text)}
+.posgrid button.on{border-color:var(--accent);background:var(--accentA)}
+.posgrid button.on i{background:var(--accent)}
 .checkgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 10px}
 .num input[type=number]{cursor:ns-resize}
 .num input[type=number]:focus{cursor:text}
@@ -1101,8 +1107,11 @@ body.nohelp .qm{display:none}
             </div>
             <div class="field stack"><span class="lbl">Kerning</span><div class="seg" data-seg="text.kern"><button data-v="metrics">Metrics</button><button data-v="optical">Optical</button><button data-v="none">Off</button></div></div>
             <div class="field stack"><span class="lbl">Case</span><div class="seg" data-seg="text.caps"><button data-v="none">As typed</button><button data-v="upper">UPPER</button><button data-v="lower">lower</button></div></div>
-            <div class="field"><span class="lbl">Position</span>
-              <div class="seg" data-seg="text.align"><button data-v="tl">Top left</button><button data-v="center">Centre</button><button data-v="bl">Bottom left</button></div></div>
+            <div class="field"><span class="lbl">Position</span><div class="posgrid" data-seg="text.align"><button data-v="tl" title="Top left"><i></i></button><button data-v="tc" title="Top centre"><i></i></button><button data-v="tr" title="Top right"><i></i></button><button data-v="ml" title="Middle left"><i></i></button><button data-v="center" title="Centre"><i></i></button><button data-v="mr" title="Middle right"><i></i></button><button data-v="bl" title="Bottom left"><i></i></button><button data-v="bc" title="Bottom centre"><i></i></button><button data-v="br" title="Bottom right"><i></i></button></div></div>
+            <div class="field2">
+              <div class="field"><span class="lbl scrub" title="Nudge right (+) or left (−)">Offset X</span><div class="num"><input type="number" data-bind="text.offX" min="-5000" max="5000" step="1"><span class="unit">px</span></div></div>
+              <div class="field"><span class="lbl scrub" title="Nudge down (+) or up (−)">Offset Y</span><div class="num"><input type="number" data-bind="text.offY" min="-5000" max="5000" step="1"><span class="unit">px</span></div></div>
+            </div>
             <div class="field"><span class="lbl scrub">Padding</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="text.pad" min="0" max="500" step="1"><span class="unit">px</span><button data-d="1">+</button></div></div>
             <label class="check"><input type="checkbox" id="chkStyleSel" checked> Changes here also restyle the selected blocks</label>
             <button class="btn wide" id="btnApplyStyle">Apply style to all blocks</button>
