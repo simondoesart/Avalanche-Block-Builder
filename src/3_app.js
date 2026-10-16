@@ -84,7 +84,7 @@ const stepVisible=i=>{try{if(/[?&]steps=all/.test(location.search||'')||localSto
 const nextVisible=(i,d)=>{for(let j=i+d;j>=0&&j<STEPS.length;j+=d) if(stepVisible(j)) return j; return -1;};
 const STEPS=[
   {id:'grid',name:'Setup',title:'Comp, grid & look',desc:'Rows always fit the comp height. Squares can run off the sides.',tools:['hand'],tool:'hand',insp:false},
-  {id:'layout',name:'Blocks',title:'Generate the line',desc:'Pick a block size and generate a walking line from a seed. Then drag any block on the canvas, or retime it on the timeline.',tools:['select','stamp','draw','erase','paint','hand'],tool:'select',insp:true},
+  {id:'layout',name:'Blocks',title:'Generate the line',desc:'Pick a block size and generate a walking line from a seed. Then drag any block on the canvas, or retime it on the timeline.',tools:['select','stamp','draw','erase','hand'],tool:'select',insp:true},
   {id:'animate',name:'Motion',title:'Camera, reveal & exit',desc:'How the view moves and how blocks appear and leave. When things happen lives on the timeline.',tools:['select','order','hand'],tool:'select',insp:true},
   {id:'content',name:'Content',title:'Content overlays',desc:'Each overlay has its own tab. They show up as rows on the timeline.',tools:['select','paint','hand'],tool:'select',insp:true},
   {id:'transitions',name:'Transitions',title:'Transition in & out',desc:'Blocks that fill the frame to bring the scene in and take it out. “Walk” transitions grow out of the line itself.',tools:['hand'],tool:'hand',insp:false},
@@ -797,6 +797,7 @@ function setDoc(obj){
   D=merge(clone(DEF),obj);
   if(obj&&(obj.v|0)<5&&D.rand&&+D.rand.stackGap===1) D.rand.stackGap=0;   // older layouts: pair gap follows the block height
   D.v=DEF.v;
+  D.blockColors=obj&&obj.blockColors&&typeof obj.blockColors==='object'?Object.assign({},obj.blockColors):{};
   if(obj&&obj.anim) ['dt','dx'].forEach(k=>{const m=obj.anim[k];D.anim[k]=m&&typeof m==='object'&&!Array.isArray(m)?Object.assign({},m):{};});
   if(!Array.isArray(D.palette)||!D.palette.length) D.palette=PALETTE.slice();
   D.blocks=(Array.isArray(obj.blocks)?obj.blocks:[]).map(normBlock);
@@ -1333,6 +1334,7 @@ function computePlan(G){
   }
   const skip=new Set((A.skip||[]).map(Number));
   let seq=base.concat(exts.filter(b=>!skip.has(b.id)));
+  { const BC=D.blockColors||{}; seq.forEach(b=>{ if(b.virtual&&BC[b.id]){ b.color=BC[b.id]; b.textColor=contrast(b.color); } }); }   // colours picked for single generated blocks
   if(skip.size&&WO&&P._woMore!=null) P._woMore=exts.filter(b=>b.id<=-100000&&!skip.has(b.id)).length;
   seq.forEach((b,i)=>{if(b.virtual)b.order=i+1;});
   let gi=[], ng=0;
@@ -3078,7 +3080,7 @@ function clampCell(G,c){return{c:clamp(c.c,G.cLo,G.cHi),r:clamp(c.r,G.rLo,G.rHi)
 
 cv.addEventListener('pointerdown',e=>{
   cv.setPointerCapture(e.pointerId);
-  if(U.preview&&!U.playing&&STEPS[U.step].id==='layout'&&!U.space&&e.button===0&&U.tool!=='hand'){U.preview=false;refresh();}   // back to every block for editing
+  if(U.preview&&!U.playing&&STEPS[U.step].id==='layout'&&!U.space&&e.button===0&&U.tool!=='hand'&&U.tool!=='select'){U.preview=false;refresh();}   // back to every block for editing
   if(U.space) U.spacePanned=true;
   if(e.button===1||e.button===2||U.space||U.tool==='hand'){
     U.drag={type:'pan',x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY};cv.classList.add('grabbing');return;
@@ -3092,6 +3094,7 @@ cv.addEventListener('pointerdown',e=>{
   if(b&&isGenerated()&&(plan(G).lineShift||0)) b=null;   // the line is drawn slid up/down: hit-test the drawn blocks instead
   const tool=U.tool;
   if(U.pickStart){ finishPickStart(cell); return; }
+  if((tool==='stamp'||tool==='draw'||tool==='erase')&&isGenerated()&&e.button===0){ if(materialize()){ U.preview=false; b=inR?blockAt(cell.c,cell.r):null; } }
   if(tool==='select'&&!b&&inR&&!e.shiftKey){ const vb=virtualAt(G,cell);
     if(vb){ U.dopeSel=[vb.id]; U.selIds=[]; U.sel=null; U.ctx=null;
       if(!animActive()) U.drag={type:'vmove',vid:vb.id,sc:cell.c,sr:cell.r};
@@ -3159,7 +3162,7 @@ cv.addEventListener('pointermove',e=>{
       if(cell.c===d.sc&&cell.r===d.sr) return;
       const map=materialize(); const nid=map&&map[d.vid]; const nb=nid!=null?byId(nid):null;
       if(!nb){U.drag=null;refresh();return;}
-      H.r=[]; U.selIds=[nb.id]; U.dopeSel=[nb.id];
+      H.r=[]; U.selIds=[nb.id]; U.dopeSel=[nb.id]; U.preview=false;
       U.drag={type:'move',ids:[nb.id],sc:d.sc,sr:d.sr,orig:[[nb.c,nb.r]],moved:true,bad:false}; cv.classList.add('grabbing');
       d=U.drag;
     }
@@ -3230,7 +3233,8 @@ function endDrag(e){
   if(d.type==='move'){
     if(d.bad){d.ids.forEach((id,i)=>{const b=byId(id);b.c=d.orig[i][0];b.r=d.orig[i][1];});H.u.pop();updUndo();toast('That spot overlaps another block');}
     refresh();
-  } else if(d.type==='draw'){ const s=normSel(); U.sel=null; mergeRect(s); }
+  } else if(d.type==='sel'&&U.sel&&U.sel.c0===U.sel.c1&&U.sel.r0===U.sel.r1){ U.sel=null; refresh(); }
+  else if(d.type==='draw'){ const s=normSel(); U.sel=null; mergeRect(s); }
   else if(d.type==='erase'){ eraseRect(normSel()); }
   else refresh();
 }
@@ -3294,6 +3298,7 @@ function applySwatch(key,c,fromPicker){
     if(sync) D.blocks.forEach(b=>{if(b.color.toUpperCase()===String(old).toUpperCase()&&(key==='block.color'?!b.echo:true)){const auto=b.textColor===contrast(b.color);b.color=c;if(auto)b.textColor=contrast(c);}});
   } else {
     const sel=selBlocks();
+    if(key==='sel.color'){ D.blockColors=D.blockColors||{}; tlSelIds().forEach(id=>{ if(!byId(id)) D.blockColors[id]=c; }); planCache.k=''; }
     sel.forEach(b=>{
       if(key==='sel.color'){const auto=b.textColor===contrast(b.color);b.color=c;if(auto)b.textColor=contrast(c);}
       if(key==='sel.textColor') b.textColor=c;
@@ -3418,7 +3423,8 @@ function renderInsp(){
   if(U.sel) h+=cardCells(G);
   else {
     if(st.id==='content'){ if(sel.length===1) h+=cardContent(sel[0]); else if(sel.length>1) h+=cardContentMulti(sel); }
-    else { if(sel.length===1) h+=cardBlock(G,sel[0]); else if(sel.length>1) h+=cardMulti(sel); }
+    else { if(sel.length===1) h+=cardBlock(G,sel[0]); else if(sel.length>1) h+=cardMulti(sel);
+      else { const P=plan(G), b0=P.seq.find(x=>x.id===ids[0]); h+=`<div class="card"><div class="card-h">Colour<span class="r note">${ids.length>1?ids.length+' blocks':''}</span></div><div class="swatches">${swatchHTML(b0?b0.color:D.block.color,'sel.color')}</div>${Object.keys(D.blockColors||{}).some(k=>ids.indexOf(+k)>=0)?'<button class="btn ghost" data-act="colreset">Back to the line colour</button>':''}</div>`; } }
     h+=cardTiming(G,ids);
   }
   el.innerHTML=h;
@@ -3493,6 +3499,7 @@ $('#insp').addEventListener('click',e=>{
   const seg=t.closest('[data-bseg]');
   if(seg&&t.dataset.v){pushHist();selBlocks().forEach(b=>b[seg.dataset.bseg]=t.dataset.v);refresh();return;}
   const a=t.dataset.act;
+  if(a==='colreset'){pushHist(true);tlSelIds().forEach(id=>{if(D.blockColors)delete D.blockColors[id];});planCache.k='';refresh();return;}
   if(a==='numreset'){pushHist();selBlocks().forEach(b=>{delete b.num;});fillCache.clear();refresh();return;}
   if(a==='reroll'){pushHist();selBlocks().forEach(b=>b.fillSeed=(b.fillSeed||0)+1);fillCache.clear();refresh();return;}
   if(a==='samecol'){const c=(selBlocks()[0]||{}).color;select(D.blocks.filter(b=>b.color===c).map(b=>b.id));refresh();return;}
@@ -3900,6 +3907,7 @@ function materialize(){
     const n=newBlock(b.c,b.r,b.w,b.h,b.color); n.stack=!!b.stack; n.textColor=b.textColor; map[b.id]=n.id; D.blocks.push(n);
   });
   ['dt','dx'].forEach(k=>{const m=D.anim[k]||{};Object.keys(m).forEach(id=>{if(map[id]!=null){m[map[id]]=m[id];delete m[id];}});});
+  if(D.blockColors) Object.keys(D.blockColors).forEach(id=>{ if(+id<0) delete D.blockColors[id]; });   // baked into the new blocks
   U.dopeSel=(U.dopeSel||[]).map(id=>map[id]!=null?map[id]:id);
   D.grid.overX=ox; D.grid.overY=oy; D.anim.extendOn=false; D.anim.skip=[]; D.anim.cutAt=null;
   planCache.k=''; syncInputs(true);
