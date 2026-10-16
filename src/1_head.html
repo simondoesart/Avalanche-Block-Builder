@@ -1208,7 +1208,24 @@ body.nohelp .qm{display:none}
             <div class="field"><span class="lbl scrub" title="Scene length. Empty = the blocks play at their own speed; set a length to squeeze or stretch everything into it">Scene length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.remapLen" data-zero="auto" min="0" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
             <div class="row-btns"><button class="btn" id="btnRetimeComp" title="Make the scene end when the comp ends">Fit to the comp length</button><button class="btn" id="btnSceneAuto" title="Play the blocks at their own speed">Blocks' own speed</button></div>
             <div class="field"><span class="lbl scrub" title="Negative = the scene is already running when the comp starts">Starts at</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.startF" min="-9999" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-            <div class="curve" data-curve="anim.sceneCurve" data-ymin="0" data-ymax="1" data-title="Time remap · x = scene time, y = how far through the blocks (On · Hold · Off). Flat = holds, steep = fast"></div>
+            <div class="field stack"><span class="lbl">Easing</span><div class="seg" data-seg="anim.sceneEase.on"><button data-v="true">Simple</button><button data-v="false">Custom curve</button></div></div>
+            <div data-show="anim.sceneEase.on=true" style="display:grid;gap:9px">
+              <div class="note">Drag the <b style="color:#FF7F7B">red</b> and <b style="color:#9fbbe6">blue</b> squares on the Scene curve to set where the build finishes and where the blocks start leaving. The ease amounts set how gently each change happens.</div>
+              <div class="field2">
+                <div class="field"><span class="lbl scrub" title="Where the build finishes, % through the scene (empty = natural)">On done at</span><div class="num"><input type="number" data-bind="anim.sceneEase.onAt" data-zero="auto" min="0" max="100" step="1"><span class="unit">%</span></div></div>
+                <div class="field"><span class="lbl scrub" title="Where the blocks start leaving, % through the scene (empty = natural)">Off starts at</span><div class="num"><input type="number" data-bind="anim.sceneEase.holdAt" data-zero="auto" min="0" max="100" step="1"><span class="unit">%</span></div></div>
+              </div>
+              <div class="row-btns"><button class="btn" id="btnEaseAuto" title="Put On done / Off starts back where the blocks naturally have them">Natural positions</button></div>
+              <div class="field2">
+                <div class="field"><span class="lbl scrub" title="How gently the scene starts (0 = straight in)">Start ease</span><div class="num"><input type="number" data-bind="anim.sceneEase.start" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+                <div class="field"><span class="lbl scrub" title="How softly the build slows into the hold">Into hold</span><div class="num"><input type="number" data-bind="anim.sceneEase.land" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+              </div>
+              <div class="field2">
+                <div class="field"><span class="lbl scrub" title="How softly the blocks pick up speed as they start leaving">Out of hold</span><div class="num"><input type="number" data-bind="anim.sceneEase.leave" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+                <div class="field"><span class="lbl scrub" title="How gently the scene ends">End ease</span><div class="num"><input type="number" data-bind="anim.sceneEase.end" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+              </div>
+            </div>
+            <div data-show="anim.sceneEase.on=false"><div class="curve" data-curve="anim.sceneCurve" data-ymin="0" data-ymax="1" data-title="Time remap · x = scene time, y = how far through the blocks (On · Hold · Off). Flat = holds, steep = fast"></div></div>
             <div data-adv class="field stack"><span class="lbl">Motion</span><div class="seg" data-seg="anim.motion"><button data-v="smooth">Smooth</button><button data-v="stop">Stop-motion</button></div></div><div class="field" data-show="anim.motion=stop"><span class="lbl scrub">Hold</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.stepEvery" min="1" max="60" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
           </div>
           <div class="group" data-ctx="camera" data-show="anim.mode=camera|push">
