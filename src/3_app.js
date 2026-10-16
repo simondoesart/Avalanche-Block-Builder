@@ -82,13 +82,13 @@ const U={step:0,ctx:null,ctab:'hud',dopeSel:[],mbPrev:true,tool:'select',sel:nul
 const SI=id=>STEPS.findIndex(s=>s.id===id);
 /* steps shown while we workshop the UX one step at a time — add ids to bring a step back.
    ?steps=all in the URL (or localStorage gridblocks.steps='all') shows everything */
-const VISIBLE_STEPS=['grid','layout','content'];
+const VISIBLE_STEPS=['grid','layout','animate','content'];
 const stepVisible=i=>{try{if(/[?&]steps=all/.test(location.search||'')||localStorage.getItem('gridblocks.steps')==='all')return true;}catch(e){} return !!STEPS[i]&&VISIBLE_STEPS.indexOf(STEPS[i].id)>=0;};
 const nextVisible=(i,d)=>{for(let j=i+d;j>=0&&j<STEPS.length;j+=d) if(stepVisible(j)) return j; return -1;};
 const STEPS=[
   {id:'grid',name:'Setup',title:'Comp, grid & look',desc:'Rows always fit the comp height. Squares can run off the sides.',tools:['hand'],tool:'hand',insp:false},
   {id:'layout',name:'Blocks',title:'Generate the line',desc:'Pick a block size and generate a walking line from a seed. Then drag any block on the canvas, or retime it on the timeline.',tools:['select','stamp','draw','hand'],tool:'select',insp:true},
-  {id:'animate',name:'Motion',title:'Camera, reveal & exit',desc:'How the view moves and how blocks appear and leave. When things happen lives on the timeline.',tools:['select','order','hand'],tool:'select',insp:true},
+  {id:'animate',name:'Motion',title:'Camera, reveal & exit',desc:'How the view moves and how blocks appear and leave. When things happen lives on the timeline.',tools:['select','hand'],tool:'select',insp:true},
   {id:'content',name:'Content',title:'Content overlays',desc:'Each overlay has its own tab. They show up as rows on the timeline.',tools:['select','hand'],tool:'select',insp:true},
   {id:'transitions',name:'Transitions',title:'Transition in & out',desc:'Blocks that fill the frame to bring the scene in and take it out. “Walk” transitions grow out of the line itself.',tools:['hand'],tool:'hand',insp:false},
   {id:'lab',name:'Lab',title:'Lab · experiments',desc:'Momentum effects to try out. Each card says how far along it is and whether it builds in After Effects.',tools:['hand'],tool:'hand',insp:false},
@@ -1103,7 +1103,7 @@ function setDoc(obj){
   if(obj&&obj.anim){ // older layouts
     if(obj.anim.motion==='step'){obj.anim.motion='smooth';obj.anim.camMove='step';}
     if(obj.anim.extendFill){obj.anim.ending='fill';}
-    if(obj.anim.camMove==='steady') obj.anim.camMove='follow';
+    if(obj.anim.camMove==='steady'||obj.anim.camMove==='follow') obj.anim.camMove='curve';   // 'Glide behind' retired: the camera moves with the blocks
     if(obj.anim.ending==='fill'){obj.anim.ending='count';obj.anim.toEnd=true;}
     if(obj.anim.sceneLen==null&&obj.anim.interval!=null){
       const fps=(obj.comp&&obj.comp.fps)||30, n=(obj.blocks?obj.blocks.filter(b=>!b.echo).length:8)+(obj.anim.extendN||0);
@@ -4271,7 +4271,7 @@ function refresh(){
   if(STEPS[U.step].id==='animate'){
     const P=plan(G), fps=c.fps||30;
     renderZoomList(P);
-    $('#animReadout').innerHTML=P.seq.length?`Preview length <b>${fmtT(P.end,fps)}</b> (${P.end} frames, includes a short hold at the end)${P.zs.length?`<br>Grid goes to ${Math.round(G.R/(P.sMin||1))} rows at its widest`:''}${c.dur*fps<P.end?`<br><span class="warn">Longer than the comp (${fmtT(c.dur*fps,fps)}).</span>${D.out.fitDur?' The comp will be lengthened.':''}`:''}`:'Add some blocks first.';
+    if($('#animReadout')) $('#animReadout').innerHTML=P.seq.length?`Preview length <b>${fmtT(P.end,fps)}</b> (${P.end} frames, includes a short hold at the end)${P.zs.length?`<br>Grid goes to ${Math.round(G.R/(P.sMin||1))} rows at its widest`:''}${c.dur*fps<P.end?`<br><span class="warn">Longer than the comp (${fmtT(c.dur*fps,fps)}).</span>${D.out.fitDur?' The comp will be lengthened.':''}`:''}`:'Add some blocks first.';
     $('#camHead').textContent=D.anim.mode==='push'?'· conveyor (grid slides, view stays)':'';
   }
   if(STEPS[U.step].id==='build') renderBuildSummary(G);
@@ -4398,8 +4398,8 @@ function virtualAt(G,cell){
   if(!isGenerated()) return null; const P=plan(G);
   return P.seq.find(b=>(b.virtual||b._shift)&&cell.c>=b.c&&cell.c<b.c+b.w&&cell.r>=b.r&&cell.r<b.r+b.h)||null;
 }
-$('#lnkRestartOrder').onclick=e=>{e.preventDefault();pushHist(true);D.blocks.forEach(b=>b.mo=0);U.moNext=1;U.tool='order';refresh();};
-$('#lnkReshuffleOrder').onclick=e=>{e.preventDefault();pushHist(true);D.anim.orderSeed=Math.floor(Math.random()*1e5);refresh();};
+($('#lnkRestartOrder')||{}).onclick=e=>{e.preventDefault();pushHist(true);D.blocks.forEach(b=>b.mo=0);U.moNext=1;U.tool='order';refresh();};
+($('#lnkReshuffleOrder')||{}).onclick=e=>{e.preventDefault();pushHist(true);D.anim.orderSeed=Math.floor(Math.random()*1e5);refresh();};
 
 /* ------------------------------------------------------------------ content quick actions */
 $('#btnNumber').onclick=()=>{pushHist();ordered(geom()).forEach(b=>b.text=String(b.order).padStart(2,'0'));refresh();};
@@ -4439,8 +4439,8 @@ document.addEventListener('click',e=>{
   else if(t.dataset.all){ const c=t.dataset.all, ks=catKeys(c), on=ks.every(k=>catGet(c,k)); ks.forEach(k=>catSet(c,k,!on)); D.fill.look='custom'; }
   fillCache.clear(); syncInputs(true); refresh();
 },true);
-$('#camPreset').addEventListener('click',e=>{const b=e.target.closest('[data-p]');if(!b)return;const p=b.dataset.p.split(',').map(Number);pushHist(true);Object.assign(D.anim,{smooth:p[0],motionBlurF:p[1],settle:p[2]});syncInputs();refresh();});
-$('#zonePreset').addEventListener('click',e=>{const b=e.target.closest('[data-z]');if(!b)return;pushHist(true);D.anim.revealX=+b.dataset.z;syncInputs();refresh();});
+($('#camPreset')||{addEventListener(){}}).addEventListener('click',e=>{const b=e.target.closest('[data-p]');if(!b)return;const p=b.dataset.p.split(',').map(Number);pushHist(true);Object.assign(D.anim,{smooth:p[0],motionBlurF:p[1],settle:p[2]});syncInputs();refresh();});
+($('#zonePreset')||{addEventListener(){}}).addEventListener('click',e=>{const b=e.target.closest('[data-z]');if(!b)return;pushHist(true);D.anim.revealX=+b.dataset.z;syncInputs();refresh();});
 $('#endPreset').addEventListener('click',e=>{const b=e.target.closest('[data-ex]');if(!b)return;pushHist(true);D.anim.endX=+b.dataset.ex;syncInputs();refresh();});
 $('#btnResetAnim').onclick=()=>{pushHist(true);const keepZoom=D.anim.zoom;D.anim=clone(DEF.anim);U.t=null;syncInputs(true);refresh();toast('Animation settings reset','',true);};
 $('#btnResizeAll').onclick=resizeAll;
