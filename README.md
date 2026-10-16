@@ -265,3 +265,8 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - Motion is visible again (Setup → Blocks → Motion → Content).
 - Removed what the timeline now covers or that no longer applies: Glide-behind camera + its feel/follow settings, "hold still until centre", the camera speed graph (the Camera row on the timeline shows speed), "let go before the end" (follow only), the Order section + order tool (the generated line sets the order), and the preview-length readout.
 - Column-rule fade-at-end moved into Setup → Column rules. Old layouts using Glide behind open as "With the blocks".
+
+### v3.23 — Simple scene easing
+- The Scene curve now has a **Simple** mode (on by default). Drag the red square (On done) and the blue square (Off starts) left/right on the Scene row to set where the build finishes and where the blocks start leaving.
+- Four ease amounts in Scene settings: Start, Into hold, Out of hold, End. "On done at" / "Off starts at" can also be typed (empty = natural). "Natural positions" resets them.
+- **Custom curve** keeps the old free-form handles. Editing the curve by hand switches to Custom.
