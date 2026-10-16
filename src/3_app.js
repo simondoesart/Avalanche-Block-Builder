@@ -84,7 +84,7 @@ const stepVisible=i=>{try{if(/[?&]steps=all/.test(location.search||'')||localSto
 const nextVisible=(i,d)=>{for(let j=i+d;j>=0&&j<STEPS.length;j+=d) if(stepVisible(j)) return j; return -1;};
 const STEPS=[
   {id:'grid',name:'Setup',title:'Comp, grid & look',desc:'Rows always fit the comp height. Squares can run off the sides.',tools:['hand'],tool:'hand',insp:false},
-  {id:'layout',name:'Blocks',title:'Generate the line',desc:'Pick a block size and generate a walking line from a seed. Then drag any block on the canvas, or retime it on the timeline.',tools:['select','stamp','draw','erase','hand'],tool:'select',insp:true},
+  {id:'layout',name:'Blocks',title:'Generate the line',desc:'Pick a block size and generate a walking line from a seed. Then drag any block on the canvas, or retime it on the timeline.',tools:['select','stamp','draw','hand'],tool:'select',insp:true},
   {id:'animate',name:'Motion',title:'Camera, reveal & exit',desc:'How the view moves and how blocks appear and leave. When things happen lives on the timeline.',tools:['select','order','hand'],tool:'select',insp:true},
   {id:'content',name:'Content',title:'Content overlays',desc:'Each overlay has its own tab. They show up as rows on the timeline.',tools:['select','paint','hand'],tool:'select',insp:true},
   {id:'transitions',name:'Transitions',title:'Transition in & out',desc:'Blocks that fill the frame to bring the scene in and take it out. “Walk” transitions grow out of the line itself.',tools:['hand'],tool:'hand',insp:false},
@@ -830,7 +830,7 @@ function eraseRect(s){
 }
 function mergeSel(){if(!U.sel)return toast('Drag over squares first to select them');mergeRect(normSel());}
 function deleteSelected(){
-  if(U.sel) return eraseRect(normSel());
+  if(U.sel){ U.sel=null; refresh(); return; }
   const ids=U.selIds; if(!ids.length) return;
   pushHist(); D.blocks=D.blocks.filter(b=>ids.indexOf(b.id)<0); U.selIds=[]; refresh();
   toast(`Deleted ${ids.length} block${ids.length>1?'s':''}`,'',true);
@@ -3330,8 +3330,8 @@ function cardCells(G){
   return `<div class="card"><div class="card-h">Area selected</div>
     <div class="big">${s.w} × ${s.h} <span>squares</span></div>
     <div class="note">${Math.round(q.w)} × ${Math.round(q.h)} px · from ${colLabel(s.c)} ${rowLabel(s.r)}${n?` · covers ${n} block${n>1?'s':''}`:''}</div>
-    <div class="row-btns"><button class="btn primary" data-act="merge">Merge <kbd>M</kbd></button><button class="btn" data-act="erase" ${n?'':'disabled'}>Unmerge <kbd>Del</kbd></button></div>
-    <div class="note"><b>Merge</b> makes one block (it swallows any blocks inside). <b>Unmerge</b> breaks just these squares out of the blocks they touch.</div></div>`;
+    <div class="row-btns"><button class="btn primary" data-act="merge">Merge into one block <kbd>M</kbd></button></div>
+    <div class="note">Makes one block from these squares (it swallows any blocks inside).</div></div>`;
 }
 function cardBlock(G,b){
   const q=cellRect(G,b.c,b.r,b.w,b.h);
@@ -3686,7 +3686,7 @@ function setTool(t){
   if(t==='order'&&STEPS[U.step].id==='animate'){setTimeout(()=>{fitView('all');render();},0);}
   if(STEPS[U.step].tools.indexOf(t)<0){
     // jump to the step that owns this tool
-    if(t==='order') goStep(SI('animate')); else if(['stamp','draw','erase','paint'].indexOf(t)>=0) goStep(SI('layout')); else return;
+    if(t==='order') goStep(SI('animate')); else if(['stamp','draw'].indexOf(t)>=0) goStep(SI('layout')); else return;
   }
   U.tool=t; U.sel=t==='select'?U.sel:null; refresh();
 }
@@ -3703,7 +3703,7 @@ function renderStepUI(){
   const tp=$('#toolPill');
   if(tp){tp.className='toolpill'+(U.picking?' pick':'');tp.innerHTML=U.picking?`<span class="ic">◎</span>Picking end spot <span class="k">click a square</span>`:`<span class="ic">${ICON[U.tool]}</span>${TOOLS[U.tool].name} <span class="k">${TOOLS[U.tool].key}</span>`;}
   cv.className='t-'+U.tool+(U.space?' panning':'')+(U.drag&&(U.drag.type==='move'||U.drag.type==='pan')?' grabbing':'');
-  setHTML($('#toolcards'),['select','stamp','draw','erase'].map(t=>`<button class="toolcard${U.tool===t?' on':''}" data-tool="${t}"><span class="ic">${ICON[t]}</span><span><div class="t">${TOOLS[t].name}</div><div class="d">${TOOLS[t].desc}</div></span><kbd>${TOOLS[t].key}</kbd></button>`).join(''));
+  setHTML($('#toolcards'),['select','stamp','draw'].map(t=>`<button class="toolcard${U.tool===t?' on':''}" data-tool="${t}"><span class="ic">${ICON[t]}</span><span><div class="t">${TOOLS[t].name}</div><div class="d">${TOOLS[t].desc}</div></span><kbd>${TOOLS[t].key}</kbd></button>`).join(''));
 
   if(U.ctx==='sound'&&!U._mediaUI){U._mediaUI=1;renderMedia();}
   $('#hint').textContent=st.id==='grid'?'Scroll to pan · ⌘/Ctrl + scroll or pinch to zoom':TOOLS[U.tool].desc;
@@ -3749,7 +3749,7 @@ function updCtx(){
   let h='', quiet=true;
   if(U.sel&&U.tool==='select'&&!U.drag){
     const s=normSel(); quiet=false;
-    h=`<span class="msg"><b>${s.w} × ${s.h}</b> selected</span><button class="btn primary" data-act2="merge">Merge <kbd>M</kbd></button><button class="btn" data-act2="erase">Unmerge <kbd>Del</kbd></button><button class="btn ghost icon" data-act2="desel" title="Deselect (Esc)">✕</button>`;
+    h=`<span class="msg"><b>${s.w} × ${s.h}</b> selected</span><button class="btn primary" data-act2="merge">Merge <kbd>M</kbd></button><button class="btn ghost icon" data-act2="desel" title="Deselect (Esc)">✕</button>`;
   } else if(U.drag&&U.sel){
     const s=normSel(); h=`<span class="msg"><b>${s.w} × ${s.h}</b> · let go to ${U.drag.type==='draw'?'make a block':U.drag.type==='erase'?'unmerge':'select'}</span>`;
   } else if(U.pickStart){
@@ -4016,7 +4016,7 @@ document.addEventListener('keydown',e=>{
   else if(k==='['){U.ctx=null;goStep(U.step-1);refresh();} else if(k===']'){U.ctx=null;goStep(U.step+1);refresh();}
   else if(k.indexOf('Arrow')===0&&e.altKey&&tsel.length&&(k==='ArrowLeft'||k==='ArrowRight')){e.preventDefault();tlNudge((k==='ArrowLeft'?-1:1)*(e.shiftKey?10:1));}
   else if(k.indexOf('Arrow')===0&&tsel.length){e.preventDefault();if(virtSel&&isGenerated()){const map=materialize();if(map){U.selIds=tsel.map(id=>map[id]!=null?map[id]:id).filter(id=>byId(id));U.dopeSel=U.selIds.slice();}}const s2=e.shiftKey?D.block.w||1:1;nudge(k==='ArrowLeft'?-s2:k==='ArrowRight'?s2:0,k==='ArrowUp'?-1:k==='ArrowDown'?1:0);}
-  else{const tool=Object.keys(TOOLS).find(x=>TOOLS[x].key.toLowerCase()===kl);if(tool)setTool(tool);}
+  else{const tool=Object.keys(TOOLS).find(x=>TOOLS[x].key.toLowerCase()===kl&&x!=='erase'&&x!=='paint');if(tool)setTool(tool);}
 });
 window.addEventListener('blur',()=>{if(U.space){U.space=false;cv.classList.remove('panning');refresh();}});
 document.addEventListener('keyup',e=>{if(e.key===' '){
