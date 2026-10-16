@@ -233,3 +233,8 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 
 ### v3.16
 - **Pick start spot** (Blocks › Generate): click a square and the line's first block goes there — on or off frame. It's marked START on the canvas, kept through Generate / New seed, and **Auto** goes back to starting at the frame edge on a random row.
+
+### v3.17
+- Select (V): click a block — generated or not — to select it; a plain click on an empty square just deselects (no stray one-square "block"). Selecting no longer flips you out of a scrubbed preview.
+- Draw, Unmerge and Stamp now work on a generated line (it becomes editable first).
+- Colour, simplified: one line colour in the Blocks step (second colour / mix / palette are under All). Select one or more blocks and pick a colour on the right — works for generated blocks too, with "Back to the line colour". The Paint tool is gone.

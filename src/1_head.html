@@ -741,15 +741,16 @@ body.nohelp .qm{display:none}
           
           </div>
           <div class="group">
-            <div class="group-h">Colours</div>
-            <div class="field stack"><span class="lbl">Main</span><div class="swatches" data-pal="block.color"></div></div>
-            <div class="field stack"><span class="lbl">Second</span><div class="swatches" data-pal="block.color2"></div></div>
-            <div class="field stack"><span class="lbl">Colour mix for new blocks</span>
+            <div class="group-h">Colour</div>
+            <div class="swatches" data-pal="block.color"></div>
+            <div class="note">Recolours the whole line. To colour single blocks, select them (canvas or timeline) and pick a colour on the right.</div>
+            <div data-adv class="field stack"><span class="lbl">Second colour</span><div class="swatches" data-pal="block.color2"></div></div>
+            <div data-adv class="field stack"><span class="lbl">Colour mix</span>
               <div class="seg" data-seg="block.mix"><button data-v="single">Main only</button><button data-v="alternate">Alternate</button><button data-v="random">Random mix</button></div></div>
-            <div class="field" data-show="block.mix=random"><span class="lbl scrub">Second</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="block.mixPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
-            <button class="btn wide" id="btnRecolour">Recolour existing blocks with this mix</button>
+            <div data-adv class="field" data-show="block.mix=random"><span class="lbl scrub">Second</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="block.mixPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
+            <button data-adv class="btn wide" id="btnRecolour">Recolour existing blocks with this mix</button>
           </div>
-          <div class="group">
+          <div class="group" data-adv>
             <div class="group-h">Palette</div>
             <div class="swatches palette-edit" id="paletteEdit"></div>
             <div class="row-btns"><button class="btn" id="btnPalAdd">+ Add main colour</button><button class="btn ghost" id="btnPalReset">Reset</button></div>
