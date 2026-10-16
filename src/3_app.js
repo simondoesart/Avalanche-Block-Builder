@@ -1574,7 +1574,7 @@ function computePlan(G){
           ox=dirO>0?Math.min(pvx,ox):Math.max(pvx,ox);      // only ever moves forward, never before the blocks reach the line
           // the line finishes building: the camera carries on until the last block sits at the settle point (centre by
           // default), so the last block pops in on rhythm inside the frame instead of late at the right-hand edge
-          if(g===usedB-1&&!fin&&(+A.settleX||0)>0){ const sl=G.W*clamp(+A.settleX,5,95)/100, sx=dirO>0?sl:G.W-sl, so=sx-front[0]; ox=dirO>0?Math.min(ox,so):Math.max(ox,so); }
+          if(g===usedB-1&&!fin){ const sl=G.W*clamp(A.endX!=null?+A.endX:50,-200,300)/100, sx=dirO>0?sl:G.W-sl, so=sx-front[0]; ox=dirO>0?Math.min(ox,so):Math.max(ox,so); }   // 'Last block ends up' (Off left … Right)
           key.push([Tg[g],ox,oy]); pvx=ox; pvy=oy;
         }
         if(fin) key.push([endF,fin[0],fin[1]]);
