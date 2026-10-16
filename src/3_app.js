@@ -36,7 +36,7 @@ const DEF={
   grid:{rows:7,colsMode:'bleed',cols:12,gutter:1,margin:0,offsetX:0,snap:true,overX:8,overY:1},
   look:{bgOn:true,bg:'#1F1F1F',linesOn:true,line:'#3B484B',lineW:1,border:false,cellsMode:'none',cell:'#3B484B',
         rulesOn:false,rule:'#3B484B',ruleW:1,ruleEvery:4,ruleStart:1,ruleLayer:'top',ruleParallax:100,ruleEnd:'stay',ruleFadeAt:0,ruleFadeLen:24},
-  block:{w:3,h:1,color:'#E6212F',color2:'#A2AFB2',sync:true,mix:'single',mixPct:25},
+  block:{w:3,h:1,color:'#E6212F',color2:'#A2AFB2',color3:'#0061E2',color4:'#FF7F7B',upColor:'#FF7F7B',downColor:'#A2AFB2',ncol:2,sync:true,mix:'single',mixPct:25},
   palette:PALETTE.slice(),
   trans:{in:{on:false,mode:'clear',start:0,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:3},
          out:{on:false,mode:'build',start:72,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:5}},
@@ -954,7 +954,27 @@ function generate(fromLive){
 }
 function shuffle(){D.rand.seed=Math.floor(Math.random()*99999)+1;generate(false);}
 /* colour for the i-th block under the colour-mix rule */
-function mixColor(i,rnd){const B=D.block;if(B.mix==='alternate')return i%2?B.color2:B.color;if(B.mix==='random')return rnd()<(B.mixPct/100)?B.color2:B.color;return B.color;}
+function modeColors(){const B=D.block,n=B.mix==='alternate'?2:clamp(Math.round(+B.ncol||2),2,4);return [B.color,B.color2,B.color3||B.color,B.color4||B.color2].slice(0,n);}
+function mixColor(i,rnd){const B=D.block;if(B.mix==='alternate'||B.mix==='cycle'){const cs=modeColors();return cs[i%cs.length];}if(B.mix==='random'){const cs=modeColors();return cs[Math.floor(rnd()*cs.length)%cs.length];}return B.color;}
+/* colour modes applied to the whole line (after its rows are final): one colour · up/down by step direction · cycle · random.
+   Colours picked for single blocks (blockColors) always win. Real blocks get copies so the doc isn't touched. */
+function applyColourMode(seq){
+  const B=D.block, BC=D.blockColors||{}, mode=B.mix==='alternate'?'cycle':B.mix, cs=modeColors(), rnd=rng(((D.rand.seed|0)+(D.anim.seed|0)*7919)*13+5);
+  let prev=null, k=0; const mainCol={};
+  return seq.map(b=>{
+    let col;
+    if(b.stack&&mainCol[b.c]) col=mainCol[b.c];
+    else if(mode==='updown'){ col=!prev?B.color:b.r<prev.r?(B.upColor||B.color):b.r>prev.r?(B.downColor||B.color):B.color; }
+    else if(mode==='cycle') col=cs[k%cs.length];
+    else if(mode==='random') col=cs[Math.floor(rnd()*cs.length)%cs.length];
+    else col=B.color;
+    if(!b.stack){prev=b;k++;mainCol[b.c]=col;}
+    if(BC[b.id]) col=BC[b.id];
+    if(String(b.color).toUpperCase()===String(col).toUpperCase()) return b;
+    if(b.virtual){ b.color=col; b.textColor=contrast(col); return b; }
+    return Object.assign({},b,{color:col,textColor:contrast(col)});
+  });
+}
 /* walk: next row is the same, or up/down by up to "wander" rows (biased by "climb") */
 /* walk: the next block is beside the last (same row) or steps a whole block height up/down, so it always
    touches at a side or a corner — never half-overlapping. Tall blocks (3×2, 3×3…) step by their height. */
@@ -1473,6 +1493,7 @@ function computePlan(G){
       Tg[g]=best!=null?best:Math.max(want,prev+1); prev=Tg[g];
     }
   }
+  if(isGenerated()) seq=applyColourMode(seq);
   P.seq=seq; P.T=seq.map((b,i)=>Tg[gi[i]]); P.tr=seq.map(()=>tr0); P.ext=seq.filter(b=>b.virtual).length; P.groups=used;
   let lastT=startF+L;
   const warpKeys=list=>{const out=[];list.forEach(k=>{let t=Math.round(W(k[0]));if(out.length&&t<=out[out.length-1][0])t=out[out.length-1][0]+1;out.push([t,k[1],k[2],k[3]]);});return out;};
@@ -1860,7 +1881,7 @@ function vanishKeys(appear,t0,len,r){
 }
 let transCache={k:'',v:null};
 /* a tile colour under the block colour-mix rule (transition 'use the block colours') */
-function mixColorFor(i,rnd,fallback){const B=D.block;if(B.mix==='alternate')return i%2?B.color2:B.color;if(B.mix==='random')return rnd()<(B.mixPct/100)?B.color2:B.color;return B.color||fallback;}
+function mixColorFor(i,rnd,fallback){const B=D.block;if(B.mix==='alternate'||B.mix==='cycle'){const cs=modeColors();return cs[i%cs.length];}if(B.mix==='random'||B.mix==='updown'){const cs=B.mix==='updown'?[B.color,B.upColor,B.downColor]:modeColors();return cs[Math.floor(rnd()*cs.length)%cs.length];}return B.color||fallback;}
 function transP(G){const walkT=D.trans&&((D.trans.in&&D.trans.in.pattern==='walk')||(D.trans.out&&D.trans.out.pattern==='walk'));
   const key=JSON.stringify(D.trans)+JSON.stringify(D.block)+JSON.stringify(D.grid)+D.comp.w+D.comp.h+D.comp.fps+D.comp.dur+(walkT?JSON.stringify(D.anim)+JSON.stringify(D.exit):'');if(transCache.k!==key)transCache={k:key,v:transPlan(G)};return transCache.v;}
 function sceneEnd(G){const P=plan(G),T=transP(G);return Math.max(P.end||0,T.end?T.end+12:0,1);}
@@ -2968,7 +2989,7 @@ function drawWorld(g,G,o){
     A.P.seq.forEach(b=>{const q=cellRect(G,b.c,b.r,b.w,b.h);drawBlock(g,G,b,o,off[0],off[1],blockState(A.P.tracks[b.id],A.t,q),false);});
     drawLabWorld(g,A.P.lab,A.t,off[0],off[1],o.alpha);
   } else {
-    const realB=A&&A.P.lineShift?A.P.seq.filter(b=>!b.virtual):D.blocks.filter(b=>valid(b,G));   // the whole line slid to keep its end row
+    const realB=A&&(A.P.lineShift||isGenerated())?A.P.seq.filter(b=>!b.virtual):D.blocks.filter(b=>valid(b,G));   // the whole line slid to keep its end row
     if(D.echo.on) echoTargets(A?A.P.seq:realB).forEach(b=>{const r=echoRect(G,b);drawEcho(g,r,null,o,0,0,b.virtual);});
     const dimmed=A&&D.anim.order==='manual'&&D.anim.unpicked!=='visible';
     realB.forEach(b=>{ if(dimmed&&!(b.mo>0)){g.save();g.globalAlpha=.35;drawBlock(g,G,b,o,0,0,null,true);g.restore();} else drawBlock(g,G,b,o,0,0,null,false); });
@@ -3324,13 +3345,14 @@ function applySwatch(key,c,fromPicker){
   c=c.toUpperCase();
   if(!fromPicker||swPushed!==key){pushHist(key.indexOf('block.')===0||key.indexOf('echo.')===0||key.indexOf('fill.')===0||key.indexOf('trans.')===0||key.indexOf('num.')===0||key.indexOf('lab.')===0);swPushed=fromPicker?key:null;}
   if(key.indexOf('echo.')===0||key.indexOf('fill.')===0||key.indexOf('trans.')===0||key.indexOf('num.')===0||key.indexOf('lab.')===0){ setP(key,c); fillCache.clear(); if(!fromPicker) syncPalettes(); syncInputs(); render(); return; }
-  if(key==='block.color'||key==='block.color2'){
+  if(key.indexOf('block.')===0&&key!=='block.color'&&key!=='block.color2'){ setP(key,c); planCache.k=''; }
+  else if(key==='block.color'||key==='block.color2'){
     const old=getP(key); setP(key,c);
     const sync=U.live||D.block.sync;
     if(sync) D.blocks.forEach(b=>{if(b.color.toUpperCase()===String(old).toUpperCase()&&(key==='block.color'?!b.echo:true)){const auto=b.textColor===contrast(b.color);b.color=c;if(auto)b.textColor=contrast(c);}});
   } else {
     const sel=selBlocks();
-    if(key==='sel.color'){ D.blockColors=D.blockColors||{}; tlSelIds().forEach(id=>{ if(!byId(id)) D.blockColors[id]=c; }); planCache.k=''; }
+    if(key==='sel.color'){ D.blockColors=D.blockColors||{}; tlSelIds().forEach(id=>{ if(!byId(id)||isGenerated()) D.blockColors[id]=c; }); planCache.k=''; }
     sel.forEach(b=>{
       if(key==='sel.color'){const auto=b.textColor===contrast(b.color);b.color=c;if(auto)b.textColor=contrast(c);}
       if(key==='sel.textColor') b.textColor=c;
@@ -3933,7 +3955,8 @@ function materialize(){
   if(!v.length) return null;
   pushHist();
   const map={}; let ox=D.grid.overX, oy=D.grid.overY;
-  if(P.lineShift){ D.blocks.forEach(b=>{b.r+=P.lineShift; map[b.id]=b.id;}); }   // keep the slid line where it's drawn
+  if(P.lineShift){ D.blocks.forEach(b=>{b.r+=P.lineShift; map[b.id]=b.id;}); }
+  P.seq.forEach(x=>{ if(!x.virtual){ const rb=byId(x.id); if(rb&&rb.color!==x.color){rb.color=x.color;rb.textColor=x.textColor;} } });   // keep the slid line where it's drawn
   v.forEach(b=>{
     ox=Math.max(ox,b.c+b.w-1-(G.C-1),-b.c); oy=Math.max(oy,-b.r,b.r+b.h-1-(G.R-1));
     const n=newBlock(b.c,b.r,b.w,b.h,b.color); n.stack=!!b.stack; n.textColor=b.textColor; map[b.id]=n.id; D.blocks.push(n);
@@ -3964,7 +3987,7 @@ $('#fontFam').addEventListener('change',e=>{pushHist(true);setFamily(D.text,e.ta
 $('#fontStyle').addEventListener('change',e=>{pushHist(true);setStyle(D.text,e.target.value);
   if($('#chkStyleSel').checked&&STEPS[U.step].id==='content') selBlocks().forEach(b=>{b.family=D.text.family;b.style=D.text.style;b.font=D.text.font;});
   renderFontUI();refresh();});
-$('#btnRecolour').onclick=recolourByRule;
+{const rb=$('#btnRecolour'); if(rb) rb.onclick=recolourByRule;}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-transshuffle]');if(!b)return;pushHist(true);D.trans[b.dataset.transshuffle].seed=Math.floor(Math.random()*99999);refresh();});
 $('#fillFam').addEventListener('change',e=>{pushHist(true);setFamily(D.fill,e.target.value.trim());fillCache.clear();renderFillFont();refresh();});
 $('#fillStyle').addEventListener('change',e=>{pushHist(true);setStyle(D.fill,e.target.value);fillCache.clear();renderFillFont();refresh();});
