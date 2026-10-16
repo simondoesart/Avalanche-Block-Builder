@@ -48,7 +48,7 @@ const DEF={
         mods:{kv:true,status:true,hashes:true,block:true,log:false,counter:true,dev:true,barcode:true,phrase:true,term:true,mempool:true,validator:true,latency:true,rpc:false,progress:true,consensus:true,stream:false,dots:true,ring:false,logo:true,icons:true},
         iconSet:{node:true,cube:true,chain:true,check:true,chevrons:true,peak:true,lock:false,network:true,signal:true,target:false,snow:true,arrow:true,plus:false,bars:true},dotSize:2.2,dotShape:'circle',
         anim:{inMode:'type',inDur:8,outMode:'typeoff',hold:36,outDur:12,typeAll:true,cps:69,ellipsis:true,count:true,countDur:36,scramble:true,scrMode:'settle',scrDur:30,scrRate:12,stagger:4,delay:9,live:false,liveTick:true,liveHash:true,liveGlitch:false,liveRate:6,glitchAmt:15,liveGraph:true,liveBlink:true},
-        gap:{on:true,amount:3,seed:0,color:'#E6212F',mods:{log:true,phrase:true,barcode:true,hashes:false,dots:true,logo:true,icons:true,graph:true,stream:false,rpc:false}}},
+        gap:{on:true,amount:3,seed:0,color:'#E6212F',anim:{own:true,delay:12,jitter:10,leaveWith:true,inMode:'type',cps:60,inDur:8,buildDur:12,outMode:'fade',hold:48,outDur:12},mods:{log:true,phrase:true,barcode:true,hashes:false,dots:true,logo:true,icons:true,graph:true,stream:false,rpc:false}}},
   echo:{on:false,dx:0,dy:2,last:0,fill:true,color:'#A2AFB2',opacity:100,stroke:false,sw:4,scolor:'#A2AFB2',align:'center',dash:false,dashL:12,dashG:8,content:false,
         timing:'with',offset:6,appear:'fade',out:'stay',hold:12,outF:8},
   rand:{pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
@@ -195,7 +195,10 @@ function cssFont(family,style,size){
 }
 function casedText(b){const t=b.text||'';return b.caps==='upper'?t.toUpperCase():b.caps==='lower'?t.toLowerCase():t;}
 /* draws block text the way After Effects lays it out (tracking in 1/1000 em, leading in px) */
+/* a block's text style: its own (ownStyle) or the global one from Content → Your text */
+function txtStyle(b){ if(!b||b.ownStyle) return b; const o=Object.assign({},b,{fontSize:D.text.size,align:D.text.align,pad:D.text.pad}); TEXT_KEYS.forEach(k=>o[k]=D.text[k]); return o; }
 function drawText(g,b,qx,qy,qw,qh){
+  b=txtStyle(b);
   const fs=b.fontSize, tr=(+b.tracking||0)/1000*fs, lh=b.leading>0?b.leading:fs*1.2;
   g.font=cssFont(b.family,b.style,fs); g.fillStyle=b.textColor; g.textBaseline='middle'; g.textAlign='left';
   const lines=casedText(b).split('\n');
@@ -641,14 +644,14 @@ function drawShapeItem(g,it,dx,dy,st,alpha){
 }
 /* timing for shapes: type-on builds them over 'Build' frames; type-off un-builds */
 function shapeTiming(it,fps){
-  const A=D.fill.anim, build=A.inMode==='type';
-  const on=build?Math.max(1,+D.fill.buildDur||12)/fps:A.inMode==='fade'?Math.max(1,+A.inDur||8)/fps:0;
+  const A=it.A||D.fill.anim, build=A.inMode==='type';
+  const on=build?Math.max(1,+(A.buildDur||D.fill.buildDur)||12)/fps:A.inMode==='fade'?Math.max(1,+A.inDur||8)/fps:0;
   let mode=A.outMode, off=mode==='stay'?Infinity:on+Math.max(0,+A.hold||0)/fps, outLen=mode==='cut'?0:Math.max(1,+A.outDur||10)/fps;
   if(it.tEnd!=null&&isFinite(it.tEnd)){ if(mode==='stay'){mode='fade';outLen=Math.max(1,+A.outDur||10)/fps;} off=Math.min(off,Math.max(0,(it.tEnd-it.t0)/fps-outLen)); }
   return {build,on,off,outLen,mode};
 }
 function shapeAt(it,tf,fps){
-  const A=D.fill.anim, el=(tf-it.t0)/fps; if(el<0) return null;
+  const A=it.A||D.fill.anim, el=(tf-it.t0)/fps; if(el<0) return null;
   const T=shapeTiming(it,fps); let u=1,a=1;
   if(T.build) u=Math.min(1,el/T.on); else if(A.inMode==='fade') a=Math.min(1,el/Math.max(1e-3,T.on));
   if(el>=T.off){ if(T.mode==='cut') return null; const w=(el-T.off)/Math.max(1e-3,T.outLen); if(w>=1) return null; if(T.mode==='typeoff'&&T.build) u=Math.min(u,1-w); else a*=1-w; }
@@ -659,7 +662,7 @@ function shapeAt(it,tf,fps){
 /* AE: one payload per shape item; prims sharing a build step merge into one group */
 function payShape(it,t0,tEnd,fps){
   const t=Object.assign({},it,{t0}); if(tEnd!=null) t.tEnd=tEnd;
-  const T=shapeTiming(t,fps), A=D.fill.anim, ts=r3(Math.max(0,t0)/fps);
+  const T=shapeTiming(t,fps), A=it.A||D.fill.anim, ts=r3(Math.max(0,t0)/fps);
   const uX=T.build?'var gbE=time-'+ts+';var gbU=gbE<0?0:Math.min(1,gbE/'+r3(T.on)+');'+(T.mode==='typeoff'&&isFinite(T.off)?'if(gbE>='+r3(T.off)+')gbU=Math.min(gbU,Math.max(0,1-(gbE-'+r3(T.off)+')/'+r3(T.outLen)+'));':''):null;
   const kX=p=>p.b>p.a?'Math.max(0,Math.min(1,(gbU-'+p.a+')/'+r3(p.b-p.a)+'))':'(gbU>0&&gbU>='+p.a+'?1:0)';
   const groups=[], byKey={};
@@ -810,6 +813,11 @@ function freeRects(x0,y0,W,H,sp,items,met){
   }
   return out;
 }
+/* Between-blocks timing: its own on / hold / off, or the Text HUD's */
+function gapA(){ const GA=(D.fill.gap&&D.fill.gap.anim)||{}; if(GA.own===false) return D.fill.anim;
+  return Object.assign({},D.fill.anim,{inMode:GA.inMode,cps:GA.cps,inDur:GA.inDur,buildDur:GA.buildDur,outMode:GA.outMode,hold:GA.hold,outDur:GA.outDur}); }
+/* one colour per timeline layer */
+const LAYER_COL={hud:'#E6212F',gaps:'#F5A524',numbers:'#8FA2FF',echo:'#3FC7B5',text:'#EBF0FA',none:'#686871'};
 /* text in empty grid areas between blocks */
 function gapItems(G,list){
   const F=D.fill, Gp=F.gap; if(!F.on||!Gp||!Gp.on||!list.length) return [];
@@ -841,7 +849,7 @@ function fmtNum(v,dec){const p=Math.abs(v).toFixed(dec).split('.');p[0]=p[0].rep
 function scrambleLine(s,k){const r=rng(k*7919+s.length);return s.replace(/[0-9A-Fa-f]/g,ch=>{const h='0123456789ABCDEF'[Math.floor(r()*16)];return ch===ch.toLowerCase()&&/[a-f]/.test(ch)?h.toLowerCase():h;});}
 /* when an item is fully on / starts going / is gone (seconds from its start) */
 function fillTiming(it,fullLen,fps){
-  const A=D.fill.anim, typed=it.kind==='text'&&A.inMode==='type'&&(it.type||A.typeAll);
+  const A=it.A||D.fill.anim, typed=it.kind==='text'&&A.inMode==='type'&&(it.type||A.typeAll);
   const on=typed?fullLen/Math.max(1,+A.cps||40):A.inMode==='fade'?Math.max(1,+A.inDur||8)/fps:0;
   let mode=A.outMode, off=mode==='stay'?Infinity:on+Math.max(0,+A.hold||0)/fps;
   let outLen=mode==='cut'?0:Math.max(1,+A.outDur||10)/fps;
@@ -853,7 +861,7 @@ function fillTiming(it,fullLen,fps){
 }
 /* text + opacity at frame tf (same maths as the AE expressions) — null = not visible */
 function fillTextAt(it,tf,fps){
-  const F=D.fill, A=F.anim, el=(tf-it.t0)/fps;
+  const F=D.fill, A=it.A||F.anim, el=(tf-it.t0)/fps;
   if(el<0) return null;
   let L=it.lines.slice();
   if(it.count&&A.count){const c=it.count,u=Math.min(1,el/Math.max(.05,(+A.countDur||36)/fps)),e=u*u*(3-2*u);L[c.line]=c.pre+fmtNum(c.from+(c.to-c.from)*e,c.dec)+c.suf;}
@@ -876,7 +884,7 @@ function fillTextAt(it,tf,fps){
 /* hold: numbers tick, hashes keep scrambling, letters glitch — same rules as the AE expression */
 const GLITCH='#%&*/<>[]=+01';
 function liveLines(it,L,el,T,fps){
-  const A=D.fill.anim, rate=Math.max(.1,+A.liveRate||6), k=Math.floor((el-T.on)*rate);
+  const A=it.A||D.fill.anim, rate=Math.max(.1,+A.liveRate||6), k=Math.floor((el-T.on)*rate);
   L=L.slice();
   if(A.liveTick&&it.count&&A.count!==false){const c=it.count, cd=(+A.countDur||36)/fps, kk=Math.max(0,Math.floor((el-Math.max(T.on,cd))*rate));
     let v=c.to; if(kk>0){ if(c.suf==='%'){const r=rng(kk*131+c.to)();v=Math.max(0,Math.min(100,c.to+Math.round((r-.5)*6)));} else if(c.pre==='#'){v=c.to+kk*2;} else {const r=rng(kk*977+Math.round(c.to))();v=c.to*(1+(r-.5)*.04);} }
@@ -887,14 +895,14 @@ function liveLines(it,L,el,T,fps){
 }
 /* opacity factor for shapes (dots, rings, logo) */
 function fillShapeAlpha(it,tf,fps){
-  const A=D.fill.anim, el=(tf-it.t0)/fps; if(el<0) return 0;
+  const A=it.A||D.fill.anim, el=(tf-it.t0)/fps; if(el<0) return 0;
   const T=fillTiming(it,0,fps); let a=A.inMode==='fade'?Math.min(1,el/Math.max(1e-3,T.on)):1;
   if(el>=T.off){if(T.mode==='cut')return 0;const u=(el-T.off)/T.outLen;if(u>=1)return 0;a*=1-u;}
   return a;
 }
 /* AE Source Text expression (ES3-safe; works in both expression engines) */
 function fillExpr(it,fps){
-  const F=D.fill, A=F.anim, js=v=>JSON.stringify(v), t0=r3(it.t0/fps), T=fillTiming(it,it.lines.join('\r').length,fps);
+  const F=D.fill, A=it.A||F.anim, js=v=>JSON.stringify(v), t0=r3(it.t0/fps), T=fillTiming(it,it.lines.join('\r').length,fps);
   let e='var gbL='+js(it.lines)+';\nvar gbE=time-'+t0+';\nvar gbO="";\nif(gbE>=0){\n';
   if(it.count&&A.count){const c=it.count;
     e+='var gbU=Math.min(1,gbE/'+r3(Math.max(.05,(+A.countDur||36)/fps))+');gbU=gbU*gbU*(3-2*gbU);var gbV=('+c.from+')+('+(c.to-c.from)+')*gbU;\n'+
@@ -924,7 +932,7 @@ function fillExpr(it,fps){
 }
 /* AE Opacity expression for fades in / out (text and shapes); null if not needed */
 function fillOpacityExpr(it,fps,isText){
-  const A=D.fill.anim, T=fillTiming(it,isText?it.lines.join('\r').length:0,fps), t0=r3(it.t0/fps);
+  const A=it.A||D.fill.anim, T=fillTiming(it,isText?it.lines.join('\r').length:0,fps), t0=r3(it.t0/fps);
   const fadeIn=A.inMode==='fade', fadeOut=isFinite(T.off)&&(T.mode==='fade'||(!isText&&T.mode==='typeoff')), cutOut=!isText&&isFinite(T.off)&&T.mode==='cut';
   if(!fadeIn&&!fadeOut&&!cutOut) return null;
   let e='var gbE=time-'+t0+';var gbA=gbE<0?0:1;\n';
@@ -984,6 +992,14 @@ const hits=(a,b)=>a.c<b.c+b.w&&b.c<a.c+a.w&&a.r<b.r+b.h&&b.r<a.r+a.h;
 const blockAt=(c,r)=>{for(let i=D.blocks.length-1;i>=0;i--){const b=D.blocks[i];if(c>=b.c&&c<b.c+b.w&&r>=b.r&&r<b.r+b.h)return b;}return null;};
 const byId=id=>D.blocks.find(b=>b.id===id)||null;
 const selBlocks=()=>U.selIds.map(byId).filter(Boolean);
+/* the selection as real blocks: generated (virtual) blocks get baked first so they can hold text and styles */
+function ensureReal(){
+  let sel=selBlocks(); if(sel.length) return sel;
+  const ids=tlSelIds(); if(!ids.length||!isGenerated()) return [];
+  const map=materialize(); if(!map) return [];
+  const nid=ids.map(id=>map[id]!=null?map[id]:id); U.selIds=nid; U.dopeSel=nid.slice();
+  return selBlocks();
+}
 const normSel=()=>{const s=U.sel;return{c:Math.min(s.c0,s.c1),r:Math.min(s.r0,s.r1),w:Math.abs(s.c1-s.c0)+1,h:Math.abs(s.r1-s.r0)+1};};
 const colLabel=c=>'C'+(c+1);
 const rowLabel=r=>'R'+(r+1);
@@ -2142,7 +2158,9 @@ function computePlan(G){
     P.echo.forEach(e=>{const i=seq.indexOf(e.src);P.fillBase[e.id]=(e.K.op.length?e.K.op[0][0]:P.T[i])+tr0+dl;});
     if(D.fill.gap.on){
       const gl=gapItems(G,seq).map(it=>Object.assign({},it));
-      gl.forEach(it=>{let best=null;seq.forEach((b,i)=>{const d=Math.abs(b.c-it.col);if(!best||d<best.d)best={d,t:P.T[i],e:P.exitT&&D.exit.content!==false?P.exitT[i]:null};});it.t0=(best?best.t:0)+tr0+dl;if(best&&best.e!=null)it.tEnd=best.e;});
+      const GA=D.fill.gap.anim||{}, own=GA.own!==false, gdl=own?Math.round(+GA.delay||0):dl, jit=own?Math.max(0,Math.round(+GA.jitter||0)):0, A2=gapA();
+      gl.forEach((it,k)=>{let best=null;seq.forEach((b,i)=>{const d=Math.abs(b.c-it.col);if(!best||d<best.d)best={d,t:P.T[i],e:P.exitT&&D.exit.content!==false?P.exitT[i]:null};});
+        it.t0=(best?best.t:0)+tr0+gdl+(jit?Math.round(rng(k*7919+31+(D.fill.gap.seed|0))()*jit):0); it.A=A2; if(best&&best.e!=null&&(!own||GA.leaveWith!==false))it.tEnd=best.e;});
       P.gaps=gl;
     }
   }
@@ -2655,6 +2673,7 @@ function drawDope(){
     g.fillStyle='rgba(255,255,255,.05)'; g.fillRect(0,R.y1-1,r.width,1);
     g.fillStyle=on?'#ececef':'#a2a2ab'; g.font=(R.k==='scene'||R.k==='blocks'?'600 ':'')+'11px sans-serif';
     let lab=R.name; if(R.k==='blocks') lab=`${TL.blocksOpen?'▾':'▸'}  Blocks · ${P.seq.length}`;
+    if(R.k==='content'&&LAYER_COL[R.ck]){g.fillStyle=LAYER_COL[R.ck];g.fillRect(0,R.y0+3,3,R.h-6);g.fillStyle=on?'#ececef':'#a2a2ab';}
     g.fillText(lab,10,R.k==='scene'?R.y0+14:R.y0+R.h/2);
     if(R.k==='scene'){g.fillStyle='#686871';g.font='10px sans-serif';g.fillText('length + easing for all',10,R.y0+30);g.fillText('dbl-click adds a point',10,R.y0+43);}
   });
@@ -2766,16 +2785,25 @@ function drawDope(){
     const A=D.fill.anim;
     item({type:'row',row:R,x0:LW,x1:r.width,y0:R.y0,y1:R.y1,cur:'pointer',tip:R.name+' — click for its settings',tab:R.tab});
     if(R.ck==='none'){g.fillStyle='#686871';g.font='11px sans-serif';g.fillText('no overlays — click to add content',LW+8,R.y0+R.h/2);return;}
+    const col=LAYER_COL[R.ck]||'#a2a2ab', rgba=(hx,a)=>{const n=parseInt(hx.slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;};
+    /* on / hold / off of one representative item, with a draggable hold end (and start for gaps) */
+    const phases=(it,AA,onHold,onStart)=>{ const T0=it.kind==='shape'?shapeTiming(it,fps):fillTiming(Object.assign({kind:'text',type:true},it),24,fps), t0=it.t0, on=t0+T0.on*fps, off=isFinite(T0.off)?t0+T0.off*fps:N, end=isFinite(T0.off)?off+T0.outLen*fps:N;
+      g.fillStyle=rgba(col,.75); g.fillRect(X(t0),R.y0+7,Math.max(2,X(on)-X(t0)),R.h-11);
+      g.fillStyle=AA.live?'rgba(116,157,211,.55)':rgba(col,.28); g.fillRect(X(on),R.y0+7,Math.max(1,X(off)-X(on)),R.h-11);
+      if(onStart){knob(t0,R.y0,R.h,col);H(t0,R,'ew-resize',onStart,'when it starts (after its nearest block lands)');}
+      if(isFinite(T0.off)){g.fillStyle=rgba(col,.5);g.fillRect(X(off),R.y0+7,Math.max(1,X(end)-X(off)),R.h-11);knob(off,R.y0,R.h,col);H(off,R,'ew-resize',f=>onHold(Math.max(0,Math.round(f-on))),'drag to change how long it holds');}
+      if(X(off)-X(on)>50) label(AA.live?'hold · live':'hold',X(on)+5,R.y0+R.h/2+2,'rgba(236,236,239,.8)'); };
     if(R.ck==='hud'){
-      P.seq.forEach((b,i)=>{const t0=FB[b.id]; if(t0==null) return; const end=FE[b.id]!=null?FE[b.id]:N; g.fillStyle='rgba(255,255,255,.08)'; g.fillRect(X(t0),R.y0+3+(i%3)*2,Math.max(1,X(end)-X(t0)),1.5);});
-      const b=P.seq[0]; if(b&&FB[b.id]!=null){const t0=FB[b.id], T0=fillTiming({kind:'text',type:true,t0,tEnd:FE[b.id]},24,fps), on=t0+T0.on*fps, off=isFinite(T0.off)?t0+T0.off*fps:N, end=isFinite(T0.off)?off+T0.outLen*fps:N;
-        g.fillStyle='rgba(230,33,47,.65)'; g.fillRect(X(t0),R.y0+7,Math.max(2,X(on)-X(t0)),R.h-11);
-        g.fillStyle=A.live?'rgba(116,157,211,.55)':'rgba(255,255,255,.2)'; g.fillRect(X(on),R.y0+7,Math.max(1,X(off)-X(on)),R.h-11);
-        if(isFinite(T0.off)){g.fillStyle='rgba(255,127,123,.6)';g.fillRect(X(off),R.y0+7,Math.max(1,X(end)-X(off)),R.h-11);knob(off,R.y0,R.h,'#FF7F7B');H(off,R,'ew-resize',f=>{A.hold=Math.max(0,Math.round(f-on));},'content hold');}
-        if(X(off)-X(on)>50) label(A.live?'hold · live':'hold',X(on)+5,R.y0+R.h/2+2,'rgba(236,236,239,.8)');}
-    } else if(R.ck==='gaps'){ (Pc.gaps||[]).forEach((it,i)=>{const e=it.tEnd!=null?it.tEnd:N; g.fillStyle='rgba(230,33,47,.45)'; g.fillRect(X(it.t0),R.y0+4+(i%4)*3,Math.max(1,X(e)-X(it.t0)),2);}); }
-    else if(R.ck==='numbers'){ P.seq.forEach((b,i)=>{if(!numOn(b)) return; const t0=(Pc.done||[])[i]||Pc.T[i], e=Pc.exitT&&Pc.exitT[i]!=null?Pc.exitT[i]:N; g.fillStyle='rgba(197,207,245,.35)'; g.fillRect(X(t0),R.y0+5+(i%3)*3,Math.max(1,X(e)-X(t0)),2);}); }
-    else if(R.ck==='echo'){ Pc.echo.forEach((e,i)=>{const t0=e.K.op.length?e.K.op[0][0]:0, t1=e.K.op.length?e.K.op[e.K.op.length-1][0]:N, end=e.K.op.length&&e.K.op[e.K.op.length-1][1]===0?t1:N; g.fillStyle='rgba(162,175,178,.45)'; g.fillRect(X(t0),R.y0+5+(i%3)*3,Math.max(1,X(end)-X(t0)),2);}); }
+      P.seq.forEach((b,i)=>{const t0=FB[b.id]; if(t0==null) return; const end=FE[b.id]!=null?FE[b.id]:N; g.fillStyle=rgba(col,.22); g.fillRect(X(t0),R.y0+3+(i%3)*2,Math.max(1,X(end)-X(t0)),1.5);});
+      const b=P.seq[0]; if(b&&FB[b.id]!=null) phases({t0:FB[b.id],tEnd:FE[b.id],lines:['x'.repeat(24)]},A,v=>{A.hold=v;});
+    } else if(R.ck==='gaps'){
+      const gl=Pc.gaps||[], GA=D.fill.gap.anim||{}, own=GA.own!==false, AA=gapA();
+      gl.forEach((it,i)=>{const T1=fillTiming(Object.assign({kind:'text',type:true},it,{A:AA}),24,fps), e=isFinite(T1.off)?it.t0+(T1.off+T1.outLen)*fps:(it.tEnd!=null?it.tEnd:N); g.fillStyle=rgba(col,.4); g.fillRect(X(it.t0),R.y0+3+(i%4)*1.6,Math.max(1,X(e)-X(it.t0)),1.2);});
+      const it0=gl.slice().sort((a,b)=>a.t0-b.t0)[0];
+      if(it0) phases(Object.assign({},it0,{A:AA,lines:it0.lines||['x'.repeat(24)]}),AA,v=>{if(own)GA.hold=v;else A.hold=v;},own?(f=>{const st=it0.t0-(+GA.delay||0);GA.delay=Math.max(-240,Math.round(f-st));}):null);
+    }
+    else if(R.ck==='numbers'){ P.seq.forEach((b,i)=>{if(!numOn(b)) return; const t0=(Pc.done||[])[i]||Pc.T[i], e=Pc.exitT&&Pc.exitT[i]!=null?Pc.exitT[i]:N; g.fillStyle=rgba(col,.55); g.fillRect(X(t0),R.y0+5+(i%3)*3,Math.max(1,X(e)-X(t0)),2);}); }
+    else if(R.ck==='echo'){ Pc.echo.forEach((e,i)=>{const t0=e.K.op.length?e.K.op[0][0]:0, t1=e.K.op.length?e.K.op[e.K.op.length-1][0]:N, end=e.K.op.length&&e.K.op[e.K.op.length-1][1]===0?t1:N; g.fillStyle=rgba(col,.55); g.fillRect(X(t0),R.y0+5+(i%3)*3,Math.max(1,X(end)-X(t0)),2);}); }
   });
   // ---- blocks header: summary + the end-of-build handle
   if(anim&&n){
@@ -3725,7 +3753,7 @@ function applySwatch(key,c,fromPicker){
     const sync=U.live||D.block.sync;
     if(sync) D.blocks.forEach(b=>{if(b.color.toUpperCase()===String(old).toUpperCase()&&(key==='block.color'?!b.echo:true)){const auto=b.textColor===contrast(b.color);b.color=c;if(auto)b.textColor=contrast(c);}});
   } else {
-    const sel=selBlocks();
+    const sel=key==='sel.textColor'?ensureReal():selBlocks();
     if(key==='sel.color'){ D.blockColors=D.blockColors||{}; tlSelIds().forEach(id=>{ if(!byId(id)||isGenerated()) D.blockColors[id]=c; }); planCache.k=''; }
     sel.forEach(b=>{
       if(key==='sel.color'){const auto=b.textColor===contrast(b.color);b.color=c;if(auto)b.textColor=contrast(c);}
@@ -3806,23 +3834,34 @@ function typeControls(b,multi){
     <div class="seg" data-bseg="kern"><button data-v="metrics"${on(kern,'metrics')}>Metrics</button><button data-v="optical"${on(kern,'optical')}>Optical</button><button data-v="none"${on(kern,'none')}>No kern</button></div>
     <div class="seg" data-bseg="caps"><button data-v="none"${on(caps,'none')}>As typed</button><button data-v="upper"${on(caps,'upper')}>UPPER</button><button data-v="lower"${on(caps,'lower')}>lower</button></div>
     <div class="seg" data-bseg="align"><button data-v="tl"${on(b.align,'tl')}>Top left</button><button data-v="center"${on(b.align,'center')}>Centre</button><button data-v="bl"${on(b.align,'bl')}>Bottom left</button></div>
-    ${numF('Padding','pad',b.pad,0)}
-    <div class="field stack"><span class="lbl">Text colour</span><div class="swatches">${swatchHTML(b.textColor,'sel.textColor')}</div></div>`;
+    ${numF('Padding','pad',b.pad,0)}`;
 }
-function cardContent(b){
+function globalStyleLine(){const t=D.text;return `${esc(t.family)} ${esc(t.style)} · ${t.size}px · ${({tl:'top left',center:'centre',bl:'bottom left'})[t.align]||t.align}${t.caps==='upper'?' · UPPER':''}`;}
+function styleBlock(b,multi){
+  const own=multi?multi.every(x=>x.ownStyle):!!b.ownStyle;
+  return `<label class="check"><input type="checkbox" data-bown="1"${own?'':' checked'}> Use the global text style</label>
+    ${own?`<div class="note">Text settings below change ${multi?'the selected blocks':'this block'} only.</div>${typeControls(b,!!multi)}`
+         :`<div class="readout">${globalStyleLine()} <a href="#" data-act="editglobal" style="color:var(--accent2)">Edit global</a></div>`}
+    <div class="field stack"><span class="lbl">Text colour</span><div class="swatches">${swatchHTML(b.textColor||contrast(b.color),'sel.textColor')}</div></div>`;
+}
+function cardContent(b,virt){
   return `<div class="card"><div class="card-h">${esc(bname(b))}<span class="count">${b.w}×${b.h}</span></div>
-    <div class="tabs"><button class="on">Text</button><button disabled>Image <span class="soon">soon</span></button><button disabled>Video <span class="soon">soon</span></button></div>
-    <textarea data-f="text" placeholder="Type to add a text layer inside this block…">${esc(b.text)}</textarea>
-    ${D.fill.on?`<div class="row-btns"><label class="check" style="flex:1"><input type="checkbox" data-bfill="1"${b.noFill?'':' checked'}> Auto-fill this block</label><button class="btn" data-act="reroll" title="New random content for this block">↻ Re-roll</button></div>`:''}
-    <label class="check"><input type="checkbox" data-bnum="1"${numOn(b)?' checked':''}> Block number in the top-right${b.num!=null?' <a href="#" data-act="numreset" class="note">(use default)</a>':''}</label>
-    ${typeControls(b)}
     <div class="field stack"><span class="lbl">Block colour</span><div class="swatches">${swatchHTML(b.color,'sel.color')}</div></div>
+    <div class="tabs"><button class="on">Text</button><button disabled>Image <span class="soon">soon</span></button><button disabled>Video <span class="soon">soon</span></button></div>
+    <textarea data-f="text" placeholder="Type to add a text layer inside this block…">${esc(b.text||'')}</textarea>
+    ${virt?'<div class="note">This block is part of the generated line. Typing or changing its text style makes the line editable (⌘Z undoes).</div>':''}
+    ${styleBlock(b)}
+    <details class="sub" data-sub="blk-auto"><summary>Auto content <span class="note">${D.fill.on?(b.noFill?'off for this block':'on'):'off'}</span></summary><div class="subbody">
+      ${D.fill.on?`<div class="row-btns"><label class="check" style="flex:1"><input type="checkbox" data-bfill="1"${b.noFill?'':' checked'}> Auto-fill this block</label><button class="btn" data-act="reroll" title="New random content for this block">↻ Re-roll</button></div>`:'<div class="note">Auto-fill is off (Text HUD tab).</div>'}
+      <label class="check"><input type="checkbox" data-bnum="1"${numOn(b)?' checked':''}> Block number in the top-right${b.num!=null?' <a href="#" data-act="numreset" class="note">(use default)</a>':''}</label>
+    </div></details>
   </div>`;
 }
-function cardContentMulti(sel){
+function cardContentMulti(sel,virt){
   return `<div class="card"><div class="card-h">${sel.length} blocks</div>
-    ${typeControls(sel[0],true)}
     <div class="field stack"><span class="lbl">Block colour</span><div class="swatches">${swatchHTML(sel[0].color,'sel.color')}</div></div>
+    ${virt?'<div class="note">Changing text style here makes the generated line editable (⌘Z undoes).</div>':''}
+    ${styleBlock(sel[0],sel)}
     <div class="note">Changes apply to every selected block.</div></div>`;
 }
 function cardSequence(G){
@@ -3850,7 +3889,9 @@ function renderInsp(){
   const G=geom(), sel=selBlocks(); let h='';
   if(U.sel) h+=cardCells(G);
   else {
-    if(st.id==='content'){ if(sel.length===1) h+=cardContent(sel[0]); else if(sel.length>1) h+=cardContentMulti(sel); }
+    if(st.id==='content'){
+      if(sel.length===1) h+=cardContent(sel[0]); else if(sel.length>1) h+=cardContentMulti(sel);
+      else { const P=plan(G), px=ids.map(id=>P.seq.find(x=>x.id===id)).filter(Boolean); if(px.length===1) h+=cardContent(px[0],true); else if(px.length>1) h+=cardContentMulti(px,true); } }
     else { if(sel.length===1) h+=cardBlock(G,sel[0]); else if(sel.length>1) h+=cardMulti(sel);
       else { const P=plan(G), b0=P.seq.find(x=>x.id===ids[0]); h+=`<div class="card"><div class="card-h">Colour<span class="r note">${ids.length>1?ids.length+' blocks':''}</span></div><div class="swatches">${swatchHTML(b0?b0.color:D.block.color,'sel.color')}</div>${Object.keys(D.blockColors||{}).some(k=>ids.indexOf(+k)>=0)?'<button class="btn ghost" data-act="colreset">Back to the line colour</button>':''}</div>`; } }
     h+=cardTiming(G,ids);
@@ -3888,7 +3929,7 @@ let inspPending=false;
 $('#insp').addEventListener('focusin',e=>{if(e.target.matches('[data-f]'))inspPending=true;});
 $('#insp').addEventListener('input',e=>{
   const t=e.target, f=t.dataset.f; if(!f) return;
-  const sel=selBlocks(); if(!sel.length) return;
+  const sel=ensureReal(); if(!sel.length) return;
   if(inspPending){pushHist();inspPending=false;}
   if(f==='name'||f==='text'){sel[0][f]=t.value;render();const lc=$('#insp .listcard');if(lc)lc.outerHTML=cardList(geom());return;}
   let v=Math.round(parseFloat(t.value)); if(isNaN(v)) return;
@@ -3908,15 +3949,18 @@ $('#insp').addEventListener('input',e=>{
   t.style.color=''; Object.assign(b,n); render();
 });
 $('#insp').addEventListener('change',e=>{
-  if(e.target.dataset&&e.target.dataset.bnum){pushHist();selBlocks().forEach(b=>b.num=e.target.checked);fillCache.clear();refresh();return;}
-  if(e.target.dataset&&e.target.dataset.bfill){pushHist();selBlocks().forEach(b=>b.noFill=!e.target.checked);fillCache.clear();refresh();return;}
+  if(e.target.dataset&&e.target.dataset.bnum){const s2=ensureReal();pushHist();s2.forEach(b=>b.num=e.target.checked);fillCache.clear();refresh();return;}
+  if(e.target.dataset&&e.target.dataset.bfill){const s2=ensureReal();pushHist();s2.forEach(b=>b.noFill=!e.target.checked);fillCache.clear();refresh();return;}
+  if(e.target.dataset&&e.target.dataset.bown){const s2=ensureReal();if(!s2.length)return;pushHist();const own=!e.target.checked;
+    s2.forEach(b=>{ if(own&&!b.ownStyle){ b.fontSize=D.text.size;b.align=D.text.align;b.pad=D.text.pad;TEXT_KEYS.forEach(k=>b[k]=D.text[k]); } b.ownStyle=own; });
+    renderInsp();render();return;}
   const tf=e.target.dataset&&e.target.dataset.tf;
-  if(tf){const sel=selBlocks();if(!sel.length)return;pushHist();
+  if(tf){const sel=ensureReal();if(!sel.length)return;pushHist();
     sel.forEach(b=>{if(tf==='family')setFamily(b,e.target.value.trim());else setStyle(b,e.target.value);});
     renderInsp();render();return;}if(e.target.matches('input[type=number][data-f]')){inspPending=false;e.target.blur&&0;refresh();}});
 $('#insp').addEventListener('focusout',e=>{if(e.target.matches('[data-f]')){inspPending=false;setTimeout(()=>{if(!$('#insp').contains(document.activeElement))refresh();},0);}});
 $('#insp').addEventListener('click',e=>{
-  const t=e.target.closest('button'); if(!t||t.disabled) return;
+  const t=e.target.closest('button,a[data-act]'); if(!t||t.disabled) return; if(t.tagName==='A') e.preventDefault();
   if(t.dataset.pick){
     const id=+t.dataset.pick;
     if(e.shiftKey){const i=U.selIds.indexOf(id);if(i>=0)U.selIds.splice(i,1);else U.selIds.push(id);}else select([id]);
@@ -3925,11 +3969,12 @@ $('#insp').addEventListener('click',e=>{
   }
   if(t.dataset.split){splitSelected(t.dataset.split);return;}
   const seg=t.closest('[data-bseg]');
-  if(seg&&t.dataset.v){pushHist();selBlocks().forEach(b=>b[seg.dataset.bseg]=t.dataset.v);refresh();return;}
+  if(seg&&t.dataset.v){const s2=ensureReal();pushHist();s2.forEach(b=>b[seg.dataset.bseg]=t.dataset.v);refresh();return;}
   const a=t.dataset.act;
   if(a==='colreset'){pushHist(true);tlSelIds().forEach(id=>{if(D.blockColors)delete D.blockColors[id];});planCache.k='';refresh();return;}
-  if(a==='numreset'){pushHist();selBlocks().forEach(b=>{delete b.num;});fillCache.clear();refresh();return;}
-  if(a==='reroll'){pushHist();selBlocks().forEach(b=>b.fillSeed=(b.fillSeed||0)+1);fillCache.clear();refresh();return;}
+  if(a==='editglobal'){e.preventDefault();U.ctab='text';select([]);refresh();try{const g=$('#left .pane[data-pane="content"] .group[data-ctab="text"]');g&&g.scrollIntoView({block:'start'});}catch(x){}return;}
+  if(a==='numreset'){pushHist();ensureReal().forEach(b=>{delete b.num;});fillCache.clear();refresh();return;}
+  if(a==='reroll'){const s2=ensureReal();pushHist();s2.forEach(b=>b.fillSeed=(b.fillSeed||0)+1);fillCache.clear();refresh();return;}
   if(a==='samecol'){const c=(selBlocks()[0]||{}).color;select(D.blocks.filter(b=>b.color===c).map(b=>b.id));refresh();return;}
   if(a==='alt'){pushHist();selBlocks().sort((x,y)=>x.order-y.order).forEach((b,i)=>{const c=i%2?D.block.color2:D.block.color;const auto=b.textColor===contrast(b.color);b.color=c;if(auto)b.textColor=contrast(c);});refresh();return;}
   if(a==='merge')mergeSel(); else if(a==='erase')eraseRect(normSel()); else if(a==='del')deleteSelected();
@@ -4784,7 +4829,7 @@ function sectionPaths(group){
 function addCollapse(){
   $$('#left .group').forEach((g,i)=>{
     const h=g.querySelector(':scope > .group-h'); if(!h||h.querySelector('.colbtn')) return;
-    const pane=g.closest('[data-pane]'), key=(pane?pane.dataset.pane:'')+':'+(h.childNodes[0]&&h.childNodes[0].textContent||i).trim();
+    const pane=g.closest('[data-pane]'), key=(pane?pane.dataset.pane:'')+':'+String((h.childNodes[0]&&h.childNodes[0].textContent.trim())||h.textContent||i).trim().slice(0,40);
     g.dataset.ckey=key;
     h.insertAdjacentHTML('afterbegin','<button class="colbtn" title="Show / hide this section"><svg width="9" height="9" viewBox="0 0 10 10" fill="currentColor"><path d="M1 3h8L5 8z"/></svg></button>');
     if(U.collapsed&&U.collapsed[key]) g.classList.add('collapsed');
@@ -5341,8 +5386,8 @@ function payload(){
   const blocks=P.seq.map(b=>{
     const q=cellRect(G,b.c,b.r,b.w,b.h);
     return{name:bname(b),order:b.order,c:b.c+1,r:b.r+1,w:b.w,h:b.h,x:r3(q.x),y:r3(q.y),bw:r3(q.w),bh:r3(q.h),
-      color:hexRgb(b.color),text:casedText(b).replace(/\n/g,'\r'),fontSize:b.fontSize,textColor:hexRgb(b.textColor),align:b.align,pad:b.pad,
-      font:b.font||'',tracking:+b.tracking||0,leading:+b.leading||0,kern:b.kern||'metrics',
+      color:hexRgb(b.color),text:casedText(txtStyle(b)).replace(/\n/g,'\r'),fontSize:txtStyle(b).fontSize,textColor:hexRgb(b.textColor),align:txtStyle(b).align,pad:txtStyle(b).pad,
+      font:txtStyle(b).font||'',tracking:+txtStyle(b).tracking||0,leading:+txtStyle(b).leading||0,kern:txtStyle(b).kern||'metrics',
       num:numOn(b)?(()=>{const s=numStr(NUMS[b.id]||0),q2=cellRect(G,b.c,b.r,b.w,b.h),L=numLayout(q2,s);return {text:s,x:r3(L.x),y:r3(L.y),size:L.size,color:hexRgb(D.num.color),font:D.fill.font,opacity:clamp(+D.num.opacity||100,0,100),keys:animOn&&P.tracks[b.id]&&P.tracks[b.id].num&&P.tracks[b.id].num.length?P.tracks[b.id].num.map(k=>[k[0],r3(k[1]*clamp(+D.num.opacity||100,0,100)/100),k[2],k[3]]):null};})():null,
       keys:animOn?P.tracks[b.id]:null, tIn:animOn?Math.round(P.T[P.seq.indexOf(b)]):null, tOut:exitEnd(P,P.seq.indexOf(b),animOn)};
   });
@@ -5355,7 +5400,7 @@ function payload(){
     if(it.kind==='dots') return {kind:'dots',sq:!!it.sq,rects:it.rects.map(f=>({x:r3(f.x),y:r3(f.y),cols:f.cols,rows:f.rows})),sp:it.sp,d:r3(it.d),color:hexRgb(it.color),t0:r3(Math.max(0,t0)/fps),opx:fillOpacityExpr(t,fps,false)};
     if(it.kind==='ring') return {kind:'ring',cx:r3(it.cx),cy:r3(it.cy),r:r3(it.r),w:r3(it.w),color:hexRgb(it.color),t0:r3(Math.max(0,t0)/fps),opx:fillOpacityExpr(t,fps,false)};
     if(it.kind==='logo') return {kind:'logo',x:r3(it.x),y:r3(it.y),s:r3(it.s),paths:AVAX_AE,color:hexRgb(it.color),t0:r3(Math.max(0,t0)/fps),opx:fillOpacityExpr(t,fps,false)};
-    const animd=t.tEnd!=null||(F.anim.live&&(F.anim.liveGlitch||(F.anim.liveTick&&it.count)||(F.anim.liveHash&&it.scr)))||(F.anim.inMode==='type'&&(it.type||F.anim.typeAll))||(F.anim.count&&it.count)||(F.anim.scramble&&it.scr)||(F.anim.ellipsis&&it.ell)||t0>0||F.anim.outMode==='cut'||F.anim.outMode==='typeoff';
+    const FA=it.A||F.anim; const animd=t.tEnd!=null||(FA.live&&(FA.liveGlitch||(FA.liveTick&&it.count)||(FA.liveHash&&it.scr)))||(FA.inMode==='type'&&(it.type||FA.typeAll))||(FA.count&&it.count)||(FA.scramble&&it.scr)||(FA.ellipsis&&it.ell)||t0>0||FA.outMode==='cut'||FA.outMode==='typeoff';
     return {kind:'text',t0:r3(Math.max(0,t0)/fps),text:it.lines.join('\r'),x:r3(it.x),y:r3(it.y),align:it.align,size:it.sz?r3(it.sz):met.size,leading:r3(it.sz?met.lh*it.sz/met.size:met.lh),font:F.font,color:hexRgb(it.color),expr:animd?fillExpr(t,fps):null,opx:fillOpacityExpr(t,fps,true)};
   };
   const blockFill=(b,rect,base,isEcho,tEnd)=>{
@@ -5370,7 +5415,7 @@ function payload(){
   });
   // manual order: blocks you didn't pick but chose to keep visible
   P.statics.forEach(b=>{const q=cellRect(G,b.c,b.r,b.w,b.h);blocks.push({name:bname(b),order:0,c:b.c+1,r:b.r+1,w:b.w,h:b.h,x:r3(q.x),y:r3(q.y),bw:r3(q.w),bh:r3(q.h),
-    color:hexRgb(b.color),text:casedText(b).replace(/\n/g,'\r'),fontSize:b.fontSize,textColor:hexRgb(b.textColor),align:b.align,pad:b.pad,font:b.font||'',tracking:+b.tracking||0,leading:+b.leading||0,kern:b.kern||'metrics',keys:null});});
+    color:hexRgb(b.color),text:casedText(txtStyle(b)).replace(/\n/g,'\r'),fontSize:txtStyle(b).fontSize,textColor:hexRgb(b.textColor),align:txtStyle(b).align,pad:txtStyle(b).pad,font:txtStyle(b).font||'',tracking:+txtStyle(b).tracking||0,leading:+txtStyle(b).leading||0,kern:txtStyle(b).kern||'metrics',keys:null});});
   // echoes
   const E=D.echo; let echoes=[];
   if(E.on&&(E.fill||(E.stroke&&+E.sw>0))){
