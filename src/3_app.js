@@ -2532,13 +2532,16 @@ function initDope(){
   const tip=$('#dopeTip');
   const showTip=t=>{if(!tip)return;tip.textContent=t||'';tip.hidden=!t;}; TL.showTip=showTip;
   const rect=e=>{const r=c.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};};
-  c.addEventListener('pointermove',e=>{ if(TL.drag) return; const p=rect(e), h=tlHit(p.x,p.y); c.style.cursor=h.cur||'default'; TL.hover=p.x>TL.LW?{x:p.x}:null; showTip(tlInfo(p.x,p.y,h)); drawDope(); });
+  c.addEventListener('pointermove',e=>{ if(TL.drag) return; const p=rect(e), h=tlHit(p.x,p.y); c.style.cursor=U.space?'grab':(h.cur||'default'); TL.hover=p.x>TL.LW?{x:p.x}:null; showTip(tlInfo(p.x,p.y,h)); drawDope(); });
   c.addEventListener('pointerleave',()=>{if(TL.drag)return;TL.hover=null;showTip('');drawDope();});
   c.addEventListener('contextmenu',e=>{e.preventDefault(); const p=rect(e), h=tlHit(p.x,p.y); tlMenu(e,h);});
   c.addEventListener('dblclick',e=>{const p=rect(e), h=tlHit(p.x,p.y); const R=TL.rows.find(R=>R.k==='scene'); const cvv=TL.items.find(it=>it.type==='curve');
     if(R&&cvv&&p.y>=R.y0&&p.y<R.y1&&h.type!=='handle'&&h.type!=='point'&&p.x>=cvv.x0&&p.x<=cvv.x1) tlAddPoint(cvv.u(p.x)); });
   c.addEventListener('pointerdown',e=>{
-    if(e.button!==0) return; const p=rect(e), h=tlHit(p.x,p.y); closeTlMenu();
+    const p0=rect(e);
+    // hand: hold Space (or use the middle button) and drag to pan the timeline — sideways through time, up/down through the block rows
+    if(U.space||e.button===1){ e.preventDefault(); U.spacePanned=true; c.setPointerCapture&&c.setPointerCapture(e.pointerId); const V0=tlView(); TL.drag={pan:true,x0:p0.x,y0:p0.y,f0:V0.f0,f1:V0.f1,sy:TL.scrollY}; c.style.cursor='grabbing'; return; }
+    if(e.button!==0) return; const p=p0, h=tlHit(p.x,p.y); closeTlMenu();
     c.setPointerCapture&&c.setPointerCapture(e.pointerId);
     const freeze=()=>{TL.frozen=tlView();};
     if(h.type==='ruler'){ freeze(); TL.drag={scrub:true}; tlSetT(TL.F(p.x)); return; }
@@ -2560,7 +2563,9 @@ function initDope(){
     if(p.y>=TL.listY0&&TL.blocksOpen){ freeze(); TL.drag={marquee:{x0:p.x,y0:p.y,x1:p.x,y1:p.y},keep:mods?tlSelIds():[]}; return; }   // drag a box to select several blocks
     if(tlSelIds().length){U.dopeSel=[];U.selIds=[];refresh();} else { freeze(); TL.drag={scrub:true,content:p.y>=TL.contentY0}; tlSetT(TL.drag.content?TL.P.toReal(TL.F(p.x)):TL.F(p.x)); }
   });
-  c.addEventListener('pointermove',e=>{const d=TL.drag; if(!d) return; const p=rect(e), f=TL.F(p.x);
+  c.addEventListener('pointermove',e=>{const d=TL.drag; if(!d) return; const p=rect(e);
+    if(d.pan){ const span=d.f1-d.f0, df=(p.x-d.x0)/Math.max(1,TL.W-TL.LW)*span; TL.f0=d.f0-df; TL.f1=d.f1-df; TL.scrollY=d.sy-(p.y-d.y0); drawDope(); try{updTlZoom();}catch(x){} return; }
+    const f=TL.F(p.x);
     if(d.scrub){tlSetT(d.content&&TL.P?TL.P.toReal(f):f);return;}
     if(d.marquee){ const m=d.marquee; m.x1=p.x; m.y1=p.y; const x0=Math.min(m.x0,m.x1),x1=Math.max(m.x0,m.x1),y0=Math.min(m.y0,m.y1),y1=Math.max(m.y0,m.y1);
       const hit=TL.items.filter(it=>it.type==='block'&&it.x1>=x0&&it.x0<=x1&&it.y1>=y0&&it.y0<=y1).map(it=>it.id);
@@ -2585,6 +2590,7 @@ function initDope(){
     showTip(d.blocks?`${d.kind==='out'?'leave':d.kind==='in'?'come in':'move'} ${d.blocks.length>1?d.blocks.length+' blocks ':''}${df>=0?'+':''}${df}f${d.kind==='move'?' (in and out together)':''}`:d.handle?`${d.handle.tip} → f${Math.round(f)} (${(f/fps).toFixed(2)}s)`:d.exit?`leaves ${df>=0?'+':''}${df}f`:d.point?d.point.tip:'');
   });
   const up=()=>{const d=TL.drag; TL.drag=null; TL.frozen=null; if(!d) return;
+    if(d.pan){ c.style.cursor=U.space?'grab':''; return; }
     if(d.marquee){ const m=d.marquee; if(Math.abs(m.x1-m.x0)<3&&Math.abs(m.y1-m.y0)<3&&!d.keep.length){U.dopeSel=[];U.selIds=[];} TL.anchor=(U.dopeSel||[])[0]; refresh(); return; }
     if(d.clip&&!d.moved){ H.u.pop(); updUndo(); setCtx(d.clip.ctx); return; }
     if(d.blocks&&!d.moved){ H.u.pop(); updUndo(); drawDope(); return; }
