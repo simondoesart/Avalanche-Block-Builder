@@ -705,6 +705,7 @@ body.nohelp .qm{display:none}
             
             <details class="sub" data-sub="gen-walk" open><summary>Walk <span class="note">how the line moves</span></summary><div class="subbody">
               
+              <details class="sub" data-sub="walk-details"><summary>Details <span class="note">gap, wander, stairs, jumps, pairs</span></summary><div class="subbody">
               <div class="field2">
                 <div class="field"><span class="lbl scrub">Gap</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.gap" min="0" max="40" step="1"><button data-d="1">+</button></div></div>
                 <div class="field"><span class="lbl scrub">Wander</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.wander" min="0" max="4" step="1"><button data-d="1">+</button></div></div>
@@ -719,6 +720,7 @@ body.nohelp .qm{display:none}
                 <div class="field"><span class="lbl scrub">Pairs</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.stackPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
                 <div class="field" data-adv><span class="lbl scrub" title="Rows between the two blocks in a pair. Empty = the same as the block height">Pair gap</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.stackGap" data-zero="auto" min="0" max="20" step="1"><span class="unit">rows</span><button data-d="1">+</button></div></div>
               </div>
+              </div></details>
             
             <div class="field"><span class="lbl scrub" title="0 = random">Start row</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.startRow" min="0" max="60" step="1"><span class="unit" id="rowUnit">random</span><button data-d="1">+</button></div></div>
               <div class="field stack"><span class="lbl">Ending</span><div class="seg" data-seg="anim.ending"><button data-v="count">Wherever it lands</button><button data-v="spot">On a chosen row</button></div></div>
