@@ -238,3 +238,6 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - Select (V): click a block — generated or not — to select it; a plain click on an empty square just deselects (no stray one-square "block"). Selecting no longer flips you out of a scrubbed preview.
 - Draw, Unmerge and Stamp now work on a generated line (it becomes editable first).
 - Colour, simplified: one line colour in the Blocks step (second colour / mix / palette are under All). Select one or more blocks and pick a colour on the right — works for generated blocks too, with "Back to the line colour". The Paint tool is gone.
+
+### v3.18
+- Ending on a chosen row + dropping blocks (yellow end handle or Delete): the line now keeps its start and **re-walks the last 30%** of the build so the new last block lands on the end row (columns stay put; the walk-off follows the new end). Advanced (All): "When blocks are dropped" — Re-walk the end / Slide the whole line — and the Re-walk %. If 30% can't reach the row, it re-walks as much as it needs.
