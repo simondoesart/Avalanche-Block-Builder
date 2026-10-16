@@ -4027,6 +4027,15 @@ $('#paceIn').addEventListener('input',e=>{ const v=parseFloat(e.target.value); i
   D.anim.pace=Math.max(1,Math.round(f*100)/100); planCache.k=''; refresh(); });
 $('#paceIn').addEventListener('change',()=>{U.editing=null;paceShow();});
 $('#paceUnit').addEventListener('change',e=>{ D.anim.paceUnit=e.target.value; paceShow(); autosave(); });
+/* recolour every block (hand-placed / edited ones too) with the current colour mode; single-block picks are cleared */
+function applyColourToAll(){
+  const G=geom(), P=plan(G); if(!P.seq.length&&!D.blocks.length) return toast('No blocks to colour');
+  pushHist(); D.blockColors={}; planCache.k='';
+  const seq=P.seq.length?P.seq:ordered(G), col=applyColourMode(seq.map(b=>Object.assign({},b,{virtual:false})));
+  let n=0; col.forEach(c=>{ const rb=byId(c.id); if(rb&&rb.color!==c.color){ const auto=rb.textColor===contrast(rb.color); rb.color=c.color; if(auto) rb.textColor=contrast(c.color); n++; } });
+  planCache.k=''; syncPalettes(); refresh(); toast(`Recoloured ${isGenerated()?'the line':n+' block'+(n===1?'':'s')}`,'⌘Z to undo',true);
+}
+$('#btnApplyColour').onclick=applyColourToAll;
 $('#btnGenClear').onclick=()=>{if(!D.blocks.length)return toast('No blocks to clear');D.anim.dt={};D.anim.dx={};D.anim.skip=[];D.anim.cutAt=null;clearLayout();};
 $('#btnGen').onclick=()=>generate(false);
 $('#btnShuffle').onclick=shuffle;
