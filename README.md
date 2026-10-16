@@ -270,3 +270,8 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - The Scene curve now has a **Simple** mode (on by default). Drag the red square (On done) and the blue square (Off starts) left/right on the Scene row to set where the build finishes and where the blocks start leaving.
 - Four ease amounts in Scene settings: Start, Into hold, Out of hold, End. "On done at" / "Off starts at" can also be typed (empty = natural). "Natural positions" resets them.
 - **Custom curve** keeps the old free-form handles. Editing the curve by hand switches to Custom.
+
+### v3.24 — In · Hold · Out
+- Motion → Blocks in & out is now **In · Hold · Out**. Hold is a toggle: on = the line holds (length per Out style), off = straight from In to Out. "Then" became **Out** (Stay up / Walk off / Each leaves / Behind camera / Clear out + how they leave).
+- Scene row (Simple easing): vertical lines for **Hold starts** and **Out starts** (drag them), segment labels In / Hold / Out, and white **ease handles** on the curve — drag along the curve, longer = gentler: In ease in / ease out, Out ease in / ease out.
+- No hold: either one **Out point** (In ends, Out starts, its own ease each side) or **Smooth, no point** (start and end eases only).

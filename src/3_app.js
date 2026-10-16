@@ -56,7 +56,7 @@ const DEF={
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,offX:0,offY:0,tracking:0,leading:0,kern:'metrics',caps:'none'},
   anim:{seed:0,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
-        sceneCurve:[0.45,0,0.55,1],sceneEase:{on:true,onAt:null,holdAt:null,start:40,land:75,leave:60,end:40},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
+        sceneCurve:[0.45,0,0.55,1],sceneEase:{on:true,onAt:null,holdAt:null,start:40,land:75,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zoomOn:false,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
   lab:{flicker:{on:false,frames:8,seed:3},
        pulse:{on:false,scale:1.35,len:18,width:2,color:'#E6212F'},
@@ -66,7 +66,7 @@ const DEF={
        snow:{on:false,count:90,speed:240,size:2,stretch:6,dir:'left',color:'#EBF0FA',opacity:55,seed:9}},
   num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100},
   timing:{beats:[],markers:[],use:'beats',offset:0,sync:false,sens:1.3,minGap:4,media:null,video:true,videoOpacity:60,sound:true},
-  exit:{on:false,walkHold:24,walkPace:1,walkLen:48,walkFollow:60,trail:3,slide:1.5,mode:'hold',hold:36,at:0,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
+  exit:{on:false,holdOn:true,walkHold:24,walkPace:1,walkLen:48,walkFollow:60,trail:3,slide:1.5,mode:'hold',hold:36,at:0,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
   out:{replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180,folder:true,preGrid:true,preBlocks:true,preTrans:true,shy:true,trim:true,markers:true},
   blocks:[]
 };
@@ -105,7 +105,7 @@ const RAIL_ICON={
 };
 /* contexts: what the properties panel shows when you click a timeline row */
 const CTX={
-  scene:{t:'Scene · time remap',e:'Timeline · Scene',d:'A layer over the blocks: its length is the scene, and its curve speeds up or slows down the whole block timeline (On · Hold · Off) — like time remapping in AE.'},
+  scene:{t:'Scene · time remap',e:'Timeline · Scene',d:'A layer over the blocks: its length is the scene, and its curve speeds up or slows down the whole block timeline (In · Hold · Out) — like time remapping in AE.'},
   camera:{t:'Camera',e:'Timeline · Camera',d:'How the view travels with the line. The Camera row shows its speed.'},
   inout:{t:'Blocks · On, Hold, Off',e:'Timeline · Blocks',d:'The blocks run on their own steady clock: On (the build), Hold, Off. The Scene layer above then re-times all of it.'},
   sound:{t:'Sync to sound',e:'Timeline · Sound',d:'Load audio or video, or read markers from After Effects, and snap the reveals to the beat.'},
@@ -1604,31 +1604,37 @@ function phaseBounds(Pc){
   else if(X2.on&&Pc.exitT&&Pc.exitT.some(v=>v!=null)){const ex=Pc.exitT.filter(v=>v!=null); hold=Math.min(...ex);}
   return {c0,on,hold};
 }
-function easeCurve(yOn,yHold,E){
-  const pts=[{x:0,y:0,e:E.start}], xa=v=>(v==null||v===''||!(+v>0))?null:clamp(+v/100,.04,.96);
+/* the simple scene curve: points (start · hold starts · out starts · end) with ease amounts.
+   Returns the packed curve; easeModel() also returns which ease each handle controls (for the timeline). */
+function easeModel(yOn,yHold,E){
+  const xa=v=>(v==null||v===''||!(+v>0))?null:clamp(+v/100,.04,.96);
   const hasOn=yOn!=null&&yOn>.02&&yOn<.98, hasHold=hasOn&&yHold!=null&&yHold>yOn+.01&&yHold<.995;
-  let xOn=hasOn?(xa(E.onAt)!=null?xa(E.onAt):yOn):null, xHold=hasHold?(xa(E.holdAt)!=null?xa(E.holdAt):yHold):null;
-  if(hasHold) xHold=clamp(xHold,xOn+.03,.97);
-  if(hasOn) pts.push({x:xOn,y:yOn,e:E.land}); if(hasHold) pts.push({x:xHold,y:yHold,e:E.leave}); pts.push({x:1,y:1,e:E.end});
+  const pts=[{x:0,y:0,eo:E.start,ko:'start',role:'start'}];
+  if(hasHold){ let xOn=xa(E.onAt)!=null?xa(E.onAt):yOn, xH=xa(E.holdAt)!=null?xa(E.holdAt):yHold; xH=clamp(xH,xOn+.03,.97);
+    pts.push({x:xOn,y:yOn,ei:E.land,eo:E.land,ki:'land',role:'hold'},{x:xH,y:yHold,ei:E.leave,eo:E.leave,ko:'leave',role:'out'}); }
+  else if(hasOn&&E.mid!=='smooth'){ const xOn=xa(E.onAt)!=null?xa(E.onAt):yOn; pts.push({x:xOn,y:yOn,ei:E.land,eo:E.leave,ki:'land',ko:'leave',role:'mid'}); }
+  pts.push({x:1,y:1,ei:E.end,ki:'end',role:'end'});
   const n=pts.length, sl=[]; for(let i=0;i<n-1;i++) sl.push((pts[i+1].y-pts[i].y)/Math.max(1e-6,pts[i+1].x-pts[i].x));
-  const h=pts.map((p,i)=>{ const e=clamp((+p.e||0)/100,0,1), sIn=i>0?sl[i-1]:null, sOut=i<n-1?sl[i]:null;
-    const base=sIn==null?sOut:sOut==null?sIn:Math.min(sIn,sOut), slope=(1-e)*base;
-    const q={x:p.x,y:p.y,ix:0,iy:0,ox:0,oy:0};
-    if(i>0){const dx=p.x-pts[i-1].x, dy=p.y-pts[i-1].y, len=dx*(.2+.28*e); q.ix=-len; q.iy=-clamp(slope*len,0,dy*.95);}
-    if(i<n-1){const dx=pts[i+1].x-p.x, dy=pts[i+1].y-p.y, len=dx*(.2+.28*e); q.ox=len; q.oy=clamp(slope*len,0,dy*.95);}
+  const ef=v=>clamp((+v||0)/100,0,1);
+  const h=pts.map((p,i)=>{ const sIn=i>0?sl[i-1]:null, sOut=i<n-1?sl[i]:null, eI=ef(p.ei), eO=ef(p.eo);
+    const base=sIn==null?sOut:sOut==null?sIn:Math.min(sIn,sOut), eAvg=(i===0?eO:i===n-1?eI:(eI+eO)/2), slope=(1-eAvg)*base;
+    const q={x:p.x,y:p.y,ix:0,iy:0,ox:0,oy:0,ki:p.ki,ko:p.ko,role:p.role};
+    if(i>0){const dx=p.x-pts[i-1].x, dy=p.y-pts[i-1].y, len=dx*(.06+.42*eI); q.ix=-len; q.iy=-clamp(slope*len,0,dy*.95); q.segI=dx;}
+    if(i<n-1){const dx=pts[i+1].x-p.x, dy=pts[i+1].y-p.y, len=dx*(.06+.42*eO); q.ox=len; q.oy=clamp(slope*len,0,dy*.95); q.segO=dx;}
     return q; });
-  return hPack(h);
+  return {h,curve:hPack(h)};
 }
+function easeCurve(yOn,yHold,E){return easeModel(yOn,yHold,E).curve;}
 let easeSync={k:''};
 function syncSceneEase(G){
   const E=D.anim.sceneEase; if(!E||!E.on||D.anim.mode==='static') return;
   const sv=D.anim.sceneCurve; D.anim.sceneCurve=null; const k=JSON.stringify(D)+'|'+G.W+'|'+G.H; D.anim.sceneCurve=sv;
   if(easeSync.k===k&&easeSync.c&&JSON.stringify(sv)===easeSync.c) return;
   let P; D.anim.sceneCurve=[0,0,1,1]; try{P=computePlan(G);}finally{D.anim.sceneCurve=sv;}
-  if(!P.seq.length){easeSync={k,c:JSON.stringify(sv)};return;}
+  if(!P.seq.length){easeSync={k,c:JSON.stringify(sv),m:null};return;}
   const tail=Math.max(0,Math.round(D.anim.tail)||0), C=Math.max(1,P.end-tail-P.startF), B=phaseBounds(P);
-  const c=easeCurve(B.on!=null?(B.on-B.c0)/C:null,B.hold!=null?(B.hold-B.c0)/C:null,E);
-  D.anim.sceneCurve=c; easeSync={k,c:JSON.stringify(c)};
+  const M=easeModel(B.on!=null?(B.on-B.c0)/C:null,B.hold!=null?(B.hold-B.c0)/C:null,E), c=M.curve;
+  D.anim.sceneCurve=c; easeSync={k,c:JSON.stringify(c),m:M};
 }
 function plan(G){
   syncSceneEase(G);
@@ -1708,7 +1714,7 @@ function computePlan(G){
   // blocks while the camera follows + enough for the head to run off frame with its whole trail after the camera lets go
   const woOff=Math.ceil(.45*G.W/Math.max(1,Math.max(1,D.block.w|0)*G.p))+woK+2;
   const woN=WO?Math.max(1,Math.round(woLen/pace2))+(A.mode==='camera'||A.mode==='push'?woOff:0):0;
-  const woH=WO?Math.max(0,Math.round(+D.exit.walkHold||0)):0;
+  const woH=WO&&D.exit.holdOn!==false?Math.max(0,Math.round(+D.exit.walkHold||0)):0;
   // phases on the content clock: ON (the build, length L) · HOLD (woH) · OFF (the walk-off, at its own pace)
   const wantB=want;
   P.woN=woN;
@@ -1960,7 +1966,7 @@ function computePlan(G){
         const at=dd=>{if(pts.length<2||tot<=0)return pts[0];let k=1;while(k<cum.length-1&&cum[k]<dd)k++;const seg=Math.max(1e-9,cum[k]-cum[k-1]),f=clamp((dd-cum[k-1])/seg,0,1);return[pts[k-1][0]+(pts[k][0]-pts[k-1][0])*f,pts[k-1][1]+(pts[k][1]-pts[k-1][1])*f];};
         for(let i=0;i<N;i++){const t=a+i, u=clamp((t-t0c)/Math.max(1,t1c-t0c),0,1), o=at(tot*clamp(E(u),0,1)); xs[i]=o[0]; ys[i]=o[1];}
         if(!fin&&keyAll.length>1){
-          /* camera = the blocks (On · Hold · Off): one path for the frame (frontier on the line) through build → hold → walk.
+          /* camera = the blocks (In · Hold · Out): one path for the frame (frontier on the line) through build → hold → walk.
              Distance runs evenly on the scene's linear clock (so the real speed follows the scene easing, and pairs or
              stairs never make it stall), easing out into the hold and back up to speed into the walk. */
           const pA=[], cA=[0], kd=[];
@@ -2689,7 +2695,7 @@ function drawDope(){
   row('scene',ROWS.scene,{name:'Scene · time remap',ctx:'scene'});
   row('trans',ROWS.trans,{name:'Transitions',ctx:'trans'});
   TL.contentY0=y;
-  if(anim) row('phases',ROWS.phases,{name:'Blocks · on hold off',ctx:'inout'});
+  if(anim) row('phases',ROWS.phases,{name:'Blocks · in hold out',ctx:'inout'});
   if(camOn) row('camera',ROWS.camera,{name:'Camera',ctx:'camera'});
   tlContentRows().forEach(cr=>row('content',ROWS.content,{name:cr.name,tab:cr.tab,ck:cr.k}));
   const hdr=row('blocks',ROWS.blocks,{name:'Blocks',stage:'layout'});
@@ -2741,15 +2747,34 @@ function drawDope(){
       const inv2=invCurve(D.anim.sceneCurve||[0,0,1,1]);
       const mark=(c,txt,col)=>{const v=clamp((c-P.startF)/P.C,0,1), u=inv2(v), x=cxp(u), y=cyp(v); g.fillStyle=col; g.fillRect(x-.5,yb,1,hb); g.beginPath(); g.arc(x,y,3,0,7); g.fill();
         const t=`${txt} ${((P.startF+P.R*u)/fps).toFixed(1)}s`; g.font='600 10px sans-serif'; const w=g.measureText(t).width; label(t,clamp(x+4,X(s0)+4,X(s1)-w-4),Math.max(yb+22,y-8),col);};
-      mark(cOn,'On done',"#FF7F7B"); if(cHold!=null) mark(cHold,'Off starts','#9fbbe6'); }
+      if(!(D.anim.sceneEase&&D.anim.sceneEase.on)){ mark(cOn,'On done',"#FF7F7B"); if(cHold!=null) mark(cHold,'Off starts','#9fbbe6'); } }
     g.strokeStyle='rgba(255,255,255,.9)'; g.lineWidth=1.6; g.beginPath(); for(let k=0;k<=80;k++){const u=k/80,xx=cxp(u),yy=cyp(clamp(sf(u),-.2,1.2));k?g.lineTo(xx,yy):g.moveTo(xx,yy);} g.stroke();
     const SE=D.anim.sceneEase, simple=SE&&SE.on;
-    if(simple&&X(s1)-X(s0)>50&&P.C>0){ const PB=phaseBounds(Pc), inv3=invCurve(D.anim.sceneCurve||[0,0,1,1]);
-      const pk=(c,key,lo,hi,col,tip)=>{ if(c==null) return; const v=clamp((c-P.startF)/P.C,0,1), u=inv3(v), x=cxp(u), y=cyp(v);
-        g.fillStyle=col; g.fillRect(x-5,y-5,10,10); g.strokeStyle='#fff'; g.lineWidth=1.5; g.strokeRect(x-5+.5,y-5+.5,9,9);
-        item({type:'point',x,y,cur:'ew-resize',tip,drag:(fx)=>{const uu=(fx-cxp(0))/Math.max(1,cxp(1)-cxp(0)); SE[key]=Math.round(clamp(uu*100,lo(),hi()));}}); };
-      pk(PB.on,'onAt',()=>4,()=>PB.hold!=null?(SE.holdAt!=null?+SE.holdAt:100*inv3(clamp((PB.hold-P.startF)/P.C,0,1)))-3:96,'#E6212F','On done — drag left/right to set where the build finishes in the scene');
-      pk(PB.hold,'holdAt',()=>(SE.onAt!=null?+SE.onAt:100*inv3(clamp((PB.on-P.startF)/P.C,0,1)))+3,()=>97,'#749DD3','Off starts — drag left/right to set where the blocks start leaving');
+    if(simple&&X(s1)-X(s0)>50&&P.C>0&&easeSync.m){ const M=easeSync.m, hs=M.h, W=Math.max(1,cxp(1)-cxp(0));
+      const COL={hold:'#FF7F7B',out:'#9fbbe6',mid:'#c9a7ff'}, NAME={hold:'Hold starts',out:'Out starts',mid:'Out starts'};
+      // segment names along the top
+      const segName=(u0,u1,t)=>{const xa=cxp(u0),xb=cxp(u1); if(xb-xa>34){g.font='600 10px sans-serif';const w=g.measureText(t).width;label(t,(xa+xb)/2-w/2,yb+24,'rgba(255,255,255,.55)');}};
+      const byRole=r=>hs.find(q=>q.role===r);
+      const pH=byRole('hold'), pO=byRole('out'), pM=byRole('mid');
+      if(pH&&pO){segName(0,pH.x,'In');segName(pH.x,pO.x,'Hold');segName(pO.x,1,'Out');} else if(pM){segName(0,pM.x,'In');segName(pM.x,1,'Out');} else segName(0,1,'In · Out');
+      // vertical position lines with a square knob at the top
+      hs.forEach(q=>{ if(!COL[q.role]) return; const x=cxp(q.x), col=COL[q.role];
+        g.strokeStyle=col; g.lineWidth=1.5; g.beginPath(); g.moveTo(x,yb+2); g.lineTo(x,yb+hb-2); g.stroke();
+        g.fillStyle=col; g.fillRect(x-6,yb+1,12,12); g.fillStyle='rgba(0,0,0,.45)'; g.fillRect(x-.5,yb+4,1,6);
+        const t=`${NAME[q.role]} ${((P.startF+P.R*q.x)/fps).toFixed(1)}s`; g.font='600 10px sans-serif'; const w=g.measureText(t).width; label(t,q.role==='hold'?clamp(x-9-w,X(s0)+4,X(s1)-w-4):clamp(x+9,X(s0)+4,X(s1)-w-4),yb+8,col);
+        const key=q.role==='out'?'holdAt':'onAt', other=q.role==='out'?hs.find(z=>z.role==='hold'):hs.find(z=>z.role==='out');
+        item({type:'point',x,y:yb+7,cur:'ew-resize',tip:`${NAME[q.role]} — drag left/right to move it`,drag:(fx)=>{const uu=(fx-cxp(0))/W; let lo=4,hi=96; if(other){ if(q.role==='out') lo=other.x*100+3; else hi=other.x*100-3; } D.anim.sceneEase[key]=Math.round(clamp(uu*100,lo,hi));}});
+        item({type:'point',x,y:yb+hb/2,cur:'ew-resize',tip:`${NAME[q.role]} — drag left/right to move it`,drag:(fx)=>{const uu=(fx-cxp(0))/W; let lo=4,hi=96; if(other){ if(q.role==='out') lo=other.x*100+3; else hi=other.x*100-3; } D.anim.sceneEase[key]=Math.round(clamp(uu*100,lo,hi));}});
+      });
+      // ease handles (AE-style influence): drag along the time axis — longer = softer
+      const EN={start:'In · ease in',land:'In · ease out',leave:'Out · ease in',end:'Out · ease out'};
+      hs.forEach(q=>{ [['i',q.ki,q.ix,q.iy,q.segI],['o',q.ko,q.ox,q.oy,q.segO]].forEach(([side,key,dx,dy,seg])=>{ if(!key||!seg) return;
+          const ax=cxp(q.x), ay=cyp(q.y), hx=cxp(q.x+dx), hy=cyp(q.y+dy);
+          g.strokeStyle='rgba(255,255,255,.55)'; g.lineWidth=1; g.beginPath(); g.moveTo(ax,ay); g.lineTo(hx,hy); g.stroke();
+          g.fillStyle='#fff'; g.beginPath(); g.arc(hx,hy,4,0,7); g.fill(); g.strokeStyle='#E6212F'; g.lineWidth=1.5; g.stroke();
+          const e=Math.round(+D.anim.sceneEase[key]||0); if(Math.abs(hx-ax)>26){g.font='10px sans-serif'; label(e+'%',side==='o'?hx+6:hx-30,hy-7,'rgba(255,255,255,.7)');}
+          item({type:'point',x:hx,y:hy,cur:'ew-resize',tip:`${EN[key]} — drag along the curve: longer = gentler (${e}%)`,drag:(fx)=>{const len=Math.abs((fx-ax)/W); D.anim.sceneEase[key]=Math.round(clamp((len/seg-.06)/.42,0,1)*100);}}); }); });
+      hs.forEach(q=>{g.fillStyle='#fff';g.beginPath();g.arc(cxp(q.x),cyp(q.y),3.5,0,7);g.fill();});
     }
     if(!simple&&X(s1)-X(s0)>50){
       const Hs=toH(D.anim.sceneCurve||[0,0,1,1]);
@@ -2787,8 +2812,8 @@ function drawDope(){
       if(WOn){ holdEnd=Pc.walkT; offEnd=Math.max(Pc.walkT+1,(Pc.walkEnd||Pc.end)); }
       else if(X2.on&&Pc.exitT&&Pc.exitT.some(v=>v!=null)){ const ex=Pc.exitT.filter(v=>v!=null); holdEnd=Math.max(onEnd,Math.min(...ex)); offEnd=Math.max(holdEnd+1,Math.max(...ex)+(+X2.len||8)); }
       const seg=(f0,f1,col,txt,tcol)=>{if(f1==null||f1<=f0)return;g.fillStyle=col;g.fillRect(X(f0),yp,X(f1)-X(f0),hp);g.fillStyle='rgba(0,0,0,.35)';g.fillRect(X(f1)-1,yp,1,hp);if(X(f1)-X(f0)>30){g.font='600 10px sans-serif';label(txt,X(f0)+5,yp+hp/2,tcol||'#fff');}};
-      seg(cs,onEnd,'rgba(230,33,47,.55)','On');
-      if(holdEnd!=null){ seg(onEnd,holdEnd,'rgba(236,236,239,.16)','Hold','#ececef'); seg(holdEnd,offEnd,'rgba(116,157,211,.5)',WOn?'Off · walks off':'Off'); }
+      seg(cs,onEnd,'rgba(230,33,47,.55)','In');
+      if(holdEnd!=null){ seg(onEnd,holdEnd,'rgba(236,236,239,.16)','Hold','#ececef'); seg(holdEnd,offEnd,'rgba(116,157,211,.5)',WOn?'Out · walks off':'Out'); }
       else seg(onEnd,Math.max(onEnd+1,Pc.end),'rgba(236,236,239,.08)','Stays','#a2a2ab');
       // handles work on the blocks' own clock (converted from the scene time under the pointer)
       const Lc=D.anim.lenF, onC=(onEnd);
@@ -3069,7 +3094,7 @@ function tlMenu(e,h){
     html=`<div class="mh">${n>1?n+' blocks':'Block'}</div><button data-tm="reset">Reset timing</button><button data-tm="nudge-6">Earlier 6f <kbd>⌥←</kbd></button><button data-tm="nudge6">Later 6f <kbd>⌥→</kbd></button><div class="msep"></div>`+
       (virt&&isGenerated()?'<button data-tm="edit">Make the line editable</button>':'')+`<button data-tm="del" class="danger">Remove <kbd>Del</kbd></button><button data-tm="delafter" class="danger">Remove this and all after <kbd>⇧Del</kbd></button>`;
   } else if(h.type==='point'||h.type==='curve'||(h.row&&h.row.k==='scene')){
-    html='<div class="mh">Scene easing</div><button data-tm="easelin">Linear — blocks at their own speed</button><button data-tm="easereset">Ease in-out</button><button data-tm="easephase">Ease each phase (On · Hold · Off)</button><div class="msep"></div><button data-tm="ease">Open the big editor…</button><button data-tm="scene">Scene settings…</button>';
+    html='<div class="mh">Scene easing</div><button data-tm="easelin">Linear — blocks at their own speed</button><button data-tm="easereset">Ease in-out</button><button data-tm="easephase">Ease each phase (In · Hold · Out)</button><div class="msep"></div><button data-tm="ease">Open the big editor…</button><button data-tm="scene">Scene settings…</button>';
   } else return;
   m.innerHTML=html; m.hidden=false; m.style.left=Math.max(8,Math.min(innerWidth-m.offsetWidth-8,e.clientX))+'px'; m.style.top=Math.max(8,Math.min(innerHeight-m.offsetHeight-8,e.clientY))+'px';
 }
@@ -3112,16 +3137,16 @@ function exitTimes(P,G,seq,done){
   const X=D.exit; if(!X||!X.on||!seq.length) return null;
   const out=new Array(seq.length).fill(null), fps=D.comp.fps||30;
   const TB=P.T0||P.T, done0=done.map((d,i)=>d-((P.T[i]||0)-(TB[i]||0)));   // exits are worked out on the un-retimed schedule
-  if(X.mode==='hold'){ seq.forEach((b,i)=>{out[i]=Math.round(done[i]+Math.max(1,+X.hold||0));}); }
+  if(X.mode==='hold'){ seq.forEach((b,i)=>{out[i]=Math.round(done[i]+(X.holdOn===false?1:Math.max(1,+X.hold||0)));}); }
   else if(X.mode==='end'){
-    const t0=Math.round(P.startF+P.L+(+X.at||0)), stg=Math.max(0,+X.stagger||0);
+    const t0=Math.round(P.startF+P.L+(X.holdOn===false?Math.min(0,+X.at||0):(+X.at||0))), stg=Math.max(0,+X.stagger||0);
     const order=seq.map((b,i)=>i); if(X.order==='reverse') order.reverse();
     order.forEach((i,k)=>{out[i]=Math.max(done0[i]+1,Math.round(t0+k*stg));});
   } else if(X.mode==='walk'){
     // walk-off: after the hold the line keeps walking; the oldest blocks leave first so only a short trail follows the head
     // snake: a block leaves when the block K places ahead of it lands, so exactly K follow the head.
     // At the start of the walk the surplus old blocks peel away quickly, oldest first.
-    const tW=P.walkT!=null?P.walkT:Math.round(Math.max(...done)+Math.max(0,+X.walkHold||0)), pc=Math.max(1,(+D.anim.pace||6)*Math.max(.1,+X.walkPace||1));
+    const tW=P.walkT!=null?P.walkT:Math.round(Math.max(...done)+(X.holdOn===false?0:Math.max(0,+X.walkHold||0))), pc=Math.max(1,(+D.anim.pace||6)*Math.max(.1,+X.walkPace||1));
     const K=Math.max(1,Math.round(+X.trail||6)), n=seq.length, Nb=P.walkFrom!=null?P.walkFrom:n, surplus=Math.max(0,Nb-K), peel=Math.max(8,Math.round(pc*3));
     const lastT=TB[n-1];
     seq.forEach((b,i)=>{
