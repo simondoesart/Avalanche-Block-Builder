@@ -571,6 +571,42 @@ function GB_logo(comp,it){
   if(it.t0>0) L.inPoint=it.t0;
   return L;
 }
+/* content v2 graphic (pixel icon, graph, combo, pattern): one group per build step; fills/strokes; build via
+   group opacity / trim paths / scale expressions; live graphs via a path expression */
+function GB_shape(comp,it){
+  var L=comp.layers.addShape(); L.name=it.name||"Graphic";
+  var root=L.property("ADBE Root Vectors Group"), i, j, k;
+  for(i=0;i<it.groups.length;i++){
+    var gp=it.groups[i];
+    root.addProperty("ADBE Vector Group");
+    var G=function(){return root.property(root.numProperties);};
+    var C=function(){return G().property("ADBE Vectors Group");};
+    var ox=0, oy=0; if(gp.grow){ox=gp.grow[0];oy=gp.grow[1];}
+    for(j=0;j<gp.shapes.length;j++){
+      var q=gp.shapes[j];
+      if(q.t=="r"){var rr=C().addProperty("ADBE Vector Shape - Rect"); rr.property("ADBE Vector Rect Size").setValue([q.w,q.h]); rr.property("ADBE Vector Rect Position").setValue([q.x+q.w/2-ox,q.y+q.h/2-oy]);}
+      else{var sh=new Shape(), vv=[], tz=[]; for(k=0;k<q.pts.length;k++){vv.push([q.pts[k][0]-ox,q.pts[k][1]-oy]);tz.push([0,0]);}
+        sh.vertices=vv; sh.inTangents=tz; sh.outTangents=tz; sh.closed=!!q.closed;
+        var pg=C().addProperty("ADBE Vector Shape - Group"); pg.property("ADBE Vector Shape").setValue(sh);
+        if(gp.px&&j==0){try{C().property(C().numProperties).property("ADBE Vector Shape").expression=gp.px;}catch(eP){}}}
+    }
+    if(gp.f){var fl=C().addProperty("ADBE Vector Graphic - Fill"); fl.property("ADBE Vector Fill Color").setValue(it.color);}
+    else{var st=C().addProperty("ADBE Vector Graphic - Stroke"); st.property("ADBE Vector Stroke Color").setValue(it.color); st.property("ADBE Vector Stroke Width").setValue(gp.sw);
+      try{st.property("ADBE Vector Stroke Line Cap").setValue(1);st.property("ADBE Vector Stroke Line Join").setValue(1);}catch(eC){}}
+    if(gp.tx){try{var tr=C().addProperty("ADBE Vector Filter - Trim"); tr.property("ADBE Vector Trim End").expression=gp.tx;}catch(eT){}}
+    var tf=G().property("ADBE Vector Transform Group");
+    if(gp.grow){tf.property("ADBE Vector Position").setValue([ox,oy]);}
+    if(gp.o<100) tf.property("ADBE Vector Group Opacity").setValue(gp.o);
+    if(gp.ox){try{G().property("ADBE Vector Transform Group").property("ADBE Vector Group Opacity").expression=gp.ox;}catch(eO){}}
+    if(gp.gx){try{G().property("ADBE Vector Transform Group").property("ADBE Vector Scale").expression=gp.gx;}catch(eS){}}
+  }
+  GB_xf(L).property("ADBE Anchor Point").setValue([0,0]);
+  GB_xf(L).property("ADBE Position").setValue([0,0]);
+  if(it.op<100) GB_xf(L).property("ADBE Opacity").setValue(it.op);
+  L.comment="GridBlocks:fill"; L.label=11;
+  if(it.t0>0) L.inPoint=it.t0;
+  return L;
+}
 function GB_fillItems(comp,items,parent,list){
   if(!items) return;
   for(var i=0;i<items.length;i++){
@@ -580,6 +616,7 @@ function GB_fillItems(comp,items,parent,list){
       else if(it.kind=="ring") L=GB_ring(comp,it);
       else if(it.kind=="logo") L=GB_logo(comp,it);
       else if(it.kind=="icon") L=GB_icon(comp,it);
+      else if(it.kind=="shape") L=GB_shape(comp,it);
       else L=GB_fillText(comp,it);
     }catch(eI){L=null;}
     if(L){

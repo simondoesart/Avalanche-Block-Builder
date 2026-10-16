@@ -244,3 +244,14 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 
 ### v3.19 — Colour modes
 - Blocks › Colour: **One** · **Up / down** (level, stepping-up and stepping-down colours) · **Cycle** · **Random** — Cycle and Random come in **Duo / Tri / Quad**. Applies to the whole generated line live (pairs take their column's colour); colours picked for single blocks always win. Random reshuffles with New seed.
+
+### v3.20 — Content v2: looks, graphs, pixel icons, combos
+- **What appears** redesigned: six looks (Dashboard, Terminal, Charts, Iconic, Network, Minimal), 🎲 Randomize everything, and a Text / Graphs / Combos mix per block corner.
+- Twirl-downs per category (Text readouts, Graphs, Icons, Combos, Patterns), each with All and 🎲.
+- **Graphs:** line, step, area, bars, volume, candles, meter, heat grid, network, waveform, order book. They draw on, grow and pop in with type-on; graphs scroll while holding.
+- **Pixel icons:** 28 original hard-edge icons on a 12 px grid. They snap to crisp sizes and build pixel by pixel. The line set is still available.
+- **Combos:** stat (icon + big counting number), status badge, icon row (active icon blinks), label + graph, viewfinder frame.
+- **Patterns:** dots, crosses, hatching, scanlines. They wipe in.
+- **Extras & effects:** outlines, plus the Lab effects (flicker, pulse, trails, finality bar, ticker, snow).
+- **After Effects:** each graphic is one shape layer. Builds use group opacity, Trim Paths and scale expressions; live graphs use a createPath expression (AE 2018+).
+- Tooltips: one styled tooltip everywhere (no more doubled native tooltips).
