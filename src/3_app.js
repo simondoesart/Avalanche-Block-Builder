@@ -51,7 +51,7 @@ const DEF={
   rand:{pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
         wander:1,climb:0,stackPct:20,stackGap:0,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,tracking:0,leading:0,kern:'metrics',caps:'none'},
-  anim:{seed:0,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,settleX:50,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
+  anim:{seed:0,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.45,0,0.55,1],camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zoomOn:false,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
@@ -1434,7 +1434,30 @@ function computePlan(G){
     const nB=P.walkFrom!=null?P.walkFrom:seq.length, mb=seq.slice(0,nB).filter(b=>!b.stack), lastB=mb[mb.length-1];
     const tr=P.endRowUsed!=null?P.endRowUsed:clamp(Math.round((A.endRow||1)-1),0,G.R-1);
     const dr=lastB?tr-lastB.r:0;
-    if(dr){ seq=seq.map(b=>{ if(b.virtual){b.r+=dr;return b;} return Object.assign({},b,{r:b.r+dr,_shift:dr}); }); P.lineShift=dr; }
+    if(dr&&A.endFix==='shift'){ seq=seq.map(b=>{ if(b.virtual){b.r+=dr;return b;} return Object.assign({},b,{r:b.r+dr,_shift:dr}); }); P.lineShift=dr; }
+    else if(dr){
+      /* re-route the tail: keep the start (and most of the line) where it is, and re-walk the last X% of the build
+         so the new last block lands on the end row. Columns stay put; only rows change. */
+      const mains=seq.slice(0,nB).filter(b=>!b.stack), h=lastB.h, WB=walkBounds(G,h), maxStep=h>1?h:Math.max(1,Math.round(D.rand.wander)||1);
+      let trq=tr; if(h>1){ const r0=mains[0].r; trq=r0+Math.round((tr-r0)/h)*h; while(trq>WB.hi) trq-=h; while(trq<WB.lo) trq+=h; }
+      let k=Math.max(1,Math.min(mains.length-1,Math.ceil(mains.length*clamp(+A.reroutePct||30,5,100)/100)));
+      while(k<mains.length-1&&Math.abs(trq-mains[mains.length-1-k].r)>k*maxStep) k++;
+      const s0=mains.length-1-k, rnd=rng(((D.rand.seed|0)+(A.seed|0)*7919)*31+7), oldLastR=lastB.r, tail=new Set();
+      let r=mains[s0].r;
+      for(let j=1;j<=k;j++){
+        const b=mains[s0+j], rem=k-j; if(!b||!b.virtual) continue;
+        let nr;
+        if(rem===0) nr=trq;
+        else { nr=walkRow(r,WB.hi,rnd,h,WB.lo); nr=clamp(nr,trq-rem*maxStep,trq+rem*maxStep); if(Math.abs(nr-r)>maxStep) nr=r+Math.sign(nr-r)*maxStep; if(h>1) nr=r+Math.round((nr-r)/h)*h; }
+        b.r=nr; r=nr; tail.add(b.c);
+      }
+      // pairs in the re-walked part go (they were placed for the old rows); the walk-off follows the new end
+      const delta=lastB.r-oldLastR, keep=seq.map((b,i)=>!(b.stack&&i<nB&&tail.has(b.c)));
+      seq.forEach((b,i)=>{ if(i>=nB&&b.virtual) b.r+=delta; });
+      seq=seq.filter((b,i)=>keep[i]); gi=gi.filter((g,i)=>keep[i]);
+      if(WO){ P.walkFrom=seq.findIndex((b,i)=>gi[i]>=usedB); if(P.walkFrom<0) P.walkFrom=seq.length; }
+      P.rerouted=k;
+    }
   }
   P.walkT=WO?(sWalk!=null?Math.max(Tg[usedB-1]+1,Math.round(W(sWalk))):Tg[usedB-1]+tr0+woH):null;
   P.holdT=WO?Tg[usedB-1]+tr0:null;
