@@ -2277,9 +2277,12 @@ function drawDope(){
   if(camOn) row('camera',ROWS.camera,{name:'Camera',ctx:'camera'});
   tlContentRows().forEach(cr=>row('content',ROWS.content,{name:cr.name,tab:cr.tab,ck:cr.k}));
   const hdr=row('blocks',ROWS.blocks,{name:'Blocks',stage:'layout'});
-  const top=y, bottom=r.height, n=P.seq.length, listH=TL.blocksOpen?n*BLOCK_RH+6:0;
-  TL.scrollY=clamp(TL.scrollY,0,Math.max(0,listH-(bottom-top)));
-  TL.listY0=top; TL.listY1=bottom;
+  // everything under the ruler scrolls up/down together (wheel over the block rows, or Space-drag)
+  const n=P.seq.length, listH=TL.blocksOpen?n*BLOCK_RH+6:0, totalH=y+listH;
+  TL.scrollY=clamp(TL.scrollY,0,Math.max(0,totalH-r.height+4));
+  if(TL.scrollY){ TL.rows.forEach(R=>{ if(R.k==='ruler') return; R.y0-=TL.scrollY; R.y1-=TL.scrollY; }); TL.contentY0-=TL.scrollY; }
+  const top=hdr.y1, bottom=r.height;
+  TL.listY0=Math.max(top,ROWS.ruler); TL.listTop=top; TL.listY1=bottom; TL.totalH=totalH;
   // ---- backgrounds + labels
   g.font='11px sans-serif'; g.textBaseline='middle';
   TL.rows.forEach((R,i)=>{ if(R.k==='ruler') return;
@@ -2422,7 +2425,7 @@ function drawDope(){
   if(TL.blocksOpen&&anim){
     const sel=new Set(tlSelIds()), exitLen=+D.exit.len||8, dt=D.anim.dt||{};
     P.seq.forEach((b,i)=>{
-      const yy=top+3+i*BLOCK_RH-TL.scrollY; if(yy<top-BLOCK_RH||yy>bottom) return;
+      const yy=top+3+i*BLOCK_RH; if(yy<ROWS.ruler-BLOCK_RH||yy>bottom) return;
       const t0=Pc.T[i], done=(Pc.done||[])[i]||t0, tE=Pc.exitT&&Pc.exitT[i]!=null?Pc.exitT[i]:null, t1=tE!=null?tE+exitLen:N, isSel=sel.has(b.id), walk=P.walkFrom!=null&&i>=P.walkFrom;
       if(isSel){g.fillStyle='rgba(255,255,255,.06)';g.fillRect(LW,yy-1,r.width-LW,BLOCK_RH);}
       const a=b.virtual?.75:1;
@@ -2444,12 +2447,12 @@ function drawDope(){
   g.restore();
   // block labels (left column, scrolled)
   g.save(); g.beginPath(); g.rect(0,top,LW-1,bottom-top); g.clip();
-  if(TL.blocksOpen&&anim){const sel=new Set(tlSelIds());P.seq.forEach((b,i)=>{const yy=top+3+i*BLOCK_RH-TL.scrollY; if(yy<top-BLOCK_RH||yy>bottom) return;
+  if(TL.blocksOpen&&anim){const sel=new Set(tlSelIds());P.seq.forEach((b,i)=>{const yy=top+3+i*BLOCK_RH; if(yy<ROWS.ruler-BLOCK_RH||yy>bottom) return;
     if(sel.has(b.id)){g.fillStyle='rgba(230,33,47,.18)';g.fillRect(0,yy-1,LW-1,BLOCK_RH);}
     g.fillStyle=b.color; g.fillRect(12,yy+3,8,BLOCK_RH-6); g.fillStyle=sel.has(b.id)?'#fff':(b.virtual?'#7c7c86':'#a2a2ab'); g.font='10px sans-serif'; g.textBaseline='middle';
     g.fillText(`${String(i+1).padStart(2,'0')}  ${P.walkFrom!=null&&i>=P.walkFrom?'walk-off':b.virtual?'generated':(b.name||b.w+'×'+b.h)}${(D.anim.dt||{})[b.id]?'  ⟷':''}`,26,yy+BLOCK_RH/2);});}
   g.restore();
-  if(TL.blocksOpen&&listH>bottom-top){const th=Math.max(20,(bottom-top)*(bottom-top)/listH), ty=top+(bottom-top-th)*TL.scrollY/Math.max(1,listH-(bottom-top)); g.fillStyle='rgba(255,255,255,.18)'; g.fillRect(r.width-5,ty,3,th);}
+  if(totalH>r.height){const vis=r.height-ROWS.ruler, th=Math.max(20,vis*vis/(totalH-ROWS.ruler)), ty=ROWS.ruler+(vis-th)*TL.scrollY/Math.max(1,totalH-r.height+4); g.fillStyle='rgba(255,255,255,.18)'; g.fillRect(r.width-5,ty,3,th);}
   // ---- ruler, cues, playhead (on top of the tracks)
   g.save(); g.beginPath(); g.rect(LW,0,r.width-LW,r.height); g.clip();
   g.fillStyle='#19191c'; g.fillRect(LW,0,r.width,ROWS.ruler); g.fillStyle='rgba(255,255,255,.06)'; g.fillRect(LW,ROWS.ruler-1,r.width,1);
@@ -2490,7 +2493,7 @@ function tlHit(x,y){
   const cvv=TL.items.find(it=>it.type==='curve'&&x>=it.x0&&x<=it.x1&&y>=it.y0&&y<=it.y1);
   if(cvv){const u=cvv.u(x); if(Math.abs(cvv.cy(u)-y)<=8) return Object.assign({pr:1},cvv);}
   if(y<ROWS.ruler) return {type:'ruler',cur:'col-resize',tip:'drag to scrub'};
-  if(inList){ if(TL.blocksOpen&&TL.P){const i=Math.floor((y-TL.listY0-3+TL.scrollY)/BLOCK_RH); if(TL.P.seq[i]&&x<TL.LW) return {type:'blabel',i,id:TL.P.seq[i].id,cur:'pointer',tip:'click to select this block (⇧ to add)'};} return {type:'empty',cur:'default'}; }
+  if(inList){ if(TL.blocksOpen&&TL.P){const i=Math.floor((y-TL.listTop-3)/BLOCK_RH); if(TL.P.seq[i]&&x<TL.LW) return {type:'blabel',i,id:TL.P.seq[i].id,cur:'pointer',tip:'click to select this block (⇧ to add)'};} return {type:'empty',cur:'default'}; }
   const R=TL.rows.find(R=>y>=R.y0&&y<R.y1);
   if(R&&R.k==='blocks') return {type:'bhdr',cur:'pointer',tip:x<TL.LW?'show / hide the block rows':'Blocks — click to open the Blocks step'};
   if(R&&R.k!=='ruler') return {type:'row',row:R,cur:'pointer',tip:(R.name||'')+' — click for its settings',tab:R.tab};
@@ -2600,7 +2603,7 @@ function initDope(){
     e.preventDefault(); const p=rect(e), V0=tlView(), span=V0.f1-V0.f0;
     if(e.ctrlKey||e.metaKey){ const f=TL.F(p.x), k=Math.exp(clamp(e.deltaY,-60,60)*.01), s=clamp(span*k,10,1e6); TL.f0=f-(f-V0.f0)*s/span; TL.f1=TL.f0+s; }
     else if(e.shiftKey||Math.abs(e.deltaX)>Math.abs(e.deltaY)){ const d=(Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY)/Math.max(1,TL.W-TL.LW)*span; TL.f0=V0.f0+d; TL.f1=V0.f1+d; }
-    else if(p.y>=TL.listY0){ TL.scrollY+=e.deltaY; }
+    else if(p.y>=TL.listY0||TL.totalH>TL.H){ TL.scrollY+=e.deltaY; }
     else { const d=e.deltaY/Math.max(1,TL.W-TL.LW)*span; TL.f0=V0.f0+d; TL.f1=V0.f1+d; }
     drawDope(); updTlZoom();
   },{passive:false});
