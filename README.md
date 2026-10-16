@@ -255,3 +255,8 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - **Extras & effects:** outlines, plus the Lab effects (flicker, pulse, trails, finality bar, ticker, snow).
 - **After Effects:** each graphic is one shape layer. Builds use group opacity, Trim Paths and scale expressions; live graphs use a createPath expression (AE 2018+).
 - Tooltips: one styled tooltip everywhere (no more doubled native tooltips).
+
+### v3.21 — Block text, between-blocks timing, layer colours
+- **Content → selecting a block:** the side panel shows block colour, a text field, **Use the global text style** (on by default; untick for text settings on that block only) and the text colour. Works on generated blocks too: typing makes the line editable (⌘Z undoes).
+- **Between blocks** has its own timing: start after its nearest block, spread, animate on / hold / off, leave with its block. On the timeline, drag the amber knobs to move the start and change the hold.
+- Each timeline layer has its own colour: Text HUD red, Between blocks amber, Numbers blue, Echo teal.

@@ -487,6 +487,7 @@ button.mini:hover{color:var(--text)}
 .xfx .group-h{margin:0;font-size:11px}
 .xfx .note{font-size:10.5px}
 .iconset.px button svg{shape-rendering:crispEdges}
+.lcol{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:0}
 .checkgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 10px}
 .num input[type=number]{cursor:ns-resize}
 .num input[type=number]:focus{cursor:text}
@@ -1005,6 +1006,28 @@ body.nohelp .qm{display:none}
                 <div class="field stack"><span class="lbl">Colour</span><div class="swatches" data-pal="fill.gap.color"></div></div>
                 <button class="btn" id="btnGapShuffle">Shuffle placement</button>
               </div>
+            </div>
+          </div>
+          <div class="group" data-ctab="gaps" data-show="fill.on=true&fill.gap.on=true">
+            <div class="group-h"><span class="lcol" style="background:#F5A524"></span>Timing<label class="switch hswitch" title="Own timing for the between-blocks content (off = same as Text HUD)"><input type="checkbox" data-bind="fill.gap.anim.own"><span></span></label></div>
+            <div class="note" data-show="fill.gap.anim.own=false">Uses the Text HUD timing. Switch on for its own on / hold / off.</div>
+            <div data-show="fill.gap.anim.own=true" style="display:grid;gap:9px">
+              <div class="phases"><span>Animate on</span><i></i><span>Hold</span><i></i><span>Animate off</span></div>
+              <div class="field2">
+                <div class="field"><span class="lbl scrub" title="Frames after its nearest block lands (negative = before)">Starts after</span><div class="num"><input type="number" data-bind="fill.gap.anim.delay" min="-240" max="600" step="1"><span class="unit">fr</span></div></div>
+                <div class="field"><span class="lbl scrub" title="Random extra delay per item so they don't all start together">Spread</span><div class="num"><input type="number" data-bind="fill.gap.anim.jitter" min="0" max="240" step="1"><span class="unit">fr</span></div></div>
+              </div>
+              <div class="field stack"><span class="lbl">Animate on</span><div class="seg" data-seg="fill.gap.anim.inMode"><button data-v="type">Type / build</button><button data-v="fade">Fade</button><button data-v="cut">Cut</button></div></div>
+              <div class="field2" data-show="fill.gap.anim.inMode=type">
+                <div class="field"><span class="lbl scrub" title="Typing speed">Speed</span><div class="num"><input type="number" data-bind="fill.gap.anim.cps" min="1" max="400" step="5"><span class="unit">ch/s</span></div></div>
+                <div class="field"><span class="lbl scrub" title="How long graphics take to build">Build</span><div class="num"><input type="number" data-bind="fill.gap.anim.buildDur" min="1" max="240" step="1"><span class="unit">fr</span></div></div>
+              </div>
+              <div class="field" data-show="fill.gap.anim.inMode=fade"><span class="lbl scrub">Fade in</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.gap.anim.inDur" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              <div class="field" data-show="fill.gap.anim.outMode=fade|typeoff|cut"><span class="lbl scrub" title="Frames it stays fully on">Hold for</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.gap.anim.hold" min="0" max="9999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              <div class="field stack"><span class="lbl">Animate off</span><div class="seg" data-seg="fill.gap.anim.outMode"><button data-v="stay">Stays</button><button data-v="fade">Fade out</button><button data-v="typeoff">Type off</button><button data-v="cut">Cut</button></div></div>
+              <div class="field" data-show="fill.gap.anim.outMode=fade|typeoff"><span class="lbl scrub">Off length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.gap.anim.outDur" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              <label class="check"><input type="checkbox" data-bind="fill.gap.anim.leaveWith"> Leaves when its nearest block leaves</label>
+              <div class="note">On the timeline (amber row): drag the left knob to move the start, the right knob to change the hold.</div>
             </div>
           </div>
           <div class="group" data-ctab="gaps" data-show="fill.on=false"><div class="note">Text between blocks uses the Text HUD content settings. Turn on <b>Fill blocks with content</b> in the Text HUD tab first.</div></div>
