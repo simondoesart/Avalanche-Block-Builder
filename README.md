@@ -241,3 +241,6 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 
 ### v3.18
 - Ending on a chosen row + dropping blocks (yellow end handle or Delete): the line now keeps its start and **re-walks the last 30%** of the build so the new last block lands on the end row (columns stay put; the walk-off follows the new end). Advanced (All): "When blocks are dropped" — Re-walk the end / Slide the whole line — and the Re-walk %. If 30% can't reach the row, it re-walks as much as it needs.
+
+### v3.19 — Colour modes
+- Blocks › Colour: **One** · **Up / down** (level, stepping-up and stepping-down colours) · **Cycle** · **Random** — Cycle and Random come in **Duo / Tri / Quad**. Applies to the whole generated line live (pairs take their column's colour); colours picked for single blocks always win. Random reshuffles with New seed.

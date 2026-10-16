@@ -749,13 +749,15 @@ body.nohelp .qm{display:none}
           </div>
           <div class="group">
             <div class="group-h">Colour</div>
-            <div class="swatches" data-pal="block.color"></div>
-            <div class="note">Recolours the whole line. To colour single blocks, select them (canvas or timeline) and pick a colour on the right.</div>
-            <div data-adv class="field stack"><span class="lbl">Second colour</span><div class="swatches" data-pal="block.color2"></div></div>
-            <div data-adv class="field stack"><span class="lbl">Colour mix</span>
-              <div class="seg" data-seg="block.mix"><button data-v="single">Main only</button><button data-v="alternate">Alternate</button><button data-v="random">Random mix</button></div></div>
-            <div data-adv class="field" data-show="block.mix=random"><span class="lbl scrub">Second</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="block.mixPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
-            <button data-adv class="btn wide" id="btnRecolour">Recolour existing blocks with this mix</button>
+            <div class="seg" data-seg="block.mix"><button data-v="single" title="One colour for the whole line">One</button><button data-v="updown" title="A colour for blocks that step up, another for blocks that step down">Up / down</button><button data-v="cycle" title="Colours take turns along the line">Cycle</button><button data-v="random" title="Each block picks one of the colours at random (New seed reshuffles)">Random</button></div>
+            <div class="field stack" data-show="block.mix=cycle|random|alternate"><div class="seg" data-seg="block.ncol"><button data-v="2">Duo</button><button data-v="3">Tri</button><button data-v="4">Quad</button></div></div>
+            <div class="field stack"><span class="lbl" data-show="block.mix=single">Colour</span><span class="lbl" data-show="block.mix=updown">Level (same row)</span><span class="lbl" data-show="block.mix=cycle|random|alternate">Colour 1</span><div class="swatches" data-pal="block.color"></div></div>
+            <div class="field stack" data-show="block.mix=updown"><span class="lbl">Stepping up</span><div class="swatches" data-pal="block.upColor"></div></div>
+            <div class="field stack" data-show="block.mix=updown"><span class="lbl">Stepping down</span><div class="swatches" data-pal="block.downColor"></div></div>
+            <div class="field stack" data-show="block.mix=cycle|random|alternate"><span class="lbl">Colour 2</span><div class="swatches" data-pal="block.color2"></div></div>
+            <div class="field stack" data-show="block.mix=cycle|random&amp;block.ncol=3|4"><span class="lbl">Colour 3</span><div class="swatches" data-pal="block.color3"></div></div>
+            <div class="field stack" data-show="block.mix=cycle|random&amp;block.ncol=4"><span class="lbl">Colour 4</span><div class="swatches" data-pal="block.color4"></div></div>
+            <div class="note">Colours the whole line. To colour single blocks, select them (canvas or timeline) and pick a colour on the right — that always wins.</div>
           </div>
           <div class="group" data-adv>
             <div class="group-h">Palette</div>
