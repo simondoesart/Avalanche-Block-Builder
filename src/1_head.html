@@ -684,6 +684,8 @@ body.nohelp .qm{display:none}
                 </div>
                 <div class="field"><span class="lbl scrub">Weight</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="look.ruleW" min="1" max="200" step="1"><span class="unit">px</span><button data-d="1">+</button></div></div>
                 <div class="field stack"><span class="lbl">Layer</span><div class="seg" data-seg="look.ruleLayer"><button data-v="top">On top of blocks</button><button data-v="bottom">Under blocks</button></div></div>
+                <div class="field stack"><span class="lbl">At the end</span><div class="seg" data-seg="look.ruleEnd"><button data-v="stay">Stay</button><button data-v="fade">Fade off</button></div></div>
+<div class="field2" data-show="look.ruleEnd=fade"><div class="field"><span class="lbl scrub" title="Frames after the walk-off starts (or after the scene)">Fade starts</span><div class="num"><input type="number" data-bind="look.ruleFadeAt" min="-2000" max="2000" step="1"><span class="unit">fr</span></div></div><div class="field"><span class="lbl scrub" title="">Fade length</span><div class="num"><input type="number" data-bind="look.ruleFadeLen" min="1" max="600" step="1"><span class="unit">fr</span></div></div></div>
                 <div class="note" id="ruleNote"></div>
               </div>
             </div>
@@ -1125,25 +1127,17 @@ body.nohelp .qm{display:none}
           <div class="group" data-ctx="camera" data-show="anim.mode=camera|push">
             <div class="group-h">Camera<span id="camHead" class="note" style="margin-left:6px;text-transform:none;letter-spacing:0"></span></div>
             <details class="sub" data-sub="cam-move" open><summary>How it moves <span class="note">movement, feel</span></summary><div class="subbody">
-              <div class="field stack" data-show="anim.motion=smooth"><span class="lbl">Movement</span><div class="seg" data-seg="anim.camMove"><button data-v="curve" title="Moves with the blocks; its speed over the scene comes from the Scene curve">With the blocks</button><button data-v="follow" title="Trails behind the newest block and reacts to it — starts gently">Glide behind</button><button data-v="step">Step &amp; settle</button></div></div>
+              <div class="field stack" data-show="anim.motion=smooth"><span class="lbl">Movement</span><div class="seg" data-seg="anim.camMove"><button data-v="curve" title="Moves with the blocks; its speed over the scene comes from the Scene curve">With the blocks</button><button data-v="step">Step &amp; settle</button></div></div>
               <div data-adv class="field stack"><span class="lbl">Follows</span><div class="seg" data-seg="anim.axis"><button data-v="x">Sideways</button><button data-v="xy">Sideways + up/down</button></div></div>
-              <div data-show="anim.motion=smooth&amp;anim.camMove=follow" style="display:grid;gap:9px">
-                <div class="field stack"><span class="lbl">Feel</span><div class="seg" id="camPreset"><button data-p="1,2.5,12" title="Stays close, quick but still eased">Tight</button><button data-p="1.5,4,18" title="The default: smooth and readable">Balanced</button><button data-p="2.5,7,30" title="Trails further behind with long, soft acceleration">Floaty</button><button data-p="3.5,10,48" title="Very slow, cinematic drift">Drift</button></div></div>
-                <div data-adv class="field"><span class="lbl scrub" title="How many blocks the camera trails behind the newest one">Follow distance</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.smooth" min="1" max="6" step="0.5"><span class="unit">blocks</span><button data-d="1">+</button></div></div>
-                <div data-adv class="field"><span class="lbl scrub" title="Higher = softer changes of speed">Smoothness</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.motionBlurF" min="0" max="12" step="0.5"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-                <div data-adv class="field"><span class="lbl scrub" title="Frames the camera takes to ease to a stop at the end">Settle</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.settle" min="0" max="240" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-              </div>
+              
               <div data-show="anim.motion=smooth&amp;anim.camMove=curve" style="display:grid;gap:9px">
                 <div class="note">The camera moves <b>with the blocks</b>: steady while the line builds or walks, still while it holds. Its speed across the scene comes from the <b>Scene</b> curve — shape that to speed up, slow down or hold the camera.</div>
                 <div class="field"><span class="lbl scrub" title="Frames to ease into and out of each move (on the blocks' clock). 0 = hard starts and stops">Smooth starts</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.camEase" min="0" max="120" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
               </div>
               <div class="curve" data-curve="anim.camCurve" data-show="anim.motion=smooth&amp;anim.camMove=step" data-title="Move easing · each step and the final move"></div>
-              <label data-adv class="check" data-show="anim.mode=camera"><input type="checkbox" data-bind="anim.lazy"> Hold still until blocks reach the centre</label>
               <label class="check" data-show="anim.camMove=step"><input type="checkbox" data-bind="anim.snap"> Aim at whole cells</label>
             </div></details>
-            <details class="sub" data-sub="cam-graph" open><summary>Speed graph</summary><div class="subbody">
-              <div class="speedgraph"><div class="lbl">Camera speed <span class="note" id="speedNote"></span></div><canvas id="speedCv"></canvas></div>
-            </div></details>
+            
           </div>
           <div class="group" data-ctx="inout" data-show="anim.mode=reveal|camera|push">
             <div class="group-h">Blocks in &amp; out</div>
@@ -1193,36 +1187,10 @@ body.nohelp .qm{display:none}
               <div class="field" data-show="exit.style=fade|wipe|scale|slide"><span class="lbl scrub">Exit length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.len" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
               <div data-adv class="curve" data-curve="exit.curve" data-show="anim.motion=smooth&amp;exit.style=fade|wipe|scale|slide" data-title="Exit easing"></div>
               <label class="check"><input type="checkbox" data-bind="exit.content"> Content leaves with its block</label>
-              <details class="sub" data-sub="exit-rules"><summary>Column rules <span class="note">the vertical lines</span></summary><div class="subbody">
-                <label class="check"><input type="checkbox" data-bind="look.rulesOn"> Show column rules</label>
-                <div data-show="look.rulesOn=true" style="display:grid;gap:9px">
-                  <div class="field2"><div class="field"><span class="lbl scrub" title="">Every</span><div class="num"><input type="number" data-bind="look.ruleEvery" min="1" max="64" step="1"><span class="unit">cols</span></div></div><div class="field"><span class="lbl scrub" title="">Weight</span><div class="num"><input type="number" data-bind="look.ruleW" min="0.5" max="40" step="0.5"><span class="unit">px</span></div></div></div>
-                  <div class="field" data-show="anim.mode=camera"><span class="lbl scrub" title="100% = locked to the grid; lower drifts slower (further back), higher faster (in front)">Parallax</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="look.ruleParallax" min="0" max="400" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
-                  <div class="field stack"><span class="lbl">Colour</span><div class="swatches" data-pal="look.rule"></div></div>
-                  <div class="field stack"><span class="lbl">At the end</span><div class="seg" data-seg="look.ruleEnd"><button data-v="stay">Stay</button><button data-v="fade">Fade off</button></div></div>
-                  <div class="field2" data-show="look.ruleEnd=fade"><div class="field"><span class="lbl scrub" title="Frames after the walk-off starts (or after the scene)">Fade starts</span><div class="num"><input type="number" data-bind="look.ruleFadeAt" min="-2000" max="2000" step="1"><span class="unit">fr</span></div></div><div class="field"><span class="lbl scrub" title="">Fade length</span><div class="num"><input type="number" data-bind="look.ruleFadeLen" min="1" max="600" step="1"><span class="unit">fr</span></div></div></div>
-                </div>
-              </div></details>
+              
               <label data-adv class="check"><input type="checkbox" data-bind="exit.echo"> Echoes leave too</label>
             </div>
             </div></details>
-          </div>
-          <div class="group" data-show="anim.mode=reveal|camera|push">
-            <div class="group-h">Order</div>
-            <div class="seg" data-seg="anim.order">
-              <button data-v="ltr" title="Left to right">L→R</button><button data-v="rtl" title="Right to left">R→L</button><button data-v="ttb" title="Top to bottom">T→B</button><button data-v="random" title="Random">Rand</button><button data-v="manual" title="Click blocks with the Order tool">Manual</button>
-            </div>
-            <label data-adv class="check"><input type="checkbox" data-bind="anim.groupCol"> Blocks in the same column appear together</label>
-            <div data-show="anim.order=manual" style="display:grid;gap:9px">
-              <div class="note">The canvas zooms out to the whole grid. With the <b>Order</b> tool (O), click blocks in the order they should appear. Dashed blocks are the continuation of your pattern: click one to add it. Click a numbered block again to remove it. <a href="#" id="lnkRestartOrder" style="color:var(--accent2)">Start again</a></div>
-              <div class="field stack"><span class="lbl">Blocks you don’t pick</span><div class="seg" data-seg="anim.unpicked"><button data-v="hidden">Hidden</button><button data-v="visible">Always visible</button></div></div>
-              <div class="field2">
-                <div class="field"><span class="lbl scrub">Rows</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="grid.rows" min="1" max="60" step="1"><button data-d="1">+</button></div></div>
-                <div class="field"><span class="lbl scrub" title="Extra columns each side">Cols ±</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="grid.overX" min="0" max="400" step="1"><button data-d="1">+</button></div></div>
-              </div>
-              <div class="field"><span class="lbl scrub" title="Extra rows above &amp; below">Rows ±</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="grid.overY" min="0" max="100" step="1"><button data-d="1">+</button></div></div>
-            </div>
-            <div class="note" data-show="anim.order=random"><a href="#" id="lnkReshuffleOrder" style="color:var(--accent2)">Shuffle order</a></div>
           </div>
           <div class="group" data-show="anim.mode=reveal|camera|push">
             <div class="group-h">Grid size over time<label class="switch hswitch" title="Turn all grid changes on or off"><input type="checkbox" data-bind="anim.zoomOn"><span></span></label></div>
@@ -1230,10 +1198,7 @@ body.nohelp .qm{display:none}
             <button class="btn" id="btnAddZoom">+ Add a grid change</button>
             <div class="curve" data-curve="anim.zoomCurve" data-title="Grid change easing" hidden></div>
           </div>
-          <div class="group" data-show="anim.mode=reveal|camera|push">
-            <div class="readout" id="animReadout"></div>
           </div>
-        </div>
 
         <!-- 5b TRANSITIONS -->
         <!-- 5b TIMING -->
@@ -1249,15 +1214,7 @@ body.nohelp .qm{display:none}
           <div class="group" data-ctx="camera" data-show="anim.mode=camera|push">
             <div class="group-h">Camera timing</div>
             <div class="note" data-show="exit.mode=walk">With Walk off, the camera follows the walking line for <b>Camera follows for</b>, then lets it run off.</div>
-            <details class="sub" data-sub="cam-letgo" open data-show="anim.motion=smooth&amp;anim.camMove=follow|curve"><summary>Let go before the end <span class="note">coast to a stop</span></summary><div class="subbody">
-              <div data-show="anim.motion=smooth&amp;anim.camMove=follow" style="display:grid;gap:9px">
-                <label class="check"><input type="checkbox" data-bind="anim.relOn"> On — camera coasts to a stop, blocks keep going past</label>
-                <div class="field2" data-show="anim.relOn=true">
-                  <div class="field"><span class="lbl scrub" title="How far through the scene the camera stops following">Let go at</span><div class="num"><input type="number" data-bind="anim.relAt" min="5" max="100" step="1"><span class="unit">%</span></div></div>
-                  <div class="field"><span class="lbl scrub" title="Frames the camera takes to coast to a stop">Coast</span><div class="num"><input type="number" data-bind="anim.relSlow" min="2" max="600" step="1"><span class="unit">fr</span></div></div>
-                </div>
-              </div>
-            </div></details>
+            
           </div>
           <div class="group" data-ctx="sound">
             <div class="group-h">Sync to sound</div>

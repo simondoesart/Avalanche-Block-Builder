@@ -260,3 +260,8 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - **Content → selecting a block:** the side panel shows block colour, a text field, **Use the global text style** (on by default; untick for text settings on that block only) and the text colour. Works on generated blocks too: typing makes the line editable (⌘Z undoes).
 - **Between blocks** has its own timing: start after its nearest block, spread, animate on / hold / off, leave with its block. On the timeline, drag the amber knobs to move the start and change the hold.
 - Each timeline layer has its own colour: Text HUD red, Between blocks amber, Numbers blue, Echo teal.
+
+### v3.22 — Motion step back
+- Motion is visible again (Setup → Blocks → Motion → Content).
+- Removed what the timeline now covers or that no longer applies: Glide-behind camera + its feel/follow settings, "hold still until centre", the camera speed graph (the Camera row on the timeline shows speed), "let go before the end" (follow only), the Order section + order tool (the generated line sets the order), and the preview-length readout.
+- Column-rule fade-at-end moved into Setup → Column rules. Old layouts using Glide behind open as "With the blocks".
