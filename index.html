@@ -2345,14 +2345,14 @@ const U={step:0,ctx:null,ctab:'hud',dopeSel:[],mbPrev:true,tool:'select',sel:nul
 const SI=id=>STEPS.findIndex(s=>s.id===id);
 /* steps shown while we workshop the UX one step at a time — add ids to bring a step back.
    ?steps=all in the URL (or localStorage gridblocks.steps='all') shows everything */
-const VISIBLE_STEPS=['grid','layout'];
+const VISIBLE_STEPS=['grid','layout','content'];
 const stepVisible=i=>{try{if(/[?&]steps=all/.test(location.search||'')||localStorage.getItem('gridblocks.steps')==='all')return true;}catch(e){} return !!STEPS[i]&&VISIBLE_STEPS.indexOf(STEPS[i].id)>=0;};
 const nextVisible=(i,d)=>{for(let j=i+d;j>=0&&j<STEPS.length;j+=d) if(stepVisible(j)) return j; return -1;};
 const STEPS=[
   {id:'grid',name:'Setup',title:'Comp, grid & look',desc:'Rows always fit the comp height. Squares can run off the sides.',tools:['hand'],tool:'hand',insp:false},
   {id:'layout',name:'Blocks',title:'Generate the line',desc:'Pick a block size and generate a walking line from a seed. Then drag any block on the canvas, or retime it on the timeline.',tools:['select','stamp','draw','hand'],tool:'select',insp:true},
   {id:'animate',name:'Motion',title:'Camera, reveal & exit',desc:'How the view moves and how blocks appear and leave. When things happen lives on the timeline.',tools:['select','order','hand'],tool:'select',insp:true},
-  {id:'content',name:'Content',title:'Content overlays',desc:'Each overlay has its own tab. They show up as rows on the timeline.',tools:['select','paint','hand'],tool:'select',insp:true},
+  {id:'content',name:'Content',title:'Content overlays',desc:'Each overlay has its own tab. They show up as rows on the timeline.',tools:['select','hand'],tool:'select',insp:true},
   {id:'transitions',name:'Transitions',title:'Transition in & out',desc:'Blocks that fill the frame to bring the scene in and take it out. “Walk” transitions grow out of the line itself.',tools:['hand'],tool:'hand',insp:false},
   {id:'lab',name:'Lab',title:'Lab · experiments',desc:'Momentum effects to try out. Each card says how far along it is and whether it builds in After Effects.',tools:['hand'],tool:'hand',insp:false},
   {id:'build',name:'Output',title:'Build it',desc:'',tools:['select','hand'],tool:'select',insp:true}
@@ -3832,6 +3832,7 @@ function computePlan(G){
            symmetric blur; it doesn't move until the blocks reach the line, and holds once the last one lands. */
         const line=G.W*(A.revealWhen==='arrive'?clamp(+A.revealX||75,50,120)/100:0.62), dirO=A.order==='rtl'?-1:1;
         const lineX=dirO>0?line:G.W-line;
+        let lastFrontX=null; for(let g=0;g<usedB;g++){ seq.forEach((b,i)=>{ if(gi[i]!==g||b.stack) return; const r=cellRect(G,b.c,b.r,b.w,b.h), cx2=r.x+r.w/2; if(lastFrontX==null||dirO*cx2>dirO*lastFrontX) lastFrontX=cx2; }); }
         const key=[]; let pvx=0,pvy=0, front=null;
         for(let g=0;g<used;g++){
           const mem=seq.filter((b,i)=>gi[i]===g), main=mem.filter(b=>!b.stack), use=main.length?main:mem;
@@ -3840,7 +3841,10 @@ function computePlan(G){
           ox=dirO>0?Math.min(pvx,ox):Math.max(pvx,ox);      // only ever moves forward, never before the blocks reach the line
           // the line finishes building: the camera carries on until the last block sits at the settle point (centre by
           // default), so the last block pops in on rhythm inside the frame instead of late at the right-hand edge
-          if(g===usedB-1&&!fin){ const sl=G.W*clamp(A.endX!=null?+A.endX:50,-200,300)/100, sx=dirO>0?sl:G.W-sl, so=sx-front[0]; ox=dirO>0?Math.min(ox,so):Math.max(ox,so); }   // 'Last block ends up' (Off left … Right)
+          if(!fin&&g<usedB){ const sl=G.W*clamp(A.endX!=null?+A.endX:50,-200,300)/100, sx=dirO>0?sl:G.W-sl;
+            if(g===usedB-1){ const so=sx-front[0]; ox=dirO>0?Math.min(ox,so):Math.max(ox,so); }
+            // past the reveal line (Right, Off right): the camera stops early so the end of the line runs on off the frame
+            if(dirO>0?sx>lineX:sx<lineX){ const soF=sx-lastFrontX; ox=dirO>0?Math.max(ox,soF):Math.min(ox,soF); } }   // 'Last block ends up' (Off left … Right)
           key.push([Tg[g],ox,oy]); pvx=ox; pvy=oy;
         }
         if(fin) key.push([endF,fin[0],fin[1]]);
