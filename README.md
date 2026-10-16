@@ -275,3 +275,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - Motion → Blocks in & out is now **In · Hold · Out**. Hold is a toggle: on = the line holds (length per Out style), off = straight from In to Out. "Then" became **Out** (Stay up / Walk off / Each leaves / Behind camera / Clear out + how they leave).
 - Scene row (Simple easing): vertical lines for **Hold starts** and **Out starts** (drag them), segment labels In / Hold / Out, and white **ease handles** on the curve — drag along the curve, longer = gentler: In ease in / ease out, Out ease in / ease out.
 - No hold: either one **Out point** (In ends, Out starts, its own ease each side) or **Smooth, no point** (start and end eases only).
+
+### v3.25 — Content holds until Out · removable middle point
+- Text HUD and Between blocks: **Holds — For a set time / Until Out**. Until Out keeps content on through In and Hold and takes it off as the blocks' Out starts. On the timeline, drag the hold knob onto the dashed blue Out line to snap to Until Out; drag it back left for a set hold.
+- Scene easing with no hold: ⌥-click the middle (Out point) line to remove it (smooth start-to-end); double-click the Scene row to add it back.
