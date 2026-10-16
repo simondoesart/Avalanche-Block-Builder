@@ -119,6 +119,9 @@ main{display:grid;grid-template-columns:68px minmax(0,1fr) 336px;grid-template-a
 .tlbar .btn{height:26px}
 #btnPickStart.on{border-color:#2BD98F;color:#2BD98F;background:rgba(43,217,143,.1)}
 .startrow{display:grid;gap:8px}
+.pacerow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:6px;min-width:0}
+.pacerow select{height:28px;padding:0 6px}
+.pacerow .num button{display:none}
 #left .startrow #btnStartAuto{flex:0 0 auto;padding:0 12px}
 .tlzoom{display:flex;align-items:center;gap:2px;flex:none}
 .tlzoom input[type=range]{width:90px;accent-color:var(--accent)}
@@ -680,7 +683,7 @@ body.nohelp .qm{display:none}
               
               <div class="field"><span class="lbl scrub" title="How long the On phase (the build) takes on the blocks' own clock">On (build)</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.lenF" min="2" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
               <div class="field stack"><span class="lbl">Number of blocks</span><div class="seg" data-seg="anim.countMode"><button data-v="fill">Fill the length</button><button data-v="exact">Exact number</button></div></div>
-              <div class="field" data-show="anim.countMode=fill"><span class="lbl scrub" title="Average frames between blocks">One every</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.pace" min="1" max="120" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+              <div class="field" data-show="anim.countMode=fill"><span class="lbl scrub" title="How often a new block lands, on average">One every</span><div class="pacerow"><div class="num"><button data-d="-1">−</button><input type="number" id="paceIn" min="0.01" max="9999" step="1"><button data-d="1">+</button></div><select id="paceUnit" title="Frames, seconds, or a share of the red On bar (the build, before the Scene remap)"><option value="f">frames</option><option value="s">seconds</option><option value="p">% of On</option></select></div></div>
               <div class="field" data-show="anim.countMode=exact"><span class="lbl scrub">Blocks</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.total" min="1" max="400" step="1"><button data-d="1">+</button></div></div>
             
               <div class="readout" id="paceNote"></div>
