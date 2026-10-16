@@ -56,7 +56,7 @@ const DEF={
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,offX:0,offY:0,tracking:0,leading:0,kern:'metrics',caps:'none'},
   anim:{seed:0,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
-        sceneCurve:[0.45,0,0.55,1],sceneEase:{on:true,onAt:null,holdAt:null,start:40,land:75,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
+        sceneCurve:[0.42,0,0.58,1],sceneEase:{on:false,onAt:null,holdAt:null,start:40,land:75,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zoomOn:false,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
   lab:{flicker:{on:false,frames:8,seed:3},
        pulse:{on:false,scale:1.35,len:18,width:2,color:'#E6212F'},
@@ -3113,7 +3113,7 @@ document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest
   else if(a==='edit'){materialize();refresh();}
   else if(a==='del') dopeRemove(false); else if(a==='delafter') dopeRemove(true);
   else if(a==='ease') openCurveEditor('anim.sceneCurve',0,1,'Scene easing · re-times the whole scene');
-  else if(a==='easereset'){pushHist(true);D.anim.sceneEase.on=false;D.anim.sceneCurve=[0.45,0,0.55,1];planCache.k='';refresh();}
+  else if(a==='easereset'){pushHist(true);D.anim.sceneEase.on=false;D.anim.sceneCurve=[0.42,0,0.58,1];planCache.k='';refresh();}
   else if(a==='easelin'){pushHist(true);D.anim.sceneEase.on=false;D.anim.sceneCurve=[0,0,1,1];planCache.k='';refresh();}
   else if(a==='easephase'){ // a point at each phase boundary, at the same place in scene time as in block time, flat (eased) through each
     const P=plan(geom()), Pc=P.c||P, C=Math.max(1,P.C), v1=clamp(((Pc.onEnd||P.startF+C)-P.startF)/C,.05,.95), v2=Pc.walkT!=null?clamp((Pc.walkT-P.startF)/C,v1+.02,.97):null;
