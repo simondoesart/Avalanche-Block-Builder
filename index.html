@@ -3969,7 +3969,7 @@ function easeModel(yOn,yHold,E){
   const h=pts.map((p,i)=>{ const sIn=i>0?sl[i-1]:null, sOut=i<n-1?sl[i]:null, eI=ef(p.ei), eO=ef(p.eo);
     const base=sIn==null?sOut:sOut==null?sIn:Math.min(sIn,sOut), eAvg=(i===0?eO:i===n-1?eI:(eI+eO)/2), slope=(1-eAvg)*base;
     const q={x:p.x,y:p.y,ix:0,iy:0,ox:0,oy:0,ki:p.ki,ko:p.ko,role:p.role};
-    const HD=E.hd||{};
+    const HD=Object.assign({land:[.4,0],landOut:[.4,0],leaveIn:[.4,0],leave:[.4,0]},E.hd||{});   // hold points default flat (easy ease into and out of the hold)
     if(i>0){const dx=p.x-pts[i-1].x, dy=p.y-pts[i-1].y, len=dx*(.06+.42*eI); q.ix=-len; q.iy=-clamp(slope*len,0,dy*.95); q.segI=dx; q.segIy=dy;
       const r=HD[p.ki]; if(r){ q.ix=-clamp(Math.abs(+r[0]),0,1)*dx; q.iy=-clamp(Math.abs(+r[1]),0,1)*dy; } }
     if(i<n-1){const dx=pts[i+1].x-p.x, dy=pts[i+1].y-p.y, len=dx*(.06+.42*eO); q.ox=len; q.oy=clamp(slope*len,0,dy*.95); q.segO=dx; q.segOy=dy;
