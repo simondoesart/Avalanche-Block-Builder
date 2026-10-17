@@ -292,3 +292,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.28 — Straight hold, 4 handles, undo fix
 - Hold points: four handles — out of the start, into Hold starts, out of Hold ends, into the end. The hold itself is a straight line. Default arrival into the hold is soft but not stopped, so the last block of the build no longer lags.
 - ⌘Z / ⇧⌘Z: now works after clicking a number field or dropdown (they used to swallow it); clicking the canvas or timeline also hands keyboard shortcuts back to the app.
+
+### v3.29 — Build trim keeps the walk-off tight
+- Dragging the yellow end-of-build knob (dropping late blocks) no longer leaves a gap: the walk-off moves back to continue right after the new last block — in time (the hold keeps its length) and in space (no empty columns for the camera to cross).
+- The timeline shows **last block lands …s** next to the yellow knob, with a dashed line at the moment it's fully in.
