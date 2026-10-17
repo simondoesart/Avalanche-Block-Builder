@@ -306,3 +306,6 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.32 — Settle after hold
 - New **Settle after hold** (Motion → Out, walk off; default 12 fr): the camera stays still for the whole hold, starts moving when the hold ends, and the first block walks off that many frames later — the mirror of Settle before hold. Shown as a light "settle" part at the start of Out on the timeline.
 - Walking blocks never appear before their schedule (one could pop in early when it was already in the reveal zone).
+
+### v3.33 — Content layers: global on/off on the timeline
+- Text HUD and Between blocks rows now show the layer's **global window**: thin lines = each item's own timing (from the content animation settings — delay, animate on, hold, animate off still work per block), and a bar with two knobs: **all on** (nothing comes on before it) and **all off** (everything is gone by it). ⌥-click a knob to go back to automatic. The old per-item "fully on / out starts" knobs are gone.

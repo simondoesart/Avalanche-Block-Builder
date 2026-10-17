@@ -47,8 +47,8 @@ const DEF={
         pxSet:{cube:true,blocks:true,chain:true,lock:true,key:false,shield:true,bolt:true,check:true,hash:true,server:true,network:true,globe:true,wallet:false,db:true,chart:true,transfer:true,clock:true,pulse:true,snow:true,peak:true,term:true,stack:true,view:true,token:true,coin:false,doc:false,bank:false,up:true},
         mods:{kv:true,status:true,hashes:true,block:true,log:false,counter:true,dev:true,barcode:true,phrase:true,term:true,mempool:true,validator:true,latency:true,rpc:false,progress:true,consensus:true,stream:false,dots:true,ring:false,logo:true,icons:true},
         iconSet:{node:true,cube:true,chain:true,check:true,chevrons:true,peak:true,lock:false,network:true,signal:true,target:false,snow:true,arrow:true,plus:false,bars:true},dotSize:2.2,dotShape:'circle',
-        anim:{inMode:'type',inDur:8,outMode:'typeoff',hold:36,outDur:12,typeAll:true,cps:69,ellipsis:true,count:true,countDur:36,scramble:true,scrMode:'settle',scrDur:30,scrRate:12,stagger:4,delay:9,live:false,liveTick:true,liveHash:true,liveGlitch:false,liveRate:6,glitchAmt:15,liveGraph:true,liveBlink:true,anchor:'block'},
-        gap:{on:true,amount:3,seed:0,color:'#E6212F',anim:{own:true,anchor:'block',delay:12,jitter:10,leaveWith:true,inMode:'type',cps:60,inDur:8,buildDur:12,outMode:'fade',hold:48,outDur:12},mods:{log:true,phrase:true,barcode:true,hashes:false,dots:true,logo:true,icons:true,graph:true,stream:false,rpc:false}}},
+        anim:{inMode:'type',inDur:8,outMode:'typeoff',hold:36,outDur:12,typeAll:true,cps:69,ellipsis:true,count:true,countDur:36,scramble:true,scrMode:'settle',scrDur:30,scrRate:12,stagger:4,delay:9,live:false,liveTick:true,liveHash:true,liveGlitch:false,liveRate:6,glitchAmt:15,liveGraph:true,liveBlink:true,anchor:'block'},win:{on:null,off:null},
+        gap:{on:true,amount:3,seed:0,color:'#E6212F',win:{on:null,off:null},anim:{own:true,anchor:'block',delay:12,jitter:10,leaveWith:true,inMode:'type',cps:60,inDur:8,buildDur:12,outMode:'fade',hold:48,outDur:12},mods:{log:true,phrase:true,barcode:true,hashes:false,dots:true,logo:true,icons:true,graph:true,stream:false,rpc:false}}},
   echo:{on:false,dx:0,dy:2,last:0,fill:true,color:'#A2AFB2',opacity:100,stroke:false,sw:4,scolor:'#A2AFB2',align:'center',dash:false,dashL:12,dashG:8,content:false,
         timing:'with',offset:6,appear:'fade',out:'stay',hold:12,outF:8},
   rand:{pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
@@ -2234,11 +2234,14 @@ function computePlan(G){
     { const X=D.exit; let fo=null; if(X.on&&X.mode==='walk'&&P.walkT!=null) fo=P.walkT; else if(X.on&&P.exitT&&P.exitT.some(v=>v!=null)) fo=Math.min(...P.exitT.filter(v=>v!=null)); P.fillOut=fo;
       if(D.fill.anim.anchor==='leave'&&P.exitT){ seq.forEach((b,i)=>{ if(P.exitT[i]!=null){ P.fillEnd[b.id]=P.exitT[i]; P.fillEnd['e'+b.id]=P.exitT[i]; } }); }
       if(fo!=null&&D.fill.anim.anchor==='phases'){ seq.forEach(b=>{ P.fillEnd[b.id]=Math.min(P.fillEnd[b.id]!=null?P.fillEnd[b.id]:Infinity,fo); P.fillEnd['e'+b.id]=Math.min(P.fillEnd['e'+b.id]!=null?P.fillEnd['e'+b.id]:Infinity,fo); }); } }
+    // global window (timeline knobs): nothing comes on before 'all on', everything is gone by 'all off'
+    { const WN=D.fill.win||{}; if(WN.on!=null) Object.keys(P.fillBase).forEach(id=>{P.fillBase[id]=Math.max(P.fillBase[id],+WN.on);});
+      if(WN.off!=null){ const ids=seq.map(b=>b.id).concat(seq.map(b=>'e'+b.id)).concat(P.echo.map(e=>e.id)); ids.forEach(id=>{P.fillEnd[id]=Math.min(P.fillEnd[id]!=null?P.fillEnd[id]:Infinity,+WN.off);}); } }
     if(D.fill.gap.on){
       const gl=gapItems(G,seq).map(it=>Object.assign({},it));
       const GA=D.fill.gap.anim||{}, own=GA.own!==false, gdl=own?Math.round(+GA.delay||0):dl, jit=own?Math.max(0,Math.round(+GA.jitter||0)):0, A2=gapA();
       gl.forEach((it,k)=>{let best=null;seq.forEach((b,i)=>{const d=Math.abs(b.c-it.col);if(!best||d<best.d)best={d,t:P.T[i],e:P.exitT&&(D.exit.content!==false||A2.anchor==='leave')?P.exitT[i]:null};});
-        it.t0=(best?best.t:0)+tr0+gdl+(jit?Math.round(rng(k*7919+31+(D.fill.gap.seed|0))()*jit):0); it.A=A2; if(best&&best.e!=null&&(!own||GA.leaveWith!==false||A2.anchor==='leave'))it.tEnd=best.e; if(A2.anchor==='phases'&&P.fillOut!=null) it.tEnd=Math.min(it.tEnd!=null?it.tEnd:Infinity,P.fillOut);});
+        it.t0=(best?best.t:0)+tr0+gdl+(jit?Math.round(rng(k*7919+31+(D.fill.gap.seed|0))()*jit):0); it.A=A2; if(best&&best.e!=null&&(!own||GA.leaveWith!==false||A2.anchor==='leave'))it.tEnd=best.e; if(A2.anchor==='phases'&&P.fillOut!=null) it.tEnd=Math.min(it.tEnd!=null?it.tEnd:Infinity,P.fillOut); { const GW=D.fill.gap.win||{}; if(GW.on!=null) it.t0=Math.max(it.t0,+GW.on); if(GW.off!=null) it.tEnd=Math.min(it.tEnd!=null?it.tEnd:Infinity,+GW.off); }});
       P.gaps=gl;
     }
   }
@@ -2914,14 +2917,25 @@ function drawDope(){
       if(X(off)-X(on)>50) label((AA.anchor==='phases'?'until Out':AA.anchor==='leave'?'until each block leaves':'hold')+(AA.live?' · live':''),X(on)+6,R.y0+R.h/2+2,'rgba(236,236,239,.85)'); };
     const outLine=Pc.fillOut!=null?Pc.fillOut:null, exits=(Pc.exitT||[]).filter(v=>v!=null), lastExit=exits.length?Math.max(...exits):null, snapHold=(obj,v,f)=>{ if(outLine!=null&&lastExit!=null&&f>=outLine+Math.max(6,(lastExit-outLine)*.15)){obj.anchor='leave';} else if(outLine!=null&&f>=outLine-3){obj.anchor='phases';} else {obj.anchor='block';obj.hold=v;} };
     if(outLine!=null){g.strokeStyle='rgba(159,187,230,.55)';g.setLineDash([3,3]);g.lineWidth=1;g.beginPath();g.moveTo(X(outLine)+.5,R.y0);g.lineTo(X(outLine)+.5,R.y1);g.stroke();g.setLineDash([]);}
+    /* each layer: thin lines = every item's own timing (from the content settings); the bar = the layer's global window.
+       ◀ all on: nothing comes on before it · all off ▶: everything is gone by it. ⌥-click a knob = back to automatic. */
+    const winBar=(items,WN,name)=>{ if(!items.length) return;
+      items.forEach((q,i)=>{ g.fillStyle=rgba(col,.4); g.fillRect(X(q.a),R.y0+3+(i%4)*1.6,Math.max(1,X(q.b)-X(q.a)),1.2); });
+      const a=WN.on!=null?+WN.on:Math.min(...items.map(q=>q.a)), b=WN.off!=null?+WN.off:Math.max(...items.map(q=>q.b)), bb=Math.min(b,N);
+      g.fillStyle=rgba(col,.22); g.fillRect(X(a),R.y0+6,Math.max(2,X(bb)-X(a)),R.h-10); g.strokeStyle=rgba(col,.8); g.lineWidth=1; g.strokeRect(X(a)+.5,R.y0+6.5,Math.max(2,X(bb)-X(a))-1,R.h-11);
+      if(X(bb)-X(a)>110) label(`${name}${WN.on!=null||WN.off!=null?' · set':' · auto'}`,X(a)+8,R.y0+R.h/2+2,'rgba(236,236,239,.85)');
+      const mk=(f,key,tip)=>{ knob(f,R.y0,R.h,col); if(WN[key]!=null){ g.fillStyle='#fff'; g.fillRect(X(f)-1,R.y0+3,2,2); }
+        item({type:'point',x:X(f),y:R.y0+R.h/2,cur:'ew-resize',tip,drag:(fx)=>{ const v=Math.round(F(fx)); if(key==='on') WN.on=Math.min(v,(WN.off!=null?+WN.off:b)-2); else WN.off=Math.max(v,(WN.on!=null?+WN.on:a)+2); },
+          alt:()=>{pushHist(true);WN[key]=null;refresh();}}); };
+      mk(a,'on',`all on — nothing in ${name} comes on before here (each item still uses its own animate-on/delay) · ⌥-click = automatic`);
+      mk(Math.min(bb,N-1),'off',`all off — everything in ${name} is gone by here (each item still uses its own animate-off) · ⌥-click = automatic`);
+    };
     if(R.ck==='hud'){
-      P.seq.forEach((b,i)=>{const t0=FB[b.id]; if(t0==null) return; const end=FE[b.id]!=null?FE[b.id]:N; g.fillStyle=rgba(col,.22); g.fillRect(X(t0),R.y0+3+(i%3)*2,Math.max(1,X(end)-X(t0)),1.5);});
-      const b=P.seq[0]; if(b&&FB[b.id]!=null) {const t0h=FB[b.id]; const dl=v=>{A.delay=clamp(v,0,600);}; dl.cur=+A.delay||0; phases({t0:t0h,tEnd:A.anchor==='leave'&&lastExit!=null?lastExit:FE[b.id],lines:['x'.repeat(24)]},A,(v,f)=>snapHold(A,v,f),dl);}
+      const its=[]; P.seq.forEach(b=>{const t0=FB[b.id]; if(t0==null) return; const T1=fillTiming({kind:'text',type:true,t0,tEnd:FE[b.id],lines:['x'.repeat(24)]},24,fps); its.push({a:t0,b:isFinite(T1.off)?t0+(T1.off+T1.outLen)*fps:(FE[b.id]!=null?FE[b.id]:N)});});
+      D.fill.win=D.fill.win||{on:null,off:null}; winBar(its,D.fill.win,'Text HUD');
     } else if(R.ck==='gaps'){
-      const gl=Pc.gaps||[], GA=D.fill.gap.anim||{}, own=GA.own!==false, AA=gapA();
-      gl.forEach((it,i)=>{const T1=fillTiming(Object.assign({kind:'text',type:true},it,{A:AA}),24,fps), e=isFinite(T1.off)?it.t0+(T1.off+T1.outLen)*fps:(it.tEnd!=null?it.tEnd:N); g.fillStyle=rgba(col,.4); g.fillRect(X(it.t0),R.y0+3+(i%4)*1.6,Math.max(1,X(e)-X(it.t0)),1.2);});
-      const it0=gl.slice().sort((a,b)=>a.t0-b.t0)[0];
-      if(it0) phases(Object.assign({},it0,{A:AA,lines:it0.lines||['x'.repeat(24)]},AA.anchor==='leave'&&lastExit!=null?{tEnd:lastExit}:{}),AA,(v,f)=>snapHold(own?GA:A,v,f),own?Object.assign(v=>{GA.delay=clamp(v,-240,600);},{cur:+GA.delay||0}):null);
+      const gl=Pc.gaps||[], AA=gapA(), its=gl.map(it=>{const T1=fillTiming(Object.assign({kind:'text',type:true},it,{A:AA}),24,fps); return {a:it.t0,b:isFinite(T1.off)?it.t0+(T1.off+T1.outLen)*fps:(it.tEnd!=null?it.tEnd:N)};});
+      D.fill.gap.win=D.fill.gap.win||{on:null,off:null}; winBar(its,D.fill.gap.win,'Between blocks');
     }
     else if(R.ck==='numbers'){ P.seq.forEach((b,i)=>{if(!numOn(b)) return; const t0=(Pc.done||[])[i]||Pc.T[i], e=Pc.exitT&&Pc.exitT[i]!=null?Pc.exitT[i]:N; g.fillStyle=rgba(col,.55); g.fillRect(X(t0),R.y0+5+(i%3)*3,Math.max(1,X(e)-X(t0)),2);}); }
     else if(R.ck==='echo'){ Pc.echo.forEach((e,i)=>{const t0=e.K.op.length?e.K.op[0][0]:0, t1=e.K.op.length?e.K.op[e.K.op.length-1][0]:N, end=e.K.op.length&&e.K.op[e.K.op.length-1][1]===0?t1:N; g.fillStyle=rgba(col,.55); g.fillRect(X(t0),R.y0+5+(i%3)*3,Math.max(1,X(end)-X(t0)),2);}); }
