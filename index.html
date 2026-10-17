@@ -4190,9 +4190,14 @@ function computePlan(G){
     let gCut=usedB; for(let g=1;g<usedB;g++){ if(Tg[g]>cutAt){gCut=g;break;} }
     const k=usedB-gCut;
     if(k>0){
-      const nseq=[], ngi=[]; seq.forEach((b,i)=>{const g=gi[i]; if(g>=gCut&&g<usedB) return; nseq.push(b); ngi.push(g>=usedB?g-k:g);});
+      // the walk-off continues from the new last block: move it back into place so there's no empty stretch to cross
+      let dc=0, dr=0; { const lk=seq.filter((b,i)=>gi[i]<gCut&&!b.stack).pop(), ld=seq.filter((b,i)=>gi[i]>=gCut&&gi[i]<usedB&&!b.stack).pop(); if(lk&&ld){dc=lk.c-ld.c; dr=lk.r-ld.r;} }
+      const nseq=[], ngi=[]; seq.forEach((b,i)=>{const g=gi[i]; if(g>=gCut&&g<usedB) return; nseq.push(g>=usedB&&(dc||dr)?Object.assign({},b,{c:b.c+dc,r:b.r+dr}):b); ngi.push(g>=usedB?g-k:g);});
       seq=nseq; gi=ngi; Tg.splice(gCut,k); sg.splice(gCut,k); if(camOn){tg.splice(gCut,k); P.offs.splice(gCut,k);}
       used-=k; usedB=gCut; P.cutAt=cutAt; P.cutN=k;
+      // the walk-off follows the new last block: pull it earlier by the time the dropped blocks took (the hold keeps its length)
+      if(sWalk!=null&&used>usedB){ const sNew=Math.max(sg[usedB-1]+tr0+woH,(usedB-1)*step+tr0+woH), want=Math.max(Tg[usedB-1]+1,Math.round(W(sNew))), dT=Tg[usedB]-want, dS=sg[usedB]-sNew;
+        if(dT>0){ for(let g=usedB;g<used;g++){ sg[g]-=dS; Tg[g]=Math.max(Tg[g-1]+1,Tg[g]-dT); } sWalk=sNew; } }
       if(WO){ P.walkFrom=seq.findIndex((b,i)=>gi[i]>=usedB); if(P.walkFrom<0) P.walkFrom=seq.length; }
     }
   }
@@ -5272,7 +5277,10 @@ function drawDope(){
   if(anim&&n){
     const nb=P.walkFrom!=null?P.walkFrom:n;
     P.seq.forEach((b,i)=>{g.fillStyle=i<nb?'rgba(255,255,255,.6)':'rgba(116,157,211,.8)'; g.fillRect(X(Pc.T[i]),hdr.y0+hdr.h-8,1,5);});
-    if(isGenerated()&&nb>1){const tl=Pc.T[nb-1]; knob(tl,hdr.y0+2,hdr.h-4,'#FFC21A'); H(tl,hdr,'ew-resize',f=>{D.anim.cutAt=Math.max(Math.round((Pc.T[0]))+1,Math.round((f)));},'end of the build — drag left to drop the late blocks (the rest keep their timing)');
+    if(isGenerated()&&nb>1){const tl=Pc.T[nb-1], tdn=(Pc.done||[])[nb-1]||tl;
+      g.strokeStyle='rgba(255,194,26,.5)'; g.setLineDash([2,3]); g.lineWidth=1; g.beginPath(); g.moveTo(X(tdn)+.5,TL.contentY0||hdr.y0-60); g.lineTo(X(tdn)+.5,hdr.y1); g.stroke(); g.setLineDash([]);
+      { const t=`last block lands ${(tdn/fps).toFixed(2)}s`; g.font='600 10px sans-serif'; const w=g.measureText(t).width; if(X(tl)-w-10>LW) label(t,X(tl)-w-8,hdr.y0+hdr.h/2,'#FFC21A'); }
+      knob(tl,hdr.y0+2,hdr.h-4,'#FFC21A'); H(tl,hdr,'ew-resize',f=>{D.anim.cutAt=Math.max(Math.round((Pc.T[0]))+1,Math.round((f)));},'end of the build — drag left to drop the late blocks (the rest keep their timing)');
       if(Pc.cutAt!=null){g.fillStyle='rgba(255,194,26,.12)';g.fillRect(X(tl)+4,hdr.y0,Math.max(0,X(P.startF+P.L)-X(tl)-4),hdr.h);if(X(P.startF+P.L)-X(tl)>60)label(`${Pc.cutN} dropped`,X(tl)+8,hdr.y0+hdr.h/2,'#FFC21A');}}
   }
   // ---- one row per block (scrolls)
