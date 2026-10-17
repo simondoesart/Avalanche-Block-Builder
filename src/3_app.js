@@ -54,7 +54,7 @@ const DEF={
   rand:{pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
         wander:1,climb:0,stackPct:20,stackGap:0,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,offX:0,offY:0,tracking:0,leading:0,kern:'metrics',caps:'none'},
-  anim:{seed:0,landLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
+  anim:{seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.42,0,0.58,1],curvePh:null,sceneEase:{on:true,hd:null,onAt:null,holdAt:null,start:40,land:75,landOut:50,leaveIn:50,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zoomOn:false,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
@@ -1828,7 +1828,8 @@ function computePlan(G){
   const wp=Math.max(.1,+D.exit.walkPace||1), nW=used-usedB;
   let sWalk=null;
   const lead=Math.max(0,Math.round(+A.landLead||0));   // the last block lands this long before the hold starts (so easing into the hold never slows the last arrival)
-  if(WO&&nW>0){ sWalk=(usedB-1)*step+tr0+lead+woH; }
+  const olead=WO?Math.max(0,Math.round(+A.outLead||0)):0;   // Out settle: the camera gets going this long before the first block walks off
+  if(WO&&nW>0){ sWalk=(usedB-1)*step+tr0+lead+woH+olead; }
   // reveal times on the linear clock, then re-timed by the scene curve (one at a time, in order)
   const sg=[], Tg=[]; const spread=(used-1)<=L;
   for(let g=0;g<used;g++){
@@ -1847,7 +1848,7 @@ function computePlan(G){
       seq=nseq; gi=ngi; Tg.splice(gCut,k); sg.splice(gCut,k); if(camOn){tg.splice(gCut,k); P.offs.splice(gCut,k);}
       used-=k; usedB=gCut; P.cutAt=cutAt; P.cutN=k;
       // the walk-off follows the new last block: pull it earlier by the time the dropped blocks took (the hold keeps its length)
-      if(sWalk!=null&&used>usedB){ const sNew=Math.max(sg[usedB-1]+tr0+lead+woH,(usedB-1)*step+tr0+lead+woH), want=Math.max(Tg[usedB-1]+1,Math.round(W(sNew))), dT=Tg[usedB]-want, dS=sg[usedB]-sNew;
+      if(sWalk!=null&&used>usedB){ const sNew=Math.max(sg[usedB-1]+tr0+lead+woH+olead,(usedB-1)*step+tr0+lead+woH+olead), want=Math.max(Tg[usedB-1]+1,Math.round(W(sNew))), dT=Tg[usedB]-want, dS=sg[usedB]-sNew;
         if(dT>0){ for(let g=usedB;g<used;g++){ sg[g]-=dS; Tg[g]=Math.max(Tg[g-1]+1,Tg[g]-dT); } sWalk=sNew; } }
       if(WO){ P.walkFrom=seq.findIndex((b,i)=>gi[i]>=usedB); if(P.walkFrom<0) P.walkFrom=seq.length; }
     }
@@ -1884,7 +1885,7 @@ function computePlan(G){
       P.rerouted=k;
     }
   }
-  P.walkT=WO?(sWalk!=null?Math.max(Tg[usedB-1]+1,Math.round(W(sWalk))):Tg[usedB-1]+tr0+lead+woH):null;
+  P.walkT=WO?(sWalk!=null?Math.max(Tg[usedB-1]+1,Math.round(W(sWalk-olead))):Tg[usedB-1]+tr0+lead+woH):null;   // Out starts (hold ends)
   P.holdT=WO?Tg[usedB-1]+tr0+lead:null;
   P.landT=Math.round(Math.max(startF+1,...Tg.slice(0,usedB))+tr0); P.onEnd=P.landT+lead;   // end of the ON phase (content clock)
   P.walkEnd=WO?Tg[used-1]+tr0:null;
@@ -2010,7 +2011,7 @@ function computePlan(G){
           // Only a short ease at each start/stop (anim.camEase); everything else comes from the Scene curve.
           const ez=Math.max(0,+A.camEase||0);
           const sB0=sg[g0], sB1=Math.max(sB0+1,sg[usedB-1]), Rb=Math.max(.5,Math.min((sB1-sB0)/2,ez));
-          const hasW=WO&&used>usedB, sW1=hasW?sg[used-1]:Infinity, Rw=Math.max(.5,ez), sW0=hasW?Math.max(sB1,sg[usedB]-Rw):Infinity, TW=hasW?Math.max(1,sW1-sW0):1;
+          const hasW=WO&&used>usedB, sW1=hasW?sg[used-1]:Infinity, Rw=Math.max(.5,ez), sW0=hasW?Math.max(sB1,sg[usedB]-Math.max(Rw,+A.outLead||0)):Infinity, TW=hasW?Math.max(1,sW1-sW0):1;
           P.camPh={start:Math.round(W(sB0)),stop:Math.round(W(sB1)),go:hasW?Math.round(W(sW0)):null};
           const trap=(e,T,Dd,R)=>{ if(T<=0||Dd<=0) return e>0?Dd:0; e=clamp(e,0,T); const v=Dd/Math.max(1e-6,T-R); return e<R?v*e*e/(2*R):e<T-R?v*(e-R/2):Dd-v*(T-e)*(T-e)/(2*R); };
           const accel=(e,T,Dd,R)=>{ if(e<=0) return 0; const v=Dd/Math.max(1e-6,T-R/2); return Math.min(Dd,e<R?v*e*e/(2*R):v*(e-R/2)); };
@@ -2098,7 +2099,7 @@ function computePlan(G){
         const inZ=t=>{const q=scrAt(t,px,py);return q[0]>=xl&&q[0]<=xr*1.015+2&&q[1]>=yt&&q[1]<=yb;};
         const lo=Math.max(startF,Math.round(prev)), sched=Math.max(lo,P.T[i]);
         let t=Math.max(lo,Math.min(sched,tMax));   // on its schedule (the build's last one right at the end), if it's in the zone then
-        if(!inZ(t)){ let found=null; for(let k=lo;k<=tMax;k++){ if(inZ(k)){found=k;break;} } if(found!=null) t=found; }
+        if(!inZ(t)){ let found=null; for(let k=walk?t:lo;k<=tMax;k++){ if(inZ(k)){found=k;break;} } if(found!=null) t=found; }   // walking blocks never come in before their schedule
         t=Math.min(tMax,Math.max(t,prev)); P.T[i]=Math.round(t); prev=P.T[i];
       });
     } else
@@ -2854,7 +2855,7 @@ function drawDope(){
       else if(X2.on&&Pc.exitT&&Pc.exitT.some(v=>v!=null)){ const ex=Pc.exitT.filter(v=>v!=null); holdEnd=Math.max(onEnd,Math.min(...ex)); offEnd=Math.max(holdEnd+1,Math.max(...ex)+(+X2.len||8)); }
       const seg=(f0,f1,col,txt,tcol)=>{if(f1==null||f1<=f0)return;g.fillStyle=col;g.fillRect(X(f0),yp,X(f1)-X(f0),hp);g.fillStyle='rgba(0,0,0,.35)';g.fillRect(X(f1)-1,yp,1,hp);if(X(f1)-X(f0)>30){g.font='600 10px sans-serif';label(txt,X(f0)+5,yp+hp/2,tcol||'#fff');}};
       { const lt=Pc.landT!=null?Math.min(Pc.landT,onEnd):onEnd; seg(cs,lt,'rgba(230,33,47,.55)','In'); if(onEnd>lt) seg(lt,onEnd,'rgba(230,33,47,.28)','settle','#ffd5d3'); }
-      if(holdEnd!=null){ seg(onEnd,holdEnd,'rgba(236,236,239,.16)','Hold','#ececef'); seg(holdEnd,offEnd,'rgba(116,157,211,.5)',WOn?'Out · walks off':'Out'); }
+      if(holdEnd!=null){ seg(onEnd,holdEnd,'rgba(236,236,239,.16)','Hold','#ececef'); if(WOn){ const w0=(P.walkFrom!=null&&Pc.T[P.walkFrom]!=null)?Math.max(holdEnd,Pc.T[P.walkFrom]):holdEnd; if(w0>holdEnd) seg(holdEnd,w0,'rgba(116,157,211,.25)','settle','#cfe0f7'); seg(w0,offEnd,'rgba(116,157,211,.5)','Out · walks off'); } else seg(holdEnd,offEnd,'rgba(116,157,211,.5)','Out'); }
       else seg(onEnd,Math.max(onEnd+1,Pc.end),'rgba(236,236,239,.08)','Stays','#a2a2ab');
       // handles work on the blocks' own clock (converted from the scene time under the pointer)
       const Lc=D.anim.lenF, onC=(onEnd);

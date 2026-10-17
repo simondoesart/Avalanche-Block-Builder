@@ -302,3 +302,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 
 ### v3.31 — Content through the walk-out
 - Text HUD and Between blocks **Holds** has a third option, **Until its block leaves**: each item stays until its own block leaves, so content rides along through the walk-out. On the timeline, drag the out knob past the dashed Out line to switch to it (the bar then runs to the last block's exit); drag back to the line for Until Out, or further left for a set hold.
+
+### v3.32 — Settle after hold
+- New **Settle after hold** (Motion → Out, walk off; default 12 fr): the camera stays still for the whole hold, starts moving when the hold ends, and the first block walks off that many frames later — the mirror of Settle before hold. Shown as a light "settle" part at the start of Out on the timeline.
+- Walking blocks never appear before their schedule (one could pop in early when it was already in the reveal zone).
