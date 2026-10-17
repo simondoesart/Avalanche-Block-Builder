@@ -1611,7 +1611,7 @@ function easeModel(yOn,yHold,E){
   const hasOn=yOn!=null&&yOn>.02&&yOn<.98, hasHold=hasOn&&yHold!=null&&yHold>yOn+.01&&yHold<.995;
   const pts=[{x:0,y:0,eo:E.start,ko:'start',role:'start'}];
   if(hasHold){ let xOn=xa(E.onAt)!=null?xa(E.onAt):yOn, xH=xa(E.holdAt)!=null?xa(E.holdAt):yHold; xH=clamp(xH,xOn+.03,.97);
-    pts.push({x:xOn,y:yOn,ei:E.land,eo:E.landOut!=null?E.landOut:50,ki:'land',ko:'landOut',role:'hold'},{x:xH,y:yHold,ei:E.leaveIn!=null?E.leaveIn:50,eo:E.leave,ki:'leaveIn',ko:'leave',role:'out'}); }
+    pts.push({x:xOn,y:yOn,ei:E.land,ki:'land',lin:'o',role:'hold'},{x:xH,y:yHold,eo:E.leave,ko:'leave',lin:'i',role:'out'}); }   // the hold itself is a straight line
   else if(false&&hasOn&&E.mid!=='smooth'){ /* no hold → no middle easing point (one smooth move) */ const xOn=xa(E.onAt)!=null?xa(E.onAt):yOn; pts.push({x:xOn,y:yOn,ei:E.land,eo:E.leave,ki:'land',ko:'leave',role:'mid'}); }
   pts.push({x:1,y:1,ei:E.end,ki:'end',role:'end'});
   const n=pts.length, sl=[]; for(let i=0;i<n-1;i++) sl.push((pts[i+1].y-pts[i].y)/Math.max(1e-6,pts[i+1].x-pts[i].x));
@@ -1619,11 +1619,11 @@ function easeModel(yOn,yHold,E){
   const h=pts.map((p,i)=>{ const sIn=i>0?sl[i-1]:null, sOut=i<n-1?sl[i]:null, eI=ef(p.ei), eO=ef(p.eo);
     const base=sIn==null?sOut:sOut==null?sIn:Math.min(sIn,sOut), eAvg=(i===0?eO:i===n-1?eI:(eI+eO)/2), slope=(1-eAvg)*base;
     const q={x:p.x,y:p.y,ix:0,iy:0,ox:0,oy:0,ki:p.ki,ko:p.ko,role:p.role};
-    const HD=Object.assign({land:[.4,0],landOut:[.4,0],leaveIn:[.4,0],leave:[.4,0]},E.hd||{});   // hold points default flat (easy ease into and out of the hold)
+    const HD=Object.assign({land:[.3,.12],leave:[.3,.12]},E.hd||{});   // default: a soft (not stopped) arrival into the hold and departure from it
     if(i>0){const dx=p.x-pts[i-1].x, dy=p.y-pts[i-1].y, len=dx*(.06+.42*eI); q.ix=-len; q.iy=-clamp(slope*len,0,dy*.95); q.segI=dx; q.segIy=dy;
-      const r=HD[p.ki]; if(r){ q.ix=-clamp(Math.abs(+r[0]),0,1)*dx; q.iy=-clamp(Math.abs(+r[1]),0,1)*dy; } }
+      const r=HD[p.ki]; if(p.lin==='i'){ q.ix=-dx/3; q.iy=-dy/3; } else if(r){ q.ix=-clamp(Math.abs(+r[0]),0,1)*dx; q.iy=-clamp(Math.abs(+r[1]),0,1)*dy; } }
     if(i<n-1){const dx=pts[i+1].x-p.x, dy=pts[i+1].y-p.y, len=dx*(.06+.42*eO); q.ox=len; q.oy=clamp(slope*len,0,dy*.95); q.segO=dx; q.segOy=dy;
-      const r=HD[p.ko]; if(r){ q.ox=clamp(Math.abs(+r[0]),0,1)*dx; q.oy=clamp(Math.abs(+r[1]),0,1)*dy; } }
+      const r=HD[p.ko]; if(p.lin==='o'){ q.ox=dx/3; q.oy=dy/3; } else if(r){ q.ox=clamp(Math.abs(+r[0]),0,1)*dx; q.oy=clamp(Math.abs(+r[1]),0,1)*dy; } }
     return q; });
   return {h,curve:hPack(h)};
 }
@@ -2798,7 +2798,7 @@ function drawDope(){
         item(Object.assign({type:'point',x,y:yb+hb/2,cur:'ew-resize',tip:`${NAME[q.role]} — drag left/right to move it${q.role==='mid'?' · ⌥-click removes the point':''}`,drag:(fx)=>{const uu=(fx-cxp(0))/W; let lo=4,hi=96; if(other){ if(q.role==='out') lo=other.x*100+3; else hi=other.x*100-3; } D.anim.sceneEase[key]=Math.round(clamp(uu*100,lo,hi));}},rm));
       });
       // ease handles (AE-style influence): drag along the time axis — longer = softer
-      const EN={start:'Start handle',land:'Hold start · before',landOut:'Hold start · after',leaveIn:'Hold end · before',leave:'Hold end · after',end:'End handle'};
+      const EN={start:'Start · out handle',land:'Hold start · in handle',leave:'Hold end · out handle',end:'End · in handle'};
       hs.forEach(q=>{ [['i',q.ki,q.ix,q.iy,q.segI,q.segIy],['o',q.ko,q.ox,q.oy,q.segO,q.segOy]].forEach(([side,key,dx,dy,seg,segy])=>{ if(!key||!seg) return;
           const ax=cxp(q.x), ay=cyp(q.y), hx=cxp(q.x+dx), hy=cyp(q.y+dy), a0=Math.atan2(dy,dx);
           g.strokeStyle='rgba(255,127,123,.7)'; g.lineWidth=1; g.beginPath(); g.moveTo(ax,ay); g.lineTo(hx,hy); g.stroke();
@@ -4613,13 +4613,15 @@ function updBackBtn(G){
 $('#zAll').onclick=()=>{fitView('all');render();};
 
 /* ------------------------------------------------------------------ keyboard */
+document.addEventListener('pointerdown',e=>{const a=document.activeElement; if(a&&a!==document.body&&e.target&&e.target.tagName==='CANVAS'&&a.blur) a.blur();},true);
 document.addEventListener('keydown',e=>{
   const t=e.target;
   const typing=t.matches&&t.matches('input:not([type=checkbox]):not([type=color]):not([type=range]),textarea,select');
   const mod=e.metaKey||e.ctrlKey, k=e.key, kl=k.length===1?k.toLowerCase():k;
   if(mod&&kl==='z'&&U.curveEd&&!$('#curveModal').hidden){e.preventDefault();U.curveEd.step(e.shiftKey?1:-1);return;}
-  if(mod&&kl==='z'){if(typing)return;e.preventDefault();e.shiftKey?redo():undo();return;}
-  if(mod&&kl==='y'){if(typing)return;e.preventDefault();redo();return;}
+  const textTyping=t.matches&&t.matches('input[type=text],input:not([type]),input[type=search],textarea');   // number fields / selects: ⌘Z is the app's undo
+  if(mod&&kl==='z'){if(textTyping)return;e.preventDefault();if(typing&&t.blur)t.blur();e.shiftKey?redo():undo();return;}
+  if(mod&&kl==='y'){if(textTyping)return;e.preventDefault();redo();return;}
   if(mod&&kl==='s'){e.preventDefault();openLib(true);return;}
   if(typing){if(k==='Escape')t.blur();return;}
   if(!$('#libModal').hidden){if(k==='Escape')closeLib();return;}
