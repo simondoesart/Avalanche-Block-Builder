@@ -1170,6 +1170,7 @@ body.nohelp .qm{display:none}
             <div data-adv class="curve" data-curve="anim.revCurve" data-show="anim.motion=smooth" data-title="Reveal easing · each block"></div>
             </div></details>
             <details class="sub" data-sub="io-hold" open data-show="exit.on=true"><summary>Hold <span class="note">between In and Out</span></summary><div class="subbody">
+            <div class="field"><span class="lbl scrub" title="The last block lands this many frames before the hold starts, so easing into the hold never slows the last arrival">Settle before hold</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.landLead" min="0" max="240" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
             <div class="layer"><label class="switch"><input type="checkbox" data-bind="exit.holdOn"><span></span></label><div><div class="ln">Hold before leaving</div><div class="ls">Off = goes straight from In to Out</div></div><span></span></div>
             <div data-show="exit.holdOn=true" style="display:grid;gap:9px">
               <div class="field" data-show="exit.mode=walk"><span class="lbl scrub" title="Frames the finished build holds before walking on">Hold for</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.walkHold" min="0" max="2000" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>

@@ -296,3 +296,6 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.29 — Build trim keeps the walk-off tight
 - Dragging the yellow end-of-build knob (dropping late blocks) no longer leaves a gap: the walk-off moves back to continue right after the new last block — in time (the hold keeps its length) and in space (no empty columns for the camera to cross).
 - The timeline shows **last block lands …s** next to the yellow knob, with a dashed line at the moment it's fully in.
+
+### v3.30 — Settle before hold
+- New **Settle before hold** (Motion → Hold, default 12 fr): the last block lands that long before Hold starts, so easing into the hold happens after the build instead of slowing the last arrivals. Shown as a lighter "settle" part at the end of In on the timeline.
