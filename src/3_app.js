@@ -51,7 +51,7 @@ const DEF={
         gap:{on:true,amount:3,seed:0,color:'#E6212F',win:{on:null,off:null},anim:{own:true,anchor:'block',delay:12,jitter:10,leaveWith:true,inMode:'type',cps:60,inDur:8,buildDur:12,outMode:'fade',hold:48,outDur:12},mods:{log:true,phrase:true,barcode:true,hashes:false,dots:true,logo:true,icons:true,graph:true,stream:false,rpc:false}}},
   echo:{on:false,dx:0,dy:2,last:0,fill:true,color:'#A2AFB2',opacity:100,stroke:false,sw:4,scolor:'#A2AFB2',align:'center',dash:false,dashL:12,dashG:8,content:false,
         timing:'with',offset:6,appear:'fade',out:'stay',hold:12,outF:8},
-  rand:{pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
+  rand:{endSingle:false,pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
         wander:1,climb:0,stackPct:20,stackGap:0,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,offX:0,offY:0,tracking:0,leading:0,kern:'metrics',caps:'none'},
   anim:{seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
@@ -1885,6 +1885,9 @@ function computePlan(G){
       P.rerouted=k;
     }
   }
+  // the build never ends on a pair: drop pair blocks in the last build block's column
+  if(D.rand.endSingle&&!manual){ const nB=P.walkFrom!=null?P.walkFrom:seq.length, mains=seq.slice(0,nB).filter(b=>!b.stack), lb=mains[mains.length-1];
+    if(lb){ const keep=seq.map((b,i)=>!(i<nB&&b.stack&&b.c<lb.c+lb.w&&b.c+b.w>lb.c)); if(keep.some(k=>!k)){ seq=seq.filter((b,i)=>keep[i]); gi=gi.filter((g,i)=>keep[i]); if(WO){ P.walkFrom=seq.findIndex((b,i)=>gi[i]>=usedB); if(P.walkFrom<0) P.walkFrom=seq.length; } } } }
   P.walkT=WO?(sWalk!=null?Math.max(Tg[usedB-1]+1,Math.round(W(sWalk-olead))):Tg[usedB-1]+tr0+lead+woH):null;   // Out starts (hold ends)
   P.holdT=WO?Tg[usedB-1]+tr0+lead:null;
   P.landT=Math.round(Math.max(startF+1,...Tg.slice(0,usedB))+tr0); P.onEnd=P.landT+lead;   // end of the ON phase (content clock)
