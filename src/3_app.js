@@ -56,7 +56,7 @@ const DEF={
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,offX:0,offY:0,tracking:0,leading:0,kern:'metrics',caps:'none'},
   anim:{seed:0,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
-        sceneCurve:[0.42,0,0.58,1],sceneEase:{on:false,onAt:null,holdAt:null,start:40,land:75,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
+        sceneCurve:[0.42,0,0.58,1],curvePh:null,sceneEase:{on:false,onAt:null,holdAt:null,start:40,land:75,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zoomOn:false,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
   lab:{flicker:{on:false,frames:8,seed:3},
        pulse:{on:false,scale:1.35,len:18,width:2,color:'#E6212F'},
@@ -1626,15 +1626,39 @@ function easeModel(yOn,yHold,E){
 }
 function easeCurve(yOn,yHold,E){return easeModel(yOn,yHold,E).curve;}
 let easeSync={k:''};
+/* custom curve: keep its points with In · Hold · Out when those phases change length (e.g. adding a walk-off),
+   instead of everything bunching up at the start. Interior points are re-mapped phase by phase. */
+let phSync={k:''};
+function phaseFracs(G){ let P; const sv=D.anim.sceneCurve; D.anim.sceneCurve=[0,0,1,1]; try{P=computePlan(G);}finally{D.anim.sceneCurve=sv;}
+  if(!P.seq.length) return null; const tail=Math.max(0,Math.round(D.anim.tail)||0), C=Math.max(1,P.end-tail-P.startF), B=phaseBounds(P);
+  return {on:B.on!=null?r3((B.on-B.c0)/C):null, hold:B.hold!=null?r3((B.hold-B.c0)/C):null, P}; }
+function syncCustomCurve(G){
+  if(D.anim.mode==='static') return;
+  const sv=D.anim.sceneCurve, ph=D.anim.curvePh; D.anim.sceneCurve=null; D.anim.curvePh=null; const k=JSON.stringify(D)+'|'+G.W+'|'+G.H; D.anim.sceneCurve=sv; D.anim.curvePh=ph;
+  if(phSync.k===k) return; phSync.k=k;
+  const F=phaseFracs(G); if(!F) return; const now={on:F.on,hold:F.hold};
+  if(!ph){ D.anim.curvePh=now; return; }
+  const same=(a,b)=>(a==null&&b==null)||(a!=null&&b!=null&&Math.abs(a-b)<.004);
+  if(same(ph.on,now.on)&&same(ph.hold,now.hold)) return;
+  const c=sv||[0,0,1,1];
+  if(isH(c)&&hOf(c).length>2){
+    const ko=[0], kn=[0]; if(ph.on!=null&&now.on!=null){ko.push(ph.on);kn.push(now.on);} if(ph.hold!=null&&now.hold!=null&&ph.hold>(ph.on||0)&&now.hold>(now.on||0)){ko.push(ph.hold);kn.push(now.hold);} ko.push(1); kn.push(1);
+    const m=v=>{ v=clamp(v,0,1); for(let i=0;i<ko.length-1;i++){ if(v<=ko[i+1]||i===ko.length-2){ const t=(v-ko[i])/Math.max(1e-6,ko[i+1]-ko[i]); return kn[i]+t*(kn[i+1]-kn[i]); } } return v; };
+    const h=hOf(c).map(q=>{ const x=m(q.x), y=m(q.y), ix=m(q.x+q.ix)-x, iy=m(q.y+q.iy)-y, ox=m(q.x+q.ox)-x, oy=m(q.y+q.oy)-y; return {x,y,ix,iy,ox,oy}; });
+    h[0].x=0;h[0].y=0;h[h.length-1].x=1;h[h.length-1].y=1;
+    D.anim.sceneCurve=hPack(h);
+  }
+  D.anim.curvePh=now;
+}
 function syncSceneEase(G){
-  const E=D.anim.sceneEase; if(!E||!E.on||D.anim.mode==='static') return;
-  const sv=D.anim.sceneCurve; D.anim.sceneCurve=null; const k=JSON.stringify(D)+'|'+G.W+'|'+G.H; D.anim.sceneCurve=sv;
+  const E=D.anim.sceneEase; if(!E||!E.on){ syncCustomCurve(G); return; } if(D.anim.mode==='static') return;
+  const sv=D.anim.sceneCurve, cph=D.anim.curvePh; D.anim.sceneCurve=null; D.anim.curvePh=null; const k=JSON.stringify(D)+'|'+G.W+'|'+G.H; D.anim.sceneCurve=sv; D.anim.curvePh=cph;
   if(easeSync.k===k&&easeSync.c&&JSON.stringify(sv)===easeSync.c) return;
   let P; D.anim.sceneCurve=[0,0,1,1]; try{P=computePlan(G);}finally{D.anim.sceneCurve=sv;}
   if(!P.seq.length){easeSync={k,c:JSON.stringify(sv),m:null};return;}
   const tail=Math.max(0,Math.round(D.anim.tail)||0), C=Math.max(1,P.end-tail-P.startF), B=phaseBounds(P);
   const M=easeModel(B.on!=null?(B.on-B.c0)/C:null,B.hold!=null?(B.hold-B.c0)/C:null,E), c=M.curve;
-  D.anim.sceneCurve=c; easeSync={k,c:JSON.stringify(c),m:M};
+  D.anim.sceneCurve=c; D.anim.curvePh={on:B.on!=null?r3((B.on-B.c0)/C):null,hold:B.hold!=null?r3((B.hold-B.c0)/C):null}; easeSync={k,c:JSON.stringify(c),m:M};
 }
 function plan(G){
   syncSceneEase(G);
