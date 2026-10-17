@@ -753,6 +753,8 @@ body.nohelp .qm{display:none}
                 <div class="field"><span class="lbl scrub">Pairs</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.stackPct" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
                 <div class="field" data-adv><span class="lbl scrub" title="Rows between the two blocks in a pair. Empty = the same as the block height">Pair gap</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.stackGap" data-zero="auto" min="0" max="20" step="1"><span class="unit">rows</span><button data-d="1">+</button></div></div>
               </div>
+              <label class="check" title="Blocks in the same column (pairs) appear together instead of one after another"><input type="checkbox" data-bind="anim.groupCol"> Pairs in a column reveal together</label>
+              <label class="check" title="The last block of the build is always a single block — no pair in the final column"><input type="checkbox" data-bind="rand.endSingle"> Last block is never a pair</label>
               </div></details>
             
             <div class="field"><span class="lbl scrub" title="0 = random">Start row</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.startRow" min="0" max="60" step="1"><span class="unit" id="rowUnit">random</span><button data-d="1">+</button></div></div>
