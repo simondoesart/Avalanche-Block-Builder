@@ -1222,20 +1222,26 @@ body.nohelp .qm{display:none}
             <div class="field stack"><span class="lbl">Easing</span><div class="seg" data-seg="anim.sceneEase.on"><button data-v="true">Simple</button><button data-v="false">Custom curve</button></div></div>
             <div data-show="anim.sceneEase.on=true" style="display:grid;gap:9px">
               <div class="note">On the Scene row: drag the coloured <b>vertical lines</b> to place <b style="color:#FF7F7B">Hold starts</b> and <b style="color:#9fbbe6">Out starts</b>. Drag the white <b>ease handles</b> along the curve — longer = gentler.</div>
-              <div class="field stack" data-show="exit.holdOn=false"><span class="lbl" title="With no hold, In flows into Out">Between In and Out</span><div class="seg" data-seg="anim.sceneEase.mid"><button data-v="point" title="A point where In ends and Out starts, with its own ease each side">Out point</button><button data-v="smooth" title="One smooth move from start to end — no middle point">Smooth, no point</button></div></div>
-              <div class="lbl" style="opacity:.75">In</div>
               <div class="field2">
-                <div class="field"><span class="lbl scrub" title="How gently the scene starts">Ease in</span><div class="num"><input type="number" data-bind="anim.sceneEase.start" min="0" max="100" step="5"><span class="unit">%</span></div></div>
-                <div class="field"><span class="lbl scrub" title="How softly the build slows as it reaches the hold (or the Out point)">Ease out</span><div class="num"><input type="number" data-bind="anim.sceneEase.land" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+                <div class="field"><span class="lbl scrub" title="How gently the scene starts">Start ease</span><div class="num"><input type="number" data-bind="anim.sceneEase.start" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+                <div class="field"><span class="lbl scrub" title="How gently the scene ends">End ease</span><div class="num"><input type="number" data-bind="anim.sceneEase.end" min="0" max="100" step="5"><span class="unit">%</span></div></div>
               </div>
-              <div class="lbl" style="opacity:.75">Out</div>
-              <div class="field2">
-                <div class="field"><span class="lbl scrub" title="How softly the blocks pick up speed as they start leaving">Ease in</span><div class="num"><input type="number" data-bind="anim.sceneEase.leave" min="0" max="100" step="5"><span class="unit">%</span></div></div>
-                <div class="field"><span class="lbl scrub" title="How gently the scene ends">Ease out</span><div class="num"><input type="number" data-bind="anim.sceneEase.end" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+              <div data-show="exit.on=true&amp;exit.holdOn=true" style="display:grid;gap:9px">
+                <div class="lbl" style="opacity:.75">Hold starts <span class="note">ease each side</span></div>
+                <div class="field2">
+                  <div class="field"><span class="lbl scrub" title="How softly the build slows as it reaches the hold">Before</span><div class="num"><input type="number" data-bind="anim.sceneEase.land" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+                  <div class="field"><span class="lbl scrub" title="How softly it settles into the hold">After</span><div class="num"><input type="number" data-bind="anim.sceneEase.landOut" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+                </div>
+                <div class="lbl" style="opacity:.75">Hold ends <span class="note">ease each side</span></div>
+                <div class="field2">
+                  <div class="field"><span class="lbl scrub" title="How softly the hold winds up before Out">Before</span><div class="num"><input type="number" data-bind="anim.sceneEase.leaveIn" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+                  <div class="field"><span class="lbl scrub" title="How softly Out picks up speed">After</span><div class="num"><input type="number" data-bind="anim.sceneEase.leave" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+                </div>
               </div>
+              <div class="note" data-show="exit.holdOn=false">No hold: one smooth move from start to end — just the start and end ease.</div>
               <div class="field2">
-                <div class="field"><span class="lbl scrub" title="Where the hold starts (or the Out point), % through the scene (empty = natural)">Hold starts at</span><div class="num"><input type="number" data-bind="anim.sceneEase.onAt" data-zero="auto" min="0" max="100" step="1"><span class="unit">%</span></div></div>
-                <div class="field" data-show="exit.holdOn=true"><span class="lbl scrub" title="Where the blocks start leaving, % through the scene (empty = natural)">Out starts at</span><div class="num"><input type="number" data-bind="anim.sceneEase.holdAt" data-zero="auto" min="0" max="100" step="1"><span class="unit">%</span></div></div>
+                <div class="field" data-show="exit.on=true&amp;exit.holdOn=true"><span class="lbl scrub" title="Where the hold starts, % through the scene (empty = natural)">Hold starts at</span><div class="num"><input type="number" data-bind="anim.sceneEase.onAt" data-zero="auto" min="0" max="100" step="1"><span class="unit">%</span></div></div>
+                <div class="field" data-show="exit.on=true&amp;exit.holdOn=true"><span class="lbl scrub" title="Where the blocks start leaving, % through the scene (empty = natural)">Out starts at</span><div class="num"><input type="number" data-bind="anim.sceneEase.holdAt" data-zero="auto" min="0" max="100" step="1"><span class="unit">%</span></div></div>
               </div>
               <div class="row-btns"><button class="btn" id="btnEaseAuto" title="Put the points back where the blocks naturally have them">Natural positions</button></div>
             </div>
@@ -2416,7 +2422,7 @@ const DEF={
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,offX:0,offY:0,tracking:0,leading:0,kern:'metrics',caps:'none'},
   anim:{seed:0,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
-        sceneCurve:[0.42,0,0.58,1],curvePh:null,sceneEase:{on:false,onAt:null,holdAt:null,start:40,land:75,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
+        sceneCurve:[0.42,0,0.58,1],curvePh:null,sceneEase:{on:true,onAt:null,holdAt:null,start:40,land:75,landOut:50,leaveIn:50,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zoomOn:false,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
   lab:{flicker:{on:false,frames:8,seed:3},
        pulse:{on:false,scale:1.35,len:18,width:2,color:'#E6212F'},
@@ -2426,7 +2432,7 @@ const DEF={
        snow:{on:false,count:90,speed:240,size:2,stretch:6,dir:'left',color:'#EBF0FA',opacity:55,seed:9}},
   num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100},
   timing:{beats:[],markers:[],use:'beats',offset:0,sync:false,sens:1.3,minGap:4,media:null,video:true,videoOpacity:60,sound:true},
-  exit:{on:false,holdOn:true,walkHold:24,walkPace:1,walkLen:48,walkFollow:60,trail:3,slide:1.5,mode:'hold',hold:36,at:0,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
+  exit:{on:false,holdOn:true,walkHold:24,walkPace:1,walkLen:48,walkFollow:60,trail:3,slide:1.5,mode:'hold',hold:36,at:24,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
   out:{replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180,folder:true,preGrid:true,preBlocks:true,preTrans:true,shy:true,trim:true,markers:true},
   blocks:[]
 };
@@ -3971,8 +3977,8 @@ function easeModel(yOn,yHold,E){
   const hasOn=yOn!=null&&yOn>.02&&yOn<.98, hasHold=hasOn&&yHold!=null&&yHold>yOn+.01&&yHold<.995;
   const pts=[{x:0,y:0,eo:E.start,ko:'start',role:'start'}];
   if(hasHold){ let xOn=xa(E.onAt)!=null?xa(E.onAt):yOn, xH=xa(E.holdAt)!=null?xa(E.holdAt):yHold; xH=clamp(xH,xOn+.03,.97);
-    pts.push({x:xOn,y:yOn,ei:E.land,eo:E.land,ki:'land',role:'hold'},{x:xH,y:yHold,ei:E.leave,eo:E.leave,ko:'leave',role:'out'}); }
-  else if(hasOn&&E.mid!=='smooth'){ const xOn=xa(E.onAt)!=null?xa(E.onAt):yOn; pts.push({x:xOn,y:yOn,ei:E.land,eo:E.leave,ki:'land',ko:'leave',role:'mid'}); }
+    pts.push({x:xOn,y:yOn,ei:E.land,eo:E.landOut!=null?E.landOut:50,ki:'land',ko:'landOut',role:'hold'},{x:xH,y:yHold,ei:E.leaveIn!=null?E.leaveIn:50,eo:E.leave,ki:'leaveIn',ko:'leave',role:'out'}); }
+  else if(false&&hasOn&&E.mid!=='smooth'){ /* no hold → no middle easing point (one smooth move) */ const xOn=xa(E.onAt)!=null?xa(E.onAt):yOn; pts.push({x:xOn,y:yOn,ei:E.land,eo:E.leave,ki:'land',ko:'leave',role:'mid'}); }
   pts.push({x:1,y:1,ei:E.end,ki:'end',role:'end'});
   const n=pts.length, sl=[]; for(let i=0;i<n-1;i++) sl.push((pts[i+1].y-pts[i].y)/Math.max(1e-6,pts[i+1].x-pts[i].x));
   const ef=v=>clamp((+v||0)/100,0,1);
@@ -5138,7 +5144,7 @@ function drawDope(){
     g.strokeStyle='rgba(255,255,255,.9)'; g.lineWidth=1.6; g.beginPath(); for(let k=0;k<=80;k++){const u=k/80,xx=cxp(u),yy=cyp(clamp(sf(u),-.2,1.2));k?g.lineTo(xx,yy):g.moveTo(xx,yy);} g.stroke();
     const SE=D.anim.sceneEase, simple=SE&&SE.on;
     if(simple&&X(s1)-X(s0)>50&&P.C>0&&easeSync.m){ const M=easeSync.m, hs=M.h, W=Math.max(1,cxp(1)-cxp(0));
-      const COL={hold:'#FF7F7B',out:'#9fbbe6',mid:'#c9a7ff'}, NAME={hold:'Hold starts',out:'Out starts',mid:'Out starts'};
+      const COL={hold:'#FF7F7B',out:'#9fbbe6',mid:'#c9a7ff'}, NAME={hold:'Hold starts',out:'Hold ends',mid:'Out starts'};
       // segment names along the top
       const segName=(u0,u1,t)=>{const xa=cxp(u0),xb=cxp(u1); if(xb-xa>34){g.font='600 10px sans-serif';const w=g.measureText(t).width;label(t,(xa+xb)/2-w/2,yb+24,'rgba(255,255,255,.55)');}};
       const byRole=r=>hs.find(q=>q.role===r);
@@ -5155,7 +5161,7 @@ function drawDope(){
         item(Object.assign({type:'point',x,y:yb+hb/2,cur:'ew-resize',tip:`${NAME[q.role]} — drag left/right to move it${q.role==='mid'?' · ⌥-click removes the point':''}`,drag:(fx)=>{const uu=(fx-cxp(0))/W; let lo=4,hi=96; if(other){ if(q.role==='out') lo=other.x*100+3; else hi=other.x*100-3; } D.anim.sceneEase[key]=Math.round(clamp(uu*100,lo,hi));}},rm));
       });
       // ease handles (AE-style influence): drag along the time axis — longer = softer
-      const EN={start:'In · ease in',land:'In · ease out',leave:'Out · ease in',end:'Out · ease out'};
+      const EN={start:'Start ease',land:'Hold start · before',landOut:'Hold start · after',leaveIn:'Hold end · before',leave:'Hold end · after',end:'End ease'};
       hs.forEach(q=>{ [['i',q.ki,q.ix,q.iy,q.segI],['o',q.ko,q.ox,q.oy,q.segO]].forEach(([side,key,dx,dy,seg])=>{ if(!key||!seg) return;
           const ax=cxp(q.x), ay=cyp(q.y), hx=cxp(q.x+dx), hy=cyp(q.y+dy);
           g.strokeStyle='rgba(255,255,255,.55)'; g.lineWidth=1; g.beginPath(); g.moveTo(ax,ay); g.lineTo(hx,hy); g.stroke();
