@@ -1219,26 +1219,10 @@ body.nohelp .qm{display:none}
             <div class="field"><span class="lbl scrub" title="Scene length. Empty = the blocks play at their own speed; set a length to squeeze or stretch everything into it">Scene length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.remapLen" data-zero="auto" min="0" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
             <div class="row-btns"><button class="btn" id="btnRetimeComp" title="Make the scene end when the comp ends">Fit to the comp length</button><button class="btn" id="btnSceneAuto" title="Play the blocks at their own speed">Blocks' own speed</button></div>
             <div class="field"><span class="lbl scrub" title="Negative = the scene is already running when the comp starts">Starts at</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.startF" min="-9999" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
-            <div class="field stack"><span class="lbl">Easing</span><div class="seg" data-seg="anim.sceneEase.on"><button data-v="true">Simple</button><button data-v="false">Custom curve</button></div></div>
+            <div class="field stack"><span class="lbl">Easing</span><div class="seg" data-seg="anim.sceneEase.on"><button data-v="true" title="Points locked to Hold start / Hold end, handles free">Hold points</button><button data-v="false" title="Add points anywhere">Free curve</button></div></div>
             <div data-show="anim.sceneEase.on=true" style="display:grid;gap:9px">
-              <div class="note">On the Scene row: drag the coloured <b>vertical lines</b> to place <b style="color:#FF7F7B">Hold starts</b> and <b style="color:#9fbbe6">Out starts</b>. Drag the white <b>ease handles</b> along the curve — longer = gentler.</div>
-              <div class="field2">
-                <div class="field"><span class="lbl scrub" title="How gently the scene starts">Start ease</span><div class="num"><input type="number" data-bind="anim.sceneEase.start" min="0" max="100" step="5"><span class="unit">%</span></div></div>
-                <div class="field"><span class="lbl scrub" title="How gently the scene ends">End ease</span><div class="num"><input type="number" data-bind="anim.sceneEase.end" min="0" max="100" step="5"><span class="unit">%</span></div></div>
-              </div>
-              <div data-show="exit.on=true&amp;exit.holdOn=true" style="display:grid;gap:9px">
-                <div class="lbl" style="opacity:.75">Hold starts <span class="note">ease each side</span></div>
-                <div class="field2">
-                  <div class="field"><span class="lbl scrub" title="How softly the build slows as it reaches the hold">Before</span><div class="num"><input type="number" data-bind="anim.sceneEase.land" min="0" max="100" step="5"><span class="unit">%</span></div></div>
-                  <div class="field"><span class="lbl scrub" title="How softly it settles into the hold">After</span><div class="num"><input type="number" data-bind="anim.sceneEase.landOut" min="0" max="100" step="5"><span class="unit">%</span></div></div>
-                </div>
-                <div class="lbl" style="opacity:.75">Hold ends <span class="note">ease each side</span></div>
-                <div class="field2">
-                  <div class="field"><span class="lbl scrub" title="How softly the hold winds up before Out">Before</span><div class="num"><input type="number" data-bind="anim.sceneEase.leaveIn" min="0" max="100" step="5"><span class="unit">%</span></div></div>
-                  <div class="field"><span class="lbl scrub" title="How softly Out picks up speed">After</span><div class="num"><input type="number" data-bind="anim.sceneEase.leave" min="0" max="100" step="5"><span class="unit">%</span></div></div>
-                </div>
-              </div>
-              <div class="note" data-show="exit.holdOn=false">No hold: one smooth move from start to end — just the start and end ease.</div>
+              <div class="note">The curve's points sit at the start, <b style="color:#FF7F7B">Hold starts</b>, <b style="color:#9fbbe6">Hold ends</b> and the end. Drag the vertical lines to move the hold points; drag the <b style="color:#FF7F7B">handles</b> freely (angle + length) to shape the speed on each side. ⇧ keeps a handle's angle. No hold = just the start and end handles.</div>
+              <div class="row-btns"><button class="btn" id="btnHandlesReset" title="Back to a plain ease in / ease out at each point">Reset handles</button></div>
               <div class="field2">
                 <div class="field" data-show="exit.on=true&amp;exit.holdOn=true"><span class="lbl scrub" title="Where the hold starts, % through the scene (empty = natural)">Hold starts at</span><div class="num"><input type="number" data-bind="anim.sceneEase.onAt" data-zero="auto" min="0" max="100" step="1"><span class="unit">%</span></div></div>
                 <div class="field" data-show="exit.on=true&amp;exit.holdOn=true"><span class="lbl scrub" title="Where the blocks start leaving, % through the scene (empty = natural)">Out starts at</span><div class="num"><input type="number" data-bind="anim.sceneEase.holdAt" data-zero="auto" min="0" max="100" step="1"><span class="unit">%</span></div></div>
