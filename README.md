@@ -288,3 +288,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.27 — Hold points with free handles
 - Scene easing **Hold points** (default): the curve's points are locked to start, Hold starts, Hold ends and end; drag the vertical lines to move the hold points, and drag each bezier handle freely (angle + length, ⇧ keeps the angle) — like a custom curve, but the points stay on the phases. Handles are stored relative to their segment, so they keep their shape when phases change length. "Reset handles" goes back to plain eases.
 - **Free curve** is the old add-points-anywhere editor.
+
+### v3.28 — Straight hold, 4 handles, undo fix
+- Hold points: four handles — out of the start, into Hold starts, out of Hold ends, into the end. The hold itself is a straight line. Default arrival into the hold is soft but not stopped, so the last block of the build no longer lags.
+- ⌘Z / ⇧⌘Z: now works after clicking a number field or dropdown (they used to swallow it); clicking the canvas or timeline also hands keyboard shortcuts back to the app.
