@@ -1222,20 +1222,26 @@ body.nohelp .qm{display:none}
             <div class="field stack"><span class="lbl">Easing</span><div class="seg" data-seg="anim.sceneEase.on"><button data-v="true">Simple</button><button data-v="false">Custom curve</button></div></div>
             <div data-show="anim.sceneEase.on=true" style="display:grid;gap:9px">
               <div class="note">On the Scene row: drag the coloured <b>vertical lines</b> to place <b style="color:#FF7F7B">Hold starts</b> and <b style="color:#9fbbe6">Out starts</b>. Drag the white <b>ease handles</b> along the curve — longer = gentler.</div>
-              <div class="field stack" data-show="exit.holdOn=false"><span class="lbl" title="With no hold, In flows into Out">Between In and Out</span><div class="seg" data-seg="anim.sceneEase.mid"><button data-v="point" title="A point where In ends and Out starts, with its own ease each side">Out point</button><button data-v="smooth" title="One smooth move from start to end — no middle point">Smooth, no point</button></div></div>
-              <div class="lbl" style="opacity:.75">In</div>
               <div class="field2">
-                <div class="field"><span class="lbl scrub" title="How gently the scene starts">Ease in</span><div class="num"><input type="number" data-bind="anim.sceneEase.start" min="0" max="100" step="5"><span class="unit">%</span></div></div>
-                <div class="field"><span class="lbl scrub" title="How softly the build slows as it reaches the hold (or the Out point)">Ease out</span><div class="num"><input type="number" data-bind="anim.sceneEase.land" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+                <div class="field"><span class="lbl scrub" title="How gently the scene starts">Start ease</span><div class="num"><input type="number" data-bind="anim.sceneEase.start" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+                <div class="field"><span class="lbl scrub" title="How gently the scene ends">End ease</span><div class="num"><input type="number" data-bind="anim.sceneEase.end" min="0" max="100" step="5"><span class="unit">%</span></div></div>
               </div>
-              <div class="lbl" style="opacity:.75">Out</div>
-              <div class="field2">
-                <div class="field"><span class="lbl scrub" title="How softly the blocks pick up speed as they start leaving">Ease in</span><div class="num"><input type="number" data-bind="anim.sceneEase.leave" min="0" max="100" step="5"><span class="unit">%</span></div></div>
-                <div class="field"><span class="lbl scrub" title="How gently the scene ends">Ease out</span><div class="num"><input type="number" data-bind="anim.sceneEase.end" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+              <div data-show="exit.on=true&amp;exit.holdOn=true" style="display:grid;gap:9px">
+                <div class="lbl" style="opacity:.75">Hold starts <span class="note">ease each side</span></div>
+                <div class="field2">
+                  <div class="field"><span class="lbl scrub" title="How softly the build slows as it reaches the hold">Before</span><div class="num"><input type="number" data-bind="anim.sceneEase.land" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+                  <div class="field"><span class="lbl scrub" title="How softly it settles into the hold">After</span><div class="num"><input type="number" data-bind="anim.sceneEase.landOut" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+                </div>
+                <div class="lbl" style="opacity:.75">Hold ends <span class="note">ease each side</span></div>
+                <div class="field2">
+                  <div class="field"><span class="lbl scrub" title="How softly the hold winds up before Out">Before</span><div class="num"><input type="number" data-bind="anim.sceneEase.leaveIn" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+                  <div class="field"><span class="lbl scrub" title="How softly Out picks up speed">After</span><div class="num"><input type="number" data-bind="anim.sceneEase.leave" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+                </div>
               </div>
+              <div class="note" data-show="exit.holdOn=false">No hold: one smooth move from start to end — just the start and end ease.</div>
               <div class="field2">
-                <div class="field"><span class="lbl scrub" title="Where the hold starts (or the Out point), % through the scene (empty = natural)">Hold starts at</span><div class="num"><input type="number" data-bind="anim.sceneEase.onAt" data-zero="auto" min="0" max="100" step="1"><span class="unit">%</span></div></div>
-                <div class="field" data-show="exit.holdOn=true"><span class="lbl scrub" title="Where the blocks start leaving, % through the scene (empty = natural)">Out starts at</span><div class="num"><input type="number" data-bind="anim.sceneEase.holdAt" data-zero="auto" min="0" max="100" step="1"><span class="unit">%</span></div></div>
+                <div class="field" data-show="exit.on=true&amp;exit.holdOn=true"><span class="lbl scrub" title="Where the hold starts, % through the scene (empty = natural)">Hold starts at</span><div class="num"><input type="number" data-bind="anim.sceneEase.onAt" data-zero="auto" min="0" max="100" step="1"><span class="unit">%</span></div></div>
+                <div class="field" data-show="exit.on=true&amp;exit.holdOn=true"><span class="lbl scrub" title="Where the blocks start leaving, % through the scene (empty = natural)">Out starts at</span><div class="num"><input type="number" data-bind="anim.sceneEase.holdAt" data-zero="auto" min="0" max="100" step="1"><span class="unit">%</span></div></div>
               </div>
               <div class="row-btns"><button class="btn" id="btnEaseAuto" title="Put the points back where the blocks naturally have them">Natural positions</button></div>
             </div>

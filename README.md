@@ -279,3 +279,8 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.25 — Content holds until Out · removable middle point
 - Text HUD and Between blocks: **Holds — For a set time / Until Out**. Until Out keeps content on through In and Hold and takes it off as the blocks' Out starts. On the timeline, drag the hold knob onto the dashed blue Out line to snap to Until Out; drag it back left for a set hold.
 - Scene easing with no hold: ⌥-click the middle (Out point) line to remove it (smooth start-to-end); double-click the Scene row to add it back.
+
+### v3.26 — Hold eases on both sides
+- Simple scene easing is the default again. With a hold: drag the **Hold starts** / **Hold ends** lines, and each has an ease handle on **both sides** (before / after) plus start and end eases. Same four hold eases as numbers in Scene settings.
+- No hold: no middle point — one smooth move with just start and end ease.
+- Clear out now defaults to a 24-frame hold.
