@@ -764,8 +764,8 @@ body.nohelp .qm{display:none}
               <div class="note" data-show="anim.ending=spot">The end column comes from your grid rules and block count, so spacing never breaks. You choose the row.</div>
               <div data-show="anim.mode=camera|push" style="display:grid;gap:9px">
                 <div class="field stack"><span class="lbl" title="Where the camera leaves the last block of the build. Positions right of the reveal line stop at the reveal line">Last block ends up</span><div class="seg" id="endPreset"><button data-ex="-25" title="Just past the left edge">Off left</button><button data-ex="20">Left</button><button data-ex="50">Centre</button><button data-ex="80">Right</button><button data-ex="125" title="Just past the right edge">Off right</button></div></div>
-                <div class="field2"><div class="field"><span class="lbl scrub" title="0 = left edge, 100 = right edge, below 0 or above 100 = off screen">X</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endX" min="-200" max="300" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div><div data-show="anim.ending=spot"><div class="field"><span class="lbl scrub" title="0 = top, 100 = bottom, outside 0–100 = off screen">Y</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endY" min="-200" max="300" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div></div></div>
-                <div data-show="anim.ending=spot"><div class="field"><span class="lbl scrub">Final move</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.finalMove" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div></div>
+                <div class="field2"><div class="field"><span class="lbl scrub" title="0 = left edge, 100 = right edge, below 0 or above 100 = off screen">X</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endX" min="-200" max="300" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div><div data-show="anim.ending=spot&amp;anim.camMove=step"><div class="field"><span class="lbl scrub" title="0 = top, 100 = bottom, outside 0–100 = off screen">Y</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.endY" min="-200" max="300" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div></div></div>
+                <div data-show="anim.ending=spot&amp;anim.camMove=step"><div class="field"><span class="lbl scrub">Final move</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.finalMove" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div></div>
               </div>
             </div></details>
           </div>
@@ -4148,7 +4148,7 @@ function computePlan(G){
       P.offs.push([ox,oy]); pv=[ox,oy];
     });
     tg=P.offs.slice();
-    if(A.extendOn&&A.ending==='spot'&&!manual){
+    if(A.extendOn&&A.ending==='spot'&&!manual&&A.camMove!=='curve'){   // 'With the blocks' handles the landing itself ('Last block ends up'), end row only shapes the walk
       const mains=seq.filter(b=>!b.stack), lb=mains.length?mains[mains.length-1]:seq[seq.length-1], r=cellRect(G,lb.c,lb.r,lb.w,lb.h);
       fin=[r3(G.W*clamp(+A.endX||0,-200,300)/100-(r.x+r.w/2)),A.axis==='xy'?r3(G.H*clamp(+A.endY||0,-200,300)/100-(r.y+r.h/2)):0];
       P.fin=fin; tg.push(fin);
@@ -4167,7 +4167,7 @@ function computePlan(G){
     lagSteps=Math.max(lag,maxGap);
     const tau=cm==='follow'?Math.max(0,+A.motionBlurF):0;
     settleF=cm==='follow'?Math.max(Math.round(+A.settle||0),Math.ceil(4*tau),2):Math.max(4,Math.round((D.comp.fps||30)*.25));   // step & settle: room for the last move
-    finalF=(A.extendOn&&A.ending==='spot'&&!manual)?Math.max(1,Math.round(A.finalMove)||30):0;
+    finalF=(A.extendOn&&A.ending==='spot'&&!manual&&A.camMove!=='curve')?Math.max(1,Math.round(A.finalMove)||30):0;
     // reveals leave room for: the camera's follow distance (lag steps) + the final framing move + the settle
     step=(L-finalF-settleF)/Math.max(1,usedB-1+lagSteps);
     if(step<1){ // not enough room: shrink the settle first, never below 2 frames

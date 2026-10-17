@@ -1796,7 +1796,7 @@ function computePlan(G){
       P.offs.push([ox,oy]); pv=[ox,oy];
     });
     tg=P.offs.slice();
-    if(A.extendOn&&A.ending==='spot'&&!manual){
+    if(A.extendOn&&A.ending==='spot'&&!manual&&A.camMove!=='curve'){   // 'With the blocks' handles the landing itself ('Last block ends up'), end row only shapes the walk
       const mains=seq.filter(b=>!b.stack), lb=mains.length?mains[mains.length-1]:seq[seq.length-1], r=cellRect(G,lb.c,lb.r,lb.w,lb.h);
       fin=[r3(G.W*clamp(+A.endX||0,-200,300)/100-(r.x+r.w/2)),A.axis==='xy'?r3(G.H*clamp(+A.endY||0,-200,300)/100-(r.y+r.h/2)):0];
       P.fin=fin; tg.push(fin);
@@ -1815,7 +1815,7 @@ function computePlan(G){
     lagSteps=Math.max(lag,maxGap);
     const tau=cm==='follow'?Math.max(0,+A.motionBlurF):0;
     settleF=cm==='follow'?Math.max(Math.round(+A.settle||0),Math.ceil(4*tau),2):Math.max(4,Math.round((D.comp.fps||30)*.25));   // step & settle: room for the last move
-    finalF=(A.extendOn&&A.ending==='spot'&&!manual)?Math.max(1,Math.round(A.finalMove)||30):0;
+    finalF=(A.extendOn&&A.ending==='spot'&&!manual&&A.camMove!=='curve')?Math.max(1,Math.round(A.finalMove)||30):0;
     // reveals leave room for: the camera's follow distance (lag steps) + the final framing move + the settle
     step=(L-finalF-settleF)/Math.max(1,usedB-1+lagSteps);
     if(step<1){ // not enough room: shrink the settle first, never below 2 frames
