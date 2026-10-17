@@ -284,3 +284,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - Simple scene easing is the default again. With a hold: drag the **Hold starts** / **Hold ends** lines, and each has an ease handle on **both sides** (before / after) plus start and end eases. Same four hold eases as numbers in Scene settings.
 - No hold: no middle point — one smooth move with just start and end ease.
 - Clear out now defaults to a 24-frame hold.
+
+### v3.27 — Hold points with free handles
+- Scene easing **Hold points** (default): the curve's points are locked to start, Hold starts, Hold ends and end; drag the vertical lines to move the hold points, and drag each bezier handle freely (angle + length, ⇧ keeps the angle) — like a custom curve, but the points stay on the phases. Handles are stored relative to their segment, so they keep their shape when phases change length. "Reset handles" goes back to plain eases.
+- **Free curve** is the old add-points-anywhere editor.
