@@ -645,7 +645,7 @@ function drawShapeItem(g,it,dx,dy,st,alpha){
 function shapeTiming(it,fps){
   const A=it.A||D.fill.anim, build=A.inMode==='type';
   const on=build?Math.max(1,+(A.buildDur||D.fill.buildDur)||12)/fps:A.inMode==='fade'?Math.max(1,+A.inDur||8)/fps:0;
-  let mode=A.outMode, off=(mode==='stay'||A.anchor==='phases')?Infinity:on+Math.max(0,+A.hold||0)/fps, outLen=mode==='cut'?0:Math.max(1,+A.outDur||10)/fps;
+  let mode=A.outMode, off=(mode==='stay'||A.anchor==='phases'||A.anchor==='leave')?Infinity:on+Math.max(0,+A.hold||0)/fps, outLen=mode==='cut'?0:Math.max(1,+A.outDur||10)/fps;
   if(it.tEnd!=null&&isFinite(it.tEnd)){ if(mode==='stay'){mode='fade';outLen=Math.max(1,+A.outDur||10)/fps;} off=Math.min(off,Math.max(0,(it.tEnd-it.t0)/fps-outLen)); }
   return {build,on,off,outLen,mode};
 }
@@ -850,7 +850,7 @@ function scrambleLine(s,k){const r=rng(k*7919+s.length);return s.replace(/[0-9A-
 function fillTiming(it,fullLen,fps){
   const A=it.A||D.fill.anim, typed=it.kind==='text'&&A.inMode==='type'&&(it.type||A.typeAll);
   const on=typed?fullLen/Math.max(1,+A.cps||40):A.inMode==='fade'?Math.max(1,+A.inDur||8)/fps:0;
-  let mode=A.outMode, off=(mode==='stay'||A.anchor==='phases')?Infinity:on+Math.max(0,+A.hold||0)/fps;
+  let mode=A.outMode, off=(mode==='stay'||A.anchor==='phases'||A.anchor==='leave')?Infinity:on+Math.max(0,+A.hold||0)/fps;
   let outLen=mode==='cut'?0:Math.max(1,+A.outDur||10)/fps;
   if(it.tEnd!=null&&isFinite(it.tEnd)){   // its block leaves at tEnd: the content is gone by then
     if(mode==='stay'){mode='fade';outLen=Math.max(1,+A.outDur||10)/fps;}
@@ -2231,12 +2231,13 @@ function computePlan(G){
     P.echo.forEach(e=>{const i=seq.indexOf(e.src);P.fillBase[e.id]=(e.K.op.length?e.K.op[0][0]:P.T[i])+tr0+dl;});
     // 'Until Out': content holds through In and Hold and goes when the blocks' Out starts
     { const X=D.exit; let fo=null; if(X.on&&X.mode==='walk'&&P.walkT!=null) fo=P.walkT; else if(X.on&&P.exitT&&P.exitT.some(v=>v!=null)) fo=Math.min(...P.exitT.filter(v=>v!=null)); P.fillOut=fo;
+      if(D.fill.anim.anchor==='leave'&&P.exitT){ seq.forEach((b,i)=>{ if(P.exitT[i]!=null){ P.fillEnd[b.id]=P.exitT[i]; P.fillEnd['e'+b.id]=P.exitT[i]; } }); }
       if(fo!=null&&D.fill.anim.anchor==='phases'){ seq.forEach(b=>{ P.fillEnd[b.id]=Math.min(P.fillEnd[b.id]!=null?P.fillEnd[b.id]:Infinity,fo); P.fillEnd['e'+b.id]=Math.min(P.fillEnd['e'+b.id]!=null?P.fillEnd['e'+b.id]:Infinity,fo); }); } }
     if(D.fill.gap.on){
       const gl=gapItems(G,seq).map(it=>Object.assign({},it));
       const GA=D.fill.gap.anim||{}, own=GA.own!==false, gdl=own?Math.round(+GA.delay||0):dl, jit=own?Math.max(0,Math.round(+GA.jitter||0)):0, A2=gapA();
-      gl.forEach((it,k)=>{let best=null;seq.forEach((b,i)=>{const d=Math.abs(b.c-it.col);if(!best||d<best.d)best={d,t:P.T[i],e:P.exitT&&D.exit.content!==false?P.exitT[i]:null};});
-        it.t0=(best?best.t:0)+tr0+gdl+(jit?Math.round(rng(k*7919+31+(D.fill.gap.seed|0))()*jit):0); it.A=A2; if(best&&best.e!=null&&(!own||GA.leaveWith!==false))it.tEnd=best.e; if(A2.anchor==='phases'&&P.fillOut!=null) it.tEnd=Math.min(it.tEnd!=null?it.tEnd:Infinity,P.fillOut);});
+      gl.forEach((it,k)=>{let best=null;seq.forEach((b,i)=>{const d=Math.abs(b.c-it.col);if(!best||d<best.d)best={d,t:P.T[i],e:P.exitT&&(D.exit.content!==false||A2.anchor==='leave')?P.exitT[i]:null};});
+        it.t0=(best?best.t:0)+tr0+gdl+(jit?Math.round(rng(k*7919+31+(D.fill.gap.seed|0))()*jit):0); it.A=A2; if(best&&best.e!=null&&(!own||GA.leaveWith!==false||A2.anchor==='leave'))it.tEnd=best.e; if(A2.anchor==='phases'&&P.fillOut!=null) it.tEnd=Math.min(it.tEnd!=null?it.tEnd:Infinity,P.fillOut);});
       P.gaps=gl;
     }
   }
@@ -2908,18 +2909,18 @@ function drawDope(){
       g.fillStyle=AA.live?'rgba(116,157,211,.55)':rgba(col,.28); g.fillRect(X(on),R.y0+7,Math.max(1,X(off)-X(on)),R.h-11);
       if(isFinite(T0.off)){g.fillStyle=rgba(col,.75);g.fillRect(X(off),R.y0+7,Math.max(1,X(end)-X(off)),R.h-11);}
       if(onDelay){knob(on,R.y0,R.h,col);H(on,R,'ew-resize',(st=>f=>onDelay(Math.round(f-onLen-st)))(t0-(+onDelay.cur||0)),`fully on (animate-on ${Math.round(onLen)}f before it) — drag to move when it's fully on`);}
-      if(isFinite(T0.off)){knob(off,R.y0,R.h,col);H(off,R,'ew-resize',f=>onHold(Math.max(0,Math.round(f-on)),f),AA.anchor==='phases'?'out starts — holding until the blocks go Out · drag left for a set hold':`out starts (animate-off ${Math.round(T0.outLen*fps)}f after it) — drag to change the hold · drop on the dashed Out line to hold until Out`);}
-      if(X(off)-X(on)>50) label((AA.anchor==='phases'?'until Out':'hold')+(AA.live?' · live':''),X(on)+6,R.y0+R.h/2+2,'rgba(236,236,239,.85)'); };
-    const outLine=Pc.fillOut!=null?Pc.fillOut:null, snapHold=(obj,v,f)=>{ if(outLine!=null&&f>=outLine-3){obj.anchor='phases';} else {obj.anchor='block';obj.hold=v;} };
+      if(isFinite(T0.off)){knob(off,R.y0,R.h,col);H(off,R,'ew-resize',f=>onHold(Math.max(0,Math.round(f-on)),f),AA.anchor==='leave'?'out starts — each block\'s content stays until that block leaves (through the walk-out) · drag left to change':AA.anchor==='phases'?'out starts — holding until the blocks go Out · drag right past the Out line to keep it through the walk-out, left for a set hold':`out starts (animate-off ${Math.round(T0.outLen*fps)}f after it) — drag to change the hold · drop on the dashed Out line to hold until Out`);}
+      if(X(off)-X(on)>50) label((AA.anchor==='phases'?'until Out':AA.anchor==='leave'?'until each block leaves':'hold')+(AA.live?' · live':''),X(on)+6,R.y0+R.h/2+2,'rgba(236,236,239,.85)'); };
+    const outLine=Pc.fillOut!=null?Pc.fillOut:null, exits=(Pc.exitT||[]).filter(v=>v!=null), lastExit=exits.length?Math.max(...exits):null, snapHold=(obj,v,f)=>{ if(outLine!=null&&lastExit!=null&&f>=outLine+Math.max(6,(lastExit-outLine)*.15)){obj.anchor='leave';} else if(outLine!=null&&f>=outLine-3){obj.anchor='phases';} else {obj.anchor='block';obj.hold=v;} };
     if(outLine!=null){g.strokeStyle='rgba(159,187,230,.55)';g.setLineDash([3,3]);g.lineWidth=1;g.beginPath();g.moveTo(X(outLine)+.5,R.y0);g.lineTo(X(outLine)+.5,R.y1);g.stroke();g.setLineDash([]);}
     if(R.ck==='hud'){
       P.seq.forEach((b,i)=>{const t0=FB[b.id]; if(t0==null) return; const end=FE[b.id]!=null?FE[b.id]:N; g.fillStyle=rgba(col,.22); g.fillRect(X(t0),R.y0+3+(i%3)*2,Math.max(1,X(end)-X(t0)),1.5);});
-      const b=P.seq[0]; if(b&&FB[b.id]!=null) {const t0h=FB[b.id]; const dl=v=>{A.delay=clamp(v,0,600);}; dl.cur=+A.delay||0; phases({t0:t0h,tEnd:FE[b.id],lines:['x'.repeat(24)]},A,(v,f)=>snapHold(A,v,f),dl);}
+      const b=P.seq[0]; if(b&&FB[b.id]!=null) {const t0h=FB[b.id]; const dl=v=>{A.delay=clamp(v,0,600);}; dl.cur=+A.delay||0; phases({t0:t0h,tEnd:A.anchor==='leave'&&lastExit!=null?lastExit:FE[b.id],lines:['x'.repeat(24)]},A,(v,f)=>snapHold(A,v,f),dl);}
     } else if(R.ck==='gaps'){
       const gl=Pc.gaps||[], GA=D.fill.gap.anim||{}, own=GA.own!==false, AA=gapA();
       gl.forEach((it,i)=>{const T1=fillTiming(Object.assign({kind:'text',type:true},it,{A:AA}),24,fps), e=isFinite(T1.off)?it.t0+(T1.off+T1.outLen)*fps:(it.tEnd!=null?it.tEnd:N); g.fillStyle=rgba(col,.4); g.fillRect(X(it.t0),R.y0+3+(i%4)*1.6,Math.max(1,X(e)-X(it.t0)),1.2);});
       const it0=gl.slice().sort((a,b)=>a.t0-b.t0)[0];
-      if(it0) phases(Object.assign({},it0,{A:AA,lines:it0.lines||['x'.repeat(24)]}),AA,(v,f)=>snapHold(own?GA:A,v,f),own?Object.assign(v=>{GA.delay=clamp(v,-240,600);},{cur:+GA.delay||0}):null);
+      if(it0) phases(Object.assign({},it0,{A:AA,lines:it0.lines||['x'.repeat(24)]},AA.anchor==='leave'&&lastExit!=null?{tEnd:lastExit}:{}),AA,(v,f)=>snapHold(own?GA:A,v,f),own?Object.assign(v=>{GA.delay=clamp(v,-240,600);},{cur:+GA.delay||0}):null);
     }
     else if(R.ck==='numbers'){ P.seq.forEach((b,i)=>{if(!numOn(b)) return; const t0=(Pc.done||[])[i]||Pc.T[i], e=Pc.exitT&&Pc.exitT[i]!=null?Pc.exitT[i]:N; g.fillStyle=rgba(col,.55); g.fillRect(X(t0),R.y0+5+(i%3)*3,Math.max(1,X(e)-X(t0)),2);}); }
     else if(R.ck==='echo'){ Pc.echo.forEach((e,i)=>{const t0=e.K.op.length?e.K.op[0][0]:0, t1=e.K.op.length?e.K.op[e.K.op.length-1][0]:N, end=e.K.op.length&&e.K.op[e.K.op.length-1][1]===0?t1:N; g.fillStyle=rgba(col,.55); g.fillRect(X(t0),R.y0+5+(i%3)*3,Math.max(1,X(end)-X(t0)),2);}); }

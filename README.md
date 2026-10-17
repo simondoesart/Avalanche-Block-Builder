@@ -299,3 +299,6 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 
 ### v3.30 — Settle before hold
 - New **Settle before hold** (Motion → Hold, default 12 fr): the last block lands that long before Hold starts, so easing into the hold happens after the build instead of slowing the last arrivals. Shown as a lighter "settle" part at the end of In on the timeline.
+
+### v3.31 — Content through the walk-out
+- Text HUD and Between blocks **Holds** has a third option, **Until its block leaves**: each item stays until its own block leaves, so content rides along through the walk-out. On the timeline, drag the out knob past the dashed Out line to switch to it (the bar then runs to the last block's exit); drag back to the line for Until Out, or further left for a set hold.
