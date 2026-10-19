@@ -339,3 +339,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
   - *Basics*: Wipe, Rows, Diagonal, Iris, Checker, Venetian, Scatter, Soft fade.
 - The walk-based patterns use the line exactly where it is on screen when the transition happens (Out: as it starts; In: once the scene is up), on the scene's own grid.
 - **Customize** (twirl-down): every pattern, **Randomness** (0 = clean, 100 = loose), length, per-block length, block size, appear style, direction, colours, cover gutters, matte precomp, easing.
+
+### v3.41 — Transitions that read as the walk
+- **Line flood** now floods from the *newest* block and keeps going as the line keeps building: every block that lands during the transition sends out its own wave.
+- Walk presets sit **Behind the line** (new option, on for walk presets) in a deeper shade of the block colour, so the walking blocks stay on top and you can see them drive the transition. In AE the tiles (or the transition precomp) go under the block layers.
