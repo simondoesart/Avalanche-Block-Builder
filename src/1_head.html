@@ -420,6 +420,7 @@ body.simple [data-adv]{display:none!important}
 
 /* curve editor */
 .curve{display:grid;gap:6px}
+.libsamp{width:96px;height:54px;border-radius:6px;background:linear-gradient(135deg,#E6212F 0 30%,#1F1F1F 30% 100%);display:grid;place-items:center;color:#fff;font-size:18px;cursor:pointer;flex:none}
 select.msel{width:100%;height:28px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:0 6px;font:inherit;font-size:12px}
 .mlist{display:grid;gap:4px}.mlist .mrow{display:flex;align-items:center;gap:6px;font-size:11.5px;padding:4px 6px;border:1px solid var(--line);border-radius:7px}
 .mlist .mrow .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mlist .mrow .st{color:var(--mut,#8a8a93);font-size:10.5px}.mlist .mrow button{height:20px;padding:0 6px}
@@ -1423,6 +1424,11 @@ body.nohelp .qm{display:none}
           <div class="group">
             <div class="group-h">How it lands in After Effects</div>
             <div class="summary" id="buildSummary"></div>
+          </div>
+          <div class="group" id="dlPanel">
+            <div class="group-h">Get the After Effects panel</div>
+            <div class="note">Run Grid Blocks inside After Effects 2022 (v22) or newer, on Mac or Windows. Unzip, double-click <b>Install on Mac.command</b> or <b>Install on Windows.bat</b>, restart After Effects, then open Window › Extensions › Grid Blocks.</div>
+            <div class="row-btns"><a class="btn primary" href="downloads/GridBlocks-AE.zip" download>⬇ Download for After Effects (Mac + Windows)</a></div>
           </div>
           <div class="group">
             <div class="group-h">Organise in After Effects</div>

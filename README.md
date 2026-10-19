@@ -391,3 +391,9 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
   - Which media: Same for all, By direction (different media for up / down / level, like the up/down colours), Cycle a list, Random.
 - Select any block (generated ones too) for its own **Media** section: Global rule / On / Off, its own media, and its own settings when "Use the global media settings" is off.
 - After Effects: footage (or its precomp) is parented to the block and alpha-matted to it, time-remapped by expression for loop / hold / ping-pong and the start/offset, muted unless Sound on. Files are found by path, next to the .jsx (or in media/), or AE asks you to locate them. Browser-added files need relinking after a reload.
+
+### v3.52 — Download package, sample workflow, AE 22+
+- **Layouts › Sample workflows**: the Avalanche walk sample scene loads in one click (also in the download as `Sample workflow.json`).
+- **Download for After Effects** (Build step on the website → `downloads/GridBlocks-AE.zip`): `GridBlocks/` panel + `Install on Mac.command` + `Install on Windows.bat` + README. Installers copy the panel into the CEP extensions folder, turn on PlayerDebugMode (CEP 9–13), install any brand fonts placed in `Fonts/`, and clear the panel cache. The public zip has no desktop font files (licensing); `package.sh` also makes `GridBlocks-AE (internal, with fonts).zip` locally (git/Vercel-ignored).
+- After Effects 2022 (v22) and newer: manifest `AEFT [22.0,99.9]`, CSXS 11; newer-only APIs (track matte to any layer, app.fonts) fall back automatically.
+- `ship.command`: rebuilds, packages, commits and pushes to GitHub `main` (Vercel deploys from it). `install.command`: updates the panel in your local After Effects.
