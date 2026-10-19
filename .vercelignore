@@ -3,3 +3,9 @@ fonts/desktop/
 src/
 install.command
 build.sh
+dist/
+dist-src/
+ship.command
+package.sh
+GridBlocks-AE (internal, with fonts).zip
+v2/
