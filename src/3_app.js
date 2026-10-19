@@ -1685,6 +1685,51 @@ function renderZoomPts(){
   const pts=zoomPts();
   el.innerHTML=pts.map((p,i)=>`<div class="zprow"><span class="lbl">f</span><div class="num"><input type="number" data-zp="${i}:f" value="${p.f}" step="1"></div><span class="lbl">zoom</span><div class="num"><input type="number" data-zp="${i}:v" value="${Math.round(p.v)}" min="5" max="2000" step="5"><span class="unit">%</span></div><button class="btn ghost" data-zpdel="${i}" title="Remove this point" ${pts.length<=2?'disabled':''}>×</button></div>`).join('');
 }
+/* sidebar "Zoom over time" graph: every point, eased segments, playhead; drag / double-click add / ⌥-click remove */
+const ZG={sel:-1,drag:null};
+function zgGeo(c){
+  const r=c.getBoundingClientRect(), pts=zoomPts(), G=geom(), end=Math.max(sceneEnd(G),pts[pts.length-1].f+12);
+  const f0=Math.min(0,pts[0].f-6), vs=pts.map(p=>p.v).concat(100), lo=Math.max(5,Math.min(...vs)), hi=Math.max(...vs), pv=Math.max(10,(hi-lo)*.18);
+  const L=lo-pv, H=hi+pv, pl=34, pr=10, pt=10, pb=16, W=r.width-pl-pr, Hh=r.height-pt-pb;
+  return {r,pts,f0,end,L,H,X:f=>pl+(f-f0)/Math.max(1,end-f0)*W,Y:v=>pt+Hh-(v-L)/(H-L)*Hh,F:x=>f0+(x-pl)/W*(end-f0),V:y=>L+(pt+Hh-y)/Hh*(H-L),pl,pt,W,Hh};
+}
+function drawZoomGraph(){
+  const c=$('#zoomGraph'); if(!c) return; const r=c.getBoundingClientRect(); if(!r.width) return;
+  const dpr=window.devicePixelRatio||1; c.width=Math.round(r.width*dpr); c.height=Math.round(r.height*dpr);
+  const g=c.getContext('2d'); g.scale(dpr,dpr); g.clearRect(0,0,r.width,r.height);
+  const z=zgGeo(c), K=zoomKeys(), fps=D.comp.fps||30;
+  g.font='9px Inter,Helvetica,Arial'; g.fillStyle='#686871'; g.strokeStyle='#2f2f35'; g.lineWidth=1;
+  // 100% guide + range labels
+  const y100=z.Y(100); g.setLineDash([3,3]); g.beginPath(); g.moveTo(z.pl,y100+.5); g.lineTo(z.pl+z.W,y100+.5); g.stroke(); g.setLineDash([]); g.fillText('100%',4,y100+3);
+  [z.H,z.L].forEach(v=>{ if(Math.abs(v-100)<(z.H-z.L)*.12) return; g.fillText(Math.round(v)+'%',4,z.Y(v)+3); });
+  // scene end / comp
+  const xe=z.X(sceneEnd(geom())); g.strokeStyle='rgba(255,255,255,.12)'; g.beginPath(); g.moveTo(xe+.5,z.pt); g.lineTo(xe+.5,z.pt+z.Hh); g.stroke();
+  g.fillText('0s',z.X(0)+2,r.height-4); g.fillText(fmtT(sceneEnd(geom()),fps),Math.min(xe-22,z.pl+z.W-22),r.height-4);
+  // curve
+  g.strokeStyle='#E6212F'; g.lineWidth=2; g.beginPath();
+  for(let i=0;i<=200;i++){ const f=z.f0+(z.end-z.f0)*i/200, v=K.length?ev(K,f,100):z.pts[0].v, x=z.X(f), y=z.Y(v); i?g.lineTo(x,y):g.moveTo(x,y); } g.stroke();
+  // playhead
+  if(U.t!=null){ const x=z.X(U.t); g.strokeStyle='rgba(230,33,47,.55)'; g.beginPath(); g.moveTo(x+.5,z.pt); g.lineTo(x+.5,z.pt+z.Hh); g.stroke(); }
+  // points
+  z.pts.forEach((p,i)=>{ const x=z.X(p.f), y=z.Y(p.v); g.fillStyle=i===ZG.sel?'#E6212F':'#fff'; g.strokeStyle='#E6212F'; g.lineWidth=2; g.beginPath(); g.rect(x-4.5,y-4.5,9,9); g.fill(); g.stroke(); });
+  const s=z.pts[ZG.sel], v=$('#zoomGraphVal'); if(v) v.textContent=s?`Point ${ZG.sel+1} · frame ${s.f} (${fmtT(s.f,fps)}) · ${Math.round(s.v)}%`:`${z.pts.length} points · ${Math.round(Math.min(...z.pts.map(p=>p.v)))}–${Math.round(Math.max(...z.pts.map(p=>p.v)))}%`;
+}
+function zgAfter(full){ planCache.k=''; $('#zoomPts')&&($('#zoomPts').innerHTML=''); renderZoomPts(); drawZoomGraph(); if(full){ syncInputs(true); refresh(); } else { render(); try{drawDope();}catch(e){} } }
+(()=>{ const c=$('#zoomGraph'); if(!c) return;
+  const hit=(e,z)=>{ const r=c.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top; let b=-1,bd=10; z.pts.forEach((p,i)=>{const d=Math.hypot(z.X(p.f)-x,z.Y(p.v)-y); if(d<bd){bd=d;b=i;}}); return {i:b,x,y}; };
+  c.addEventListener('pointerdown',e=>{ const z=zgGeo(c), h=hit(e,z); if(h.i<0) return;
+    if(e.altKey){ const P2=ensureZoomPts().slice().sort((a,b)=>a.f-b.f); if(P2.length<=2) return toast('A zoom needs at least two points'); pushHist(true); P2.splice(h.i,1); D.anim.zm.pts=P2; ZG.sel=-1; zgAfter(true); return; }
+    ZG.sel=h.i; ZG.drag={z,i:h.i,pushed:false}; c.setPointerCapture(e.pointerId); drawZoomGraph(); });
+  c.addEventListener('pointermove',e=>{ const d=ZG.drag; if(!d) return; const r=c.getBoundingClientRect(), z=d.z;
+    if(!d.pushed){ pushHist(true); d.pushed=true; }
+    const P2=ensureZoomPts().slice().sort((a,b)=>a.f-b.f), q=P2[d.i], pv=P2[d.i-1], nx=P2[d.i+1];
+    q.f=Math.round(clamp(z.F(e.clientX-r.left),pv?pv.f+1:-99999,nx?nx.f-1:99999)); let v=clamp(z.V(e.clientY-r.top),5,2000); if(e.shiftKey) v=Math.round(v/25)*25; else v=Math.round(v);
+    q.v=v; D.anim.zm.pts=P2; zgAfter(false); });
+  const up=()=>{ if(!ZG.drag) return; const p=ZG.drag.pushed; ZG.drag=null; if(p) zgAfter(true); };
+  c.addEventListener('pointerup',up); c.addEventListener('pointercancel',up);
+  c.addEventListener('dblclick',e=>{ const z=zgGeo(c), h=hit(e,z); if(h.i>=0) return; const f=Math.round(z.F(h.x)), P2=ensureZoomPts().slice().sort((a,b)=>a.f-b.f); if(P2.some(q=>q.f===f)) return;
+    const K=zoomKeys(), v=K.length?Math.round(ev(K,f,100)):P2[0].v; pushHist(true); P2.push({f,v}); P2.sort((a,b)=>a.f-b.f); D.anim.zm.pts=P2; ZG.sel=P2.findIndex(q=>q.f===f); zgAfter(true); });
+})();
 function applyZoom(P){
   const K=zoomKeys(); if(!K.length) return;
   P.zs=clip0(K); P.sMin=Math.min(P.sMin||1,...K.map(k=>k[1]/100));
@@ -3245,7 +3290,7 @@ function tlInfo(x,y,h){
   return h&&h.tip?`${tc} — ${h.tip}`:tc;
 }
 function updTC(){const el=$('#tc'); if(!el) return; const fps=D.comp.fps||30; el.textContent=U.t==null?'layout':`${Math.round(U.t)}f · ${(U.t/fps).toFixed(2)}s`;}
-function tlSetT(f){stopPlay();U.preview=true;U.t=Math.round(f);$('#scrub').value=U.t;mediaSync(false);updTC();updViewBadge();render();drawDope();drawSpeedGraph();}
+function tlSetT(f){stopPlay();U.preview=true;U.t=Math.round(f);$('#scrub').value=U.t;mediaSync(false);updTC();updViewBadge();render();drawDope();drawSpeedGraph();try{drawZoomGraph();}catch(e){}}
 function tlSelect(id,add){
   let s=add?tlSelIds():[];
   if(add&&s.indexOf(id)>=0) s=s.filter(x=>x!==id); else if(s.indexOf(id)<0) s.push(id);
@@ -3317,7 +3362,7 @@ function initDope(){
     if(d.marquee){ const m=d.marquee; m.x1=p.x; m.y1=p.y; const x0=Math.min(m.x0,m.x1),x1=Math.max(m.x0,m.x1),y0=Math.min(m.y0,m.y1),y1=Math.max(m.y0,m.y1);
       const hit=TL.items.filter(it=>it.type==='block'&&it.x1>=x0&&it.x0<=x1&&it.y1>=y0&&it.y0<=y1).map(it=>it.id);
       const ids=[...new Set(d.keep.concat(hit))]; U.dopeSel=ids; U.selIds=ids.filter(id=>byId(id)); drawDope(); showTip(`${ids.length} block${ids.length===1?'':'s'} selected`); return; }
-    if(d.point){d.point.drag(p.x,p.y,e.shiftKey);}
+    if(d.point){d.point.drag(p.x,p.y,e.shiftKey); try{ if($('#zoomPts')) $('#zoomPts').innerHTML=''; renderZoomPts(); drawZoomGraph(); }catch(x){}}
     else if(d.handle){d.handle.apply(f);}
     else if(d.blocks){
       const df=Math.round(f-d.f0); if(df) d.moved=true; D.anim.dt=D.anim.dt||{}; D.anim.dx=D.anim.dx||{};   // block offsets live on the blocks' own clock
@@ -4646,9 +4691,10 @@ function refresh(){
   renderStepUI(); renderBlockStep(G); renderGenStatus(G);
   // animation readout + timeline
   { const P=plan(G); const sc=$('#scrub'); sc.max=sceneEnd(G); if(U.t!==null) sc.value=U.t; updTC(); updViewBadge(); $('#btnLayoutView').hidden=U.t===null; }
+  try{ renderZoomPts(); drawZoomGraph(); }catch(e){}
   if(STEPS[U.step].id==='animate'){
     const P=plan(G), fps=c.fps||30;
-    renderZoomList(P); renderZoomPts();
+    renderZoomList(P);
     if($('#animReadout')) $('#animReadout').innerHTML=P.seq.length?`Preview length <b>${fmtT(P.end,fps)}</b> (${P.end} frames, includes a short hold at the end)${P.zs.length?`<br>Grid goes to ${Math.round(G.R/(P.sMin||1))} rows at its widest`:''}${c.dur*fps<P.end?`<br><span class="warn">Longer than the comp (${fmtT(c.dur*fps,fps)}).</span>${D.out.fitDur?' The comp will be lengthened.':''}`:''}`:'Add some blocks first.';
     $('#camHead').textContent=D.anim.mode==='push'?'· conveyor (grid slides, view stays)':'';
   }

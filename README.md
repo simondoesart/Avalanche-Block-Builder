@@ -366,3 +366,6 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - Out: the solid fade always finishes exactly at the end of the transition; the white diamond on the Transitions row sets when it **starts** (⌥-click = automatic). In is the mirror: the solid starts fully on at the transition start and the diamond sets when it has **finished** fading.
 - **Walk-off build** is now the default Out transition and first in its preset list.
 - New **Walk-on build** for Transition In (default): the frame starts covered and clears around the line as it walks on, synced from the first block landing to the end of the build. "With the walk-on" ties it to the walk; drag the end of the In bar to make it finish sooner or later.
+
+### v3.48 — Zoom over time graph
+- The Zoom panel now has a **Zoom over time** graph showing every point (and the eased moves between them) with the playhead. Points added on the timeline, with + Add point, or here show up everywhere at once. Drag a point (left/right = time, up/down = zoom, Shift snaps to 25%), double-click to add, ⌥-click to remove. The easing graph below is the shape used between every pair of points.
