@@ -1239,6 +1239,7 @@ body.nohelp .qm{display:none}
                 <div class="field"><span class="lbl scrub" title="0 = left edge, 100 = right edge">X</span><div class="num"><input type="number" data-bind="anim.zm.ax" min="-50" max="150" step="1"><span class="unit">%</span></div></div>
                 <div class="field"><span class="lbl scrub" title="0 = top, 100 = bottom">Y</span><div class="num"><input type="number" data-bind="anim.zm.ay" min="-50" max="150" step="1"><span class="unit">%</span></div></div>
               </div>
+              <label class="check" title="On: zoom points sit on the blocks' clock, so retiming the scene (Scene · time remap) moves and re-speeds the zoom with everything else. Off: the zoom stays on fixed output frames."><input type="checkbox" data-bind="anim.zm.followRemap"> Follow the scene retime</label>
               <label class="check" title="Off: gaps between blocks, grid/rule lines and text stay the same size on screen while the view zooms"><input type="checkbox" data-bind="anim.zm.scaleAll"> Scale the whole scene (gaps, lines and text zoom too)</label>
             </div>
             <div hidden><div id="zoomList"></div><button id="btnAddZoom"></button><div class="curve" data-curve="anim.zoomCurve" data-title="Grid change easing" hidden></div></div>
