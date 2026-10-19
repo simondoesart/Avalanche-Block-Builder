@@ -57,7 +57,7 @@ const DEF={
   anim:{seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.42,0,0.58,1],curvePh:null,sceneEase:{on:true,hd:null,holdH:null,onAt:null,holdAt:null,start:40,land:75,landOut:50,leaveIn:50,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
-        zoomOn:false,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
+        zoomOn:false,zm:{in:24,out:96,from:100,to:140,curve:[0.65,0,0.35,1],scaleAll:false,back:false,backIn:180,backOut:228,backCurve:[0.65,0,0.35,1]},extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
   lab:{flicker:{on:false,frames:8,seed:3},
        pulse:{on:false,scale:1.35,len:18,width:2,color:'#E6212F'},
        trail:{on:false,count:3,length:1.2,len:12,width:2,color:'#A2AFB2'},
@@ -106,6 +106,7 @@ const RAIL_ICON={
 /* contexts: what the properties panel shows when you click a timeline row */
 const CTX={
   scene:{t:'Scene · time remap',e:'Timeline · Scene',d:'A layer over the blocks: its length is the scene, and its curve speeds up or slows down the whole block timeline (In · Hold · Out) — like time remapping in AE.'},
+  zoom:{t:'Zoom',e:'Timeline · Zoom',d:'Zoom the view in or out between two frames, with its own easing.'},
   camera:{t:'Camera',e:'Timeline · Camera',d:'How the view travels with the line. The Camera row shows its speed.'},
   inout:{t:'Blocks · On, Hold, Off',e:'Timeline · Blocks',d:'The blocks run on their own steady clock: On (the build), Hold, Off. The Scene layer above then re-times all of it.'},
   sound:{t:'Sync to sound',e:'Timeline · Sound',d:'Load audio or video, or read markers from After Effects, and snap the reveals to the beat.'},
@@ -200,7 +201,7 @@ function txtStyle(b){ if(!b||b.ownStyle) return b; const o=Object.assign({},b,{f
 /* text position in the block: 3×3 (tl tc tr / ml center mr / bl bc br) */
 function posOf(al){al=al||'center'; if(al==='center') return {h:'c',v:'m'}; const v=al[0]==='m'?'m':al[0]==='b'?'b':'t', h=al[1]==='c'?'c':al[1]==='r'?'r':'l'; return {h,v};}
 function drawText(g,b,qx,qy,qw,qh){
-  b=txtStyle(b);
+  b=txtStyle(b); if(ZK){ b=Object.assign({},b,{fontSize:b.fontSize/ZK.s,pad:(+b.pad||0)/ZK.s,leading:(+b.leading||0)/ZK.s,offX:(+b.offX||0)/ZK.s,offY:(+b.offY||0)/ZK.s}); qx-=ZK.dg/2; qy-=ZK.dg/2; qw+=ZK.dg; qh+=ZK.dg; }
   const fs=b.fontSize, tr=(+b.tracking||0)/1000*fs, lh=b.leading>0?b.leading:fs*1.2, pad=+b.pad||0, ox=+b.offX||0, oy=+b.offY||0, ps=posOf(b.align);
   g.font=cssFont(b.family,b.style,fs); g.fillStyle=b.textColor; g.textBaseline='middle'; g.textAlign='left';
   const lines=casedText(b).split('\n');
@@ -1663,11 +1664,25 @@ function syncSceneEase(G){
   const M=easeModel(B.on!=null?(B.on-B.c0)/C:null,B.hold!=null?(B.hold-B.c0)/C:null,E), c=M.curve;
   D.anim.sceneCurve=c; D.anim.curvePh={on:B.on!=null?r3((B.on-B.c0)/C):null,hold:B.hold!=null?r3((B.hold-B.c0)/C):null}; easeSync={k,c:JSON.stringify(c),m:M};
 }
+/* ---- ZOOM: one move (and an optional way back) on the output clock, with its own easing */
+function zoomKeys(){
+  const A=D.anim, Z=A.zm; if(!A.zoomOn||!Z||A.mode==='static') return [];
+  const f0=Math.round(+Z.in||0), f1=Math.max(f0+1,Math.round(+Z.out||f0+1)), a=Math.max(5,+Z.from||100), b=Math.max(5,+Z.to||100);
+  const C=(Z.curve||[0.65,0,0.35,1]).map(Number), stop=A.motion==='stop';
+  const K=[[f0,a,stop?'h':'e',C],[f1,b,stop?'h':'e',C]];
+  if(Z.back){ const g0=Math.max(f1+1,Math.round(+Z.backIn||f1+1)), g1=Math.max(g0+1,Math.round(+Z.backOut||g0+1)), BC=(Z.backCurve||C).map(Number); K.push([g0,b,stop?'h':'e',BC],[g1,a,stop?'h':'e',BC]); }
+  return a===b&&!Z.back?[]:K;
+}
+function applyZoom(P){
+  const K=zoomKeys(); if(!K.length) return;
+  P.zs=clip0(K); P.sMin=Math.min(P.sMin||1,...K.map(k=>k[1]/100));
+  P.end=Math.max(P.end,K[K.length-1][0]+1);
+}
 function plan(G){
   syncSceneEase(G);
   const key=JSON.stringify(D)+'|'+G.W+'|'+G.H;
   if(planCache.k===key) return planCache.v;
-  const v=remappedPlan(G); planCache={k:key,v}; return v;
+  const v=remappedPlan(G); applyZoom(v); planCache={k:key,v}; return v;
 }
 /* ---- TIME REMAP: the scene layer on top.
    The blocks are timed on their own clock (ON · HOLD · OFF, all at a steady pace). The scene layer then maps
@@ -1910,7 +1925,7 @@ function computePlan(G){
 
   // grid size over time (linear clock, then re-timed)
   const zStart=z=>z.mode==='frames'?(+z.f0||0):(Tg[clamp(Math.round(z.at)||1,1,Math.max(1,used))-1]||0)+(+z.off||0);
-  const zl=(A.zoomOn===false?[]:(A.zoom||[])).filter(z=>z&&z.rows>0&&z.on!==false).slice().sort((a,b)=>zStart(a)-zStart(b));
+  const zl=[];   // the old 'grid size over time' is replaced by the Zoom move (applied on the output clock in plan())
   P.pan=[];
   if(zl.length&&used){
     let s=100; const zs=[], pn=[];
@@ -2738,6 +2753,7 @@ function drawDope(){
   if(media) row('sound',ROWS.sound,{name:'Sound',ctx:'sound'});
   row('scene',ROWS.scene,{name:'Scene · time remap',ctx:'scene'});
   row('trans',ROWS.trans,{name:'Transitions',ctx:'trans'});
+  if(anim&&D.anim.zoomOn) row('zoom',ROWS.trans,{name:'Zoom',ctx:'zoom'});
   TL.contentY0=y;
   if(anim) row('phases',ROWS.phases,{name:'Blocks · in hold out',ctx:'inout'});
   if(camOn) row('camera',ROWS.camera,{name:'Camera',ctx:'camera'});
@@ -2881,6 +2897,21 @@ function drawDope(){
       item({type:'row',row:RPh,x0:LW,x1:r.width,y0:RPh.y0,y1:RPh.y1,cur:'pointer',tip:'Blocks: On · Hold · Off — click for their settings'});
     }
   } else {g.fillStyle='#686871';g.font='11px sans-serif';g.fillText(anim?'Generate a line to start — Blocks step, or press G':'Static — pick an animation style in Motion',LW+8,RSc.y0+RSc.h/2);}
+  // ---- zoom: a bar from In to Out (and Back), with its easing drawn inside · drag the ends or the whole bar
+  const RZ=TL.rows.find(R=>R.k==='zoom');
+  if(RZ){ const Z=D.anim.zm, zc='#C9A7FF';
+    const bar=(a,b,from,to,curve,kIn,kOut)=>{ const x0=X(a),x1=X(b),y0=RZ.y0+4,h=RZ.h-8, E=curveFn((curve||[0.65,0,0.35,1]).map(Number));
+      g.fillStyle='rgba(201,167,255,.18)'; g.fillRect(x0,y0,Math.max(2,x1-x0),h); g.strokeStyle='rgba(201,167,255,.85)'; g.lineWidth=1; g.strokeRect(x0+.5,y0+.5,Math.max(2,x1-x0)-1,h-1);
+      const lo=Math.min(from,to), hi=Math.max(from,to); g.beginPath(); for(let k=0;k<=30;k++){const u=k/30,v=E(u),z=from+(to-from)*v,yy=y0+h-2-(hi>lo?(z-lo)/(hi-lo):.5)*(h-4); k?g.lineTo(x0+(x1-x0)*u,yy):g.moveTo(x0,yy);} g.stroke();
+      if(x1-x0>70){g.font='600 10px sans-serif'; label(`${Math.round(from)}% → ${Math.round(to)}%`,x0+6,y0+h/2+1,'#eadcff');}
+      knob(a,RZ.y0,RZ.h,zc); knob(b,RZ.y0,RZ.h,zc);
+      H(a,RZ,'ew-resize',f=>{Z[kIn]=Math.min(Math.round(f),(+Z[kOut])-1);},'zoom starts — drag');
+      H(b,RZ,'ew-resize',f=>{Z[kOut]=Math.max(Math.round(f),(+Z[kIn])+1);},'zoom ends — drag');
+      item({type:'clip',x0:x0+5,x1:x1-5,y0:RZ.y0,y1:RZ.y1,cur:'grab',tip:'zoom — drag to move it, click for its settings',ctx:'zoom',start:+Z[kIn],drag:(f,f0,st)=>{const d=Math.round(st+(f-f0))-(+Z[kIn]); Z[kIn]=+Z[kIn]+d; Z[kOut]=+Z[kOut]+d;}}); };
+    bar(+Z.in,Math.max(+Z.in+1,+Z.out),+Z.from||100,+Z.to||100,Z.curve,'in','out');
+    if(Z.back) bar(Math.max(+Z.out+1,+Z.backIn),Math.max(+Z.backIn+1,+Z.backOut),+Z.to||100,+Z.from||100,Z.backCurve,'backIn','backOut');
+    item({type:'row',row:RZ,x0:LW,x1:r.width,y0:RZ.y0,y1:RZ.y1,cur:'pointer',tip:'Zoom — click for its settings'});
+  }
   // ---- camera
   const RC=TL.rows.find(R=>R.k==='camera');
   if(RC){ if(Pc.cam.length){const v=[];let mx=1;const a0=Math.floor(V0.f0),a1=Math.ceil(V0.f1);for(let f=a0;f<=a1;f++){const a=ev(Pc.cam,f,[0,0]),b=ev(Pc.cam,f+1,[0,0]);const s=Math.hypot(b[0]-a[0],b[1]-a[1]);v.push(s);mx=Math.max(mx,s);}
@@ -3357,6 +3388,7 @@ function drawBlock(g,G,b,o,dx,dy,st,ghost){
   const q=cellRect(G,b.c,b.r,b.w,b.h);
   if(!st) st={op:1,tp:1,sx:1,sy:1,x:q.x,y:q.y,w:q.w,h:q.h};
   if(st.op<=0.001||st.w<=0.01||st.sx<=0.001) return;
+  if(ZK){ const kx=st.w/Math.max(1e-6,q.w), ky=st.h/Math.max(1e-6,q.h); st=Object.assign({},st,{x:st.x-ZK.dg/2*Math.min(1,kx),y:st.y-ZK.dg/2*Math.min(1,ky),w:st.w+ZK.dg*Math.min(1,kx),h:st.h+ZK.dg*Math.min(1,ky)}); }
   const x=st.x+dx, y=st.y+dy, w=st.w, h=st.h;
   g.save();
   g.globalAlpha=o.alpha*st.op*(ghost?.38:1);
@@ -3374,7 +3406,7 @@ function drawBlock(g,G,b,o,dx,dy,st,ghost){
       const str=numStr(o.nums[b.id]), L=numLayout({x:q.x+dx,y:q.y+dy,w:q.w,h:q.h},str);
       g.save(); g.beginPath(); g.rect(x,y,w,h); g.clip();
       g.globalAlpha=o.alpha*st.op*na*clamp(+D.num.opacity||100,0,100)/100; g.fillStyle=D.num.color;
-      g.font=cssFont(D.fill.family,D.fill.style,L.size); g.textBaseline='top'; g.textAlign='right'; g.fillText(str,L.x,L.y);
+      const nsz=ZK?L.size/ZK.s:L.size, nx=ZK?L.x+ZK.dg/2:L.x, ny=ZK?L.y-ZK.dg/2:L.y; g.font=cssFont(D.fill.family,D.fill.style,nsz); g.textBaseline='top'; g.textAlign='right'; g.fillText(str,nx,ny);
       g.restore();
     }
   }
@@ -3417,9 +3449,10 @@ function drawFillItems(g,items,dx,dy,base,tf,alpha,tEnd){
     const res=t0!=null?fillTextAt(Object.assign({},it,{t0,tEnd}),tf,fps):{s:it.lines.join('\n'),a:1};
     if(!res||!res.s||res.a<=0) return;
     g.globalAlpha=alpha*res.a; const txt=res.s;
-    const fs=it.sz||met.size, flh=it.sz?met.lh*it.sz/met.size:met.lh;
+    let fs=it.sz||met.size, flh=it.sz?met.lh*it.sz/met.size:met.lh, ty=it.y;
+    if(ZK){ const n=txt.split('\n').length, full=flh*n; fs/=ZK.s; flh/=ZK.s; if(it.ay==='b') ty=it.y+full-flh*n; }
     g.font=cssFont(F.family,F.style,fs); g.textBaseline='top'; g.textAlign=it.align==='r'?'right':'left';
-    txt.split('\n').forEach((l,i)=>g.fillText(l,it.x+dx,it.y+dy+i*flh));
+    txt.split('\n').forEach((l,i)=>g.fillText(l,it.x+dx,ty+dy+i*flh));
   });
   g.restore();
 }
@@ -3439,9 +3472,12 @@ function drawEcho(g,r,st,o,dx,dy,ghost){
   }
   g.restore();
 }
+let ZK=null;
+const zkGrow=q=>ZK?{x:q.x-ZK.dg/2,y:q.y-ZK.dg/2,w:q.w+ZK.dg,h:q.h+ZK.dg}:q;
 function drawWorld(g,G,o){
   const sc=o.sc, A=o.A, live=!!(A&&A.live), camMode=live&&D.anim.mode==='camera';
   const s=live?A.s:1, off=live?A.off:[0,0], gridOff=camMode?off:[0,0];
+  ZK=(s!==1&&!(D.anim.zm&&D.anim.zm.scaleAll))?{s,dg:G.gut*(1-1/s)}:null;   // zoom keeps gaps, lines and text the same size on screen
   g.globalAlpha=o.alpha;
   const vb=viewBounds(), ext=extBounds(G);
   const bgR=vb;
@@ -3460,7 +3496,7 @@ function drawWorld(g,G,o){
   g.save(); g.translate(gridOff[0],gridOff[1]);
   if(D.look.cellsMode!=='none'){
     g.fillStyle=D.look.cell;
-    for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++){const q=cellRect(G,c,r);g.fillRect(q.x,q.y,q.w,q.h);}
+    for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++){const q=zkGrow(cellRect(G,c,r));g.fillRect(q.x,q.y,q.w,q.h);}
   }
   if(D.look.linesOn){
     g.fillStyle=D.look.line; const min=1/(sc*s);
@@ -3500,7 +3536,7 @@ function drawWorld(g,G,o){
   }
   if(D.look.ruleLayer==='top') drawRules();
   g.restore();
-  g.globalAlpha=1;
+  g.globalAlpha=1; ZK=null;
 }
 const HANDLE=7; // px
 function handlesFor(G,b){
@@ -5618,7 +5654,7 @@ function payload(){
     anim:animOn?Object.assign({label:labels[A.mode]+(zoomOn?' + grid zoom':''),camName:A.mode==='camera'?'GB · Camera':'GB · Conveyor',
       cam:P.cam.map(rel), needCam:P.cam.length>0||zoomOn,
       wrap:camMode?{px:r3(G.p),py:(A.axis==='xy'||zoomOn)?r3(G.p):0,cx:zoomOn?CX:0,cy:zoomOn?CY:0}:null,
-      zoom:zoomOn?{keys:P.zs.map(k=>[k[0],[k[1],k[1]],k[2],k[3]]),cx:CX,cy:CY,pan:P.pan.length?P.pan.map(k=>[k[0],[r3(k[1][0]+CX),r3(k[1][1]+CY)],k[2],k[3]]):null}:null,
+      zoom:zoomOn?{keep:!(A.zm&&A.zm.scaleAll),gut:r3(G.gut),keys:P.zs.map(k=>[k[0],[k[1],k[1]],k[2],k[3]]),cx:CX,cy:CY,pan:P.pan.length?P.pan.map(k=>[k[0],[r3(k[1][0]+CX),r3(k[1][1]+CY)],k[2],k[3]]):null}:null,
       pan:P.pan.length?P.pan:null},camRig||{}):null
   };
 }

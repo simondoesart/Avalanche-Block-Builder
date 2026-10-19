@@ -313,3 +313,8 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.34 — Hold stays linear; ⌥-click adds hold handles
 - The hold section of the Scene curve is a straight line with no handles by default; dragging the In / Out handles never changes movement inside the hold.
 - ⌥-click the Hold starts or Hold ends point (white dot on the curve) to add a handle inside the hold (like AE's convert vertex tool); ⌥-click again to make it straight.
+
+### v3.35 — Zoom (replaces Grid size over time)
+- Motion → **Zoom**: From % → To % between an **In** and **Out** frame with its own easing curve, plus optional **Zoom back** (its own in/out and easing). Shows as a **Zoom** row on the timeline: drag the ends, or drag the bar to move it; click it for settings.
+- By default gaps between blocks, grid/rule lines and text stay the same size on screen while the view zooms (blocks grow into their gaps; text scales back). **Scale the whole scene** zooms everything instead.
+- After Effects: the GB · Zoom null is keyed; with "keep" on, block rects get a size expression and text layers a scale expression so gaps and text stay constant. (3D camera rig: zoom scales everything.)

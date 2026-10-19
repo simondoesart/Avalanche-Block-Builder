@@ -876,6 +876,15 @@ function GB_build(d){
       GB_blockKeys(blocks,fps);
       if(cam) GB_keys(GB_xf(cam).property("ADBE Position"),A.cam,fps);
       if(zoom) GB_keys(GB_xf(zoom).property("ADBE Scale"),A.zoom.keys,fps);
+      /* zoom keeps gaps and text the same size on screen: blocks grow into their gaps, text scales back down */
+      if(zoom&&A.zoom.keep){
+        var ZX='var z=1;try{z=thisComp.layer("GB · Zoom").transform.scale[0]/100;}catch(e){}\nz=Math.max(z,0.01);\n';
+        var keepText=function(L){ try{ if(L&&L.property("ADBE Text Properties")) GB_xf(L).property("ADBE Scale").expression=ZX+'[value[0]/z,value[1]/z];'; }catch(eK){} };
+        for(i=0;i<blocks.length;i++){ var bl=blocks[i];
+          try{ if(bl.b&&bl.b.bw!=null){ var rs=GB_contents(bl.L).property("ADBE Vector Shape - Rect").property("ADBE Vector Rect Size"); rs.expression=ZX+'value+['+A.zoom.gut+','+A.zoom.gut+']*(1-1/z);'; } }catch(eR){}
+          if(bl.T) keepText(bl.T); keepText(bl.L); }
+        for(i=0;i<fillLayers.length;i++) keepText(fillLayers[i]);
+      }
       if(zoom && A.zoom.pan) GB_keys(GB_xf(zoom).property("ADBE Position"),A.zoom.pan,fps);
       out.push(A.label);
     }
