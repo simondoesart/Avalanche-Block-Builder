@@ -633,6 +633,87 @@ function GB_fillItems(comp,items,parent,list){
   }
 }
 
+
+/* ---------- media clipped to blocks (video / image / precomp) ---------- */
+var GB_mediaItems={};
+function GB_pickMedia(){
+  try{
+    var filt=GB_isWin()?"Video or image:*.mp4;*.mov;*.m4v;*.webm;*.avi;*.mxf;*.png;*.jpg;*.jpeg;*.gif;*.tif;*.tiff;*.psd;*.ai":function(f){return (f instanceof Folder)||/\.(mp4|mov|m4v|webm|avi|mxf|png|jpe?g|gif|tiff?|psd|ai)$/i.test(f.name);};
+    var fs=File.openDialog("Grid Blocks · add video or image",filt,true); if(!fs) return "CANCEL";
+    if(!(fs instanceof Array)) fs=[fs]; var o=[];
+    for(var i=0;i<fs.length;i++) o.push(fs[i].fsName+"\t"+decodeURI(fs[i].name));
+    return "OK|"+o.join("\n");
+  }catch(e){return "ERR|"+e.toString();}
+}
+function GB_findMedia(m,root){
+  var tries=[], base=root||null, nm=String(m.file||m.name||"").split("/").pop(), i;
+  if(m.path) tries.push(m.path);
+  try{ if(!base&&$.fileName) base=File($.fileName).parent.fsName; }catch(e0){}
+  if(base){ if(m.file) tries.push(base+"/"+m.file); tries.push(base+"/"+nm); tries.push(base+"/media/"+nm); }
+  for(i=0;i<tries.length;i++){ try{ var f=new File(tries[i]); if(f.exists) return f; }catch(e1){} }
+  var p=File.openDialog("Grid Blocks: where is “"+(m.name||nm)+"”? (Cancel to skip it)");
+  return p||null;
+}
+function GB_mediaSource(m,root,folder,main){
+  var key=(m.precomp?"C|":"F|")+m.id, i;
+  if(GB_mediaItems.hasOwnProperty(key)) return GB_mediaItems[key];
+  var ft=GB_mediaItems["F|"+m.id];
+  if(!ft){
+    var f=GB_findMedia(m,root); if(!f){ GB_mediaItems[key]=null; return null; }
+    for(i=1;i<=app.project.numItems;i++){ var it=app.project.item(i); try{ if((it instanceof FootageItem)&&it.file&&it.file.fsName==f.fsName){ ft=it; break; } }catch(e2){} }
+    if(!ft) ft=app.project.importFile(new ImportOptions(f));
+    if(folder){ try{ft.parentFolder=folder;}catch(e3){} }
+    GB_mediaItems["F|"+m.id]=ft;
+  }
+  if(!m.precomp){ GB_mediaItems[key]=ft; return ft; }
+  var still=false; try{ still=ft.mainSource.isStill; }catch(e4){}
+  var fr=ft.frameRate>0?ft.frameRate:main.frameRate, dur=(!still&&ft.duration>0)?ft.duration:main.duration;
+  var c=app.project.items.addComp(GB_uniqueName("GB Media · "+ft.name),ft.width,ft.height,ft.pixelAspect||1,Math.max(dur,1/fr),fr);
+  var inner=c.layers.add(ft); try{ if(still) inner.outPoint=c.duration; }catch(e5){}
+  if(folder){ try{c.parentFolder=folder;}catch(e6){} }
+  GB_mediaItems[key]=c; return c;
+}
+function GB_mediaLayer(comp,B,b,m,root,folder,main,fps){
+  var src=GB_mediaSource(m,root,folder,main); if(!src) return null;
+  var L=comp.layers.add(src); L.moveBefore(B);
+  L.name=b.name+" · Media"; L.comment="GridBlocks:media"; L.label=14;
+  L.parent=B;
+  var sw=src.width, sh=src.height, bw=b.bw, bh=b.bh, us=Math.max(1,m.scale)/100, kx, ky;
+  if(m.fit=="contain"){ kx=ky=Math.min(bw/sw,bh/sh); }
+  else if(m.fit=="stretch"){ kx=bw/sw; ky=bh/sh; }
+  else if(m.fit=="original"){ kx=ky=1; }
+  else if(m.fit=="tile"){ kx=ky=bh/sh; }
+  else { kx=ky=Math.max(bw/sw,bh/sh); }
+  kx*=us; ky*=us;
+  var xf=GB_xf(L);
+  xf.property("ADBE Anchor Point").setValue([sw/2,sh/2]);
+  xf.property("ADBE Position").setValue([m.x*bw/100,m.y*bh/100]);
+  xf.property("ADBE Scale").setValue([kx*100*(m.flipX?-1:1),ky*100*(m.flipY?-1:1)]);
+  xf.property("ADBE Opacity").setValue(m.opacity);
+  if(m.fit=="tile"){ try{
+    var fx=L.property("ADBE Effect Parade").addProperty("ADBE Tile");
+    fx.property(4).setValue(Math.min(10000,Math.ceil(bw/Math.max(1,sw*kx)*100)+300));
+    fx.property(5).setValue(Math.min(10000,Math.ceil(bh/Math.max(1,sh*ky)*100)+300));
+  }catch(eT){} }
+  var still=false; try{ still=(src instanceof FootageItem)&&src.mainSource.isStill; }catch(eS){}
+  if(m.type=="video"&&!still&&src.duration>0){
+    try{
+      L.timeRemapEnabled=true;
+      var d=Math.max(1/fps,src.duration-src.frameDuration);
+      var mode=m.loop=="hold"?"Math.min(t,d)":m.loop=="ping"?"(function(){var c=t%(2*d);return c>d?2*d-c:c;})()":"t%d";
+      L.property("ADBE Time Remapping").expression='// Grid Blocks: '+(m.loop=="hold"?"plays once, stops on the last frame":m.loop=="ping"?"ping-pong":"loops")+'\nvar st='+(m.startF/fps)+', off='+(m.offset/fps)+', d='+d+';\nvar t=Math.max(0,time-st)+off;\n'+mode+';';
+      L.outPoint=comp.duration;
+    }catch(eR){}
+  } else { try{ L.outPoint=comp.duration; }catch(eO){} }
+  if(!m.audio){ try{ L.audioEnabled=false; }catch(eA){} }
+  var ok=false; try{ L.setTrackMatte(B,TrackMatteType.ALPHA); ok=true; }catch(eM){ ok=false; }
+  return {L:L,ok:ok};
+}
+/* older After Effects (before track mattes could point at any layer): a copy of the block sits right above as the matte */
+function GB_mediaMattes(list){
+  for(var i=0;i<list.length;i++){ var L=list[i].L, B=list[i].B; if(!L||list[i].ok) continue;
+    try{ var dup=B.duplicate(); dup.name=B.name+" · Media Matte"; dup.moveBefore(L); L.trackMatteType=TrackMatteType.ALPHA; }catch(e){} }
+}
 /* ---------- column rules ---------- */
 function GB_mkRules(comp,R){
   var L;
@@ -737,7 +818,7 @@ function GB_build(d){
       blockPre.layer.name="GB · Blocks"; blockC=blockPre.comp; comps.push(blockC);
     }
     var camRefB=blockC===main?camRefMain:camRefPre;
-    var blocks=[], fillLayers=[], blockLayers=[];
+    var blocks=[], fillLayers=[], blockLayers=[], mediaL=[]; GB_mediaItems={};
     function trimTo(Lr,t){ if(org.trim&&t>0){try{Lr.inPoint=Math.min(main.duration-1/fps,t/fps);}catch(eT){}} }
     function trimOut(Lr,t){ if(org.trim&&t!=null&&t/fps<main.duration){try{if(t/fps>Lr.inPoint)Lr.outPoint=t/fps;}catch(eT2){}} }
     if(d.echoes){for(i=0;i<d.echoes.length;i++){
@@ -753,11 +834,14 @@ function GB_build(d){
       var B=GB_box(blockC,b.name,b.x,b.y,b.bw,b.bh,b.color,b.outline?b.outline.w:0);
       B.comment="GridBlocks:block|order="+b.order+"|c="+b.c+"|r="+b.r+"|w="+b.w+"|h="+b.h;
       B.label=1;
+      var ML=null; if(b.media){ var mr=null; try{ mr=GB_mediaLayer(blockC,B,b,b.media,d.mediaRoot,folder,main,fps); }catch(eMd){ mr=null; }
+        if(mr){ ML=mr.L; mediaL.push({L:ML,B:B,ok:mr.ok}); fillLayers.push(ML); } }
       var T=b.text?GB_text(blockC,B,b):null;
       if(T) T.label=1;
       var NT=null; if(b.num){ d_fps_hack=fps; NT=GB_numText(blockC,B,b); fillLayers.push(NT); }
       blocks.push({L:B,T:T,b:b}); blockLayers.push(B);
-      if(b.tIn!=null){trimTo(B,b.tIn); if(T) trimTo(T,b.tIn); if(NT) trimTo(NT,b.tIn);}
+      if(b.tIn!=null){trimTo(B,b.tIn); if(T) trimTo(T,b.tIn); if(NT) trimTo(NT,b.tIn); if(ML) trimTo(ML,b.tIn);}
+      if(ML&&b.tOut!=null) trimOut(ML,b.tOut);
       var f0=fillLayers.length; GB_fillItems(blockC,b.fill,B,fillLayers);
       if(b.tOut!=null){trimOut(B,b.tOut); if(T) trimOut(T,b.tOut); if(NT) trimOut(NT,b.tOut); for(var fb=f0;fb<fillLayers.length;fb++) trimOut(fillLayers[fb],b.tOut);}
     }
@@ -926,6 +1010,7 @@ function GB_build(d){
         try{var m=org.markers[i], mv=new MarkerValue("GB · "+m[1]); if(m[2]) mv.duration=m[2]/fps; main.markerProperty.setValueAtTime(Math.max(0,m[0]/fps),mv);}catch(eMk){}
       }
     }
+    if(mediaL.length){ GB_mediaMattes(mediaL); out.push(mediaL.length+" media layer"+(mediaL.length>1?"s":"")); }
     if(gridPre||blockPre){var pn=[];if(gridPre)pn.push("grid");if(blockPre)pn.push("blocks");out.push("precomps: "+pn.join(", "));}
     if(d.lock){for(i=0;i<locks.length;i++){try{locks[i].locked=true;}catch(eL){}}}
     var fm=GB_missingFonts(d.fontsUsed); if(fm.length) out.push("⚠ font not installed: "+fm.join(", ")+" (AE used a substitute)");
