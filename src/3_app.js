@@ -2293,7 +2293,7 @@ function computePlan(G){
   if(D.fill.on){
     const dl=Math.max(0,Math.round(+D.fill.anim.delay||0));
     seq.forEach((b,i)=>{P.fillBase[b.id]=P.T[i]+tr0+dl;});
-    if(P.exitT&&D.exit.content!==false){seq.forEach((b,i)=>{if(P.exitT[i]!=null){P.fillEnd[b.id]=P.exitT[i];P.fillEnd['e'+b.id]=P.exitT[i];}});}
+    if(P.exitT){seq.forEach((b,i)=>{if(P.exitT[i]!=null){P.fillEnd[b.id]=P.exitT[i];P.fillEnd['e'+b.id]=P.exitT[i];}});}   // content never outlives its block
     P.echo.forEach(e=>{const i=seq.indexOf(e.src);P.fillBase[e.id]=(e.K.op.length?e.K.op[0][0]:P.T[i])+tr0+dl;});
     // 'Until Out': content holds through In and Hold and goes when the blocks' Out starts
     { const X=D.exit; let fo=null; if(X.on&&X.mode==='walk'&&P.walkT!=null) fo=P.walkT; else if(X.on&&P.exitT&&P.exitT.some(v=>v!=null)) fo=Math.min(...P.exitT.filter(v=>v!=null)); P.fillOut=fo;
