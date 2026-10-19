@@ -2353,8 +2353,8 @@ const TRANS_PRESETS=[
 function mixHex(a,b,t){const p=h=>{h=String(h||'#000').replace('#','');return [0,2,4].map(i=>parseInt(h.substr(i,2),16)||0);},x=p(a),y=p(b);return '#'+x.map((v,i)=>Math.round(v+(y[i]-v)*t).toString(16).padStart(2,'0')).join('');}
 function applyTransPreset(k,id){ const pr=TRANS_PRESETS.find(p=>p.id===id); if(!pr) return; const T=D.trans[k];
   Object.assign(T,pr.set,{preset:id,on:true}); if(T.mode==null) T.mode=k==='in'?'clear':'build';
-  // walk presets grow out from behind the line in a deeper shade, so you can see the line drive them
-  if(pr.g==='line'){ T.behind=true; T.blockColors=false; T.color=mixHex(D.block.color,D.look.bg||'#1F1F1F',.45); } else T.behind=false; }
+  // walk presets grow out from behind the line (primary block colour), so the line stays on top
+  T.color=D.block.color; if(pr.g==='line'){ T.behind=true; T.blockColors=false; } else T.behind=false; }
 /* a little preview of a preset: a mini grid shaded by when each tile goes */
 function transThumb(id){
   const pr=TRANS_PRESETS.find(p=>p.id===id)||TRANS_PRESETS[0], pat=pr.set.pattern, C=12, R=7, rnd=rng(id.length*977+7), line=[];
