@@ -8,6 +8,25 @@ const $$=(s,e)=>Array.prototype.slice.call((e||document).querySelectorAll(s));
 const cep=window.__adobe_cep__;
 const inAE=!!(cep&&cep.evalScript);
 const inWeb=!inAE&&typeof location!=='undefined'&&/^https?:$/.test(location.protocol);
+
+/* ---- input compatibility for the After Effects panel (CEP's embedded Chrome) ----
+   1) setPointerCapture can throw there (or for a synthetic pointer) — never let it stop a click
+   2) if pointer events don't arrive, mouse events are turned into pointer events
+   3) Space held to pan: After Effects can swallow the key-up, so a stale "Space down" expires */
+try{ const spc=Element.prototype.setPointerCapture, rpc=Element.prototype.releasePointerCapture;
+  if(spc) Element.prototype.setPointerCapture=function(id){ try{ return spc.call(this,id); }catch(e){} };
+  if(rpc) Element.prototype.releasePointerCapture=function(id){ try{ return rpc.call(this,id); }catch(e){} }; }catch(e){}
+let gbLastPD=0;
+document.addEventListener('pointerdown',()=>{gbLastPD=Date.now();},true);
+document.addEventListener('mousedown',e=>{
+  const tg=e.target; if(!tg||tg.tagName!=='CANVAS') return;
+  setTimeout(()=>{ if(Date.now()-gbLastPD<150||typeof PointerEvent==='undefined') return;
+    const mk=(type,ev)=>new PointerEvent(type,{bubbles:true,cancelable:true,clientX:ev.clientX,clientY:ev.clientY,screenX:ev.screenX,screenY:ev.screenY,button:type==='pointermove'?-1:ev.button,buttons:ev.buttons,shiftKey:ev.shiftKey,altKey:ev.altKey,metaKey:ev.metaKey,ctrlKey:ev.ctrlKey,pointerId:1,pointerType:'mouse',isPrimary:true});
+    tg.dispatchEvent(mk('pointerdown',e));
+    const mv=ev=>tg.dispatchEvent(mk('pointermove',ev)), up=ev=>{ window.removeEventListener('mousemove',mv,true); window.removeEventListener('mouseup',up,true); tg.dispatchEvent(mk('pointerup',ev)); };
+    window.addEventListener('mousemove',mv,true); window.addEventListener('mouseup',up,true);
+  },0);
+},true);
 const webGet=k=>{if(!inWeb)return null;try{return localStorage.getItem('gridblocks.'+k);}catch(e){return null;}};
 const webSet=(k,v)=>{if(!inWeb)return;try{localStorage.setItem('gridblocks.'+k,v);}catch(e){}};
 const HOST=$('#host-src').textContent;
@@ -3422,8 +3441,8 @@ function initDope(){
   c.addEventListener('pointerdown',e=>{
     const p0=rect(e);
     // hand: hold Space (or use the middle button) and drag to pan the timeline — sideways through time, up/down through the block rows
-    if(U.space||e.button===1){ e.preventDefault(); U.spacePanned=true; c.setPointerCapture&&c.setPointerCapture(e.pointerId); const V0=tlView(); TL.drag={pan:true,x0:p0.x,y0:p0.y,f0:V0.f0,f1:V0.f1,sy:TL.scrollY}; c.style.cursor='grabbing'; return; }
-    if(e.button!==0) return; const p=p0, h=tlHit(p.x,p.y); closeTlMenu();
+    if(spaceHeld()||e.button===1){ e.preventDefault(); U.spacePanned=true; c.setPointerCapture&&c.setPointerCapture(e.pointerId); const V0=tlView(); TL.drag={pan:true,x0:p0.x,y0:p0.y,f0:V0.f0,f1:V0.f1,sy:TL.scrollY}; c.style.cursor='grabbing'; return; }
+    if(e.button>0) return; const p=p0, h=tlHit(p.x,p.y); closeTlMenu();
     c.setPointerCapture&&c.setPointerCapture(e.pointerId);
     const freeze=()=>{TL.frozen=tlView();};
     if(h.type==='ruler'){ freeze(); TL.drag={scrub:true}; tlSetT(TL.F(p.x)); return; }
@@ -4102,6 +4121,7 @@ function thumb(){
 
 /* ------------------------------------------------------------------ pointer */
 function toWorld(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left-V.ox)/V.sc,y:(e.clientY-r.top-V.oy)/V.sc};}
+function spaceHeld(){ if(U.space&&inAE&&Date.now()-(U.spaceT||0)>900){ U.space=false; try{cv.classList.remove('panning');}catch(e){} } return !!U.space; }
 function localPt(G,w){const A=animState(G);if(A&&A.live)return{x:G.W/2+(w.x-A.pan[0]-G.W/2)/A.s-A.off[0],y:G.H/2+(w.y-A.pan[1]-G.H/2)/A.s-A.off[1]};return w;}
 function cellAt(G,w){return{c:Math.floor((w.x-G.x0)/G.p),r:Math.floor((w.y-G.y0)/G.p)};}
 function handleAt(G,w){
@@ -4116,11 +4136,11 @@ function clampCell(G,c){return{c:clamp(c.c,G.cLo,G.cHi),r:clamp(c.r,G.rLo,G.rHi)
 cv.addEventListener('pointerdown',e=>{
   cv.setPointerCapture(e.pointerId);
   if(U.preview&&!U.playing&&STEPS[U.step].id==='layout'&&!U.space&&e.button===0&&U.tool!=='hand'&&U.tool!=='select'){U.preview=false;refresh();}   // back to every block for editing
-  if(U.space) U.spacePanned=true;
+  if(spaceHeld()) U.spacePanned=true;
   if(e.button===1||e.button===2||U.space||U.tool==='hand'){
     U.drag={type:'pan',x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY};cv.classList.add('grabbing');return;
   }
-  if(e.button!==0) return;
+  if(e.button>0) return;
   if(U.playing) stopPlay();
   const G=geom(), w=localPt(G,toWorld(e)), cell=cellAt(G,w), inR=inRange(G,cell.c,cell.r);
   const hd=handleAt(G,w);
@@ -5153,7 +5173,7 @@ document.addEventListener('keydown',e=>{
   if(typing){if(k==='Escape')t.blur();return;}
   if(!$('#libModal').hidden){if(k==='Escape')closeLib();return;}
   if(!$('#curveModal').hidden&&k==='Escape'){$('#curveModal').hidden=true;U.curveEd=null;refresh();return;}
-  if(k===' '){e.preventDefault();if(!U.space&&!e.repeat){U.space=true;U.spacePanned=false;cv.classList.add('panning');}return;}   // tap = play/pause, hold + drag = pan
+  if(k===' '){e.preventDefault();U.spaceT=Date.now();if(!U.space&&!e.repeat){U.space=true;U.spacePanned=false;cv.classList.add('panning');}return;}   // tap = play/pause, hold + drag = pan
   if(mod) return;
   const tsel=tlSelIds(), virtSel=tsel.some(id=>!byId(id));
   if(kl==='m'||k==='Enter'){if(U.sel){e.preventDefault();mergeSel();}}
