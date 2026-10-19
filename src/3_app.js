@@ -57,7 +57,7 @@ const DEF={
   anim:{seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.42,0,0.58,1],curvePh:null,sceneEase:{on:true,hd:null,holdH:null,onAt:null,holdAt:null,start:40,land:75,landOut:50,leaveIn:50,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
-        zoomOn:false,zm:{pts:null,focus:'frame',ax:50,ay:50,in:24,out:96,from:100,to:140,curve:[0.65,0,0.35,1],scaleAll:false,back:false,backIn:180,backOut:228,backCurve:[0.65,0,0.35,1]},extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
+        zoomOn:false,zm:{pts:null,focus:'follow',ax:50,ay:50,in:24,out:96,from:100,to:140,curve:[0.65,0,0.35,1],scaleAll:false,back:false,backIn:180,backOut:228,backCurve:[0.65,0,0.35,1]},extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
   lab:{flicker:{on:false,frames:8,seed:3},
        pulse:{on:false,scale:1.35,len:18,width:2,color:'#E6212F'},
        trail:{on:false,count:3,length:1.2,len:12,width:2,color:'#A2AFB2'},
@@ -1692,7 +1692,22 @@ function applyZoom(P){
   // where the zoom holds still: a point in the frame, or a block that ends up at that point
   const Z=D.anim.zm, G=geom(), T=[G.W*clamp(+Z.ax||50,-50,150)/100, G.H*clamp(+Z.ay||50,-50,150)/100];
   P.zc=[]; P.pan=[];
-  if(Z.focus!=='block'||!P.seq.length){ P.zc=[[0,T,'h']]; return; }
+  if((Z.focus!=='block'&&Z.focus!=='follow')||!P.seq.length){ P.zc=[[0,T,'h']]; return; }
+  if(Z.focus==='follow'){
+    /* follow the walking line: the zoom pivots on the newest block (smoothed so new arrivals glide, not jump) and,
+       as the zoom deepens, eases that block toward the chosen spot — so the line stays in view while zoomed */
+    let ext=K[0]; K.forEach(k=>{ if(Math.abs(k[1]-100)>Math.abs(ext[1]-100)) ext=k; });
+    const sE=ext[1]/100, f0=K[0][0], f1=Math.max(P.end,K[K.length-1][0]+1);
+    const ctr=P.seq.map(b=>{const q=cellRect(G,b.c,b.r,b.w,b.h);return [q.x+q.w/2,q.y+q.h/2];});
+    const raw=[]; let bi=0;
+    for(let t=f0;t<=f1;t++){ while(bi+1<P.seq.length&&P.T[bi+1]<=t) bi++; let j=bi; while(j>0&&P.seq[j].stack) j--;
+      const off=ev(P.cam,t,[0,0]); raw.push([ctr[j][0]+off[0],ctr[j][1]+off[1]]); }
+    const sg=10, R=Math.ceil(3*sg), kk=[]; let ksum=0; for(let j=-R;j<=R;j++){const v=Math.exp(-j*j/(2*sg*sg));kk.push(v);ksum+=v;}
+    for(let i=0;i<raw.length;i++){ let x=0,y=0; for(let j=-R;j<=R;j++){const q=raw[clamp(i+j,0,raw.length-1)];x+=q[0]*kk[j+R];y+=q[1]*kk[j+R];} const p=[x/ksum,y/ksum], t=f0+i;
+      const sc=ev(P.zs,t,100)/100, k=Math.abs(sE-1)<1e-6?0:clamp((sc-1)/(sE-1),0,1);
+      P.zc.push([t,[r3(p[0]),r3(p[1])],'l']); P.pan.push([t,[r3((T[0]-p[0])*k),r3((T[1]-p[1])*k)],'l']); }
+    return;
+  }
   // the block: the newest one on screen at the end of the first zoom move
   let ext=K[0]; K.forEach(k=>{ if(Math.abs(k[1]-100)>Math.abs(ext[1]-100)) ext=k; });
   let bi=0; const tPick=(K[1]||K[0])[0]; P.T.forEach((t,i)=>{ if(t<=tPick&&!P.seq[i].stack) bi=i; });   // the newest block on screen at the end of the first zoom move
@@ -5007,6 +5022,16 @@ function renderZoomList(P){
     :'<div class="note">None yet. Add one to zoom the grid in or out as the blocks build. More rows means smaller squares and more of the grid on screen.</div>';
 }
 ($('#zoomPos')||{addEventListener(){}}).addEventListener('click',e=>{const b=e.target.closest('[data-zpos]');if(!b)return;pushHist(true);const v=b.dataset.zpos.split(',').map(Number);D.anim.zm.ax=v[0];D.anim.zm.ay=v[1];syncInputs(true);refresh();});
+function zoomPreset(kind){
+  const P=plan(geom()), Pc=P.c||P, B=phaseBounds(Pc), R=c=>c==null?null:Math.round(P.toReal?P.toReal(c):c), f0=Math.round(P.startF||0), on=R(B.on)||Math.round(P.end*.5), ho=R(B.hold), end=Math.round(P.end), z=Math.max(110,+((zoomPts().reduce((m,p)=>Math.max(m,p.v),100)))||150), Z=z===100?150:z, ramp=n=>Math.max(6,Math.round(n));
+  let pts;
+  if(kind==='build') pts=[{f:f0,v:100},{f:f0+ramp((on-f0)*.4),v:Z},{f:on,v:Z},{f:on+ramp(18),v:100}];
+  else if(kind==='hold'&&ho!=null) pts=[{f:Math.max(f0,on-ramp(18)),v:100},{f:on+ramp((ho-on)*.3),v:Z},{f:ho,v:Z},{f:ho+ramp(18),v:100}];
+  else if(kind==='walk'&&ho!=null) pts=[{f:ho,v:100},{f:ho+ramp((end-ho)*.25),v:Z},{f:end,v:Z}];
+  else pts=[{f:f0,v:100},{f:f0+ramp((end-f0)*.3),v:Z},{f:end,v:Z}];
+  pushHist(true); D.anim.zm.pts=pts; D.anim.zoomOn=true; syncInputs(true); refresh(); toast('Zoom set for the '+({build:'build',hold:'hold',walk:'walk-off',all:'whole scene'})[kind],'',true);
+}
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-zpre]'); if(b) zoomPreset(b.dataset.zpre);});
 ($('#btnZoomPt')||{}).onclick=()=>{ pushHist(true); const P2=ensureZoomPts().slice().sort((a,b)=>a.f-b.f), l=P2[P2.length-1]; P2.push({f:l.f+24,v:l.v}); D.anim.zm.pts=P2; $('#zoomPts').innerHTML=''; refresh(); };
 ($('#zoomPts')||{addEventListener(){}}).addEventListener('input',e=>{ const t=e.target, k=t.dataset&&t.dataset.zp; if(!k) return; const [i,f]=k.split(':'), v=parseFloat(t.value); if(isNaN(v)) return;
   if(!U._zpEdit){pushHist(true);U._zpEdit=true;} const P2=ensureZoomPts().slice().sort((a,b)=>a.f-b.f); P2[+i][f]=f==='v'?clamp(v,5,2000):Math.round(v); D.anim.zm.pts=P2; planCache.k=''; render(); drawDope(); });
