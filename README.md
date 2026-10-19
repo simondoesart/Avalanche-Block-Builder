@@ -347,3 +347,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.42 — Walk-off build transition
 - New Out preset **Walk-off build** (pattern *Walk-off* + **With the walk-off**): starts the moment the line starts walking off and lasts until it's gone. The block that kicks it off spreads up/down and back over what's behind it; every block after it only fills its own column; nothing comes on ahead of the head until the line gets there — so the transition builds behind the line as it moves right. Nothing comes from blocks before the one that starts it.
 - Transition Out → **With the walk-off** checkbox (times any pattern to the walk-off).
+
+### v3.43 — Transitions move with the blocks + solid
+- **Moves with the blocks** (on by default with camera follow): transition tiles live on the scene's grid and travel with the camera, so the transition feels like part of the walk as it builds and fills the screen. Flood and Walk-off run on real time, in step with each block that lands. In AE the tiles are parented to the camera null (no precomp, unless matte).
+- **Solid under the tiles** (on by default): a full-frame solid in the transition colour fades on once every block is on (Build up) — or fades off just before the first one clears (Clear away) — hiding the grid lines. Fade length adjustable. Built in AE as a keyed solid under the tiles.

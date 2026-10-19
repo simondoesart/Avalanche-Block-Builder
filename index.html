@@ -1301,6 +1301,9 @@ body.nohelp .qm{display:none}
                 <label class="check"><input type="checkbox" data-bind="trans.in.blockColors"> Use the block colours (your colour mix)</label>
                 <label class="check"><input type="checkbox" data-bind="trans.in.cover"> Cover the gutters (solid, no grid lines)</label>
                 <label class="check" title="The transition grows from under the line, so the walking blocks stay on top"><input type="checkbox" data-bind="trans.in.behind"> Behind the line</label>
+                <label class="check" title="The transition sits on the scene's grid and travels with the camera, like the blocks (camera follow)"><input type="checkbox" data-bind="trans.in.world"> Moves with the blocks</label>
+                <label class="check" title="A full-frame solid in the transition colour under the tiles, so no grid lines show once the frame is covered"><input type="checkbox" data-bind="trans.in.solid"> Solid under the tiles</label>
+                <div class="field" data-show="trans.in.solid=true"><span class="lbl scrub" title="Frames the solid takes to fade">Solid fade</span><div class="num"><input type="number" data-bind="trans.in.solidFade" min="1" max="120" step="1"><span class="unit">fr</span></div></div>
                 <div class="field stack"><span class="lbl">Build as</span><div class="seg" data-seg="trans.in.output"><button data-v="blocks">Blocks in the comp</button><button data-v="matte">Matte precomp</button></div></div>
                 <div class="curve" data-curve="trans.in.curve" data-title="Transition in easing"></div>
                 <button class="btn" data-transshuffle="in" >Shuffle randomness</button></div></details>
@@ -1334,6 +1337,9 @@ body.nohelp .qm{display:none}
                 <label class="check"><input type="checkbox" data-bind="trans.out.blockColors"> Use the block colours (your colour mix)</label>
                 <label class="check"><input type="checkbox" data-bind="trans.out.cover"> Cover the gutters (solid, no grid lines)</label>
                 <label class="check" title="The transition grows from under the line, so the walking blocks stay on top"><input type="checkbox" data-bind="trans.out.behind"> Behind the line</label>
+                <label class="check" title="The transition sits on the scene's grid and travels with the camera, like the blocks (camera follow)"><input type="checkbox" data-bind="trans.out.world"> Moves with the blocks</label>
+                <label class="check" title="A full-frame solid in the transition colour under the tiles, so no grid lines show once the frame is covered"><input type="checkbox" data-bind="trans.out.solid"> Solid under the tiles</label>
+                <div class="field" data-show="trans.out.solid=true"><span class="lbl scrub" title="Frames the solid takes to fade">Solid fade</span><div class="num"><input type="number" data-bind="trans.out.solidFade" min="1" max="120" step="1"><span class="unit">fr</span></div></div>
                 <div class="field stack"><span class="lbl">Build as</span><div class="seg" data-seg="trans.out.output"><button data-v="blocks">Blocks in the comp</button><button data-v="matte">Matte precomp</button></div></div>
                 <div class="curve" data-curve="trans.out.curve" data-title="Transition out easing"></div>
                 <button class="btn" data-transshuffle="out" >Shuffle randomness</button></div></details>
@@ -1781,15 +1787,18 @@ function GB_precomp(main,name,folder,collapse3D,tag,label){
   if(collapse3D){ try{L.collapseTransformation=true;}catch(eC){} try{L.threeDLayer=true;}catch(e3){} }
   return {comp:pc,layer:L};
 }
-function GB_trans(comp,d,fps,org,folder,comps,below){
+function GB_trans(comp,d,fps,org,folder,comps,below,camL){
   var T=d.trans, n=0; if(!T) return 0;
   for(var g=0;g<T.groups.length;g++){
     var G=T.groups[g], target=comp, pre=null, matte=G.output=="matte", lab=G.k=="in"?9:14;
-    if(matte||org.preTrans){
+    if(matte||(org.preTrans&&!G.world)){
       pre=GB_precomp(comp,(G.k=="in"?"GB Transition In":"GB Transition Out")+(matte?" (matte)":"")+" · "+comp.name,folder,false,"trans",lab);
       pre.layer.name=G.name+(matte?" (matte)":"");
       target=pre.comp; comps.push(target);
     }
+    /* solid under the tiles: hides the grid lines once the frame is covered */
+    if(G.solid){ try{ var S=GB_box(target,(G.k=="in"?"In":"Out")+" · Solid",0,0,comp.width,comp.height,G.solid.color,0); S.comment="GridBlocks:trans"; S.label=lab;
+      GB_keys(GB_xf(S).property("ADBE Opacity"),G.solid.op,fps); if(G.behind&&below&&!pre) S.moveAfter(below); n++; }catch(eS){} }
     for(var i=0;i<G.tiles.length;i++){
       var t=G.tiles[i], L=GB_box(target,(G.k=="in"?"In ":"Out ")+GB_pad3(i+1),t.x,t.y,t.w,t.h,t.color,0);
       L.comment="GridBlocks:trans"; L.label=lab;
@@ -1804,6 +1813,7 @@ function GB_trans(comp,d,fps,org,folder,comps,below){
         }
       }
       if(G.behind&&below&&!pre){ try{L.moveAfter(below);}catch(eB){} }
+      if(G.world&&camL&&!pre){ try{L.parent=camL;}catch(eP){} }
       n++;
     }
     if(G.behind&&below&&pre){ try{pre.layer.moveAfter(below);}catch(eB2){} }
@@ -2357,7 +2367,7 @@ function GB_build(d){
       out.push(A.label);
     }
     if(d.lab){GB_labScreen(main,d.lab,fps);}
-    if(d.trans){var belowL=blockPre?blockPre.layer:(blocks.length?blocks[0].L:null); var nt=GB_trans(main,d,fps,org,folder,comps,belowL); if(nt) out.push(nt+" transition blocks");}
+    if(d.trans){var belowL=blockPre?blockPre.layer:(blocks.length?blocks[0].L:null); var nt=GB_trans(main,d,fps,org,folder,comps,belowL,cam); if(nt) out.push(nt+" transition blocks");}
     // the camera (and its framing helper) on top, where animators look for it
     try{ if(cam) cam.moveToBeginning(); }catch(eTop){}
 
@@ -2437,8 +2447,8 @@ const DEF={
         rulesOn:false,rule:'#3B484B',ruleW:1,ruleEvery:4,ruleStart:1,ruleLayer:'top',ruleParallax:100,ruleLag:0,ruleEnd:'stay',ruleFadeAt:0,ruleFadeLen:24},
   block:{w:3,h:1,color:'#E6212F',color2:'#A2AFB2',color3:'#0061E2',color4:'#FF7F7B',upColor:'#FF7F7B',downColor:'#A2AFB2',ncol:2,sync:true,mix:'single',mixPct:25},
   palette:PALETTE.slice(),
-  trans:{in:{on:false,mode:'clear',start:0,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:3,jitter:0,preset:'flood',behind:true},
-         out:{on:false,mode:'build',start:72,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:5,jitter:0,preset:'flood',behind:true}},
+  trans:{in:{on:false,mode:'clear',start:0,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:3,jitter:0,preset:'flood',behind:true,world:true,solid:true,solidFade:8},
+         out:{on:false,mode:'build',start:72,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:5,jitter:0,preset:'flood',behind:true,world:true,solid:true,solidFade:8}},
   fill:{on:true,seed:7,density:'medium',family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:8,leading:100,caps:'upper',
         textColor:'#121212',outlinePct:0,outlineW:2,skipText:true,textPct:60,patternPct:40,dotSpacing:8,iconPct:20,iconSize:24,iconLib:'pixel',buildDur:12,graphW:1.5,look:'custom',
         mix:{text:45,graph:30,combo:25},graphs:{line:true,step:false,area:true,bars:true,hist:false,candles:true,meter:true,heat:true,network:true,wave:false,depth:false},
@@ -4720,23 +4730,23 @@ function transWin(G,k,T,compF){
   return {st,dur};
 }
 /* the walking line on screen at the moment a transition happens: 'in' = once the scene has started, 'out' = as it goes */
-function transLine(G,k,T,compF){
+function transLine(G,k,T,compF,fixOff){
   if(D.anim.mode==='static'){ return D.blocks.map(b=>cellRect(G,b.c,b.r,b.w,b.h)); }
   const P=plan(G); if(!P.seq.length) return [];
   const {dur,st}=transWin(G,k,T,compF);
-  const tr=k==='out'?st:Math.max(st+dur,(P.T[0]||0)+1), off=ev(P.cam,tr,[0,0]), out=[];
+  const tr=k==='out'?st:Math.max(st+dur,(P.T[0]||0)+1), off=fixOff||ev(P.cam,tr,[0,0]), out=[];
   P.seq.forEach((b,i)=>{ if(P.T[i]>tr) return; if(P.exitT&&P.exitT[i]!=null&&P.exitT[i]<tr) return; const q=cellRect(G,b.c,b.r,b.w,b.h); out.push({x:q.x+off[0],y:q.y+off[1],w:q.w,h:q.h}); });
   if(!out.length){ const b=P.seq[0], q=cellRect(G,b.c,b.r,b.w,b.h); out.push({x:q.x+off[0],y:q.y+off[1],w:q.w,h:q.h}); }
   // only what's on (or near) the screen
   return out.filter(q=>q.x+q.w>-G.W*.25&&q.x<G.W*1.25);
 }
 /* the line as it keeps building through a transition: each block where it lands on screen, and when */
-function transLineTimed(G,k,T,compF){
+function transLineTimed(G,k,T,compF,fixOff){
   if(D.anim.mode==='static'||!plan(G).seq.length) return null;
   const P=plan(G), {dur,st}=transWin(G,k,T,compF), out=[];
   let head=-1; P.T.forEach((t,i)=>{ if(t<=st&&!P.seq[i].stack) head=i; });
-  P.seq.forEach((b,i)=>{ const t=P.T[i]; if(b.stack) return; if(i!==head&&(t<st||t>st+dur)) return; const tt=Math.max(st,t), off=ev(P.cam,tt,[0,0]), q=cellRect(G,b.c,b.r,b.w,b.h); out.push({x:q.x+off[0],y:q.y+off[1],w:q.w,h:q.h,t:tt-st}); });
-  if(!out.length){ const b=P.seq[0], q=cellRect(G,b.c,b.r,b.w,b.h), off=ev(P.cam,st,[0,0]); out.push({x:q.x+off[0],y:q.y+off[1],w:q.w,h:q.h,t:Math.max(0,P.T[0]-st)}); }
+  P.seq.forEach((b,i)=>{ const t=P.T[i]; if(b.stack) return; if(i!==head&&(t<st||t>st+dur)) return; const tt=Math.max(st,t), off=fixOff||ev(P.cam,tt,[0,0]), q=cellRect(G,b.c,b.r,b.w,b.h); out.push({x:q.x+off[0],y:q.y+off[1],w:q.w,h:q.h,t:tt-st}); });
+  if(!out.length){ const b=P.seq[0], q=cellRect(G,b.c,b.r,b.w,b.h), off=fixOff||ev(P.cam,st,[0,0]); out.push({x:q.x+off[0],y:q.y+off[1],w:q.w,h:q.h,t:Math.max(0,P.T[0]-st)}); }
   return out;
 }
 const TRANS_PRESETS=[
@@ -4788,12 +4798,19 @@ function transPlan(G){
     // and sweep in the direction the line walks with a stepped, block-shaped front
     let sx=0, sy=0;
     const onGrid=walk||['flood','head','extrude','ribbons','trail','walkoff'].indexOf(T.pattern)>=0;
-    if(onGrid&&D.anim.mode!=='static'){ const P=plan(G), W0=transWin(G,k,T,compF), dur0=W0.dur, st0=W0.st, o=ev(P.cam,k==='out'?st0:st0+dur0,[0,0]);
-      sx=((o[0]%G.p)+G.p)%G.p; sy=D.anim.axis==='xy'?((o[1]%G.p)+G.p)%G.p:0; }
-    for(let r=r0;r<r1+1;r+=bh) for(let c=c0-1;c<c1;c+=bw){
+    // 'moves with the blocks': tiles live on the scene's grid and travel with the camera; others are fixed to the frame
+    const WRLD=T.world!==false&&T.output!=='matte'&&D.anim.mode==='camera';
+    const Wn=transWin(G,k,T,compF), PP=D.anim.mode!=='static'?plan(G):null, oRef=PP?ev(PP.cam,k==='out'?Wn.st:Wn.st+Wn.dur,[0,0]):[0,0];
+    let wx0=0,wx1=G.W,wy0=0,wy1=G.H;
+    if(WRLD){ let mnx=Infinity,mxx=-Infinity,mny=Infinity,mxy=-Infinity; for(let f=Wn.st;f<=Wn.st+Wn.dur+Math.max(24,Wn.dur);f+=2){const o=ev(PP.cam,f,[0,0]);mnx=Math.min(mnx,o[0]);mxx=Math.max(mxx,o[0]);mny=Math.min(mny,o[1]);mxy=Math.max(mxy,o[1]);}
+      wx0=-mxx; wx1=G.W-mnx; wy0=-mxy; wy1=G.H-mny; }
+    else if(onGrid&&PP){ sx=((oRef[0]%G.p)+G.p)%G.p; sy=D.anim.axis==='xy'?((oRef[1]%G.p)+G.p)%G.p:0; }
+    const C0=Math.floor((wx0-G.x0)/G.p)-1, C1=Math.ceil((wx1-G.x0)/G.p)+1, R0=Math.floor((wy0-G.y0)/G.p)-1, R1=Math.ceil((wy1-G.y0)/G.p)+1;
+    for(let r=(WRLD?R0:r0);r<(WRLD?R1:r1)+1;r+=bh) for(let c=(WRLD?Math.floor(C0/bw)*bw:c0-1);c<(WRLD?C1:c1);c+=bw){
       const q=cellRect(G,c,r,bw,bh); q.x+=sx; q.y+=sy;
       const x=T.cover?q.x-G.gut/2:q.x, y=T.cover?q.y-G.gut/2:q.y, w=T.cover?q.w+G.gut:q.w, h=T.cover?q.h+G.gut:q.h;
-      if(x>G.W||y>G.H||x+w<0||y+h<0) continue;
+      if(WRLD){ if(x>wx1||y>wy1||x+w<wx0||y+h<wy0) continue; }
+      else if(x>G.W||y>G.H||x+w<0||y+h<0) continue;
       tiles.push({c,r,x,y,w,h,cells:bw});
     }
     if(!tiles.length) return;
@@ -4801,12 +4818,12 @@ function transPlan(G){
     // walk: each row-band lags the one above by a random step (±1 block), like the line's own walk
     const lag={}; if(walk){ let v=0; for(let r=r0;r<r1+1;r+=bh){ lag[r]=v; const u=rnd(); v+=u<.36?-1:u<.72?1:0; } }
     // the line as it is on screen when the transition happens (for patterns that grow out of the walk)
-    const LINE=['flood','head','extrude','ribbons','trail'].indexOf(T.pattern)>=0?transLine(G,k,T,compF):null;
+    const LINE=['flood','head','extrude','ribbons','trail'].indexOf(T.pattern)>=0?transLine(G,k,T,compF,WRLD?oRef:null):null;
     const dirX=(D.anim.order==='rtl')?-1:1;
     // flood: a wave from the newest block that keeps moving as the line keeps building (each new block sends its own wave)
-    const FL=(T.pattern==='flood'||T.pattern==='walkoff')?transLineTimed(G,k,T,compF):null;
+    const FL=(T.pattern==='flood'||T.pattern==='walkoff')?transLineTimed(G,k,T,compF,WRLD?oRef:null):null;
     let flF=1; if(FL&&FL.length){ const h0=FL[0], dd=tiles.map(t=>Math.hypot(t.x+t.w/2-(h0.x+h0.w/2),t.y+t.h/2-(h0.y+h0.h/2))/G.p); flF=Math.max(.5,transWin(G,k,T,compF).dur*.55/Math.max(1,Math.max(...dd))); }
-    tiles.forEach(t=>{const mx=t.x+t.w/2,my=t.y+t.h/2, pat=T.pattern;
+    tiles.forEach(t=>{const mx=t.x+t.w/2+(WRLD?oRef[0]:0),my=t.y+t.h/2+(WRLD?oRef[1]:0), pat=T.pattern;
       if(FL&&FL.length&&pat==='walkoff'){
         /* builds with the walk-off: the block that kicks it off spreads up/down and back over what's behind it; every block
            after it only fills its own column (up and down from it); ahead of the head nothing comes on until the line gets there */
@@ -4840,11 +4857,15 @@ function transPlan(G){
     const start=W1.st;
     const color=T.output==='matte'?'#FFFFFF':T.color, crnd=rng(fillHash(91,T.seed|0)); let ci=0;
     tiles.forEach(t=>{ const tc=T.output!=='matte'&&T.blockColors?mixColorFor(ci++,crnd,T.color):color;
-      const u=vmax>vmin?(t.v-vmin)/(vmax-vmin):0, t0=Math.round(start+(dur-len)*inv(u)), r={x:t.x,y:t.y,w:t.w,h:t.h,k:0};
+      const timed=FL&&FL.length&&!rev, u=vmax>vmin?(t.v-vmin)/(vmax-vmin):0, t0=timed?Math.round(clamp(start+t.v,start,Math.max(start,compF-len))):Math.round(start+(dur-len)*inv(u)), r={x:t.x,y:t.y,w:t.w,h:t.h,k:0};
       const K=T.mode==='build'?revealKeys(T.appear,t0,len,r,t.cells,G,false,1,[0.25,0.1,0.25,1]):vanishKeys(T.appear,t0,len,r);
-      out.tiles.push({g:k,x:t.x,y:t.y,w:t.w,h:t.h,color:tc,K,behind:!!T.behind&&T.output!=='matte'});
+      out.tiles.push({g:k,x:t.x,y:t.y,w:t.w,h:t.h,color:tc,K,behind:!!T.behind&&T.output!=='matte',world:WRLD,on:t0+len});
     });
-    out.groups.push({k,output:T.output,start,dur,count:tiles.length,behind:!!T.behind&&T.output!=='matte'});
+    // a solid under the tiles that hides the grid lines once the frame is covered (fades on after the last block; fades off before the first one clears)
+    let solid=null; if(T.solid!==false){ const fd=Math.max(1,Math.round(+T.solidFade||8)), mine=out.tiles.filter(q=>q.g===k);
+      if(T.mode==='build'){ const tOn=Math.max(...mine.map(q=>q.on)); solid={color:T.output==='matte'?'#FFFFFF':T.color,op:[[tOn,0,'e',[0.33,0,0.67,1]],[tOn+fd,100,'h']]}; }
+      else solid={color:T.output==='matte'?'#FFFFFF':T.color,op:clip0([[start-fd,100,'e',[0.33,0,0.67,1]],[start,0,'h']])}; }
+    out.groups.push({k,output:T.output,start,dur,count:tiles.length,behind:!!T.behind&&T.output!=='matte',world:WRLD,solid});
     out.end=Math.max(out.end,start+dur);
   });
   return out;
@@ -5911,7 +5932,8 @@ function renderFrame(target,overlays){
   // transitions sit on top, in screen space (not affected by the camera)
   if(transOn()&&(A&&A.live||STEPS[U.step].id==='transitions')){
     const TP=transP(G); ctx.save(); ctx.beginPath(); ctx.rect(0,0,G.W,G.H); ctx.clip();
-    TP.tiles.forEach(tl=>{ if(tl.behind&&A&&A.live) return;   // drawn under the blocks (in drawWorld)
+    if(A&&A.live){ const base=ctx.getTransform?ctx.getTransform():null; ctx.save(); zoomXf(ctx,G,A.s,A.pan,A.zc); drawTransLayer(ctx,G,A,false,base); ctx.restore(); }
+    TP.tiles.forEach(tl=>{ if(A&&A.live) return;   // live: drawn by drawTransLayer
       if(A&&A.live){const q={x:tl.x,y:tl.y,w:tl.w,h:tl.h};const st=blockState(tl.K,A.t,q);if(st.op<=0.001||st.w<=0.01||st.sx<=0.001)return;
         ctx.globalAlpha=st.op;const cx=st.x+st.w/2,cy=st.y+st.h/2;ctx.save();ctx.translate(cx,cy);ctx.scale(st.sx,st.sy);ctx.translate(-cx,-cy);ctx.fillStyle=tl.color;ctx.fillRect(st.x,st.y,st.w,st.h);ctx.restore();}
       else {ctx.globalAlpha=1;ctx.lineWidth=1/sc;ctx.strokeStyle=tl.g==='in'?'rgba(43,217,143,.55)':'rgba(255,194,26,.55)';ctx.strokeRect(tl.x+2/sc,tl.y+2/sc,tl.w-4/sc,tl.h-4/sc);}
@@ -6023,14 +6045,22 @@ function drawEcho(g,r,st,o,dx,dy,ghost){
 }
 let ZK=null;
 const zkGrow=q=>ZK?{x:q.x-ZK.dg/2,y:q.y-ZK.dg/2,w:q.w+ZK.dg,h:q.h+ZK.dg}:q;
-/* transition tiles that sit behind the line (screen space, under the grid and blocks) */
-function drawTransBehind(g,G,A){
-  if(!transOn()||!(A&&A.live)) return; const TP=transP(G); if(!TP.tiles.some(t=>t.behind)) return;
-  g.save(); g.beginPath(); g.rect(0,0,G.W,G.H); g.clip();
-  TP.tiles.forEach(tl=>{ if(!tl.behind) return; const q={x:tl.x,y:tl.y,w:tl.w,h:tl.h}, st=blockState(tl.K,A.t,q); if(st.op<=0.001||st.w<=0.01||st.sx<=0.001) return;
-    g.globalAlpha=st.op; const cx=st.x+st.w/2,cy=st.y+st.h/2; g.save(); g.translate(cx,cy); g.scale(st.sx,st.sy); g.translate(-cx,-cy); g.fillStyle=tl.color; g.fillRect(st.x,st.y,st.w,st.h); g.restore(); });
-  g.restore(); g.globalAlpha=1;
+/* transition layers: the solid (screen space) and the tiles (moving with the blocks, or fixed to the frame).
+   behind=true: drawn over the grid but under the blocks; false: on top of everything. base = the transform without camera/zoom. */
+function drawTransLayer(g,G,A,behind,base){
+  if(!transOn()||!(A&&A.live)) return; const TP=transP(G), t=A.t, off=A.off||[0,0];
+  TP.groups.forEach(gr=>{ if(!!gr.behind!==behind) return;
+    const here=g.getTransform?g.getTransform():null;
+    if(gr.solid&&gr.solid.op){ const o=ev(gr.solid.op,t,0)/100; if(o>0.001){ if(base&&g.setTransform) g.setTransform(base); g.globalAlpha=o; g.fillStyle=gr.solid.color; g.fillRect(0,0,G.W,G.H); if(here&&g.setTransform) g.setTransform(here); } }
+    TP.tiles.forEach(tl=>{ if(tl.g!==gr.k) return; const q={x:tl.x,y:tl.y,w:tl.w,h:tl.h}, st=blockState(tl.K,t,q); if(st.op<=0.001||st.w<=0.01||st.sx<=0.001) return;
+      if(!tl.world&&base&&g.setTransform) g.setTransform(base);
+      const dx=tl.world?off[0]:0, dy=tl.world?off[1]:0;
+      g.globalAlpha=st.op; const cx=st.x+st.w/2+dx,cy=st.y+st.h/2+dy; g.save(); g.translate(cx,cy); g.scale(st.sx,st.sy); g.translate(-cx,-cy); g.fillStyle=tl.color; g.fillRect(st.x+dx,st.y+dy,st.w,st.h); g.restore();
+      if(!tl.world&&here&&g.setTransform) g.setTransform(here); });
+  });
+  g.globalAlpha=1;
 }
+function drawTransBehind(){}
 function drawWorld(g,G,o){
   const sc=o.sc, A=o.A, live=!!(A&&A.live), camMode=live&&D.anim.mode==='camera';
   const s=live?A.s:1, off=live?A.off:[0,0], gridOff=camMode?off:[0,0];
@@ -6040,9 +6070,9 @@ function drawWorld(g,G,o){
   const bgR=vb;
   if(D.look.bgOn){g.fillStyle=D.look.bg;g.fillRect(bgR.x,bgR.y,bgR.w,bgR.h);}
   if(o.inside) drawMediaBg(g,G);
-  if(o.inside) drawTransBehind(g,G,A);
   else if(o.inside){g.save();g.fillStyle=checker||'#222';g.scale(1/sc,1/sc);g.fillRect(0,0,G.W*sc,G.H*sc);g.restore();}
   const pan=live?A.pan:[0,0];
+  const baseXf=g.getTransform?g.getTransform():null;
   g.save(); zoomXf(g,G,s,pan,live?A.zc:null);
   // which cells to draw
   // which cells to draw: whatever is in view (the grid goes on forever), coarser when zoomed far out
@@ -6070,6 +6100,7 @@ function drawWorld(g,G,o){
   };
   g.restore();
   if(D.look.ruleLayer!=='top') drawRules();
+  if(o.inside) drawTransLayer(g,G,A,true,baseXf);
   // content timing for the preview
   o.fillT=live?A.t:null; o.fillBase=A&&A.P?A.P.fillBase:null; o.fillEnd=live&&A.P?A.P.fillEnd:null; o.tracks=live&&A.P?A.P.tracks:null; o.nums=D.num&&(D.num.on||D.blocks.some(b=>b.num))?blockNumbers(G):null;
   // echoes (behind everything else), then blocks
@@ -8224,7 +8255,7 @@ function payload(){
     replace:D.out.replace, lock:D.out.lock, fitDur:D.out.fitDur, rig, mb:D.out.mb?{angle:+D.out.mbAngle||180}:null,
     bg:D.look.bgOn?{color:hexRgb(D.look.bg)}:null,
     cells, lines, rules, echoes, blocks, gaps,
-    trans:transOn()?(()=>{const TP=transP(G);return {groups:TP.groups.map(g=>({k:g.k,output:g.output,behind:!!g.behind,name:g.k==='in'?'GB · Transition In':'GB · Transition Out',
+    trans:transOn()?(()=>{const TP=transP(G);return {groups:TP.groups.map(g=>({k:g.k,output:g.output,behind:!!g.behind,world:!!g.world,solid:g.solid?{color:hexRgb(g.solid.color),op:g.solid.op}:null,name:g.k==='in'?'GB · Transition In':'GB · Transition Out',
       vis:transVis(TP,g.k),
       tiles:TP.tiles.filter(t=>t.g===g.k).map(t=>({x:r3(t.x),y:r3(t.y),w:r3(t.w),h:r3(t.h),color:hexRgb(t.color),keys:t.K}))}))};})():null,
     org:orgPayload(P,animOn,G),
