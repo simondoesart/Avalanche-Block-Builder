@@ -1867,8 +1867,8 @@ function computePlan(G){
   // walk-off inside the scene: build steps, then the hold, then the walk at its own pace — all on the one linear clock
   const wp=Math.max(.1,+D.exit.walkPace||1), nW=used-usedB;
   let sWalk=null;
-  const lead=Math.max(0,Math.round(+A.landLead||0));   // the last block lands this long before the hold starts (so easing into the hold never slows the last arrival)
-  const olead=WO?Math.max(0,Math.round(+A.outLead||0)):0;   // Out settle: the camera gets going this long before the first block walks off
+  const noHold=D.exit.on&&D.exit.holdOn===false, lead=noHold?0:Math.max(0,Math.round(+A.landLead||0));   // no hold: In runs straight into Out (no settle either side)   // the last block lands this long before the hold starts (so easing into the hold never slows the last arrival)
+  const olead=WO&&!noHold?Math.max(0,Math.round(+A.outLead||0)):0;   // Out settle: the camera gets going this long before the first block walks off
   if(WO&&nW>0){ sWalk=(usedB-1)*step+tr0+lead+woH+olead; }
   // reveal times on the linear clock, then re-timed by the scene curve (one at a time, in order)
   const sg=[], Tg=[]; const spread=(used-1)<=L;
@@ -2058,7 +2058,9 @@ function computePlan(G){
           P.camPh={start:Math.round(W(sB0)),stop:Math.round(W(sB1)),go:hasW?Math.round(W(sW0)):null};
           const trap=(e,T,Dd,R)=>{ if(T<=0||Dd<=0) return e>0?Dd:0; e=clamp(e,0,T); const v=Dd/Math.max(1e-6,T-R); return e<R?v*e*e/(2*R):e<T-R?v*(e-R/2):Dd-v*(T-e)*(T-e)/(2*R); };
           const accel=(e,T,Dd,R)=>{ if(e<=0) return 0; const v=Dd/Math.max(1e-6,T-R/2); return Math.min(Dd,e<R?v*e*e/(2*R):v*(e-R/2)); };
-          const dAt=t=>{ const sl=S(t); if(sl<=sB0) return 0; if(sl<=sB1) return trap(sl-sB0,sB1-sB0,DB,Rb); if(sl<=sW0) return DB; return DB+accel(sl-sW0,TW,DW,Rw); };
+          const flow=hasW&&D.exit.holdOn===false;   // no hold: one continuous move from the build into the walk (no stop in between)
+          const dAt=t=>{ const sl=S(t); if(sl<=sB0) return 0; if(flow){ if(sl<=sB1) return accel(sl-sB0,sB1-sB0,DB,Rb); const Tw=Math.max(1,sW1-sB1), e=Math.min(sl-sB1,Tw), R2=Math.min(Rw,Tw/2), v=DW/Math.max(1e-6,Tw-R2/2); return DB+(e<Tw-R2?v*e:DW-v*(Tw-e)*(Tw-e)/(2*R2)); }
+            if(sl<=sB1) return trap(sl-sB0,sB1-sB0,DB,Rb); if(sl<=sW0) return DB; return DB+accel(sl-sW0,TW,DW,Rw); };
           const atA=dd=>{if(pA.length<2||totA<=0)return pA[0];let k=1;while(k<cA.length-1&&cA[k]<dd)k++;const sgm=Math.max(1e-9,cA[k]-cA[k-1]),q=clamp((dd-cA[k-1])/sgm,0,1);return[pA[k-1][0]+(pA[k][0]-pA[k-1][0])*q,pA[k-1][1]+(pA[k][1]-pA[k-1][1])*q];};
           for(let i=0;i<N;i++){const o=atA(clamp(dAt(a+i),0,totA)); xs[i]=o[0]; ys[i]=o[1];}
         }

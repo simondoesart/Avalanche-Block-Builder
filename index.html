@@ -1174,7 +1174,7 @@ body.nohelp .qm{display:none}
             <div data-adv class="curve" data-curve="anim.revCurve" data-show="anim.motion=smooth" data-title="Reveal easing · each block"></div>
             </div></details>
             <details class="sub" data-sub="io-hold" open data-show="exit.on=true"><summary>Hold <span class="note">between In and Out</span></summary><div class="subbody">
-            <div class="field"><span class="lbl scrub" title="The last block lands this many frames before the hold starts, so easing into the hold never slows the last arrival">Settle before hold</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.landLead" min="0" max="240" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+            <div class="field" data-show="exit.holdOn=true"><span class="lbl scrub" title="The last block lands this many frames before the hold starts, so easing into the hold never slows the last arrival">Settle before hold</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.landLead" min="0" max="240" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
             <div class="layer"><label class="switch"><input type="checkbox" data-bind="exit.holdOn"><span></span></label><div><div class="ln">Hold before leaving</div><div class="ls">Off = goes straight from In to Out</div></div><span></span></div>
             <div data-show="exit.holdOn=true" style="display:grid;gap:9px">
               <div class="field" data-show="exit.mode=walk"><span class="lbl scrub" title="Frames the finished build holds before walking on">Hold for</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="exit.walkHold" min="0" max="2000" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
@@ -1188,7 +1188,7 @@ body.nohelp .qm{display:none}
             <div class="note" data-show="exit.on=false">Blocks stay up. On the timeline the <b>Hold</b> bar runs to the end of the piece.</div>
             <div data-show="exit.on=true" style="display:grid;gap:9px">
               <div data-show="exit.mode=walk" style="display:grid;gap:9px">
-                <div class="field"><span class="lbl scrub" title="After the hold ends, the camera gets moving this long before the first block walks off">Settle after hold</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.outLead" min="0" max="240" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+                <div class="field" data-show="exit.holdOn=true"><span class="lbl scrub" title="After the hold ends, the camera gets moving this long before the first block walks off">Settle after hold</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.outLead" min="0" max="240" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
                 <div class="note">After the hold the line <b>keeps walking</b>: the oldest blocks peel away so only a short trail follows the head, the camera travels with it, then lets go and the line walks off frame.</div>
                 <div class="field2"><div class="field"><span class="lbl scrub" title="How long the camera keeps following the line before it lets go and the line walks off screen">Camera follows for</span><div class="num"><input type="number" data-bind="exit.walkLen" min="6" max="5000" step="1"><span class="unit">fr</span></div></div><div class="field"><span class="lbl scrub" title="Blocks left visible behind the head">Trail</span><div class="num"><input type="number" data-bind="exit.trail" min="1" max="60" step="1"><span class="unit">blocks</span></div></div></div>
                 <div class="field"><span class="lbl scrub" title="1 = same rhythm as the build; 0.5 = twice as fast">Pace</span><div class="num"><input type="number" data-bind="exit.walkPace" min="0.1" max="5" step="0.1"><span class="unit">×</span></div></div>
@@ -4245,8 +4245,8 @@ function computePlan(G){
   // walk-off inside the scene: build steps, then the hold, then the walk at its own pace — all on the one linear clock
   const wp=Math.max(.1,+D.exit.walkPace||1), nW=used-usedB;
   let sWalk=null;
-  const lead=Math.max(0,Math.round(+A.landLead||0));   // the last block lands this long before the hold starts (so easing into the hold never slows the last arrival)
-  const olead=WO?Math.max(0,Math.round(+A.outLead||0)):0;   // Out settle: the camera gets going this long before the first block walks off
+  const noHold=D.exit.on&&D.exit.holdOn===false, lead=noHold?0:Math.max(0,Math.round(+A.landLead||0));   // no hold: In runs straight into Out (no settle either side)   // the last block lands this long before the hold starts (so easing into the hold never slows the last arrival)
+  const olead=WO&&!noHold?Math.max(0,Math.round(+A.outLead||0)):0;   // Out settle: the camera gets going this long before the first block walks off
   if(WO&&nW>0){ sWalk=(usedB-1)*step+tr0+lead+woH+olead; }
   // reveal times on the linear clock, then re-timed by the scene curve (one at a time, in order)
   const sg=[], Tg=[]; const spread=(used-1)<=L;
@@ -4436,7 +4436,9 @@ function computePlan(G){
           P.camPh={start:Math.round(W(sB0)),stop:Math.round(W(sB1)),go:hasW?Math.round(W(sW0)):null};
           const trap=(e,T,Dd,R)=>{ if(T<=0||Dd<=0) return e>0?Dd:0; e=clamp(e,0,T); const v=Dd/Math.max(1e-6,T-R); return e<R?v*e*e/(2*R):e<T-R?v*(e-R/2):Dd-v*(T-e)*(T-e)/(2*R); };
           const accel=(e,T,Dd,R)=>{ if(e<=0) return 0; const v=Dd/Math.max(1e-6,T-R/2); return Math.min(Dd,e<R?v*e*e/(2*R):v*(e-R/2)); };
-          const dAt=t=>{ const sl=S(t); if(sl<=sB0) return 0; if(sl<=sB1) return trap(sl-sB0,sB1-sB0,DB,Rb); if(sl<=sW0) return DB; return DB+accel(sl-sW0,TW,DW,Rw); };
+          const flow=hasW&&D.exit.holdOn===false;   // no hold: one continuous move from the build into the walk (no stop in between)
+          const dAt=t=>{ const sl=S(t); if(sl<=sB0) return 0; if(flow){ if(sl<=sB1) return accel(sl-sB0,sB1-sB0,DB,Rb); const Tw=Math.max(1,sW1-sB1), e=Math.min(sl-sB1,Tw), R2=Math.min(Rw,Tw/2), v=DW/Math.max(1e-6,Tw-R2/2); return DB+(e<Tw-R2?v*e:DW-v*(Tw-e)*(Tw-e)/(2*R2)); }
+            if(sl<=sB1) return trap(sl-sB0,sB1-sB0,DB,Rb); if(sl<=sW0) return DB; return DB+accel(sl-sW0,TW,DW,Rw); };
           const atA=dd=>{if(pA.length<2||totA<=0)return pA[0];let k=1;while(k<cA.length-1&&cA[k]<dd)k++;const sgm=Math.max(1e-9,cA[k]-cA[k-1]),q=clamp((dd-cA[k-1])/sgm,0,1);return[pA[k-1][0]+(pA[k][0]-pA[k-1][0])*q,pA[k-1][1]+(pA[k][1]-pA[k-1][1])*q];};
           for(let i=0;i<N;i++){const o=atA(clamp(dAt(a+i),0,totA)); xs[i]=o[0]; ys[i]=o[1];}
         }
