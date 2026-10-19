@@ -325,3 +325,6 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.37 — Zoom focus
 - Zoom → **Zoom on**: *A point in the frame* (that point stays put while everything zooms around it) or *The newest block* (the newest block on screen when the zoom starts glides to the chosen spot as it zooms). **Position**: 3×3 picker (top left … bottom right) or custom X / Y %.
 - After Effects: GB · Zoom gets its anchor/position at the chosen point (keyed per frame for block focus). Block focus works best while the camera is still (e.g. during the hold).
+
+### v3.38 — No hold = straight through
+- With Hold off, both settles are 0 (and their fields are hidden), and the camera runs straight from the build into the walk-off without slowing down in between; the first walk block follows the last build block on the same rhythm.
