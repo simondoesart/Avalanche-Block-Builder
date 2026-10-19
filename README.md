@@ -309,3 +309,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 
 ### v3.33 — Content layers: global on/off on the timeline
 - Text HUD and Between blocks rows now show the layer's **global window**: thin lines = each item's own timing (from the content animation settings — delay, animate on, hold, animate off still work per block), and a bar with two knobs: **all on** (nothing comes on before it) and **all off** (everything is gone by it). ⌥-click a knob to go back to automatic. The old per-item "fully on / out starts" knobs are gone.
+
+### v3.34 — Hold stays linear; ⌥-click adds hold handles
+- The hold section of the Scene curve is a straight line with no handles by default; dragging the In / Out handles never changes movement inside the hold.
+- ⌥-click the Hold starts or Hold ends point (white dot on the curve) to add a handle inside the hold (like AE's convert vertex tool); ⌥-click again to make it straight.
