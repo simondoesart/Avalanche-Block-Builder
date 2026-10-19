@@ -5,4 +5,9 @@
       <Host Name="AEFT" Port="8088"/>
     </HostList>
   </Extension>
+  <Extension Id="com.avalabs.gridblocks.safe">
+    <HostList>
+      <Host Name="AEFT" Port="8089"/>
+    </HostList>
+  </Extension>
 </ExtensionList>
