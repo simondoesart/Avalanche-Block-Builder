@@ -361,3 +361,8 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 
 ### v3.46 — Solid timing
 - Transition **Solid at** (frames from the transition start; empty = automatic) and **Fade** control when the background solid fades on (Build up) / off (Clear away) to hide the grid lines. On the Transitions row a white diamond + bar shows the fade — drag the diamond to set when; ⌥-click it for automatic.
+
+### v3.47 — Pinned solid fade, Walk-off / Walk-on build defaults
+- Out: the solid fade always finishes exactly at the end of the transition; the white diamond on the Transitions row sets when it **starts** (⌥-click = automatic). In is the mirror: the solid starts fully on at the transition start and the diamond sets when it has **finished** fading.
+- **Walk-off build** is now the default Out transition and first in its preset list.
+- New **Walk-on build** for Transition In (default): the frame starts covered and clears around the line as it walks on, synced from the first block landing to the end of the build. "With the walk-on" ties it to the walk; drag the end of the In bar to make it finish sooner or later.
