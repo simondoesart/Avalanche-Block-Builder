@@ -1700,10 +1700,15 @@ function applyZoom(P){
     const sE=ext[1]/100, f0=K[0][0], f1=Math.max(P.end,K[K.length-1][0]+1);
     const ctr=P.seq.map(b=>{const q=cellRect(G,b.c,b.r,b.w,b.h);return [q.x+q.w/2,q.y+q.h/2];});
     const raw=[]; let bi=0;
-    for(let t=f0;t<=f1;t++){ while(bi+1<P.seq.length&&P.T[bi+1]<=t) bi++; let j=bi; while(j>0&&P.seq[j].stack) j--;
-      const off=ev(P.cam,t,[0,0]); raw.push([ctr[j][0]+off[0],ctr[j][1]+off[1]]); }
-    const sg=10, R=Math.ceil(3*sg), kk=[]; let ksum=0; for(let j=-R;j<=R;j++){const v=Math.exp(-j*j/(2*sg*sg));kk.push(v);ksum+=v;}
-    for(let i=0;i<raw.length;i++){ let x=0,y=0; for(let j=-R;j<=R;j++){const q=raw[clamp(i+j,0,raw.length-1)];x+=q[0]*kk[j+R];y+=q[1]*kk[j+R];} const p=[x/ksum,y/ksum], t=f0+i;
+    const rel=P.relT!=null?P.relT:Infinity;   // once the camera lets the line go, the zoom lets go too
+    for(let t=f0;t<=f1;t++){ const tt=Math.min(t,rel); while(bi+1<P.seq.length&&P.T[bi+1]<=tt) bi++; let j=bi; while(j>0&&P.seq[j].stack) j--;
+      raw.push([ctr[j][0],ctr[j][1]]); }   // world position (the camera's own motion is added after smoothing, so it never lags or runs ahead)
+    const sg=8, R=Math.ceil(3*sg), kk=[]; let ksum=0; for(let j=-R;j<=R;j++){const v=Math.exp(-j*j/(2*sg*sg));kk.push(v);ksum+=v;}
+    // smooth the path, keep the newest block inside the zoomed frame, then smooth lightly again
+    const sm1=raw.map((_,i)=>{ let x=0,y=0; for(let j=-R;j<=R;j++){const q=raw[clamp(i+j,0,raw.length-1)];x+=q[0]*kk[j+R];y+=q[1]*kk[j+R];} return [x/ksum,y/ksum]; });
+    const cl=sm1.map((p,i)=>{ const sc=Math.max(1,ev(P.zs,f0+i,100)/100), Lx=G.W*.38/sc, Ly=G.H*.36/sc, q=raw[i]; return [q[0]+clamp(p[0]-q[0],-Lx,Lx), q[1]+clamp(p[1]-q[1],-Ly,Ly)]; });
+    const R2=9, k2=[]; let s2=0; for(let j=-R2;j<=R2;j++){const v=Math.exp(-j*j/18);k2.push(v);s2+=v;}
+    for(let i=0;i<raw.length;i++){ let x=0,y=0; for(let j=-R2;j<=R2;j++){const q=cl[clamp(i+j,0,cl.length-1)];x+=q[0]*k2[j+R2];y+=q[1]*k2[j+R2];} const t=f0+i, off=ev(P.cam,t,[0,0]), p=[x/s2+off[0],y/s2+off[1]];
       const sc=ev(P.zs,t,100)/100, k=Math.abs(sE-1)<1e-6?0:clamp((sc-1)/(sE-1),0,1);
       P.zc.push([t,[r3(p[0]),r3(p[1])],'l']); P.pan.push([t,[r3((T[0]-p[0])*k),r3((T[1]-p[1])*k)],'l']); }
     return;
@@ -2948,7 +2953,7 @@ function drawDope(){
     // the zoom curve through the points
     g.strokeStyle='rgba(201,167,255,.9)'; g.lineWidth=1.5; g.beginPath(); g.moveTo(LW,Y(pts[0].v)); g.lineTo(X(pts[0].f),Y(pts[0].v));
     for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1]; for(let k=1;k<=24;k++){const u=k/24; g.lineTo(X(a.f+(b.f-a.f)*u),Y(a.v+(b.v-a.v)*E(u)));}}
-    g.lineTo(r.width,Y(pts[pts.length-1].v)); g.stroke();
+    { const compEnd=Math.round((D.comp.dur||10)*fps); if(pts[pts.length-1].f<compEnd) g.lineTo(X(compEnd),Y(pts[pts.length-1].v)); } g.stroke();
     pts.forEach((p,i)=>{ const x=X(p.f), yy=Y(p.v);
       g.fillStyle=zc; g.beginPath(); g.moveTo(x,yy-5); g.lineTo(x+5,yy); g.lineTo(x,yy+5); g.lineTo(x-5,yy); g.closePath(); g.fill(); g.strokeStyle='#fff'; g.lineWidth=1; g.stroke();
       g.font='600 10px sans-serif'; label(Math.round(p.v)+'%',x+7,yy<y0+12?yy+9:yy-7,'#eadcff');
@@ -5023,7 +5028,7 @@ function renderZoomList(P){
 }
 ($('#zoomPos')||{addEventListener(){}}).addEventListener('click',e=>{const b=e.target.closest('[data-zpos]');if(!b)return;pushHist(true);const v=b.dataset.zpos.split(',').map(Number);D.anim.zm.ax=v[0];D.anim.zm.ay=v[1];syncInputs(true);refresh();});
 function zoomPreset(kind){
-  const P=plan(geom()), Pc=P.c||P, B=phaseBounds(Pc), R=c=>c==null?null:Math.round(P.toReal?P.toReal(c):c), f0=Math.round(P.startF||0), on=R(B.on)||Math.round(P.end*.5), ho=R(B.hold), end=Math.round(P.end), z=Math.max(110,+((zoomPts().reduce((m,p)=>Math.max(m,p.v),100)))||150), Z=z===100?150:z, ramp=n=>Math.max(6,Math.round(n));
+  const P=plan(geom()), Pc=P.c||P, B=phaseBounds(Pc), R=c=>c==null?null:Math.round(P.toReal?P.toReal(c):c), f0=Math.round(P.startF||0), on=R(B.on)||Math.round(P.end*.5), ho=R(B.hold), end=Math.min(Math.round(P.end),Math.round((D.comp.dur||10)*(D.comp.fps||30))), z=Math.max(110,+((zoomPts().reduce((m,p)=>Math.max(m,p.v),100)))||150), Z=z===100?150:z, ramp=n=>Math.max(6,Math.round(n));
   let pts;
   if(kind==='build') pts=[{f:f0,v:100},{f:f0+ramp((on-f0)*.4),v:Z},{f:on,v:Z},{f:on+ramp(18),v:100}];
   else if(kind==='hold'&&ho!=null) pts=[{f:Math.max(f0,on-ramp(18)),v:100},{f:on+ramp((ho-on)*.3),v:Z},{f:ho,v:Z},{f:ho+ramp(18),v:100}];
