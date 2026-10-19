@@ -1303,7 +1303,10 @@ body.nohelp .qm{display:none}
                 <label class="check" title="The transition grows from under the line, so the walking blocks stay on top"><input type="checkbox" data-bind="trans.in.behind"> Behind the line</label>
                 <label class="check" title="The transition sits on the scene's grid and travels with the camera, like the blocks (camera follow)"><input type="checkbox" data-bind="trans.in.world"> Moves with the blocks</label>
                 <label class="check" title="A full-frame solid in the transition colour under the tiles, so no grid lines show once the frame is covered"><input type="checkbox" data-bind="trans.in.solid"> Solid under the tiles</label>
-                <div class="field" data-show="trans.in.solid=true"><span class="lbl scrub" title="Frames the solid takes to fade">Solid fade</span><div class="num"><input type="number" data-bind="trans.in.solidFade" min="1" max="120" step="1"><span class="unit">fr</span></div></div>
+                <div class="field2" data-show="trans.in.solid=true">
+                  <div class="field"><span class="lbl scrub" title="Frames after the transition starts when the solid fades off (empty = automatic: just before the first block clears). Or drag the white diamond on the Transitions row.">Solid at</span><div class="num"><input type="number" data-bind="trans.in.solidAt" data-zero="auto" min="-600" max="2000" step="1"><span class="unit">fr</span></div></div>
+                  <div class="field"><span class="lbl scrub" title="Frames the solid takes to fade">Fade</span><div class="num"><input type="number" data-bind="trans.in.solidFade" min="1" max="120" step="1"><span class="unit">fr</span></div></div>
+                </div>
                 <div class="field stack"><span class="lbl">Build as</span><div class="seg" data-seg="trans.in.output"><button data-v="blocks">Blocks in the comp</button><button data-v="matte">Matte precomp</button></div></div>
                 <div class="curve" data-curve="trans.in.curve" data-title="Transition in easing"></div>
                 <button class="btn" data-transshuffle="in" >Shuffle randomness</button></div></details>
@@ -1339,7 +1342,10 @@ body.nohelp .qm{display:none}
                 <label class="check" title="The transition grows from under the line, so the walking blocks stay on top"><input type="checkbox" data-bind="trans.out.behind"> Behind the line</label>
                 <label class="check" title="The transition sits on the scene's grid and travels with the camera, like the blocks (camera follow)"><input type="checkbox" data-bind="trans.out.world"> Moves with the blocks</label>
                 <label class="check" title="A full-frame solid in the transition colour under the tiles, so no grid lines show once the frame is covered"><input type="checkbox" data-bind="trans.out.solid"> Solid under the tiles</label>
-                <div class="field" data-show="trans.out.solid=true"><span class="lbl scrub" title="Frames the solid takes to fade">Solid fade</span><div class="num"><input type="number" data-bind="trans.out.solidFade" min="1" max="120" step="1"><span class="unit">fr</span></div></div>
+                <div class="field2" data-show="trans.out.solid=true">
+                  <div class="field"><span class="lbl scrub" title="Frames after the transition starts when the solid fades on (empty = automatic: after every block is on). Or drag the white diamond on the Transitions row.">Solid at</span><div class="num"><input type="number" data-bind="trans.out.solidAt" data-zero="auto" min="-600" max="2000" step="1"><span class="unit">fr</span></div></div>
+                  <div class="field"><span class="lbl scrub" title="Frames the solid takes to fade">Fade</span><div class="num"><input type="number" data-bind="trans.out.solidFade" min="1" max="120" step="1"><span class="unit">fr</span></div></div>
+                </div>
                 <div class="field stack"><span class="lbl">Build as</span><div class="seg" data-seg="trans.out.output"><button data-v="blocks">Blocks in the comp</button><button data-v="matte">Matte precomp</button></div></div>
                 <div class="curve" data-curve="trans.out.curve" data-title="Transition out easing"></div>
                 <button class="btn" data-transshuffle="out" >Shuffle randomness</button></div></details>
