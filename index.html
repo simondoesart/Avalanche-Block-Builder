@@ -8553,7 +8553,13 @@ async function init(){
     $('#compTag').textContent='browser preview';
     if(inWeb){
       await soon(libLoad(),5000);
-      try{const o=JSON.parse(webGet('autosave')||'null');if(o&&o.doc){setDoc(o.doc);U.step=savedStep(o);}}catch(e){}
+      /* crash guard: if the last load never got going (froze or crashed while opening the saved scene), start fresh
+         and keep that scene in Layouts as "Recovered" instead of loading it straight back into the freeze */
+      const wasBooting=webGet('booting'), raw=webGet('autosave');
+      if(wasBooting&&raw){ try{const o=JSON.parse(raw); if(o&&o.doc){ U.lib=U.lib||[]; U.lib.unshift({id:Date.now(),name:'Recovered '+new Date().toLocaleString(),date:Date.now(),thumb:'',doc:o.doc}); libSaveStore(); }}catch(e){}
+        webSet('autosave',''); setTimeout(()=>toast('The last session didn’t load properly, so this one started fresh. Your scene is saved in Layouts as “Recovered”.','err'),600); }
+      else { webSet('booting',String(Date.now())); try{const o=JSON.parse(raw||'null');if(o&&o.doc){setDoc(o.doc);U.step=savedStep(o);}}catch(e){} }
+      setTimeout(()=>{ try{localStorage.removeItem('gridblocks.booting');}catch(e){} },4000);
       try{const pr=JSON.parse(webGet('prefs')||'{}');if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.mb===false)U.mbPrev=false;if(pr.adv)setAdv(true);if(pr.subs){U.subs=pr.subs;applySubs();}if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
       const dl=$('#btnPanel'); if(dl) dl.hidden=false;
     }
