@@ -1217,6 +1217,12 @@ body.nohelp .qm{display:none}
               <div id="zoomPts" style="display:grid;gap:5px"></div>
               <div class="row-btns"><button class="btn" id="btnZoomPt">+ Add point</button></div>
               <div class="curve" data-curve="anim.zm.curve" data-title="Zoom easing · between every pair of points"></div>
+              <div class="field stack"><span class="lbl" title="What the zoom holds still">Zoom on</span><div class="seg" data-seg="anim.zm.focus"><button data-v="frame" title="A point in the frame stays put while everything zooms around it">A point in the frame</button><button data-v="block" title="The newest block (at the zoom's furthest point) glides to the chosen spot as it zooms">The newest block</button></div></div>
+              <div class="field"><span class="lbl" title="Where it sits in the frame">Position</span><div class="posgrid" id="zoomPos"><button data-zpos="15,15" title="Top left"><i></i></button><button data-zpos="50,15" title="Top"><i></i></button><button data-zpos="85,15" title="Top right"><i></i></button><button data-zpos="15,50" title="Left"><i></i></button><button data-zpos="50,50" title="Centre"><i></i></button><button data-zpos="85,50" title="Right"><i></i></button><button data-zpos="15,85" title="Bottom left"><i></i></button><button data-zpos="50,85" title="Bottom"><i></i></button><button data-zpos="85,85" title="Bottom right"><i></i></button></div></div>
+              <div class="field2">
+                <div class="field"><span class="lbl scrub" title="0 = left edge, 100 = right edge">X</span><div class="num"><input type="number" data-bind="anim.zm.ax" min="-50" max="150" step="1"><span class="unit">%</span></div></div>
+                <div class="field"><span class="lbl scrub" title="0 = top, 100 = bottom">Y</span><div class="num"><input type="number" data-bind="anim.zm.ay" min="-50" max="150" step="1"><span class="unit">%</span></div></div>
+              </div>
               <label class="check" title="Off: gaps between blocks, grid/rule lines and text stay the same size on screen while the view zooms"><input type="checkbox" data-bind="anim.zm.scaleAll"> Scale the whole scene (gaps, lines and text zoom too)</label>
             </div>
             <div hidden><div id="zoomList"></div><button id="btnAddZoom"></button><div class="curve" data-curve="anim.zoomCurve" data-title="Grid change easing" hidden></div></div>
@@ -2326,6 +2332,7 @@ function GB_build(d){
         for(i=0;i<fillLayers.length;i++) keepText(fillLayers[i]);
       }
       if(zoom && A.zoom.pan) GB_keys(GB_xf(zoom).property("ADBE Position"),A.zoom.pan,fps);
+      if(zoom && A.zoom.anchor) GB_keys(GB_xf(zoom).property("ADBE Anchor Point"),A.zoom.anchor,fps);
       out.push(A.label);
     }
     if(d.lab){GB_labScreen(main,d.lab,fps);}
@@ -2428,7 +2435,7 @@ const DEF={
   anim:{seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.42,0,0.58,1],curvePh:null,sceneEase:{on:true,hd:null,holdH:null,onAt:null,holdAt:null,start:40,land:75,landOut:50,leaveIn:50,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
-        zoomOn:false,zm:{pts:null,in:24,out:96,from:100,to:140,curve:[0.65,0,0.35,1],scaleAll:false,back:false,backIn:180,backOut:228,backCurve:[0.65,0,0.35,1]},extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
+        zoomOn:false,zm:{pts:null,focus:'frame',ax:50,ay:50,in:24,out:96,from:100,to:140,curve:[0.65,0,0.35,1],scaleAll:false,back:false,backIn:180,backOut:228,backCurve:[0.65,0,0.35,1]},extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
   lab:{flicker:{on:false,frames:8,seed:3},
        pulse:{on:false,scale:1.35,len:18,width:2,color:'#E6212F'},
        trail:{on:false,count:3,length:1.2,len:12,width:2,color:'#A2AFB2'},
@@ -4051,6 +4058,7 @@ function zoomKeys(){
   return K.length>=2&&K.some(k=>k[1]!==K[0][1])?K:[];
 }
 function renderZoomPts(){
+  $$('#zoomPos [data-zpos]').forEach(b=>{const v=b.dataset.zpos.split(',').map(Number);b.classList.toggle('on',+D.anim.zm.ax===v[0]&&+D.anim.zm.ay===v[1]);});
   const el=$('#zoomPts'); if(!el) return; const a=document.activeElement; if(a&&el.contains(a)) return;
   const pts=zoomPts();
   el.innerHTML=pts.map((p,i)=>`<div class="zprow"><span class="lbl">f</span><div class="num"><input type="number" data-zp="${i}:f" value="${p.f}" step="1"></div><span class="lbl">zoom</span><div class="num"><input type="number" data-zp="${i}:v" value="${Math.round(p.v)}" min="5" max="2000" step="5"><span class="unit">%</span></div><button class="btn ghost" data-zpdel="${i}" title="Remove this point" ${pts.length<=2?'disabled':''}>×</button></div>`).join('');
@@ -4059,6 +4067,19 @@ function applyZoom(P){
   const K=zoomKeys(); if(!K.length) return;
   P.zs=clip0(K); P.sMin=Math.min(P.sMin||1,...K.map(k=>k[1]/100));
   P.end=Math.max(P.end,K[K.length-1][0]+1);
+  // where the zoom holds still: a point in the frame, or a block that ends up at that point
+  const Z=D.anim.zm, G=geom(), T=[G.W*clamp(+Z.ax||50,-50,150)/100, G.H*clamp(+Z.ay||50,-50,150)/100];
+  P.zc=[]; P.pan=[];
+  if(Z.focus!=='block'||!P.seq.length){ P.zc=[[0,T,'h']]; return; }
+  // the block: the newest one on screen when the zoom starts
+  let ext=K[0]; K.forEach(k=>{ if(Math.abs(k[1]-100)>Math.abs(ext[1]-100)) ext=k; });
+  let bi=0; const tPick=K[0][0]+1; P.T.forEach((t,i)=>{ if(t<=tPick&&!P.seq[i].stack) bi=i; });   // the newest block on screen when the zoom starts
+  const b=P.seq[bi], q=cellRect(G,b.c,b.r,b.w,b.h), wc=[q.x+q.w/2,q.y+q.h/2], sE=ext[1]/100;
+  const f0=K[0][0], f1=Math.max(K[K.length-1][0],f0+1);
+  for(let t=f0;t<=f1;t++){
+    const off=ev(P.cam,t,[0,0]), p=[wc[0]+off[0],wc[1]+off[1]], sc=ev(P.zs,t,100)/100, k=Math.abs(sE-1)<1e-6?0:clamp((sc-1)/(sE-1),0,1);
+    P.zc.push([t,[r3(p[0]),r3(p[1])],'l']); P.pan.push([t,[r3((T[0]-p[0])*k),r3((T[1]-p[1])*k)],'l']);
+  }
 }
 function plan(G){
   syncSceneEase(G);
@@ -5668,7 +5689,7 @@ function animState(G){
   const P=plan(G);
   if(STEPS[U.step].id==='layout'&&!U.playing&&!U.preview) return {P,live:false,t:0,off:[0,0],s:1,pan:[0,0]};   // Blocks step: see every block, wherever the playhead is
   if(U.t===null) return {P,live:false,t:0,off:[0,0],s:1,pan:[0,0]};
-  return {P,live:true,t:U.t,off:ev(P.cam,U.t,[0,0]),s:ev(P.zs,U.t,100)/100,pan:ev(P.pan,U.t,[0,0])};
+  return {P,live:true,t:U.t,off:ev(P.cam,U.t,[0,0]),s:ev(P.zs,U.t,100)/100,pan:ev(P.pan,U.t,[0,0]),zc:P.zc&&P.zc.length?ev(P.zc,U.t,null):null};
 }
 
 /* ------------------------------------------------------------------ canvas + view */
@@ -5763,7 +5784,7 @@ function renderFrame(target,overlays){
   if(overlays) updBackBtn(G);
   } finally { ctx=saved; }
 }
-function zoomXf(g,G,s,pan){if(pan&&(pan[0]||pan[1]))g.translate(pan[0],pan[1]);if(s!==1){g.translate(G.W/2,G.H/2);g.scale(s,s);g.translate(-G.W/2,-G.H/2);}}
+function zoomXf(g,G,s,pan,c){if(pan&&(pan[0]||pan[1]))g.translate(pan[0],pan[1]);if(s!==1){const cx=c?c[0]:G.W/2,cy=c?c[1]:G.H/2;g.translate(cx,cy);g.scale(s,s);g.translate(-cx,-cy);}}
 function blockState(K,t,q){
   const st={op:1,tp:1,sx:1,sy:1,x:q.x,y:q.y,w:q.w,h:q.h};
   if(!K) return st;
@@ -5873,7 +5894,7 @@ function drawWorld(g,G,o){
   if(o.inside) drawMediaBg(g,G);
   else if(o.inside){g.save();g.fillStyle=checker||'#222';g.scale(1/sc,1/sc);g.fillRect(0,0,G.W*sc,G.H*sc);g.restore();}
   const pan=live?A.pan:[0,0];
-  g.save(); zoomXf(g,G,s,pan);
+  g.save(); zoomXf(g,G,s,pan,live?A.zc:null);
   // which cells to draw
   // which cells to draw: whatever is in view (the grid goes on forever), coarser when zoomed far out
   let c0,c1,r0,r1;
@@ -5969,7 +5990,7 @@ function drawOverlays(G,A){
     ctx.setLineDash([6/sc,4/sc]); ctx.lineWidth=2/sc; ctx.strokeStyle=er?'#ffb44d':'#fff'; ctx.strokeRect(q.x,q.y,q.w,q.h); ctx.setLineDash([]);
     pill(`${er?'Unmerge ':''}${ss.w} × ${ss.h}`,q.x+q.w/2,q.y+q.h/2,sc,'rgba(0,0,0,.78)','#fff',true);
   }
-  ctx.save(); zoomXf(ctx,G,s,live?A.pan:null);
+  ctx.save(); zoomXf(ctx,G,s,live?A.pan:null,live?A.zc:null);
   const ssc=sc*s;
   const bad=U.drag&&(U.drag.type==='move'||U.drag.type==='resize')&&U.drag.bad;
   const list=live||(A&&A.P.lineShift)?A.P.seq:(A?D.blocks.filter(b=>valid(b,G)).concat(A.P.seq.filter(b=>b.virtual)):D.blocks.filter(b=>valid(b,G)));
@@ -6005,7 +6026,7 @@ function drawOverlays(G,A){
     ctx.lineWidth=2/sc; ctx.strokeStyle='#FFC21A'; ctx.strokeRect(0,0,G.W,G.H);
     ctx.setLineDash([6/sc,5/sc]); ctx.lineWidth=1/sc; ctx.strokeStyle='rgba(255,194,26,.7)'; ctx.strokeRect(G.W*.05,G.H*.05,G.W*.9,G.H*.9); ctx.setLineDash([]);
     pill('FRAME',8/sc,-24/sc,sc,'#FFC21A','#000',false); pill('90% safe',G.W*.05+6/sc,G.H*.05+6/sc,sc,'rgba(0,0,0,.6)','#FFC21A',false);
-    ctx.restore(); ctx.save(); zoomXf(ctx,G,s,live?A.pan:null);
+    ctx.restore(); ctx.save(); zoomXf(ctx,G,s,live?A.pan:null,live?A.zc:null);
   }
   ctx.restore();
   // resize handles (single selection, select tool, editing)
@@ -7361,6 +7382,7 @@ function renderZoomList(P){
     </div>`).join('')
     :'<div class="note">None yet. Add one to zoom the grid in or out as the blocks build. More rows means smaller squares and more of the grid on screen.</div>';
 }
+($('#zoomPos')||{addEventListener(){}}).addEventListener('click',e=>{const b=e.target.closest('[data-zpos]');if(!b)return;pushHist(true);const v=b.dataset.zpos.split(',').map(Number);D.anim.zm.ax=v[0];D.anim.zm.ay=v[1];syncInputs(true);refresh();});
 ($('#btnZoomPt')||{}).onclick=()=>{ pushHist(true); const P2=ensureZoomPts().slice().sort((a,b)=>a.f-b.f), l=P2[P2.length-1]; P2.push({f:l.f+24,v:l.v}); D.anim.zm.pts=P2; $('#zoomPts').innerHTML=''; refresh(); };
 ($('#zoomPts')||{addEventListener(){}}).addEventListener('input',e=>{ const t=e.target, k=t.dataset&&t.dataset.zp; if(!k) return; const [i,f]=k.split(':'), v=parseFloat(t.value); if(isNaN(v)) return;
   if(!U._zpEdit){pushHist(true);U._zpEdit=true;} const P2=ensureZoomPts().slice().sort((a,b)=>a.f-b.f); P2[+i][f]=f==='v'?clamp(v,5,2000):Math.round(v); D.anim.zm.pts=P2; planCache.k=''; render(); drawDope(); });
@@ -8047,7 +8069,10 @@ function payload(){
     anim:animOn?Object.assign({label:labels[A.mode]+(zoomOn?' + grid zoom':''),camName:A.mode==='camera'?'GB · Camera':'GB · Conveyor',
       cam:P.cam.map(rel), needCam:P.cam.length>0||zoomOn,
       wrap:camMode?{px:r3(G.p),py:(A.axis==='xy'||zoomOn)?r3(G.p):0,cx:zoomOn?CX:0,cy:zoomOn?CY:0}:null,
-      zoom:zoomOn?{keep:!(A.zm&&A.zm.scaleAll),gut:r3(G.gut),keys:P.zs.map(k=>[k[0],[k[1],k[1]],k[2],k[3]]),cx:CX,cy:CY,pan:P.pan.length?P.pan.map(k=>[k[0],[r3(k[1][0]+CX),r3(k[1][1]+CY)],k[2],k[3]]):null}:null,
+      zoom:zoomOn?(()=>{ const zc=P.zc&&P.zc.length?P.zc:[[0,[CX,CY],'h']], c0=zc[0][1], moving=zc.length>1;
+        return {keep:!(A.zm&&A.zm.scaleAll),gut:r3(G.gut),keys:P.zs.map(k=>[k[0],[k[1],k[1]],k[2],k[3]]),cx:r3(c0[0]),cy:r3(c0[1]),
+          anchor:moving?zc.map(k=>[k[0],[r3(k[1][0]-c0[0]),r3(k[1][1]-c0[1])],'l']):null,
+          pan:moving?zc.map((k,i)=>{const pn=P.pan[i]?P.pan[i][1]:[0,0];return [k[0],[r3(k[1][0]+pn[0]),r3(k[1][1]+pn[1])],'l'];}):(P.pan.length?P.pan.map(k=>[k[0],[r3(k[1][0]+c0[0]),r3(k[1][1]+c0[1])],k[2],k[3]]):null)}; })():null,
       pan:P.pan.length?P.pan:null},camRig||{}):null
   };
 }

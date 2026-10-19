@@ -886,6 +886,7 @@ function GB_build(d){
         for(i=0;i<fillLayers.length;i++) keepText(fillLayers[i]);
       }
       if(zoom && A.zoom.pan) GB_keys(GB_xf(zoom).property("ADBE Position"),A.zoom.pan,fps);
+      if(zoom && A.zoom.anchor) GB_keys(GB_xf(zoom).property("ADBE Anchor Point"),A.zoom.anchor,fps);
       out.push(A.label);
     }
     if(d.lab){GB_labScreen(main,d.lab,fps);}
