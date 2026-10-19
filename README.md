@@ -328,3 +328,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 
 ### v3.38 — No hold = straight through
 - With Hold off, both settles are 0 (and their fields are hidden), and the camera runs straight from the build into the walk-off without slowing down in between; the first walk block follows the last build block on the same rhythm.
+
+### v3.39 — Zoom follows the line
+- Zoom on **Follow the line** (new default): the zoom pivots on the newest block (smoothed, so arrivals glide) and eases it toward the chosen spot as the zoom deepens — the walking line stays in view the whole time it's zoomed, through the build and the walk-off. Also **One block** and **Frame point**.
+- **Quick timing**: During the build · For the hold · The walk-off · Whole scene — sets the zoom points from the scene's phases.
