@@ -332,3 +332,10 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.39 — Zoom follows the line
 - Zoom on **Follow the line** (new default): the zoom pivots on the newest block (smoothed, so arrivals glide) and eases it toward the chosen spot as the zoom deepens — the walking line stays in view the whole time it's zoomed, through the build and the walk-off. Also **One block** and **Frame point**.
 - **Quick timing**: During the build · For the hold · The walk-off · Whole scene — sets the zoom points from the scene's phases.
+
+### v3.40 — Transitions v2
+- Transitions are back in the rail. Each of In / Out starts with a **preset grid** (with little previews):
+  - *Grow out of the walk*: **Line flood** (spreads out from the line), **Retrace** (follows the order the line was walked, then spills), **Extrude** (the line grows up and down while sweeping forward), **Ribbons** (stacked echoes of the line), **Head burst** (from the newest block), **Walk sweep**.
+  - *Basics*: Wipe, Rows, Diagonal, Iris, Checker, Venetian, Scatter, Soft fade.
+- The walk-based patterns use the line exactly where it is on screen when the transition happens (Out: as it starts; In: once the scene is up), on the scene's own grid.
+- **Customize** (twirl-down): every pattern, **Randomness** (0 = clean, 100 = loose), length, per-block length, block size, appear style, direction, colours, cover gutters, matte precomp, easing.

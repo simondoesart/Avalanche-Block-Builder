@@ -496,6 +496,15 @@ button.mini:hover{color:var(--text)}
 .posgrid button.on i{background:var(--accent)}
 .zprow{display:grid;grid-template-columns:auto 1fr auto 1fr auto;gap:6px;align-items:center}
 .zprow .lbl{font-size:11px;color:var(--muted)}
+.tpre{display:grid;gap:6px}
+.tpre .tph{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-top:2px}
+.tpre .tpg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.tpre button{display:grid;gap:3px;text-align:left;padding:6px;border:1px solid var(--line);background:var(--field);border-radius:8px;color:var(--text);cursor:pointer}
+.tpre button:hover{border-color:var(--line2)}
+.tpre button.on{border-color:var(--accent);background:var(--accentA)}
+.tpre button b{font-size:11px;font-weight:600}
+.tpre button small{font-size:9.5px;color:var(--dim)}
+.tpre svg{border-radius:4px;background:#161618}
 .checkgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 10px}
 .num input[type=number]{cursor:ns-resize}
 .num input[type=number]:focus{cursor:text}
@@ -1269,18 +1278,20 @@ body.nohelp .qm{display:none}
           </div>
           <div class="group" data-ctx="trans-in">
             <div class="group-h">Transition in</div>
+            <div class="tpre" data-tk="in"></div>
             <div class="layer" data-layer="trans.in.on">
               <label class="switch"><input type="checkbox" data-bind="trans.in.on"><span></span></label>
               <div><div class="ln">Transition in</div><div class="ls">Starts covered, then clears to reveal</div></div>
               <label class="colorbtn" data-swatch="trans.in.color"><input type="color" data-bind="trans.in.color"></label>
-              <div class="extra" data-show="trans.in.on=true">
+              <div class="extra" data-show="trans.in.on=true"><details class="sub" data-sub="tr-in-cust"><summary>Customize <span class="note">pattern, timing, style</span></summary><div class="subbody">
                 <div class="field stack"><span class="lbl">Blocks</span><div class="seg" data-seg="trans.in.mode"><button data-v="clear">Clear away (reveal)</button><button data-v="build">Build up (cover)</button></div></div>
                 <div class="field"><span class="lbl scrub">Starts at</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="trans.in.start" min="-9999" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
                 <div class="field2">
                   <div class="field"><span class="lbl scrub" title="Frames from the first block to the last">Length</span><div class="num"><input type="number" data-bind="trans.in.dur" min="1" max="9999" step="1"><span class="unit">fr</span></div></div>
                   <div class="field"><span class="lbl scrub" title="Frames each block takes">Each</span><div class="num"><input type="number" data-bind="trans.in.len" min="1" max="600" step="1"><span class="unit">fr</span></div></div>
                 </div>
-                <div class="field stack"><span class="lbl">Pattern</span><div class="seg" data-seg="trans.in.pattern"><button data-v="walk" title="Sweeps the way the line walks, on the scene's own grid, with a stepped block-shaped front">Walk</button><button data-v="sweep">Sweep</button><button data-v="diag">Diagonal</button><button data-v="rows">Rows</button><button data-v="center">Centre out</button><button data-v="random">Random</button></div></div>
+                <div class="field stack"><span class="lbl">Pattern</span><div class="seg" data-seg="trans.in.pattern"><button data-v="flood">Flood</button><button data-v="trail">Retrace</button><button data-v="extrude">Extrude</button><button data-v="ribbons">Ribbons</button><button data-v="head">Head</button><button data-v="walk">Walk</button><button data-v="sweep">Wipe</button><button data-v="rows">Rows</button><button data-v="diag">Diagonal</button><button data-v="center">Iris</button><button data-v="corner">Corner</button><button data-v="checker">Checker</button><button data-v="venetian">Venetian</button><button data-v="random">Scatter</button></div></div>
+                <div class="field"><span class="lbl scrub" title="Breaks up the order: 0 = clean, 100 = loose and organic">Randomness</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="trans.in.jitter" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
                 <div class="field stack"><span class="lbl">Direction</span><div class="seg" data-seg="trans.in.dir"><button data-v="fwd">Forward</button><button data-v="rev">Reverse</button></div></div>
                 <div class="field stack"><span class="lbl">Each block</span><div class="seg" data-seg="trans.in.appear"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe</button><button data-v="scale">Scale</button></div></div>
                 <div class="field2">
@@ -1291,17 +1302,18 @@ body.nohelp .qm{display:none}
                 <label class="check"><input type="checkbox" data-bind="trans.in.cover"> Cover the gutters (solid, no grid lines)</label>
                 <div class="field stack"><span class="lbl">Build as</span><div class="seg" data-seg="trans.in.output"><button data-v="blocks">Blocks in the comp</button><button data-v="matte">Matte precomp</button></div></div>
                 <div class="curve" data-curve="trans.in.curve" data-title="Transition in easing"></div>
-                <button class="btn" data-transshuffle="in" data-show="trans.in.pattern=random">Shuffle order</button>
+                <button class="btn" data-transshuffle="in" >Shuffle randomness</button></div></details>
               </div>
             </div>
           </div>
           <div class="group" data-ctx="trans-out">
             <div class="group-h">Transition out</div>
+            <div class="tpre" data-tk="out"></div>
             <div class="layer" data-layer="trans.out.on">
               <label class="switch"><input type="checkbox" data-bind="trans.out.on"><span></span></label>
               <div><div class="ln">Transition out</div><div class="ls">Covers the frame at the end</div></div>
               <label class="colorbtn" data-swatch="trans.out.color"><input type="color" data-bind="trans.out.color"></label>
-              <div class="extra" data-show="trans.out.on=true">
+              <div class="extra" data-show="trans.out.on=true"><details class="sub" data-sub="tr-out-cust"><summary>Customize <span class="note">pattern, timing, style</span></summary><div class="subbody">
                 <div class="field stack"><span class="lbl">Blocks</span><div class="seg" data-seg="trans.out.mode"><button data-v="clear">Clear away (reveal)</button><button data-v="build">Build up (cover)</button></div></div>
                 <label class="check"><input type="checkbox" data-bind="trans.out.atEnd"> Finish when the comp ends</label>
                 <div class="field" data-show="trans.out.atEnd=false"><span class="lbl scrub">Starts at</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="trans.out.start" min="-9999" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
@@ -1309,7 +1321,8 @@ body.nohelp .qm{display:none}
                   <div class="field"><span class="lbl scrub" title="Frames from the first block to the last">Length</span><div class="num"><input type="number" data-bind="trans.out.dur" min="1" max="9999" step="1"><span class="unit">fr</span></div></div>
                   <div class="field"><span class="lbl scrub" title="Frames each block takes">Each</span><div class="num"><input type="number" data-bind="trans.out.len" min="1" max="600" step="1"><span class="unit">fr</span></div></div>
                 </div>
-                <div class="field stack"><span class="lbl">Pattern</span><div class="seg" data-seg="trans.out.pattern"><button data-v="walk" title="Sweeps the way the line walks, on the scene's own grid, with a stepped block-shaped front">Walk</button><button data-v="sweep">Sweep</button><button data-v="diag">Diagonal</button><button data-v="rows">Rows</button><button data-v="center">Centre out</button><button data-v="random">Random</button></div></div>
+                <div class="field stack"><span class="lbl">Pattern</span><div class="seg" data-seg="trans.out.pattern"><button data-v="flood">Flood</button><button data-v="trail">Retrace</button><button data-v="extrude">Extrude</button><button data-v="ribbons">Ribbons</button><button data-v="head">Head</button><button data-v="walk">Walk</button><button data-v="sweep">Wipe</button><button data-v="rows">Rows</button><button data-v="diag">Diagonal</button><button data-v="center">Iris</button><button data-v="corner">Corner</button><button data-v="checker">Checker</button><button data-v="venetian">Venetian</button><button data-v="random">Scatter</button></div></div>
+                <div class="field"><span class="lbl scrub" title="Breaks up the order: 0 = clean, 100 = loose and organic">Randomness</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="trans.out.jitter" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
                 <div class="field stack"><span class="lbl">Direction</span><div class="seg" data-seg="trans.out.dir"><button data-v="fwd">Forward</button><button data-v="rev">Reverse</button></div></div>
                 <div class="field stack"><span class="lbl">Each block</span><div class="seg" data-seg="trans.out.appear"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe</button><button data-v="scale">Scale</button></div></div>
                 <div class="field2">
@@ -1320,7 +1333,7 @@ body.nohelp .qm{display:none}
                 <label class="check"><input type="checkbox" data-bind="trans.out.cover"> Cover the gutters (solid, no grid lines)</label>
                 <div class="field stack"><span class="lbl">Build as</span><div class="seg" data-seg="trans.out.output"><button data-v="blocks">Blocks in the comp</button><button data-v="matte">Matte precomp</button></div></div>
                 <div class="curve" data-curve="trans.out.curve" data-title="Transition out easing"></div>
-                <button class="btn" data-transshuffle="out" data-show="trans.out.pattern=random">Shuffle order</button>
+                <button class="btn" data-transshuffle="out" >Shuffle randomness</button></div></details>
               </div>
             </div>
           </div>
@@ -2417,8 +2430,8 @@ const DEF={
         rulesOn:false,rule:'#3B484B',ruleW:1,ruleEvery:4,ruleStart:1,ruleLayer:'top',ruleParallax:100,ruleEnd:'stay',ruleFadeAt:0,ruleFadeLen:24},
   block:{w:3,h:1,color:'#E6212F',color2:'#A2AFB2',color3:'#0061E2',color4:'#FF7F7B',upColor:'#FF7F7B',downColor:'#A2AFB2',ncol:2,sync:true,mix:'single',mixPct:25},
   palette:PALETTE.slice(),
-  trans:{in:{on:false,mode:'clear',start:0,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:3},
-         out:{on:false,mode:'build',start:72,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:5}},
+  trans:{in:{on:false,mode:'clear',start:0,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:3,jitter:0,preset:'flood'},
+         out:{on:false,mode:'build',start:72,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:5,jitter:0,preset:'flood'}},
   fill:{on:true,seed:7,density:'medium',family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:8,leading:100,caps:'upper',
         textColor:'#121212',outlinePct:0,outlineW:2,skipText:true,textPct:60,patternPct:40,dotSpacing:8,iconPct:20,iconSize:24,iconLib:'pixel',buildDur:12,graphW:1.5,look:'custom',
         mix:{text:45,graph:30,combo:25},graphs:{line:true,step:false,area:true,bars:true,hist:false,candles:true,meter:true,heat:true,network:true,wave:false,depth:false},
@@ -2461,7 +2474,7 @@ const U={step:0,ctx:null,ctab:'hud',dopeSel:[],mbPrev:true,tool:'select',sel:nul
 const SI=id=>STEPS.findIndex(s=>s.id===id);
 /* steps shown while we workshop the UX one step at a time — add ids to bring a step back.
    ?steps=all in the URL (or localStorage gridblocks.steps='all') shows everything */
-const VISIBLE_STEPS=['grid','layout','animate','content'];
+const VISIBLE_STEPS=['grid','layout','animate','content','transitions'];
 const stepVisible=i=>{try{if(/[?&]steps=all/.test(location.search||'')||localStorage.getItem('gridblocks.steps')==='all')return true;}catch(e){} return !!STEPS[i]&&VISIBLE_STEPS.indexOf(STEPS[i].id)>=0;};
 const nextVisible=(i,d)=>{for(let j=i+d;j>=0&&j<STEPS.length;j+=d) if(stepVisible(j)) return j; return -1;};
 const STEPS=[
@@ -4693,6 +4706,51 @@ function computePlan(G){
   return P;
 }
 /* ------------------------------------------------------------------ transitions (screen-space, fill the frame) */
+/* the walking line on screen at the moment a transition happens: 'in' = once the scene has started, 'out' = as it goes */
+function transLine(G,k,T,compF){
+  if(D.anim.mode==='static'){ return D.blocks.map(b=>cellRect(G,b.c,b.r,b.w,b.h)); }
+  const P=plan(G); if(!P.seq.length) return [];
+  const dur=Math.max(1,Math.round(T.dur)||24), st=k==='out'&&T.atEnd?compF-dur:Math.round(+T.start||0);
+  const tr=k==='out'?st:Math.max(st+dur,(P.T[0]||0)+1), off=ev(P.cam,tr,[0,0]), out=[];
+  P.seq.forEach((b,i)=>{ if(P.T[i]>tr) return; if(P.exitT&&P.exitT[i]!=null&&P.exitT[i]<tr) return; const q=cellRect(G,b.c,b.r,b.w,b.h); out.push({x:q.x+off[0],y:q.y+off[1],w:q.w,h:q.h}); });
+  if(!out.length){ const b=P.seq[0], q=cellRect(G,b.c,b.r,b.w,b.h); out.push({x:q.x+off[0],y:q.y+off[1],w:q.w,h:q.h}); }
+  // only what's on (or near) the screen
+  return out.filter(q=>q.x+q.w>-G.W*.25&&q.x<G.W*1.25);
+}
+const TRANS_PRESETS=[
+  {id:'flood',name:'Line flood',sub:'spreads out from the line',g:'line',set:{pattern:'flood',dur:28,len:8,appear:'wipe',jitter:10,dir:'fwd'}},
+  {id:'trail',name:'Retrace',sub:'follows the walk, then spills',g:'line',set:{pattern:'trail',dur:32,len:8,appear:'wipe',jitter:0,dir:'fwd'}},
+  {id:'extrude',name:'Extrude',sub:'the line grows up and down',g:'line',set:{pattern:'extrude',dur:26,len:7,appear:'wipe',jitter:0,dir:'fwd'}},
+  {id:'ribbons',name:'Ribbons',sub:'echoes of the line stack out',g:'line',set:{pattern:'ribbons',dur:30,len:8,appear:'wipe',jitter:0,dir:'fwd'}},
+  {id:'head',name:'Head burst',sub:'bursts from the newest block',g:'line',set:{pattern:'head',dur:24,len:6,appear:'scale',jitter:15,dir:'fwd'}},
+  {id:'walk',name:'Walk sweep',sub:'sweeps the way it walks',g:'line',set:{pattern:'walk',dur:24,len:8,appear:'wipe',jitter:0,dir:'fwd'}},
+  {id:'wipe',name:'Wipe',sub:'column by column',g:'basic',set:{pattern:'sweep',dur:20,len:8,appear:'wipe',jitter:0,dir:'fwd'}},
+  {id:'rows',name:'Rows',sub:'top to bottom',g:'basic',set:{pattern:'rows',dur:20,len:8,appear:'wipe',jitter:0,dir:'fwd'}},
+  {id:'diag',name:'Diagonal',sub:'corner to corner',g:'basic',set:{pattern:'diag',dur:22,len:8,appear:'wipe',jitter:0,dir:'fwd'}},
+  {id:'iris',name:'Iris',sub:'from the centre',g:'basic',set:{pattern:'center',dur:22,len:8,appear:'scale',jitter:0,dir:'fwd'}},
+  {id:'checker',name:'Checker',sub:'two passes',g:'basic',set:{pattern:'checker',dur:22,len:6,appear:'cut',jitter:0,dir:'fwd'}},
+  {id:'venetian',name:'Venetian',sub:'rows from alternate sides',g:'basic',set:{pattern:'venetian',dur:22,len:8,appear:'wipe',jitter:0,dir:'fwd'}},
+  {id:'scatter',name:'Scatter',sub:'random blocks',g:'basic',set:{pattern:'random',dur:22,len:4,appear:'cut',jitter:0,dir:'fwd'}},
+  {id:'fade',name:'Soft fade',sub:'blocks fade in a wave',g:'basic',set:{pattern:'diag',dur:28,len:14,appear:'fade',jitter:20,dir:'fwd'}}
+];
+function applyTransPreset(k,id){ const pr=TRANS_PRESETS.find(p=>p.id===id); if(!pr) return; const T=D.trans[k];
+  Object.assign(T,pr.set,{preset:id,on:true}); if(T.mode==null) T.mode=k==='in'?'clear':'build'; }
+/* a little preview of a preset: a mini grid shaded by when each tile goes */
+function transThumb(id){
+  const pr=TRANS_PRESETS.find(p=>p.id===id)||TRANS_PRESETS[0], pat=pr.set.pattern, C=12, R=7, rnd=rng(id.length*977+7), line=[];
+  let r=3; for(let c=1;c<9;c++){ line.push([c,r]); const u=rnd(); r=clamp(r+(u<.33?-1:u<.66?1:0),1,5); }
+  const v=[]; for(let y=0;y<R;y++)for(let x=0;x<C;x++){ let d;
+    const near=Math.min(...line.map(q=>Math.max(Math.abs(q[0]-x),Math.abs(q[1]-y)))), ni=line.reduce((m,q,i)=>{const dd=Math.max(Math.abs(q[0]-x),Math.abs(q[1]-y));return dd<m.d?{d:dd,i}:m;},{d:1e9,i:0}).i, ly=(line.find(q=>q[0]===x)||line[x<1?0:line.length-1])[1], hd=line[line.length-1];
+    if(pat==='flood') d=near+rnd()*.5; else if(pat==='trail') d=ni*1.4+near; else if(pat==='extrude') d=Math.abs(y-ly)*1.3+x*.35; else if(pat==='ribbons') d=x*.6+Math.abs(Math.round(y-ly))*2.2;
+    else if(pat==='head') d=Math.hypot(x-hd[0],y-hd[1]); else if(pat==='walk') d=x+(y%3)*.8; else if(pat==='rows') d=y; else if(pat==='diag') d=x+y; else if(pat==='center') d=Math.hypot(x-5.5,y-3);
+    else if(pat==='checker') d=((x+y)%2)*12+x; else if(pat==='venetian') d=(y%2?C-x:x)+y*.3; else if(pat==='random') d=rnd(); else d=x;
+    v.push(d); }
+  const a=Math.min(...v), b=Math.max(...v), cw=6, ch=6, isLine=pr.g==='line';
+  let h=`<svg viewBox="0 0 ${C*cw} ${R*ch}" width="100%" height="34" preserveAspectRatio="none" shape-rendering="crispEdges">`;
+  v.forEach((d,i)=>{const x=i%C,y=Math.floor(i/C),u=b>a?(d-a)/(b-a):0; h+=`<rect x="${x*cw+.5}" y="${y*ch+.5}" width="${cw-1}" height="${ch-1}" fill="rgb(${Math.round(230-150*u)},${Math.round(33+20*u)},${Math.round(47+30*u)})" opacity="${(1-u*.8).toFixed(2)}"/>`;});
+  if(isLine) line.forEach(q=>{h+=`<rect x="${q[0]*cw+1.5}" y="${q[1]*ch+1.5}" width="${cw-3}" height="${ch-3}" fill="#fff" opacity=".85"/>`;});
+  return h+'</svg>';
+}
 function transPlan(G){
   const fps=D.comp.fps||30, compF=Math.round((D.comp.dur||10)*fps), out={tiles:[],end:0,groups:[]};
   ['in','out'].forEach(k=>{
@@ -4703,7 +4761,8 @@ function transPlan(G){
     // walk: tiles sit on the scene's own grid (where the camera has it when the transition starts),
     // and sweep in the direction the line walks with a stepped, block-shaped front
     let sx=0, sy=0;
-    if(walk&&D.anim.mode!=='static'){ const P=plan(G), st0=k==='out'&&T.atEnd?compF-Math.max(1,Math.round(T.dur)||24):Math.round(+T.start||0), o=ev(P.cam,st0,[0,0]);
+    const onGrid=walk||['flood','head','extrude','ribbons','trail'].indexOf(T.pattern)>=0;
+    if(onGrid&&D.anim.mode!=='static'){ const P=plan(G), dur0=Math.max(1,Math.round(T.dur)||24), st0=k==='out'&&T.atEnd?compF-dur0:Math.round(+T.start||0), o=ev(P.cam,k==='out'?st0:st0+dur0,[0,0]);
       sx=((o[0]%G.p)+G.p)%G.p; sy=D.anim.axis==='xy'?((o[1]%G.p)+G.p)%G.p:0; }
     for(let r=r0;r<r1+1;r+=bh) for(let c=c0-1;c<c1;c+=bw){
       const q=cellRect(G,c,r,bw,bh); q.x+=sx; q.y+=sy;
@@ -4715,9 +4774,28 @@ function transPlan(G){
     const rev=T.dir==='rev'||(walk&&D.anim.order==='rtl'), cx=G.W/2, cy=G.H/2, rnd=rng(fillHash(77,T.seed|0));
     // walk: each row-band lags the one above by a random step (±1 block), like the line's own walk
     const lag={}; if(walk){ let v=0; for(let r=r0;r<r1+1;r+=bh){ lag[r]=v; const u=rnd(); v+=u<.36?-1:u<.72?1:0; } }
-    tiles.forEach(t=>{const mx=t.x+t.w/2,my=t.y+t.h/2;
-      t.v=T.pattern==='rows'?t.r:T.pattern==='diag'?t.c/bw+t.r/bh:T.pattern==='center'?Math.hypot((mx-cx)/G.W,(my-cy)/G.H):T.pattern==='random'?rnd():walk?t.c/bw+lag[t.r]*1.2+rnd()*.35:t.c;
+    // the line as it is on screen when the transition happens (for patterns that grow out of the walk)
+    const LINE=['flood','head','extrude','ribbons','trail'].indexOf(T.pattern)>=0?transLine(G,k,T,compF):null;
+    const dirX=(D.anim.order==='rtl')?-1:1;
+    tiles.forEach(t=>{const mx=t.x+t.w/2,my=t.y+t.h/2, pat=T.pattern;
+      if(LINE&&LINE.length){
+        const near=(()=>{let best=null;LINE.forEach((b,i)=>{const dx=Math.max(0,b.x-mx,mx-(b.x+b.w)),dy=Math.max(0,b.y-my,my-(b.y+b.h)),d=Math.hypot(dx,dy)/G.p;if(!best||d<best.d)best={d,i,b};});return best;})();
+        const head=LINE[LINE.length-1], hx=head.x+head.w/2, hy=head.y+head.h/2;
+        const atX=(()=>{let best=null;LINE.forEach(b=>{const dx=Math.max(0,b.x-mx,mx-(b.x+b.w));if(!best||dx<best.dx)best={dx,b};});return best.b;})(), ly=atX.y+atX.h/2;
+        if(pat==='flood') t.v=near.d+rnd()*.6;
+        else if(pat==='head') t.v=Math.hypot(mx-hx,my-hy)/G.p+rnd()*.4;
+        else if(pat==='extrude') t.v=Math.abs(my-ly)/G.p*1.3+(dirX*mx/G.p)*.35+rnd()*.3;
+        else if(pat==='ribbons'){ const band=Math.round((my-ly)/(bh*G.p)); t.v=(dirX*mx/G.p)*.6+Math.abs(band)*2.2+(band<0?.6:0); }
+        else t.v=near.i*1.4+near.d*1.1+rnd()*.5;   // trail: in the order the line was walked, spreading out
+      }
+      else if(pat==='flood'||pat==='trail'||pat==='head') t.v=Math.hypot((mx-cx)/G.W,(my-cy)/G.H)*12+rnd()*.4;   // no line yet: from the centre
+      else if(pat==='extrude'||pat==='ribbons') t.v=Math.abs(my-cy)/G.p+mx/G.p*.35;
+      else if(pat==='checker') t.v=(((Math.round(t.c/bw)+Math.round(t.r/bh))%2+2)%2)*1+(mx/G.W)*.9;
+      else if(pat==='venetian'){ const ri=Math.round(t.r/bh); t.v=((ri%2+2)%2?(G.W-mx):mx)/G.W+ri*.04; }
+      else if(pat==='corner') t.v=Math.hypot(mx/G.W,my/G.H);
+      else t.v=pat==='rows'?t.r:pat==='diag'?t.c/bw+t.r/bh:pat==='center'?Math.hypot((mx-cx)/G.W,(my-cy)/G.H):pat==='random'?rnd():walk?t.c/bw+lag[t.r]*1.2+rnd()*.35:t.c;
       if(rev) t.v=-t.v;});
+    { const jit=clamp(+T.jitter||0,0,100)/100; if(jit>0){ const a=Math.min(...tiles.map(t=>t.v)), b=Math.max(...tiles.map(t=>t.v)), rj=rng(fillHash(55,T.seed|0)); tiles.forEach(t=>{t.v+=(rj()-.5)*jit*(b-a)*.6;}); } }
     const vmin=Math.min(...tiles.map(t=>t.v)), vmax=Math.max(...tiles.map(t=>t.v)), inv=invCurve(T.curve||[0.33,0,0.67,1]);
     const dur=Math.max(1,Math.round(T.dur)||24), len=Math.max(1,Math.min(dur,Math.round(T.len)||8));
     const start=k==='out'&&T.atEnd?compF-dur:Math.round(+T.start||0);
@@ -4745,8 +4823,8 @@ function vanishKeys(appear,t0,len,r){
 let transCache={k:'',v:null};
 /* a tile colour under the block colour-mix rule (transition 'use the block colours') */
 function mixColorFor(i,rnd,fallback){const B=D.block;if(B.mix==='alternate'||B.mix==='cycle'){const cs=modeColors();return cs[i%cs.length];}if(B.mix==='random'||B.mix==='updown'){const cs=B.mix==='updown'?[B.color,B.upColor,B.downColor]:modeColors();return cs[Math.floor(rnd()*cs.length)%cs.length];}return B.color||fallback;}
-function transP(G){const walkT=D.trans&&((D.trans.in&&D.trans.in.pattern==='walk')||(D.trans.out&&D.trans.out.pattern==='walk'));
-  const key=JSON.stringify(D.trans)+JSON.stringify(D.block)+JSON.stringify(D.grid)+D.comp.w+D.comp.h+D.comp.fps+D.comp.dur+(walkT?JSON.stringify(D.anim)+JSON.stringify(D.exit):'');if(transCache.k!==key)transCache={k:key,v:transPlan(G)};return transCache.v;}
+function transP(G){const LP=['walk','flood','head','extrude','ribbons','trail'], walkT=D.trans&&((D.trans.in&&LP.indexOf(D.trans.in.pattern)>=0)||(D.trans.out&&LP.indexOf(D.trans.out.pattern)>=0));
+  const key=JSON.stringify(D.trans)+JSON.stringify(D.block)+JSON.stringify(D.grid)+D.comp.w+D.comp.h+D.comp.fps+D.comp.dur+(walkT?JSON.stringify(D.anim)+JSON.stringify(D.exit)+JSON.stringify(D.blocks):'');if(transCache.k!==key)transCache={k:key,v:transPlan(G)};return transCache.v;}
 function sceneEnd(G){const P=plan(G),T=transP(G);return Math.max(P.end||0,T.end?T.end+12:0,1);}
 function transOn(){return !!(D.trans&&((D.trans.in&&D.trans.in.on)||(D.trans.out&&D.trans.out.on)));}
 
@@ -6717,7 +6795,7 @@ function syncInputs(force){
   const lp=$('#chkLoop'); if(lp) lp.checked=U.loop;
   const mbx=$('#chkMB'); if(mbx){mbx.checked=U.mbPrev!==false; mbx.parentElement.hidden=!D.out.mb||D.anim.mode==='static';}
   $$('#camPreset [data-p]').forEach(b=>{const p=b.dataset.p.split(',').map(Number);b.classList.toggle('on',+D.anim.smooth===p[0]&&+D.anim.motionBlurF===p[1]&&+D.anim.settle===p[2]);});
-  syncIconSet();
+  syncIconSet(); try{renderTransPresets();}catch(e){}
   {const ub=$('#btnUnskip'); if(ub) ub.hidden=!((D.anim.skip&&D.anim.skip.length)||D.anim.cutAt!=null);}
   $$('#afterSeg [data-after]').forEach(b=>b.classList.toggle('on',D.exit.on?b.dataset.after===D.exit.mode:b.dataset.after==='stay'));
   $$('#zonePreset [data-z]').forEach(b=>b.classList.toggle('on',+b.dataset.z===+D.anim.revealX));
@@ -7030,6 +7108,10 @@ $('#fontStyle').addEventListener('change',e=>{pushHist(true);setStyle(D.text,e.t
   if($('#chkStyleSel').checked&&STEPS[U.step].id==='content') selBlocks().forEach(b=>{b.family=D.text.family;b.style=D.text.style;b.font=D.text.font;});
   renderFontUI();refresh();});
 {const rb=$('#btnRecolour'); if(rb) rb.onclick=recolourByRule;}
+function renderTransPresets(){ $$('.tpre[data-tk]').forEach(el=>{ const k=el.dataset.tk, T=D.trans[k];
+    if(!el._built){ el.innerHTML=['line','basic'].map(g=>`<div class="tph">${g==='line'?'Grow out of the walk':'Basics'}</div><div class="tpg">${TRANS_PRESETS.filter(p=>p.g===g).map(p=>`<button data-tpre="${p.id}" title="${p.sub}">${transThumb(p.id)}<b>${p.name}</b><small>${p.sub}</small></button>`).join('')}</div>`).join(''); el._built=true; }
+    $$('[data-tpre]',el).forEach(b=>b.classList.toggle('on',!!T.on&&T.preset===b.dataset.tpre)); }); }
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-tpre]'); if(!b) return; const k=b.closest('.tpre').dataset.tk; pushHist(true); applyTransPreset(k,b.dataset.tpre); transCache.k=''; syncInputs(true); refresh(); toast((k==='in'?'Transition in: ':'Transition out: ')+TRANS_PRESETS.find(p=>p.id===b.dataset.tpre).name,'',true);});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-transshuffle]');if(!b)return;pushHist(true);D.trans[b.dataset.transshuffle].seed=Math.floor(Math.random()*99999);refresh();});
 $('#fillFam').addEventListener('change',e=>{pushHist(true);setFamily(D.fill,e.target.value.trim());fillCache.clear();renderFillFont();refresh();});
 $('#fillStyle').addEventListener('change',e=>{pushHist(true);setStyle(D.fill,e.target.value);fillCache.clear();renderFillFont();refresh();});
