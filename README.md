@@ -351,3 +351,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.43 — Transitions move with the blocks + solid
 - **Moves with the blocks** (on by default with camera follow): transition tiles live on the scene's grid and travel with the camera, so the transition feels like part of the walk as it builds and fills the screen. Flood and Walk-off run on real time, in step with each block that lands. In AE the tiles are parented to the camera null (no precomp, unless matte).
 - **Solid under the tiles** (on by default): a full-frame solid in the transition colour fades on once every block is on (Build up) — or fades off just before the first one clears (Clear away) — hiding the grid lines. Fade length adjustable. Built in AE as a keyed solid under the tiles.
+
+### v3.44 — Walk-off build follows only the walk-off
+- Walk-off build only adds transition blocks when new blocks come in for the walk-off (nothing at the moment it starts, nothing from earlier blocks). Each walk-off block fills its column; whatever's left fills in after, spreading out from the walk-off's path.
+- Drag the end of the Out bar on the Transitions row to make it finish sooner or later — it still follows the walk-off (tiles never come on before their block lands; the spread gets faster or slower).
