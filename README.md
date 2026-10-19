@@ -358,3 +358,6 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 
 ### v3.45 — Organic walk-off build
 - Walk-off build no longer comes in by columns: each tile answers to whichever walk-off block reaches it first (up/down a touch faster than sideways), and the further it is from that block the more random its extra delay — near tiles snap on, far ones trickle in. Randomness raises the scatter. The spread stretches so the last tiles land as the walk-off ends.
+
+### v3.46 — Solid timing
+- Transition **Solid at** (frames from the transition start; empty = automatic) and **Fade** control when the background solid fades on (Build up) / off (Clear away) to hide the grid lines. On the Transitions row a white diamond + bar shows the fade — drag the diamond to set when; ⌥-click it for automatic.

@@ -38,7 +38,7 @@ const DEF={
         rulesOn:false,rule:'#3B484B',ruleW:1,ruleEvery:4,ruleStart:1,ruleLayer:'top',ruleParallax:100,ruleLag:0,ruleEnd:'stay',ruleFadeAt:0,ruleFadeLen:24},
   block:{w:3,h:1,color:'#E6212F',color2:'#A2AFB2',color3:'#0061E2',color4:'#FF7F7B',upColor:'#FF7F7B',downColor:'#A2AFB2',ncol:2,sync:true,mix:'single',mixPct:25},
   palette:PALETTE.slice(),
-  trans:{in:{on:false,mode:'clear',start:0,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:3,jitter:0,preset:'flood',behind:false,world:true,solid:true,solidFade:8},
+  trans:{in:{on:false,mode:'clear',start:0,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:3,jitter:0,preset:'flood',behind:false,world:true,solid:true,solidFade:8,solidAt:null},
          out:{on:false,mode:'build',start:72,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:5,jitter:0,preset:'flood',behind:false,world:true,solid:true,solidFade:8}},
   fill:{on:true,seed:7,density:'medium',family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:8,leading:100,caps:'upper',
         textColor:'#121212',outlinePct:0,outlineW:2,skipText:true,textPct:60,patternPct:40,dotSpacing:8,iconPct:20,iconSize:24,iconLib:'pixel',buildDur:12,graphW:1.5,look:'custom',
@@ -2458,8 +2458,8 @@ function transPlan(G){
     });
     // a solid under the tiles that hides the grid lines once the frame is covered (fades on after the last block; fades off before the first one clears)
     let solid=null; if(T.solid!==false){ const fd=Math.max(1,Math.round(+T.solidFade||8)), mine=out.tiles.filter(q=>q.g===k);
-      if(T.mode==='build'){ const tOn=Math.max(...mine.map(q=>q.on)); solid={color:T.output==='matte'?'#FFFFFF':T.color,op:[[tOn,0,'e',[0.33,0,0.67,1]],[tOn+fd,100,'h']]}; }
-      else solid={color:T.output==='matte'?'#FFFFFF':T.color,op:clip0([[start-fd,100,'e',[0.33,0,0.67,1]],[start,0,'h']])}; }
+      if(T.mode==='build'){ const tAll=Math.max(...mine.map(q=>q.on)), tOn=T.solidAt!=null&&T.solidAt!==''&&+T.solidAt!==0?Math.round(start+(+T.solidAt)):tAll; solid={color:T.output==='matte'?'#FFFFFF':T.color,op:[[tOn,0,'e',[0.33,0,0.67,1]],[tOn+fd,100,'h']],t0:tOn,t1:tOn+fd,auto:tAll}; }
+      else { const tOff=T.solidAt!=null&&T.solidAt!==''&&+T.solidAt!==0?Math.round(start+(+T.solidAt)):start; solid={color:T.output==='matte'?'#FFFFFF':T.color,op:clip0([[tOff-fd,100,'e',[0.33,0,0.67,1]],[tOff,0,'h']]),t0:tOff-fd,t1:tOff,auto:start}; } }
     out.groups.push({k,output:T.output,start,dur,count:tiles.length,behind:!!T.behind&&T.output!=='matte',world:WRLD,solid});
     out.end=Math.max(out.end,start+dur);
   });
@@ -3091,6 +3091,11 @@ function drawDope(){
       if(sel){g.strokeStyle='#fff';g.lineWidth=1.5;g.strokeRect(X(gr.start)+.5,RT.y0+4.5,Math.max(2,X(gr.start+gr.dur)-X(gr.start))-1,RT.h-9);}
       if(X(gr.start+gr.dur)-X(gr.start)>44) label((gr.k==='in'?'In':'Out')+(T.pattern==='walk'?' · walk':''),X(gr.start)+6,RT.y0+RT.h/2,'#111');
       knob(gr.start,RT.y0+2,RT.h-4,'#ececef'); knob(gr.start+gr.dur,RT.y0+2,RT.h-4,'#ececef');
+      if(gr.solid&&gr.solid.t0!=null){ const sy=RT.y1-6; g.fillStyle='rgba(255,255,255,.75)'; g.fillRect(X(gr.solid.t0),sy,Math.max(2,X(gr.solid.t1)-X(gr.solid.t0)),3);
+        g.fillStyle='#fff'; g.beginPath(); g.moveTo(X(gr.solid.t0),sy-4); g.lineTo(X(gr.solid.t0)+4,sy+1.5); g.lineTo(X(gr.solid.t0),sy+7); g.lineTo(X(gr.solid.t0)-4,sy+1.5); g.closePath(); g.fill();
+        const fd0=Math.max(1,+T.solidFade||8);
+        item({type:'point',x:X(gr.solid.t0),y:sy+1,cur:'ew-resize',tip:`solid fades ${T.mode==='build'?'on':'off'} here (${fd0}f) — hides the grid lines · drag to change when · ⌥-click = automatic`,
+          drag:(fx)=>{ const f=Math.round(TL.F(fx)); T.solidAt=T.mode==='build'?f-gr.start:f+fd0-gr.start; transCache.k=''; }, alt:()=>{pushHist(true);T.solidAt=null;transCache.k='';refresh();}}); }
       if(gr.k==='out'&&T.withWalk){ H(gr.start+gr.dur,RT,'ew-resize',f=>{T.wEnd=Math.max(gr.start+6,Math.round(f));},'end of the walk-off transition — drag to make it finish sooner or later (it still follows the walk-off) · ⌥-click the bar\'s settings to reset'); }
       else { H(gr.start,RT,'ew-resize',f=>{const e=T.start+T.dur;T.atEnd=false;T.start=Math.round(f);T.dur=Math.max(2,e-T.start);},'transition '+gr.k+' start');
       H(gr.start+gr.dur,RT,'ew-resize',f=>{T.atEnd=false;T.dur=Math.max(2,Math.round(f-T.start));},'transition '+gr.k+' end'); }
