@@ -380,3 +380,14 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.50 — Linked handles, ⇧ keep angle, ⌥ split; zoom follows the retime
 - Every point handle (zoom + reveal zone graphs and timeline rows, Scene time-remap handles, custom scene curve): the two handles of a point are linked and stay in line; **⌥-drag** a handle to split it from the other side; **⇧-drag** keeps the handle's current angle (only its length changes). ⌥-click a point (linear ↔ eased) re-joins split handles.
 - Zoom **Follow the scene retime** (on by default): zoom points live on the blocks' clock, so retiming the scene moves and re-speeds the zoom along with the blocks. Point frames in the list are still shown in output frames. Turn it off to pin the zoom to fixed output frames.
+
+### v3.51 — Media in blocks; ⇧ = flat handle
+- Handles: **⇧-drag makes a handle flat** (its linked partner goes flat too) — on the zoom / reveal-zone graphs and rows, and the Scene time-remap handles.
+- **Content › Media**: a video or image clipped to the blocks (it moves, wipes and leaves with each block). Global settings by default:
+  - Type Video / Image, media list (sample clip + still built in, **+ Add video / image…** for your own files), **As an After Effects precomp** (one precomp per file).
+  - Fit: Cover / Contain / Stretch / Tile / Original, Scale, X/Y offset (% of the block), Opacity, Flip X / Flip Y.
+  - Playback: Loop / Stop on last frame / Ping-pong; Starts when the block appears (+ delay) or at a frame; Clip starts at (frames into the video); Mute / Sound on.
+  - Which blocks: All, Picked (**Pick on the canvas** / **▶ Preview the walk** — pause and click blocks; ✓ markers show picks), or By direction (going up / down / level).
+  - Which media: Same for all, By direction (different media for up / down / level, like the up/down colours), Cycle a list, Random.
+- Select any block (generated ones too) for its own **Media** section: Global rule / On / Off, its own media, and its own settings when "Use the global media settings" is off.
+- After Effects: footage (or its precomp) is parented to the block and alpha-matted to it, time-remapped by expression for loop / hold / ping-pong and the start/offset, muted unless Sound on. Files are found by path, next to the .jsx (or in media/), or AE asks you to locate them. Browser-added files need relinking after a reload.

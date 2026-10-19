@@ -142,7 +142,7 @@ main{display:grid;grid-template-columns:68px minmax(0,1fr) 336px;grid-template-a
 .ctabs button .d{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--dim);margin-right:5px;vertical-align:1px}
 .ctabs button .d.on{background:var(--ok)}
 #left .pane[data-pane="content"] .group[data-ctab]{display:none}
-#left .pane[data-pane="content"].tab-hud .group[data-ctab="hud"],#left .pane[data-pane="content"].tab-gaps .group[data-ctab="gaps"],#left .pane[data-pane="content"].tab-numbers .group[data-ctab="numbers"],#left .pane[data-pane="content"].tab-echo .group[data-ctab="echo"],#left .pane[data-pane="content"].tab-text .group[data-ctab="text"]{display:grid}
+#left .pane[data-pane="content"].tab-hud .group[data-ctab="hud"],#left .pane[data-pane="content"].tab-gaps .group[data-ctab="gaps"],#left .pane[data-pane="content"].tab-numbers .group[data-ctab="numbers"],#left .pane[data-pane="content"].tab-echo .group[data-ctab="echo"],#left .pane[data-pane="content"].tab-text .group[data-ctab="text"],#left .pane[data-pane="content"].tab-media .group[data-ctab="media"]{display:grid}
 #left.ctxmode .pane{display:none}
 #left.ctxmode .pane.ctxhost{display:block}
 #left.ctxmode .pane.ctxhost > .group:not(.ctxshow),#left.ctxmode .pane.ctxhost > .ctabs{display:none!important}
@@ -420,6 +420,9 @@ body.simple [data-adv]{display:none!important}
 
 /* curve editor */
 .curve{display:grid;gap:6px}
+select.msel{width:100%;height:28px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:0 6px;font:inherit;font-size:12px}
+.mlist{display:grid;gap:4px}.mlist .mrow{display:flex;align-items:center;gap:6px;font-size:11.5px;padding:4px 6px;border:1px solid var(--line);border-radius:7px}
+.mlist .mrow .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mlist .mrow .st{color:var(--mut,#8a8a93);font-size:10.5px}.mlist .mrow button{height:20px;padding:0 6px}
 .zgraph{display:grid;gap:6px}.zg-h{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 8px}.zg-h .lbl{white-space:nowrap}.zg-hint{font-size:10px;white-space:nowrap;color:var(--mut,#686871)}
 canvas.tgraph{width:100%;height:130px;outline:none;background:var(--bg);border:1px solid var(--line);border-radius:9px;cursor:crosshair;touch-action:none;display:block}
 .curve canvas{width:100%;height:150px;background:var(--bg);border:1px solid var(--line);border-radius:9px;cursor:crosshair;touch-action:none;display:block}
@@ -864,7 +867,55 @@ body.nohelp .qm{display:none}
 
         <!-- 4 CONTENT -->
         <div class="pane" data-pane="content">
-          <div class="ctabs" id="ctabs"><button data-ctab-btn="hud">Text HUD</button><button data-ctab-btn="gaps">Between blocks</button><button data-ctab-btn="numbers">Numbers</button><button data-ctab-btn="echo">Echo</button><button data-ctab-btn="text">Your text</button></div>
+          <div class="ctabs" id="ctabs"><button data-ctab-btn="hud">Text HUD</button><button data-ctab-btn="gaps">Between blocks</button><button data-ctab-btn="numbers">Numbers</button><button data-ctab-btn="echo">Echo</button><button data-ctab-btn="text">Your text</button><button data-ctab-btn="media">Media</button></div>
+          <div class="group" data-ctab="media">
+            <div class="group-h">Media in blocks<label class="switch hswitch" title="Fill blocks with a video or image, clipped to each block"><input type="checkbox" data-bind="bmedia.on"><span></span></label></div>
+            <div class="note">A video or image clipped to each block — it moves, wipes and leaves with the block. These are the global settings; select a block to give it its own media.</div>
+            <div class="field stack"><span class="lbl">Type</span><div class="seg" data-seg="bmedia.kind"><button data-v="video">Video</button><button data-v="image">Image</button></div></div>
+            <div class="field stack"><span class="lbl">Media</span><select id="mAsset" class="msel"></select></div>
+            <div class="row-btns"><button class="btn" id="mAdd" title="Add your own video or image files">+ Add video / image…</button><input type="file" id="mFile" accept="video/*,image/*" multiple hidden></div>
+            <div id="mAssetList" class="mlist"></div>
+            <label class="check" title="After Effects: the clip goes inside its own precomp (one per file), and the blocks use the precomp — swap or edit the footage in one place"><input type="checkbox" data-bind="bmedia.precomp"> Bring in as an After Effects precomp</label>
+            <details class="sub" data-sub="m-fit" open><summary>Fit &amp; position</summary><div class="subbody">
+              <div class="seg" data-seg="bmedia.fit"><button data-v="cover" title="Fill the block, cropping the overflow">Cover</button><button data-v="contain" title="Show all of it, block colour around it">Contain</button><button data-v="stretch" title="Stretch to the block exactly">Stretch</button><button data-v="tile" title="Repeat it across the block (tile height = block height × scale)">Tile</button><button data-v="original" title="Its own pixel size">Original</button></div>
+              <div class="field2">
+                <div class="field"><span class="lbl scrub">Scale</span><div class="num"><input type="number" data-bind="bmedia.scale" min="1" max="2000" step="1"><span class="unit">%</span></div></div>
+                <div class="field"><span class="lbl scrub">Opacity</span><div class="num"><input type="number" data-bind="bmedia.opacity" min="0" max="100" step="1"><span class="unit">%</span></div></div>
+                <div class="field"><span class="lbl scrub" title="Move right (+) / left (−), in % of the block width">X</span><div class="num"><input type="number" data-bind="bmedia.x" min="-500" max="500" step="1"><span class="unit">%</span></div></div>
+                <div class="field"><span class="lbl scrub" title="Move down (+) / up (−), in % of the block height">Y</span><div class="num"><input type="number" data-bind="bmedia.y" min="-500" max="500" step="1"><span class="unit">%</span></div></div>
+              </div>
+              <div class="row-btns"><label class="check"><input type="checkbox" data-bind="bmedia.flipX"> Flip X</label><label class="check"><input type="checkbox" data-bind="bmedia.flipY"> Flip Y</label></div>
+            </div></details>
+            <details class="sub" data-sub="m-play" open data-show="bmedia.kind=video"><summary>Playback</summary><div class="subbody">
+              <div class="seg" data-seg="bmedia.loop"><button data-v="loop">Loop</button><button data-v="hold" title="Plays once and stops on its last frame">Stop on last frame</button><button data-v="ping" title="Plays forward, then backward, and repeats">Ping-pong</button></div>
+              <div class="field stack"><span class="lbl">Starts</span><div class="seg" data-seg="bmedia.start"><button data-v="reveal" title="Each block's clip starts when that block appears">When the block appears</button><button data-v="frame" title="Every clip starts at the same frame">At a frame</button></div></div>
+              <div class="field2">
+                <div class="field" data-show="bmedia.start=reveal"><span class="lbl scrub" title="Frames after the block appears">Delay</span><div class="num"><input type="number" data-bind="bmedia.delay" min="-9999" max="9999" step="1"><span class="unit">fr</span></div></div>
+                <div class="field" data-show="bmedia.start=frame"><span class="lbl scrub">At frame</span><div class="num"><input type="number" data-bind="bmedia.at" min="-9999" max="99999" step="1"><span class="unit">fr</span></div></div>
+                <div class="field"><span class="lbl scrub" title="Start the clip this many frames into the video">Clip starts at</span><div class="num"><input type="number" data-bind="bmedia.offset" min="0" max="99999" step="1"><span class="unit">fr</span></div></div>
+              </div>
+              <div class="field stack"><span class="lbl">Sound</span><div class="seg" data-seg="bmedia.audio"><button data-v="mute">Mute</button><button data-v="on">Sound on</button></div></div>
+              <div class="note">The preview is silent; sound applies in After Effects.</div>
+            </div></details>
+            <details class="sub" data-sub="m-which" open><summary>Which blocks</summary><div class="subbody">
+              <div class="seg" data-seg="bmedia.target"><button data-v="all">All blocks</button><button data-v="pick">Picked</button><button data-v="dir" title="Blocks the line steps up / down / level into">By direction</button></div>
+              <div data-show="bmedia.target=pick" style="display:grid;gap:7px">
+                <div class="row-btns"><button class="btn" id="mPick">Pick on the canvas</button><button class="btn" id="mWalk" title="Play the walk — pause it and click blocks to pick them">▶ Preview the walk</button></div>
+                <div class="row-btns"><button class="btn ghost" id="mPickAll">Pick all</button><button class="btn ghost" id="mPickNone">Clear</button><span class="note" id="mPickN"></span></div>
+              </div>
+              <div data-show="bmedia.target=dir" class="row-btns"><label class="check"><input type="checkbox" data-bind="bmedia.dirOn.up"> Going up</label><label class="check"><input type="checkbox" data-bind="bmedia.dirOn.down"> Going down</label><label class="check"><input type="checkbox" data-bind="bmedia.dirOn.flat"> Level</label></div>
+            </div></details>
+            <details class="sub" data-sub="m-assign" open><summary>Which media</summary><div class="subbody">
+              <div class="seg" data-seg="bmedia.assign"><button data-v="same">Same for all</button><button data-v="dir" title="Different media when the line goes up, down or stays level — like the up/down block colours">By direction</button><button data-v="cycle">Cycle a list</button><button data-v="random">Random</button></div>
+              <div data-show="bmedia.assign=dir" style="display:grid;gap:6px">
+                <div class="field"><span class="lbl">Going up</span><select class="msel" data-mdir="up"></select></div>
+                <div class="field"><span class="lbl">Going down</span><select class="msel" data-mdir="down"></select></div>
+                <div class="field"><span class="lbl">Level</span><select class="msel" data-mdir="flat"></select></div>
+              </div>
+              <div data-show="bmedia.assign=cycle|random" style="display:grid;gap:6px"><div class="note">Tick the media to use, in order:</div><div id="mPool" class="mlist"></div>
+                <div class="row-btns" data-show="bmedia.assign=random"><button class="btn ghost" id="mReseed">↻ Shuffle</button></div></div>
+            </div></details>
+          </div>
           <div class="group" data-ctab="hud">
             <div class="group-h">Auto-fill blocks</div>
             <div class="layer" data-layer="fill.on">
@@ -2116,6 +2167,87 @@ function GB_fillItems(comp,items,parent,list){
   }
 }
 
+
+/* ---------- media clipped to blocks (video / image / precomp) ---------- */
+var GB_mediaItems={};
+function GB_pickMedia(){
+  try{
+    var filt=GB_isWin()?"Video or image:*.mp4;*.mov;*.m4v;*.webm;*.avi;*.mxf;*.png;*.jpg;*.jpeg;*.gif;*.tif;*.tiff;*.psd;*.ai":function(f){return (f instanceof Folder)||/\.(mp4|mov|m4v|webm|avi|mxf|png|jpe?g|gif|tiff?|psd|ai)$/i.test(f.name);};
+    var fs=File.openDialog("Grid Blocks · add video or image",filt,true); if(!fs) return "CANCEL";
+    if(!(fs instanceof Array)) fs=[fs]; var o=[];
+    for(var i=0;i<fs.length;i++) o.push(fs[i].fsName+"\t"+decodeURI(fs[i].name));
+    return "OK|"+o.join("\n");
+  }catch(e){return "ERR|"+e.toString();}
+}
+function GB_findMedia(m,root){
+  var tries=[], base=root||null, nm=String(m.file||m.name||"").split("/").pop(), i;
+  if(m.path) tries.push(m.path);
+  try{ if(!base&&$.fileName) base=File($.fileName).parent.fsName; }catch(e0){}
+  if(base){ if(m.file) tries.push(base+"/"+m.file); tries.push(base+"/"+nm); tries.push(base+"/media/"+nm); }
+  for(i=0;i<tries.length;i++){ try{ var f=new File(tries[i]); if(f.exists) return f; }catch(e1){} }
+  var p=File.openDialog("Grid Blocks: where is “"+(m.name||nm)+"”? (Cancel to skip it)");
+  return p||null;
+}
+function GB_mediaSource(m,root,folder,main){
+  var key=(m.precomp?"C|":"F|")+m.id, i;
+  if(GB_mediaItems.hasOwnProperty(key)) return GB_mediaItems[key];
+  var ft=GB_mediaItems["F|"+m.id];
+  if(!ft){
+    var f=GB_findMedia(m,root); if(!f){ GB_mediaItems[key]=null; return null; }
+    for(i=1;i<=app.project.numItems;i++){ var it=app.project.item(i); try{ if((it instanceof FootageItem)&&it.file&&it.file.fsName==f.fsName){ ft=it; break; } }catch(e2){} }
+    if(!ft) ft=app.project.importFile(new ImportOptions(f));
+    if(folder){ try{ft.parentFolder=folder;}catch(e3){} }
+    GB_mediaItems["F|"+m.id]=ft;
+  }
+  if(!m.precomp){ GB_mediaItems[key]=ft; return ft; }
+  var still=false; try{ still=ft.mainSource.isStill; }catch(e4){}
+  var fr=ft.frameRate>0?ft.frameRate:main.frameRate, dur=(!still&&ft.duration>0)?ft.duration:main.duration;
+  var c=app.project.items.addComp(GB_uniqueName("GB Media · "+ft.name),ft.width,ft.height,ft.pixelAspect||1,Math.max(dur,1/fr),fr);
+  var inner=c.layers.add(ft); try{ if(still) inner.outPoint=c.duration; }catch(e5){}
+  if(folder){ try{c.parentFolder=folder;}catch(e6){} }
+  GB_mediaItems[key]=c; return c;
+}
+function GB_mediaLayer(comp,B,b,m,root,folder,main,fps){
+  var src=GB_mediaSource(m,root,folder,main); if(!src) return null;
+  var L=comp.layers.add(src); L.moveBefore(B);
+  L.name=b.name+" · Media"; L.comment="GridBlocks:media"; L.label=14;
+  L.parent=B;
+  var sw=src.width, sh=src.height, bw=b.bw, bh=b.bh, us=Math.max(1,m.scale)/100, kx, ky;
+  if(m.fit=="contain"){ kx=ky=Math.min(bw/sw,bh/sh); }
+  else if(m.fit=="stretch"){ kx=bw/sw; ky=bh/sh; }
+  else if(m.fit=="original"){ kx=ky=1; }
+  else if(m.fit=="tile"){ kx=ky=bh/sh; }
+  else { kx=ky=Math.max(bw/sw,bh/sh); }
+  kx*=us; ky*=us;
+  var xf=GB_xf(L);
+  xf.property("ADBE Anchor Point").setValue([sw/2,sh/2]);
+  xf.property("ADBE Position").setValue([m.x*bw/100,m.y*bh/100]);
+  xf.property("ADBE Scale").setValue([kx*100*(m.flipX?-1:1),ky*100*(m.flipY?-1:1)]);
+  xf.property("ADBE Opacity").setValue(m.opacity);
+  if(m.fit=="tile"){ try{
+    var fx=L.property("ADBE Effect Parade").addProperty("ADBE Tile");
+    fx.property(4).setValue(Math.min(10000,Math.ceil(bw/Math.max(1,sw*kx)*100)+300));
+    fx.property(5).setValue(Math.min(10000,Math.ceil(bh/Math.max(1,sh*ky)*100)+300));
+  }catch(eT){} }
+  var still=false; try{ still=(src instanceof FootageItem)&&src.mainSource.isStill; }catch(eS){}
+  if(m.type=="video"&&!still&&src.duration>0){
+    try{
+      L.timeRemapEnabled=true;
+      var d=Math.max(1/fps,src.duration-src.frameDuration);
+      var mode=m.loop=="hold"?"Math.min(t,d)":m.loop=="ping"?"(function(){var c=t%(2*d);return c>d?2*d-c:c;})()":"t%d";
+      L.property("ADBE Time Remapping").expression='// Grid Blocks: '+(m.loop=="hold"?"plays once, stops on the last frame":m.loop=="ping"?"ping-pong":"loops")+'\nvar st='+(m.startF/fps)+', off='+(m.offset/fps)+', d='+d+';\nvar t=Math.max(0,time-st)+off;\n'+mode+';';
+      L.outPoint=comp.duration;
+    }catch(eR){}
+  } else { try{ L.outPoint=comp.duration; }catch(eO){} }
+  if(!m.audio){ try{ L.audioEnabled=false; }catch(eA){} }
+  var ok=false; try{ L.setTrackMatte(B,TrackMatteType.ALPHA); ok=true; }catch(eM){ ok=false; }
+  return {L:L,ok:ok};
+}
+/* older After Effects (before track mattes could point at any layer): a copy of the block sits right above as the matte */
+function GB_mediaMattes(list){
+  for(var i=0;i<list.length;i++){ var L=list[i].L, B=list[i].B; if(!L||list[i].ok) continue;
+    try{ var dup=B.duplicate(); dup.name=B.name+" · Media Matte"; dup.moveBefore(L); L.trackMatteType=TrackMatteType.ALPHA; }catch(e){} }
+}
 /* ---------- column rules ---------- */
 function GB_mkRules(comp,R){
   var L;
@@ -2220,7 +2352,7 @@ function GB_build(d){
       blockPre.layer.name="GB · Blocks"; blockC=blockPre.comp; comps.push(blockC);
     }
     var camRefB=blockC===main?camRefMain:camRefPre;
-    var blocks=[], fillLayers=[], blockLayers=[];
+    var blocks=[], fillLayers=[], blockLayers=[], mediaL=[]; GB_mediaItems={};
     function trimTo(Lr,t){ if(org.trim&&t>0){try{Lr.inPoint=Math.min(main.duration-1/fps,t/fps);}catch(eT){}} }
     function trimOut(Lr,t){ if(org.trim&&t!=null&&t/fps<main.duration){try{if(t/fps>Lr.inPoint)Lr.outPoint=t/fps;}catch(eT2){}} }
     if(d.echoes){for(i=0;i<d.echoes.length;i++){
@@ -2236,11 +2368,14 @@ function GB_build(d){
       var B=GB_box(blockC,b.name,b.x,b.y,b.bw,b.bh,b.color,b.outline?b.outline.w:0);
       B.comment="GridBlocks:block|order="+b.order+"|c="+b.c+"|r="+b.r+"|w="+b.w+"|h="+b.h;
       B.label=1;
+      var ML=null; if(b.media){ var mr=null; try{ mr=GB_mediaLayer(blockC,B,b,b.media,d.mediaRoot,folder,main,fps); }catch(eMd){ mr=null; }
+        if(mr){ ML=mr.L; mediaL.push({L:ML,B:B,ok:mr.ok}); fillLayers.push(ML); } }
       var T=b.text?GB_text(blockC,B,b):null;
       if(T) T.label=1;
       var NT=null; if(b.num){ d_fps_hack=fps; NT=GB_numText(blockC,B,b); fillLayers.push(NT); }
       blocks.push({L:B,T:T,b:b}); blockLayers.push(B);
-      if(b.tIn!=null){trimTo(B,b.tIn); if(T) trimTo(T,b.tIn); if(NT) trimTo(NT,b.tIn);}
+      if(b.tIn!=null){trimTo(B,b.tIn); if(T) trimTo(T,b.tIn); if(NT) trimTo(NT,b.tIn); if(ML) trimTo(ML,b.tIn);}
+      if(ML&&b.tOut!=null) trimOut(ML,b.tOut);
       var f0=fillLayers.length; GB_fillItems(blockC,b.fill,B,fillLayers);
       if(b.tOut!=null){trimOut(B,b.tOut); if(T) trimOut(T,b.tOut); if(NT) trimOut(NT,b.tOut); for(var fb=f0;fb<fillLayers.length;fb++) trimOut(fillLayers[fb],b.tOut);}
     }
@@ -2409,6 +2544,7 @@ function GB_build(d){
         try{var m=org.markers[i], mv=new MarkerValue("GB · "+m[1]); if(m[2]) mv.duration=m[2]/fps; main.markerProperty.setValueAtTime(Math.max(0,m[0]/fps),mv);}catch(eMk){}
       }
     }
+    if(mediaL.length){ GB_mediaMattes(mediaL); out.push(mediaL.length+" media layer"+(mediaL.length>1?"s":"")); }
     if(gridPre||blockPre){var pn=[];if(gridPre)pn.push("grid");if(blockPre)pn.push("blocks");out.push("precomps: "+pn.join(", "));}
     if(d.lock){for(i=0;i<locks.length;i++){try{locks[i].locked=true;}catch(eL){}}}
     var fm=GB_missingFonts(d.fontsUsed); if(fm.length) out.push("⚠ font not installed: "+fm.join(", ")+" (AE used a substitute)");
@@ -2488,6 +2624,9 @@ const DEF={
        ticker:{on:false,y:94,size:14,speed:160,color:'#A2AFB2',band:true,bandColor:'#121212'},
        snow:{on:false,count:90,speed:240,size:2,stretch:6,dir:'left',color:'#EBF0FA',opacity:55,seed:9}},
   num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100},
+  bmedia:{on:false,kind:'video',asset:'sample',precomp:false,fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,
+    loop:'loop',start:'reveal',delay:0,at:0,offset:0,audio:'mute',target:'all',pick:[],dirOn:{up:true,down:true,flat:true},
+    assign:'same',pool:[],dir:{up:'',down:'',flat:''},seed:1,per:{},assets:[]},
   timing:{beats:[],markers:[],use:'beats',offset:0,sync:false,sens:1.3,minGap:4,media:null,video:true,videoOpacity:60,sound:true},
   exit:{on:false,holdOn:true,walkHold:24,walkPace:1,walkLen:48,walkFollow:60,trail:3,slide:1.5,mode:'hold',hold:36,at:24,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
   out:{replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180,folder:true,preGrid:true,preBlocks:true,preTrans:true,shy:true,trim:true,markers:true},
@@ -3240,7 +3379,7 @@ function freeRects(x0,y0,W,H,sp,items,met){
 function gapA(){ const GA=(D.fill.gap&&D.fill.gap.anim)||{}; if(GA.own===false) return D.fill.anim;
   return Object.assign({},D.fill.anim,{anchor:GA.anchor||'block',inMode:GA.inMode,cps:GA.cps,inDur:GA.inDur,buildDur:GA.buildDur,outMode:GA.outMode,hold:GA.hold,outDur:GA.outDur}); }
 /* one colour per timeline layer */
-const LAYER_COL={hud:'#E6212F',gaps:'#F5A524',numbers:'#8FA2FF',echo:'#3FC7B5',text:'#EBF0FA',none:'#686871'};
+const LAYER_COL={media:'#5AC8FA',hud:'#E6212F',gaps:'#F5A524',numbers:'#8FA2FF',echo:'#3FC7B5',text:'#EBF0FA',none:'#686871'};
 /* text in empty grid areas between blocks */
 function gapItems(G,list){
   const F=D.fill, Gp=F.gap; if(!F.on||!Gp||!Gp.on||!list.length) return [];
@@ -4122,7 +4261,7 @@ function trkDraw(g,T,o){
     g.strokeStyle='rgba(255,255,255,.45)'; g.lineWidth=1; g.beginPath(); g.moveTo(qx,qy); g.lineTo(px,py); g.stroke();
     g.fillStyle=col; g.beginPath(); g.arc(px,py,3.5,0,7); g.fill();
     let st0=null;   // the handle's direction when the drag started (⇧ keeps it)
-    out.push({x:px,y:py,kind:'handle',i:j,tip:`${T.name} easing handle — drag to shape the move${flat?' (flat move: sideways sets the speed)':''} · ⇧ keeps its angle · ⌥-drag splits it from the other side${q.brk?' (split)':''}`,
+    out.push({x:px,y:py,kind:'handle',i:j,tip:`${T.name} easing handle — drag to shape the move${flat?' (flat move: sideways sets the speed)':''} · ⇧ makes it flat · ⌥-drag splits it from the other side${q.brk?' (split)':''}`,
       drag:(fx,fy,sh,alt)=>{ const P2=T.get().slice().sort((m,n)=>m.f-n.f), Q=P2[j]; if(!Q) return;
         const segOf=sd=>sd==='o'?[P2[j],P2[j+1]]:[P2[j-1],P2[j]];
         const offOf=sd=>{ const [m,n]=segOf(sd); if(!m||!n) return null; const c=trkSeg(m,n,C); return sd==='o'?{df:c[0]*(n.f-m.f),dv:c[1]*(n.v-m.v)}:{df:(c[2]-1)*(n.f-m.f),dv:(c[3]-1)*(n.v-m.v)}; };
@@ -4131,7 +4270,7 @@ function trkDraw(g,T,o){
         const sx=(X(Q.f+10)-X(Q.f))/10||1, sy=(Y(Q.v+1)-Y(Q.v))||1;   // data → px, so angles and lengths match what's on screen
         if(!st0) st0=offOf(side);
         let df=F(fx)-Q.f, dv=V(fy)-Q.v;
-        if(sh&&st0){ const ux=st0.df*sx, uy=st0.dv*sy, L=Math.hypot(ux,uy)||1, t=Math.max(0,(df*sx*ux+dv*sy*uy)/L); df=ux/L*t/sx; dv=uy/L*t/sy; }
+        if(sh) dv=0;   // ⇧ = flat handle (and its linked partner goes flat too)
         if(side==='o') df=Math.max(0,df); else df=Math.min(0,df);
         if(alt) Q.brk=true;
         setOff(side,df,dv);
@@ -5442,6 +5581,7 @@ function tlContentRows(){
   if(D.fill.on&&D.fill.gap&&D.fill.gap.on) r.push({k:'gaps',name:'Between blocks',tab:'gaps'});
   if(D.num&&D.num.on) r.push({k:'numbers',name:'Numbers',tab:'numbers'});
   if(D.echo&&D.echo.on) r.push({k:'echo',name:'Echo',tab:'echo'});
+  if(D.bmedia&&(D.bmedia.on||Object.values(D.bmedia.per||{}).some(p=>p.on))) r.push({k:'media',name:'Media',tab:'media'});
   if(!r.length) r.push({k:'none',name:'Content',tab:'hud'});
   return r;
 }
@@ -5542,10 +5682,10 @@ function drawDope(){
           g.strokeStyle='rgba(255,127,123,.7)'; g.lineWidth=1; g.beginPath(); g.moveTo(ax,ay); g.lineTo(hx,hy); g.stroke();
           g.fillStyle='#FF7F7B'; g.beginPath(); g.arc(hx,hy,4,0,7); g.fill();
           const pr=side==='o'?[q.ki,q.ix,q.iy,q.segI,q.segIy]:[q.ko,q.ox,q.oy,q.segO,q.segOy], brk0=((D.anim.sceneEase.brk||{})[q.role]);
-          item({type:'point',x:hx,y:hy,cur:'move',tip:`${EN[key]} — drag the handle (angle + length) · ⇧ keeps its angle${pr[0]&&pr[3]?' · ⌥-drag splits it from the other side'+(brk0?' (split)':''):''}`,drag:(fx,fy,sh,alt)=>{
+          item({type:'point',x:hx,y:hy,cur:'move',tip:`${EN[key]} — drag the handle (angle + length) · ⇧ makes it flat${pr[0]&&pr[3]?' · ⌥-drag splits it from the other side'+(brk0?' (split)':''):''}`,drag:(fx,fy,sh,alt)=>{
             const sxp=Math.max(1,cxp(1)-cxp(0)), syp=Math.max(1,ch);   // unit → px
             let u=(fx-cxp(0))/W-q.x, v=(cy0-fy)/Math.max(1,ch)-q.y;
-            if(sh&&(dx||dy)){ const ux=dx*sxp, uy=dy*syp, L=Math.hypot(ux,uy)||1, t=Math.max(0,(u*sxp*ux+v*syp*uy)/L); u=ux/L*t/sxp; v=uy/L*t/syp; }
+            if(sh) v=0;   // ⇧ = flat handle
             const rx=clamp(Math.abs(u)/Math.max(1e-6,seg),0,1), ry=clamp((side==='o'?v:-v)/Math.max(1e-6,segy),0,1);
             const SE=D.anim.sceneEase; SE.hd=Object.assign({},SE.hd||{}); SE.hd[key]=[r3(rx),r3(ry)];
             if(alt){ SE.brk=Object.assign({},SE.brk||{}); SE.brk[q.role]=true; }
@@ -5566,13 +5706,13 @@ function drawDope(){
         const hd=(dx,dy,which)=>{const hx=cxp(p.x+dx), hy=cyp(p.y+dy); g.strokeStyle='rgba(255,127,123,.6)'; g.lineWidth=1; g.beginPath(); g.moveTo(ax,ay); g.lineTo(hx,hy); g.stroke();
           g.fillStyle='#FF7F7B'; g.beginPath(); g.arc(hx,hy,3.5,0,7); g.fill();
           const a0=Math.atan2(dy,dx);
-          item({type:'point',x:hx,y:hy,cur:'move',tip:'easing handle — drag to shape the curve · ⇧ keeps its angle · ⌥-drag splits it from the other side',drag:(fx,fy,sh,alt)=>{const h=toH(D.anim.sceneCurve||[0,0,1,1]),q=h[k]; if(!q) return;
+          item({type:'point',x:hx,y:hy,cur:'move',tip:'easing handle — drag to shape the curve · ⇧ makes it flat · ⌥-drag splits it from the other side',drag:(fx,fy,sh,alt)=>{const h=toH(D.anim.sceneCurve||[0,0,1,1]),q=h[k]; if(!q) return;
             const u=(fx-cxp(0))/Math.max(1,cxp(1)-cxp(0)), v=(cy0-fy)/Math.max(1,ch);
             let ddx=u-q.x, ddy=v-q.y;
-            if(sh&&(dx||dy)){const cx=Math.cos(a0), cy=Math.sin(a0), len=Math.max(0,ddx*cx+ddy*cy); ddx=cx*len; ddy=cy*len;}
+            if(sh) ddy=0;   // ⇧ = flat handle
             const mx=(k<h.length-1?h[k+1].x:1)-q.x, ny=k<h.length-1?h[k+1].y:1, mn=-(q.x-(k>0?h[k-1].x:0)), py=k>0?h[k-1].y:0;
-            if(which==='o'){ if(sh&&ddx>mx&&ddx>0){ddy*=mx/ddx;ddx=mx;} q.ox=clamp(ddx,0,mx); q.oy=clamp(ddy,0,Math.max(0,ny-q.y));}
-            else { if(sh&&ddx<mn&&ddx<0){ddy*=mn/ddx;ddx=mn;} q.ix=clamp(ddx,mn,0); q.iy=clamp(ddy,-Math.max(0,q.y-py),0);}
+            if(which==='o'){ q.ox=clamp(ddx,0,mx); q.oy=clamp(ddy,0,Math.max(0,ny-q.y));}
+            else { q.ix=clamp(ddx,mn,0); q.iy=clamp(ddy,-Math.max(0,q.y-py),0);}
             if(alt){ D.anim.curveBrk=Object.assign({},D.anim.curveBrk||{}); D.anim.curveBrk[k]=true; }
             // linked: the other handle of this point stays in line (keeps its own length), unless split with ⌥
             if(k>0&&k<h.length-1&&!((D.anim.curveBrk||{})[k])){ const sxp=Math.max(1,cxp(1)-cxp(0)), syp=Math.max(1,ch);
@@ -5662,6 +5802,10 @@ function drawDope(){
     const A=D.fill.anim;
     item({type:'row',row:R,x0:LW,x1:r.width,y0:R.y0,y1:R.y1,cur:'pointer',tip:R.name+' — click for its settings',tab:R.tab});
     if(R.ck==='none'){g.fillStyle='#686871';g.font='11px sans-serif';g.fillText('no overlays — click to add content',LW+8,R.y0+R.h/2);return;}
+    if(R.ck==='media'){ const mm=mediaMap(P), ids=Object.keys(mm), colM=LAYER_COL.media; let k=0;
+      P.seq.forEach((b,i)=>{ const ms=mm[b.id]; if(!ms) return; const a=ms.kind==='video'&&ms.start==='frame'?(+ms.at||0):P.T[i]+(ms.kind==='video'?(+ms.delay||0):0), e=P.exitT&&P.exitT[i]!=null?P.exitT[i]:N;
+        g.fillStyle='rgba(90,200,250,.18)'; g.fillRect(X(P.T[i]),R.y0+4+(k%5)*2.4,Math.max(1,X(e)-X(P.T[i])),2); g.fillStyle=colM; g.fillRect(X(a),R.y0+4+(k%5)*2.4,Math.max(1,X(e)-X(a)),2); k++; });
+      label(ids.length?`${ids.length} block${ids.length>1?'s':''} · ${D.bmedia.kind==='video'?({loop:'loop',hold:'stop on last frame',ping:'ping-pong'})[D.bmedia.loop]:'image'}`:'no blocks picked',LW+8,R.y0+R.h-5,'rgba(236,236,239,.8)'); return; }
     const col=LAYER_COL[R.ck]||'#a2a2ab', rgba=(hx,a)=>{const n=parseInt(hx.slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;};
     /* on / hold / off of one representative item, with a draggable hold end (and start for gaps) */
     /* one representative item (the first block's content): [animate on] ▮ fully on … hold … ▮ out starts [animate off]
@@ -6110,6 +6254,123 @@ function blockState(K,t,q){
   if(K.rs.length){const rs=ev(K.rs,t,[q.w,q.h]), rp=ev(K.rp,t,[0,0]); const cx=q.x+q.w/2+rp[0]; st.w=rs[0]; st.h=rs[1]; st.x=cx-st.w/2; st.y=q.y+(q.h-st.h)/2+rp[1];}
   return st;
 }
+/* ================================================================ BLOCK MEDIA: a video or image clipped to the blocks
+   D.bmedia holds the global settings; per-block overrides live in D.bmedia.per[id] (works for generated blocks too).
+   Preview: videos are decoded once into a small frame cache, so any block can show any frame while scrubbing. */
+const MEDIA_SAMPLE={id:'sample',name:'Sample · green/blue screen',type:'video',file:'media/sample.mp4',w:1280,h:720,dur:9.44,fps:25,builtin:true};
+const MEDIA_STILL={id:'sample-still',name:'Sample still',type:'image',file:'media/sample.jpg',w:1280,h:720,builtin:true};
+const MSPEC=['precomp','fit','scale','x','y','flipX','flipY','opacity','loop','start','delay','at','offset','audio'];
+function mAssets(){ return [MEDIA_SAMPLE,MEDIA_STILL].concat(((D.bmedia&&D.bmedia.assets)||[]).filter(a=>a&&a.id&&!a.builtin)); }
+function mAsset(id){ return mAssets().find(a=>a.id===id)||null; }
+function mDefault(kind){ return kind==='image'?'sample-still':'sample'; }
+function mKindAsset(kind,id){ const a=mAsset(id); return a&&a.type===kind?a.id:mDefault(kind); }
+/* which way the line went to reach this block (same rule as the up/down colours) */
+function mDir(seq,i){ const b=seq[i], p=seq[i-1]; if(!p) return 'flat'; return b.r<p.r?'up':b.r>p.r?'down':'flat'; }
+function mHash(n){ const x=Math.sin(n*12.9898+78.233)*43758.5453; return x-Math.floor(x); }
+function mediaSpecAt(seq,i,T){
+  const M=D.bmedia, b=seq[i], per=(M.per||{})[b.id]||null, dir=mDir(seq,i);
+  if(per&&per.on===false) return null;
+  if(!(per&&per.on===true)){
+    if(!M.on) return null;
+    const ok=M.target==='pick'?(M.pick||[]).indexOf(b.id)>=0:M.target==='dir'?!!(M.dirOn||{})[dir]:true;
+    if(!ok) return null;
+  }
+  const s={}; MSPEC.forEach(k=>s[k]=M[k]);
+  const pool=(M.pool||[]).filter(id=>mAsset(id));
+  let a=mKindAsset(M.kind,M.asset);
+  if(M.assign==='dir'){ const d=(M.dir||{})[dir]; if(d&&mAsset(d)) a=d; }
+  else if(M.assign==='cycle'&&pool.length) a=pool[i%pool.length];
+  else if(M.assign==='random'&&pool.length) a=pool[Math.floor(mHash(b.id*3.17+(+M.seed||1))*pool.length)%pool.length];
+  if(per&&per.own) MSPEC.forEach(k=>{ if(per[k]!==undefined) s[k]=per[k]; });
+  if(per&&per.asset&&mAsset(per.asset)) a=per.asset;
+  const A=mAsset(a)||MEDIA_SAMPLE; s.asset=A.id; s.kind=A.type; s.dir=dir; s.i=i; s.tRev=T&&T[i]!=null?T[i]:0;
+  return s;
+}
+let mCache={P:null,k:'',m:{}};
+function mediaMap(P){
+  if(!P||!P.seq) return {};
+  const k=JSON.stringify(D.bmedia)+'|'+P.seq.map(b=>b.id+':'+b.r).join(',')+'|'+(P.T||[]).join(',');
+  if(mCache.P===P&&mCache.k===k) return mCache.m;
+  const m={}; if(D.bmedia&&(D.bmedia.on||Object.keys(D.bmedia.per||{}).length)) P.seq.forEach((b,i)=>{ const s=mediaSpecAt(P.seq,i,P.T); if(s) m[b.id]=s; });
+  mCache={P,k,m}; return m;
+}
+/* seconds into the clip at output frame t */
+function mSrcTime(s,t,fps,dur){
+  const st=s.start==='frame'?(+s.at||0):((s.tRev||0)+(+s.delay||0));
+  const x=Math.max(0,t-st)/fps+Math.max(0,+s.offset||0)/fps;
+  if(!(dur>0)) return x; const d=Math.max(1/fps,dur-1/fps);
+  if(s.loop==='hold') return Math.min(x,d);
+  if(s.loop==='ping'){ const c=x%(2*d); return c>d?2*d-c:c; }
+  return x%d;
+}
+/* ---- preview runtime: images load once; videos are decoded into a small frame cache */
+const MRT={};
+function mUrl(A){ if(!A) return null; if(A.url) return A.url; if(A.path) return 'file://'+encodeURI(String(A.path).replace(/\\/g,'/')); return A.file||null; }
+let mRT=0; function mRedraw(){ if(mRT) return; mRT=setTimeout(()=>{ mRT=0; try{render();}catch(e){} try{renderMediaUI();}catch(e){} },80); }
+function mRuntime(A){
+  if(!A||typeof document==='undefined') return null; const url=mUrl(A); if(!url) return null;
+  let R=MRT[A.id]; if(R&&R.url===url) return R;
+  R=MRT[A.id]={url,frames:[],got:0,cf:0,w:A.w||0,h:A.h||0,dur:A.dur||0,ready:false,err:false};
+  try{
+    if(A.type==='image'){ const im=new Image(); im.onload=()=>{R.img=im;R.w=im.naturalWidth;R.h=im.naturalHeight;R.ready=true;mRedraw();}; im.onerror=()=>{R.err=true;mRedraw();}; im.src=url; }
+    else mExtract(R);
+  }catch(e){ R.err=true; }
+  return R;
+}
+function mSeek(v,t){ return new Promise(res=>{ let done=false; const f=()=>{ if(done) return; done=true; v.removeEventListener('seeked',f); res(); }; v.addEventListener('seeked',f); try{v.currentTime=t;}catch(e){f();} setTimeout(f,2000); }); }
+async function mExtract(R){
+  try{
+    const v=document.createElement('video'); v.muted=true; v.playsInline=true; v.preload='auto';
+    const ok=await new Promise(res=>{ v.addEventListener('loadeddata',()=>res(true),{once:true}); v.addEventListener('error',()=>res(false),{once:true}); v.src=R.url; try{v.load();}catch(e){} setTimeout(()=>res(v.readyState>=2),15000); });
+    if(!ok){ R.err=true; mRedraw(); return; }
+    R.w=v.videoWidth||R.w; R.h=v.videoHeight||R.h; R.dur=v.duration||R.dur||1;
+    const n=Math.max(1,Math.min(150,Math.round(R.dur*Math.min(25,150/Math.max(.1,R.dur)))));
+    R.cf=n/R.dur; const W=Math.min(400,R.w||400), H=Math.max(1,Math.round(W*(R.h||225)/Math.max(1,R.w||400)));
+    for(let i=0;i<n;i++){
+      await mSeek(v,Math.min(R.dur-0.02,(i+.5)/R.cf));
+      const c=document.createElement('canvas'); c.width=W; c.height=H; c.getContext('2d').drawImage(v,0,0,W,H);
+      R.frames[i]=c; R.got=i+1; if(i%6===0) mRedraw();
+    }
+    R.ready=true; v.removeAttribute('src'); try{v.load();}catch(e){} mRedraw();
+  }catch(e){ R.err=true; mRedraw(); }
+}
+function mFrameAt(R,sec){ if(!R) return null; if(R.img) return R.img; if(!R.got) return null; const i=clamp(Math.floor(sec*R.cf),0,R.frames.length-1); return R.frames[i]||R.frames[Math.min(i,R.got-1)]||R.frames[0]; }
+/* where the clip sits inside the block: fit + scale + offset (+ flips); q = the block's full rect */
+function mLayout(s,q,sw,sh){
+  const fit=s.fit||'cover', us=Math.max(1,+s.scale||100)/100;
+  let kx,ky;
+  if(fit==='contain'){ kx=ky=Math.min(q.w/sw,q.h/sh); }
+  else if(fit==='stretch'){ kx=q.w/sw; ky=q.h/sh; }
+  else if(fit==='original'){ kx=ky=1; }
+  else if(fit==='tile'){ kx=ky=q.h/sh; }
+  else { kx=ky=Math.max(q.w/sw,q.h/sh); }
+  kx*=us; ky*=us;
+  return {cx:q.x+q.w/2+(+s.x||0)*q.w/100, cy:q.y+q.h/2+(+s.y||0)*q.h/100, w:sw*kx, h:sh*ky, kx, ky};
+}
+function drawMedia(g,s,q,clipR,t,alpha){
+  const A=mAsset(s.asset), R=mRuntime(A), fps=D.comp.fps||30;
+  const sw=(R&&R.w)||(A&&A.w)||1280, sh=(R&&R.h)||(A&&A.h)||720;
+  const img=R?mFrameAt(R,s.kind==='video'?mSrcTime(s,t==null?(s.start==='frame'?(+s.at||0):s.tRev+(+s.delay||0)):t,fps,R.dur||(A&&A.dur)||0):0):null;
+  g.save(); g.beginPath(); g.rect(clipR.x,clipR.y,clipR.w,clipR.h); g.clip();
+  g.globalAlpha=alpha*clamp(+s.opacity||0,0,100)/100;
+  const L=mLayout(s,q,sw,sh);
+  if(!img){
+    // still loading (or missing): a striped placeholder with the file name
+    g.fillStyle='rgba(18,18,18,.55)'; g.fillRect(clipR.x,clipR.y,clipR.w,clipR.h);
+    g.strokeStyle='rgba(255,255,255,.18)'; g.lineWidth=Math.max(1,q.h/40);
+    for(let x=q.x-q.h;x<q.x+q.w;x+=q.h/4){ g.beginPath(); g.moveTo(x,q.y+q.h); g.lineTo(x+q.h,q.y); g.stroke(); }
+    g.fillStyle='rgba(255,255,255,.75)'; g.font=`${Math.max(8,Math.min(18,q.h/6))}px sans-serif`; g.textBaseline='middle';
+    g.fillText((R&&R.err?'⚠ missing · ':s.kind==='video'?'▶ ':'▣ ')+(A?A.name:'media')+(R&&!R.err&&R.cf?` · loading ${Math.round(100*R.got/Math.max(1,Math.round(R.dur*R.cf)))}%`:''),q.x+q.h*.15,q.y+q.h/2);
+    g.restore(); return;
+  }
+  const fx=s.flipX?-1:1, fy=s.flipY?-1:1;
+  const tile=(x,y,w,h)=>{ g.save(); g.translate(x+w/2,y+h/2); g.scale(fx,fy); g.drawImage(img,-w/2,-h/2,w,h); g.restore(); };
+  if(s.fit==='tile'){
+    const w=Math.max(4,L.w), h=Math.max(4,L.h), x0=L.cx-w/2-Math.ceil((L.cx-w/2-clipR.x)/w)*w, y0=L.cy-h/2-Math.ceil((L.cy-h/2-clipR.y)/h)*h;
+    let n=0; for(let y=y0;y<clipR.y+clipR.h&&n<600;y+=h) for(let x=x0;x<clipR.x+clipR.w&&n<600;x+=w,n++) tile(x,y,w,h);
+  } else tile(L.cx-L.w/2,L.cy-L.h/2,L.w,L.h);
+  g.restore();
+}
 function drawBlock(g,G,b,o,dx,dy,st,ghost){
   const q=cellRect(G,b.c,b.r,b.w,b.h);
   if(!st) st={op:1,tp:1,sx:1,sy:1,x:q.x,y:q.y,w:q.w,h:q.h};
@@ -6122,6 +6383,10 @@ function drawBlock(g,G,b,o,dx,dy,st,ghost){
   g.translate(cx,cy); g.scale(st.sx,st.sy); g.translate(-cx,-cy);
   if(isOutline(b)){const lw=Math.max(1/o.sc,+D.fill.outlineW||2);g.strokeStyle=b.color;g.lineWidth=lw;g.strokeRect(x+lw/2,y+lw/2,w-lw,h-lw);}
   else {g.fillStyle=b.color; g.fillRect(x,y,w,h);}
+  if(o.inside&&o.media&&o.media[b.id]) drawMedia(g,o.media[b.id],{x:q.x+dx,y:q.y+dy,w:q.w,h:q.h},{x,y,w,h},o.fillT,g.globalAlpha);
+  if(o.inside&&U.mediaPick&&STEPS[U.step].id==='content'){ const on=(D.bmedia.pick||[]).indexOf(b.id)>=0, r0=Math.max(6/o.sc,Math.min(q.h*.16,14/o.sc)), px=x+r0*1.6, py=y+h-r0*1.6;
+    g.save(); g.globalAlpha=1; g.beginPath(); g.arc(px,py,r0,0,7); g.fillStyle=on?'#2BD98F':'rgba(0,0,0,.55)'; g.fill(); g.lineWidth=Math.max(1,r0*.18); g.strokeStyle='#fff'; g.stroke();
+    if(on){ g.beginPath(); g.moveTo(px-r0*.45,py); g.lineTo(px-r0*.1,py+r0*.38); g.lineTo(px+r0*.5,py-r0*.38); g.stroke(); } g.restore(); }
   if(o.inside&&!ghost&&D.fill.on){
     const items=fillItems(G,b,q,false);
     if(items.length){g.save();g.beginPath();g.rect(x,y,w,h);g.clip();drawFillItems(g,items,dx,dy,o.fillT!=null&&o.fillBase?o.fillBase[b.id]:null,o.fillT,o.alpha*st.op,o.fillEnd?o.fillEnd[b.id]:undefined);g.restore();}
@@ -6257,7 +6522,7 @@ function drawWorld(g,G,o){
   if(D.look.ruleLayer!=='top') drawRules();
   if(o.inside) drawTransLayer(g,G,A,true,baseXf);
   // content timing for the preview
-  o.fillT=live?A.t:null; o.fillBase=A&&A.P?A.P.fillBase:null; o.fillEnd=live&&A.P?A.P.fillEnd:null; o.tracks=live&&A.P?A.P.tracks:null; o.nums=D.num&&(D.num.on||D.blocks.some(b=>b.num))?blockNumbers(G):null;
+  o.fillT=live?A.t:null; o.fillBase=A&&A.P?A.P.fillBase:null; o.fillEnd=live&&A.P?A.P.fillEnd:null; o.tracks=live&&A.P?A.P.tracks:null; o.media=(()=>{try{return mediaMap(A&&A.P?A.P:plan(G));}catch(e){return null;}})(); o.nums=D.num&&(D.num.on||D.blocks.some(b=>b.num))?blockNumbers(G):null;
   // echoes (behind everything else), then blocks
   if(live){
     A.P.echo.forEach(e=>{const st=blockState(e.K,A.t,e.rect);st.src=e.src;drawEcho(g,e.rect,st,o,off[0],off[1]);});
@@ -6422,6 +6687,7 @@ cv.addEventListener('pointerdown',e=>{
   let b=inR?blockAt(cell.c,cell.r):null;
   if(b&&isGenerated()&&(plan(G).lineShift||0)) b=null;   // the line is drawn slid up/down: hit-test the drawn blocks instead
   const tool=U.tool;
+  if(U.mediaPick&&STEPS[U.step].id==='content'&&tool==='select'&&!e.shiftKey){ if(mPickAt(G,cell)) return; }
   if(U.pickStart){ finishPickStart(cell); return; }
   if((tool==='stamp'||tool==='draw'||tool==='erase')&&isGenerated()&&e.button===0){ if(materialize()){ U.preview=false; b=inR?blockAt(cell.c,cell.r):null; } }
   if(tool==='select'&&!b&&inR&&!e.shiftKey){ const vb=virtualAt(G,cell);
@@ -6779,7 +7045,6 @@ function styleBlock(b,multi){
 function cardContent(b,virt){
   return `<div class="card"><div class="card-h">${esc(bname(b))}<span class="count">${b.w}×${b.h}</span></div>
     <div class="field stack"><span class="lbl">Block colour</span><div class="swatches">${swatchHTML(b.color,'sel.color')}</div></div>
-    <div class="tabs"><button class="on">Text</button><button disabled>Image <span class="soon">soon</span></button><button disabled>Video <span class="soon">soon</span></button></div>
     <textarea data-f="text" placeholder="Type to add a text layer inside this block…">${esc(b.text||'')}</textarea>
     ${virt?'<div class="note">This block is part of the generated line. Typing or changing its text style makes the line editable (⌘Z undoes).</div>':''}
     ${styleBlock(b)}
@@ -6787,6 +7052,7 @@ function cardContent(b,virt){
       ${D.fill.on?`<div class="row-btns"><label class="check" style="flex:1"><input type="checkbox" data-bfill="1"${b.noFill?'':' checked'}> Auto-fill this block</label><button class="btn" data-act="reroll" title="New random content for this block">↻ Re-roll</button></div>`:'<div class="note">Auto-fill is off (Text HUD tab).</div>'}
       <label class="check"><input type="checkbox" data-bnum="1"${numOn(b)?' checked':''}> Block number in the top-right${b.num!=null?' <a href="#" data-act="numreset" class="note">(use default)</a>':''}</label>
     </div></details>
+    ${cardMedia([b.id])}
   </div>`;
 }
 function cardContentMulti(sel,virt){
@@ -6794,6 +7060,7 @@ function cardContentMulti(sel,virt){
     <div class="field stack"><span class="lbl">Block colour</span><div class="swatches">${swatchHTML(sel[0].color,'sel.color')}</div></div>
     ${virt?'<div class="note">Changing text style here makes the generated line editable (⌘Z undoes).</div>':''}
     ${styleBlock(sel[0],sel)}
+    ${cardMedia(sel.map(b=>b.id))}
     <div class="note">Changes apply to every selected block.</div></div>`;
 }
 function cardSequence(G){
@@ -6921,6 +7188,8 @@ function onChange(path){
   if(path==='comp.follow'&&D.comp.follow) detect();
   if(path.indexOf('grid.')===0||path.indexOf('comp.')===0){if(V.fit)fitView(V.fit);}
   if(path.indexOf('fill.')===0) fillCache.clear();
+  if(path==='bmedia.kind') D.bmedia.asset=mKindAsset(D.bmedia.kind,D.bmedia.asset);
+  if(path.indexOf('bmedia.')===0) setTimeout(()=>{try{renderMediaUI();}catch(e){}},0);
   if(path==='timing.sens'||path==='timing.minGap') reBeat();
   if(path==='timing.use'||path==='timing.offset') {planCache.k='';renderMedia();}
   if(path==='anim.zoomOn'){planCache.k='';$('#zoomList').innerHTML='';}
@@ -7068,8 +7337,8 @@ function renderProps(){
   else if(U.ctx){ const C=CTX[U.ctx]||{t:U.ctx,e:'',d:''}; $('#stepEyebrow').textContent=C.e; $('#stepTitle').textContent=C.t; $('#stepDesc').textContent=C.d; back.hidden=false; back.title='Back to '+st.name; }
   else { $('#stepEyebrow').textContent=`${U.step+1} · ${st.name}`; $('#stepTitle').textContent=st.title; $('#stepDesc').textContent=st.id==='build'?(inAE?'Create the layers in your active comp.':'Export a script, then run it in After Effects.'):st.desc; back.hidden=true; }
   // content tabs
-  const cp=$('#left .pane[data-pane="content"]'); if(cp){ ['hud','gaps','numbers','echo','text'].forEach(t=>cp.classList.toggle('tab-'+t,U.ctab===t));
-    const on={hud:D.fill.on,gaps:D.fill.on&&D.fill.gap.on,numbers:D.num&&D.num.on,echo:D.echo&&D.echo.on,text:D.blocks.some(b=>b.text)};
+  const cp=$('#left .pane[data-pane="content"]'); if(cp){ ['hud','gaps','numbers','echo','text','media'].forEach(t=>cp.classList.toggle('tab-'+t,U.ctab===t)); if(st.id!=='content') U.mediaPick=false; try{renderMediaUI();}catch(e){}
+    const on={hud:D.fill.on,gaps:D.fill.on&&D.fill.gap.on,numbers:D.num&&D.num.on,echo:D.echo&&D.echo.on,text:D.blocks.some(b=>b.text),media:D.bmedia.on||Object.values(D.bmedia.per||{}).some(p=>p.on)};
     $$('#ctabs [data-ctab-btn]').forEach(b=>{const k=b.dataset.ctabBtn; b.classList.toggle('on',U.ctab===k); if(!b._lab) b._lab=b.textContent; b.innerHTML=`<span class="d${on[k]?' on':''}"></span>${b._lab}`;}); }
 }
 $('#ctxBack').onclick=()=>{U.ctx=null;U.dopeSel=[];U.selIds=[];U.sel=null;refresh();};
@@ -7317,6 +7586,7 @@ function materialize(){
     const n=newBlock(b.c,b.r,b.w,b.h,b.color); n.stack=!!b.stack; n.textColor=b.textColor; map[b.id]=n.id; D.blocks.push(n);
   });
   ['dt','dx'].forEach(k=>{const m=D.anim[k]||{};Object.keys(m).forEach(id=>{if(map[id]!=null){m[map[id]]=m[id];delete m[id];}});});
+  { const M=D.bmedia, per=M.per||{}; Object.keys(per).forEach(id=>{if(map[id]!=null&&map[id]!=id){per[map[id]]=per[id];delete per[id];}}); M.pick=(M.pick||[]).map(id=>map[id]!=null?map[id]:id); }
   if(D.blockColors) Object.keys(D.blockColors).forEach(id=>{ if(+id<0) delete D.blockColors[id]; });   // baked into the new blocks
   U.dopeSel=(U.dopeSel||[]).map(id=>map[id]!=null?map[id]:id);
   D.grid.overX=ox; D.grid.overY=oy; D.anim.extendOn=false; D.anim.skip=[]; D.anim.cutAt=null;
@@ -8370,9 +8640,13 @@ function payload(){
     const its=fillItems(G,b,rect,isEcho).map(it=>payItem(it,base==null?(it.slot||0)*st:base+(it.slot||0)*st,tEnd));
     return its.length?its:null;
   };
+  const MM=mediaMap(P);
   blocks.forEach((pb,i)=>{const b=P.seq[i]; if(!b) return; const q=cellRect(G,b.c,b.r,b.w,b.h);
     pb.fill=blockFill(b,q,animOn?P.fillBase[b.id]:null,false,animOn&&P.fillEnd?P.fillEnd[b.id]:null);
     if(isOutline(b)) pb.outline={w:+F.outlineW||2};
+    const ms=MM[b.id]; if(ms){ const A=mAsset(ms.asset)||MEDIA_SAMPLE;
+      pb.media={id:A.id,name:A.name,type:A.type,file:A.file||A.name,path:A.path||null,precomp:!!ms.precomp,fit:ms.fit,scale:+ms.scale||100,x:+ms.x||0,y:+ms.y||0,flipX:!!ms.flipX,flipY:!!ms.flipY,opacity:clamp(+ms.opacity,0,100),
+        loop:ms.loop,startF:ms.start==='frame'?(+ms.at||0):(animOn?Math.round(P.T[i]):0)+(+ms.delay||0),offset:Math.max(0,+ms.offset||0),audio:ms.audio==='on'}; }
   });
   // manual order: blocks you didn't pick but chose to keep visible
   P.statics.forEach(b=>{const q=cellRect(G,b.c,b.r,b.w,b.h);blocks.push({name:bname(b),order:0,c:b.c+1,r:b.r+1,w:b.w,h:b.h,x:r3(q.x),y:r3(q.y),bw:r3(q.w),bh:r3(q.h),
@@ -8409,6 +8683,7 @@ function payload(){
   return{
     v:3, fps,
     comp:{w:G.W,h:G.H,name:'Grid Blocks '+G.W+'x'+G.H,dur:Math.max(D.comp.dur||10,D.out.fitDur?Math.ceil(Math.max(endSec,transOn()?transP(G).end/fps:0)*100)/100:0)},
+    mediaRoot:inAE?(()=>{try{let p=decodeURI(location.pathname).replace(/\/[^\/]*$/,'');if(/^\/[A-Za-z]:/.test(p))p=p.slice(1);return p;}catch(e){return null;}})():null,
     replace:D.out.replace, lock:D.out.lock, fitDur:D.out.fitDur, rig, mb:D.out.mb?{angle:+D.out.mbAngle||180}:null,
     bg:D.look.bgOn?{color:hexRgb(D.look.bg)}:null,
     cells, lines, rules, echoes, blocks, gaps,
@@ -8561,6 +8836,97 @@ function registerKeys(){
 }
 
 /* ------------------------------------------------------------------ init */
+/* ---- block media: global panel ---- */
+function mOpts(list,cur,blank){ return (blank?`<option value="">${blank}</option>`:'')+list.map(a=>`<option value="${esc(a.id)}"${a.id===cur?' selected':''}>${a.type==='video'?'▶':'▣'} ${esc(a.name)}</option>`).join(''); }
+function mStatus(A){ const R=MRT[A.id]; if(!mUrl(A)) return '⚠ relink'; if(!R) return ''; if(R.err) return '⚠ can’t load'; if(A.type==='video'&&!R.ready&&R.cf) return Math.round(100*R.got/Math.max(1,Math.round(R.dur*R.cf)))+'%'; return R.ready?'ready':'…'; }
+function renderMediaUI(){
+  const M=D.bmedia, el=$('#mAsset'); if(!el) return;
+  const kindList=mAssets().filter(a=>a.type===M.kind);
+  if(document.activeElement!==el) el.innerHTML=mOpts(kindList,mKindAsset(M.kind,M.asset));
+  $$('[data-mdir]').forEach(s=>{ if(document.activeElement!==s) s.innerHTML=mOpts(mAssets(),(M.dir||{})[s.dataset.mdir]||'','(same as above)'); });
+  const pool=M.pool||[];
+  $('#mPool').innerHTML=mAssets().map(a=>`<label class="mrow"><input type="checkbox" data-mpool="${esc(a.id)}"${pool.indexOf(a.id)>=0?' checked':''}><span class="nm">${a.type==='video'?'▶':'▣'} ${esc(a.name)}</span>${pool.indexOf(a.id)>=0?`<span class="st">#${pool.indexOf(a.id)+1}</span>`:''}</label>`).join('');
+  const user=mAssets().filter(a=>!a.builtin);
+  $('#mAssetList').innerHTML=user.map(a=>`<div class="mrow"><span class="nm" title="${esc(a.path||a.name)}">${a.type==='video'?'▶':'▣'} ${esc(a.name)}</span><span class="st">${mStatus(a)}</span>${mUrl(a)?'':`<button class="btn ghost" data-mrelink="${esc(a.id)}" title="Choose the file again (browser files don't survive a reload)">Relink</button>`}<button class="btn ghost" data-mdel="${esc(a.id)}" title="Remove from the list">×</button></div>`).join('');
+  const n=(M.pick||[]).length; if($('#mPickN')) $('#mPickN').textContent=n?`${n} picked`:'none picked yet';
+  if($('#mPick')) { $('#mPick').classList.toggle('on',!!U.mediaPick); $('#mPick').textContent=U.mediaPick?'✓ Picking — click blocks':'Pick on the canvas'; }
+  if(M.on||Object.keys(M.per||{}).length){ const used=new Set(Object.values(mediaMap(plan(geom()))).map(s=>s.asset)); used.add(mKindAsset(M.kind,M.asset)); used.forEach(id=>mRuntime(mAsset(id))); }
+}
+/* add files: in the browser they're session-only object URLs (relink after a reload); in After Effects, real paths */
+function mAddFiles(files,relinkId){
+  const M=D.bmedia; pushHist(true); M.assets=M.assets||[]; let last=null;
+  [...files].forEach(f=>{
+    const type=/^video\//.test(f.type)||/\.(mp4|mov|m4v|webm|avi|mxf)$/i.test(f.name)?'video':'image';
+    let A=relinkId?M.assets.find(a=>a.id===relinkId):null;
+    if(!A){ A={id:'m'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36),name:f.name,type,file:f.name}; M.assets.push(A); }
+    A.url=URL.createObjectURL(f); A.name=f.name; A.file=f.name; A.type=type; if(f.path) A.path=f.path;
+    delete MRT[A.id]; mRuntime(A); last=A;
+  });
+  if(last&&!relinkId){ M.kind=last.type; M.asset=last.id; M.on=true; }
+  syncInputs(true); refresh(); renderMediaUI();
+}
+(()=>{
+  const fi=$('#mFile'); if(!fi) return; let relink=null;
+  $('#mAdd').onclick=async()=>{
+    if(inAE){ const r=String(await evalHost('GB_pickMedia()')); if(/^OK\|/.test(r)){ const M=D.bmedia; pushHist(true); M.assets=M.assets||[]; r.slice(3).split('\n').filter(Boolean).forEach(line=>{ const [p,n]=line.split('\t'); const type=/\.(mp4|mov|m4v|webm|avi|mxf)$/i.test(n)?'video':'image'; const A={id:'m'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36),name:n,type,file:n,path:p}; M.assets.push(A); M.kind=type; M.asset=A.id; M.on=true; }); syncInputs(true); refresh(); renderMediaUI(); } return; }
+    relink=null; fi.value=''; fi.click(); };
+  fi.onchange=()=>{ if(fi.files&&fi.files.length) mAddFiles(fi.files,relink); relink=null; };
+  $('#mAsset').onchange=e=>{ pushHist(true); D.bmedia.asset=e.target.value; refresh(); };
+  $$('[data-mdir]').forEach(s=>s.onchange=e=>{ pushHist(true); D.bmedia.dir=Object.assign({},D.bmedia.dir||{}); D.bmedia.dir[s.dataset.mdir]=e.target.value; refresh(); });
+  $('#mPool').addEventListener('change',e=>{ const id=e.target.dataset&&e.target.dataset.mpool; if(!id) return; pushHist(true); const P2=(D.bmedia.pool||[]).filter(x=>x!==id); if(e.target.checked) P2.push(id); D.bmedia.pool=P2; refresh(); renderMediaUI(); });
+  $('#mAssetList').addEventListener('click',e=>{ const d=e.target.closest('[data-mdel]'), r=e.target.closest('[data-mrelink]');
+    if(d){ pushHist(true); const id=d.dataset.mdel, M=D.bmedia; M.assets=(M.assets||[]).filter(a=>a.id!==id); M.pool=(M.pool||[]).filter(x=>x!==id); if(M.asset===id) M.asset=mDefault(M.kind); Object.values(M.per||{}).forEach(p=>{if(p.asset===id) delete p.asset;}); refresh(); renderMediaUI(); }
+    if(r){ relink=r.dataset.mrelink; fi.value=''; fi.click(); } });
+  $('#mPick').onclick=()=>{ U.mediaPick=!U.mediaPick; if(U.mediaPick){ U.tool='select'; if(D.bmedia.target!=='pick'){pushHist(true);D.bmedia.target='pick';syncInputs(true);} toast('Click blocks to pick them for media · click again to unpick'); } renderMediaUI(); render(); };
+  $('#mWalk').onclick=()=>{ U.mediaPick=true; if(D.bmedia.target!=='pick'){pushHist(true);D.bmedia.target='pick';syncInputs(true);} renderMediaUI(); if(U.playing) stopPlay(); else { if(U.t==null) tlSetT(0); play(); } toast('Playing the walk — pause anytime and click blocks to pick them'); };
+  $('#mPickAll').onclick=()=>{ pushHist(true); D.bmedia.pick=plan(geom()).seq.map(b=>b.id); D.bmedia.target='pick'; syncInputs(true); refresh(); renderMediaUI(); };
+  $('#mPickNone').onclick=()=>{ pushHist(true); D.bmedia.pick=[]; refresh(); renderMediaUI(); };
+  $('#mReseed').onclick=()=>{ pushHist(true); D.bmedia.seed=Math.floor(Math.random()*1e5); refresh(); };
+})();
+/* click a block on the canvas while picking (works on the generated line too, at any point in the walk) */
+function mPickAt(G,cell){
+  const P=plan(G), b=P.seq.find(x=>cell.c>=x.c&&cell.c<x.c+x.w&&cell.r>=x.r&&cell.r<x.r+x.h); if(!b) return false;
+  pushHist(true); const L=(D.bmedia.pick||[]).slice(), i=L.indexOf(b.id); if(i>=0) L.splice(i,1); else L.push(b.id); D.bmedia.pick=L; if(D.bmedia.target!=='pick') D.bmedia.target='pick';
+  syncInputs(true); render(); renderMediaUI(); try{drawDope();}catch(e){} return true;
+}
+/* ---- block media: per-block (inspector) ---- */
+function mSelIds(){ const s=selBlocks(); return s.length?s.map(b=>b.id):tlSelIds(); }
+function cardMedia(ids){
+  const M=D.bmedia, per=(M.per||{})[ids[0]]||{}, P=plan(geom()), mm=mediaMap(P), got=mm[ids[0]];
+  const mode=per.on===true?'on':per.on===false?'off':'auto', own=!!per.own, v=k=>per[k]!==undefined?per[k]:M[k];
+  const seg=(k,opts)=>`<div class="seg" data-bmseg="${k}">${opts.map(([val,lab])=>`<button data-v="${val}"${String(v(k))===val?' class="on"':''}>${lab}</button>`).join('')}</div>`;
+  const num=(k,lab,unit,min,max)=>`<div class="field"><span class="lbl scrub">${lab}</span><div class="num"><input type="number" data-bm="${k}" value="${+v(k)||0}" min="${min}" max="${max}" step="1"><span class="unit">${unit}</span></div></div>`;
+  const asset=got?mAsset(got.asset):null;
+  return `<details class="sub" data-sub="blk-media" open><summary>Media <span class="note">${got?(asset?esc(asset.name):'on'):'none'}${ids.length>1?' · '+ids.length+' blocks':''}</span></summary><div class="subbody">
+    <div class="seg" data-bmon="1"><button data-v="auto"${mode==='auto'?' class="on"':''} title="Follow the global Media settings (${M.on?'on':'off'})">Global rule</button><button data-v="on"${mode==='on'?' class="on"':''}>On</button><button data-v="off"${mode==='off'?' class="on"':''}>Off</button></div>
+    <div class="field stack"><span class="lbl">Media for ${ids.length>1?'these blocks':'this block'}</span><select class="msel" data-bmasset="1">${mOpts(mAssets(),per.asset||'','(global choice)')}</select></div>
+    <label class="check"><input type="checkbox" data-bmown="1"${own?'':' checked'}> Use the global media settings</label>
+    ${own?`<div class="note">Settings below change ${ids.length>1?'the selected blocks':'this block'} only.</div>
+      ${seg('fit',[['cover','Cover'],['contain','Contain'],['stretch','Stretch'],['tile','Tile'],['original','Original']])}
+      <div class="field2">${num('scale','Scale','%',1,2000)}${num('opacity','Opacity','%',0,100)}${num('x','X','%',-500,500)}${num('y','Y','%',-500,500)}</div>
+      <div class="row-btns"><label class="check"><input type="checkbox" data-bmchk="flipX"${v('flipX')?' checked':''}> Flip X</label><label class="check"><input type="checkbox" data-bmchk="flipY"${v('flipY')?' checked':''}> Flip Y</label></div>
+      ${seg('loop',[['loop','Loop'],['hold','Stop on last'],['ping','Ping-pong']])}
+      ${seg('start',[['reveal','When it appears'],['frame','At a frame']])}
+      <div class="field2">${v('start')==='frame'?num('at','At frame','fr',-9999,99999):num('delay','Delay','fr',-9999,9999)}${num('offset','Clip starts at','fr',0,99999)}</div>
+      ${seg('audio',[['mute','Mute'],['on','Sound on']])}
+      <label class="check"><input type="checkbox" data-bmchk="precomp"${v('precomp')?' checked':''}> As an After Effects precomp</label>`
+    :`<div class="readout">${M.fit} · ${M.scale}%${M.flipX?' · flip X':''}${M.flipY?' · flip Y':''} · ${({loop:'loop',hold:'stop on last frame',ping:'ping-pong'})[M.loop]} <a href="#" data-act="editmedia" style="color:var(--accent2)">Edit global</a></div>`}
+  </div></details>`;
+}
+function mPer(ids,fn){ const M=D.bmedia; M.per=Object.assign({},M.per||{}); ids.forEach(id=>{ const p=Object.assign({},M.per[id]||{}); fn(p); if(!Object.keys(p).length) delete M.per[id]; else M.per[id]=p; }); }
+$('#insp').addEventListener('click',e=>{
+  const ed=e.target.closest('[data-act="editmedia"]'); if(ed){ e.preventDefault(); U.ctab='media'; select([]); refresh(); return; }
+  const on=e.target.closest('[data-bmon] button[data-v]'); if(on){ pushHist(true); const v=on.dataset.v; mPer(mSelIds(),p=>{ if(v==='auto') delete p.on; else p.on=v==='on'; }); renderInsp(); render(); drawDope(); return; }
+  const sg=e.target.closest('[data-bmseg] button[data-v]'); if(sg){ const k=sg.parentNode.dataset.bmseg; pushHist(true); mPer(mSelIds(),p=>{p[k]=sg.dataset.v;}); renderInsp(); render(); return; }
+});
+$('#insp').addEventListener('change',e=>{ const t=e.target, ds=t.dataset||{};
+  if(ds.bmasset){ pushHist(true); mPer(mSelIds(),p=>{ if(t.value) p.asset=t.value; else delete p.asset; }); renderInsp(); render(); return; }
+  if(ds.bmown){ pushHist(true); const own=!t.checked; mPer(mSelIds(),p=>{ if(own){ p.own=true; MSPEC.forEach(k=>{ if(p[k]===undefined) p[k]=D.bmedia[k]; }); } else { delete p.own; MSPEC.forEach(k=>delete p[k]); } }); renderInsp(); render(); return; }
+  if(ds.bmchk){ pushHist(true); mPer(mSelIds(),p=>{p[ds.bmchk]=t.checked;}); render(); return; }
+  if(ds.bm){ U._bmEdit=false; renderInsp(); }
+});
+$('#insp').addEventListener('input',e=>{ const t=e.target, k=t.dataset&&t.dataset.bm; if(!k) return; const v=parseFloat(t.value); if(isNaN(v)) return;
+  if(!U._bmEdit){ pushHist(true); U._bmEdit=true; } mPer(mSelIds(),p=>{p[k]=v;}); render(); });
 async function init(){
   D.blocks=D.blocks.map(b=>normBlock(b)); uid=D.blocks.reduce((m,b)=>Math.max(m,b.id),0)+1;   // starter layout
   buildStepper(); buildPicker(); buildCurves(); addHelp(); addResets(); addCollapse(); setHelp(true); renderFontUI();

@@ -142,7 +142,7 @@ main{display:grid;grid-template-columns:68px minmax(0,1fr) 336px;grid-template-a
 .ctabs button .d{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--dim);margin-right:5px;vertical-align:1px}
 .ctabs button .d.on{background:var(--ok)}
 #left .pane[data-pane="content"] .group[data-ctab]{display:none}
-#left .pane[data-pane="content"].tab-hud .group[data-ctab="hud"],#left .pane[data-pane="content"].tab-gaps .group[data-ctab="gaps"],#left .pane[data-pane="content"].tab-numbers .group[data-ctab="numbers"],#left .pane[data-pane="content"].tab-echo .group[data-ctab="echo"],#left .pane[data-pane="content"].tab-text .group[data-ctab="text"]{display:grid}
+#left .pane[data-pane="content"].tab-hud .group[data-ctab="hud"],#left .pane[data-pane="content"].tab-gaps .group[data-ctab="gaps"],#left .pane[data-pane="content"].tab-numbers .group[data-ctab="numbers"],#left .pane[data-pane="content"].tab-echo .group[data-ctab="echo"],#left .pane[data-pane="content"].tab-text .group[data-ctab="text"],#left .pane[data-pane="content"].tab-media .group[data-ctab="media"]{display:grid}
 #left.ctxmode .pane{display:none}
 #left.ctxmode .pane.ctxhost{display:block}
 #left.ctxmode .pane.ctxhost > .group:not(.ctxshow),#left.ctxmode .pane.ctxhost > .ctabs{display:none!important}
@@ -420,6 +420,9 @@ body.simple [data-adv]{display:none!important}
 
 /* curve editor */
 .curve{display:grid;gap:6px}
+select.msel{width:100%;height:28px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:0 6px;font:inherit;font-size:12px}
+.mlist{display:grid;gap:4px}.mlist .mrow{display:flex;align-items:center;gap:6px;font-size:11.5px;padding:4px 6px;border:1px solid var(--line);border-radius:7px}
+.mlist .mrow .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mlist .mrow .st{color:var(--mut,#8a8a93);font-size:10.5px}.mlist .mrow button{height:20px;padding:0 6px}
 .zgraph{display:grid;gap:6px}.zg-h{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 8px}.zg-h .lbl{white-space:nowrap}.zg-hint{font-size:10px;white-space:nowrap;color:var(--mut,#686871)}
 canvas.tgraph{width:100%;height:130px;outline:none;background:var(--bg);border:1px solid var(--line);border-radius:9px;cursor:crosshair;touch-action:none;display:block}
 .curve canvas{width:100%;height:150px;background:var(--bg);border:1px solid var(--line);border-radius:9px;cursor:crosshair;touch-action:none;display:block}
@@ -864,7 +867,55 @@ body.nohelp .qm{display:none}
 
         <!-- 4 CONTENT -->
         <div class="pane" data-pane="content">
-          <div class="ctabs" id="ctabs"><button data-ctab-btn="hud">Text HUD</button><button data-ctab-btn="gaps">Between blocks</button><button data-ctab-btn="numbers">Numbers</button><button data-ctab-btn="echo">Echo</button><button data-ctab-btn="text">Your text</button></div>
+          <div class="ctabs" id="ctabs"><button data-ctab-btn="hud">Text HUD</button><button data-ctab-btn="gaps">Between blocks</button><button data-ctab-btn="numbers">Numbers</button><button data-ctab-btn="echo">Echo</button><button data-ctab-btn="text">Your text</button><button data-ctab-btn="media">Media</button></div>
+          <div class="group" data-ctab="media">
+            <div class="group-h">Media in blocks<label class="switch hswitch" title="Fill blocks with a video or image, clipped to each block"><input type="checkbox" data-bind="bmedia.on"><span></span></label></div>
+            <div class="note">A video or image clipped to each block — it moves, wipes and leaves with the block. These are the global settings; select a block to give it its own media.</div>
+            <div class="field stack"><span class="lbl">Type</span><div class="seg" data-seg="bmedia.kind"><button data-v="video">Video</button><button data-v="image">Image</button></div></div>
+            <div class="field stack"><span class="lbl">Media</span><select id="mAsset" class="msel"></select></div>
+            <div class="row-btns"><button class="btn" id="mAdd" title="Add your own video or image files">+ Add video / image…</button><input type="file" id="mFile" accept="video/*,image/*" multiple hidden></div>
+            <div id="mAssetList" class="mlist"></div>
+            <label class="check" title="After Effects: the clip goes inside its own precomp (one per file), and the blocks use the precomp — swap or edit the footage in one place"><input type="checkbox" data-bind="bmedia.precomp"> Bring in as an After Effects precomp</label>
+            <details class="sub" data-sub="m-fit" open><summary>Fit &amp; position</summary><div class="subbody">
+              <div class="seg" data-seg="bmedia.fit"><button data-v="cover" title="Fill the block, cropping the overflow">Cover</button><button data-v="contain" title="Show all of it, block colour around it">Contain</button><button data-v="stretch" title="Stretch to the block exactly">Stretch</button><button data-v="tile" title="Repeat it across the block (tile height = block height × scale)">Tile</button><button data-v="original" title="Its own pixel size">Original</button></div>
+              <div class="field2">
+                <div class="field"><span class="lbl scrub">Scale</span><div class="num"><input type="number" data-bind="bmedia.scale" min="1" max="2000" step="1"><span class="unit">%</span></div></div>
+                <div class="field"><span class="lbl scrub">Opacity</span><div class="num"><input type="number" data-bind="bmedia.opacity" min="0" max="100" step="1"><span class="unit">%</span></div></div>
+                <div class="field"><span class="lbl scrub" title="Move right (+) / left (−), in % of the block width">X</span><div class="num"><input type="number" data-bind="bmedia.x" min="-500" max="500" step="1"><span class="unit">%</span></div></div>
+                <div class="field"><span class="lbl scrub" title="Move down (+) / up (−), in % of the block height">Y</span><div class="num"><input type="number" data-bind="bmedia.y" min="-500" max="500" step="1"><span class="unit">%</span></div></div>
+              </div>
+              <div class="row-btns"><label class="check"><input type="checkbox" data-bind="bmedia.flipX"> Flip X</label><label class="check"><input type="checkbox" data-bind="bmedia.flipY"> Flip Y</label></div>
+            </div></details>
+            <details class="sub" data-sub="m-play" open data-show="bmedia.kind=video"><summary>Playback</summary><div class="subbody">
+              <div class="seg" data-seg="bmedia.loop"><button data-v="loop">Loop</button><button data-v="hold" title="Plays once and stops on its last frame">Stop on last frame</button><button data-v="ping" title="Plays forward, then backward, and repeats">Ping-pong</button></div>
+              <div class="field stack"><span class="lbl">Starts</span><div class="seg" data-seg="bmedia.start"><button data-v="reveal" title="Each block's clip starts when that block appears">When the block appears</button><button data-v="frame" title="Every clip starts at the same frame">At a frame</button></div></div>
+              <div class="field2">
+                <div class="field" data-show="bmedia.start=reveal"><span class="lbl scrub" title="Frames after the block appears">Delay</span><div class="num"><input type="number" data-bind="bmedia.delay" min="-9999" max="9999" step="1"><span class="unit">fr</span></div></div>
+                <div class="field" data-show="bmedia.start=frame"><span class="lbl scrub">At frame</span><div class="num"><input type="number" data-bind="bmedia.at" min="-9999" max="99999" step="1"><span class="unit">fr</span></div></div>
+                <div class="field"><span class="lbl scrub" title="Start the clip this many frames into the video">Clip starts at</span><div class="num"><input type="number" data-bind="bmedia.offset" min="0" max="99999" step="1"><span class="unit">fr</span></div></div>
+              </div>
+              <div class="field stack"><span class="lbl">Sound</span><div class="seg" data-seg="bmedia.audio"><button data-v="mute">Mute</button><button data-v="on">Sound on</button></div></div>
+              <div class="note">The preview is silent; sound applies in After Effects.</div>
+            </div></details>
+            <details class="sub" data-sub="m-which" open><summary>Which blocks</summary><div class="subbody">
+              <div class="seg" data-seg="bmedia.target"><button data-v="all">All blocks</button><button data-v="pick">Picked</button><button data-v="dir" title="Blocks the line steps up / down / level into">By direction</button></div>
+              <div data-show="bmedia.target=pick" style="display:grid;gap:7px">
+                <div class="row-btns"><button class="btn" id="mPick">Pick on the canvas</button><button class="btn" id="mWalk" title="Play the walk — pause it and click blocks to pick them">▶ Preview the walk</button></div>
+                <div class="row-btns"><button class="btn ghost" id="mPickAll">Pick all</button><button class="btn ghost" id="mPickNone">Clear</button><span class="note" id="mPickN"></span></div>
+              </div>
+              <div data-show="bmedia.target=dir" class="row-btns"><label class="check"><input type="checkbox" data-bind="bmedia.dirOn.up"> Going up</label><label class="check"><input type="checkbox" data-bind="bmedia.dirOn.down"> Going down</label><label class="check"><input type="checkbox" data-bind="bmedia.dirOn.flat"> Level</label></div>
+            </div></details>
+            <details class="sub" data-sub="m-assign" open><summary>Which media</summary><div class="subbody">
+              <div class="seg" data-seg="bmedia.assign"><button data-v="same">Same for all</button><button data-v="dir" title="Different media when the line goes up, down or stays level — like the up/down block colours">By direction</button><button data-v="cycle">Cycle a list</button><button data-v="random">Random</button></div>
+              <div data-show="bmedia.assign=dir" style="display:grid;gap:6px">
+                <div class="field"><span class="lbl">Going up</span><select class="msel" data-mdir="up"></select></div>
+                <div class="field"><span class="lbl">Going down</span><select class="msel" data-mdir="down"></select></div>
+                <div class="field"><span class="lbl">Level</span><select class="msel" data-mdir="flat"></select></div>
+              </div>
+              <div data-show="bmedia.assign=cycle|random" style="display:grid;gap:6px"><div class="note">Tick the media to use, in order:</div><div id="mPool" class="mlist"></div>
+                <div class="row-btns" data-show="bmedia.assign=random"><button class="btn ghost" id="mReseed">↻ Shuffle</button></div></div>
+            </div></details>
+          </div>
           <div class="group" data-ctab="hud">
             <div class="group-h">Auto-fill blocks</div>
             <div class="layer" data-layer="fill.on">
