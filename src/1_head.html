@@ -672,6 +672,7 @@ body.nohelp .qm{display:none}
               <div class="extra" data-show="look.linesOn=true">
                 <div class="field"><span class="lbl scrub">Weight</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="look.lineW" min="0" max="200" step="1"><span class="unit">px</span><button data-d="1">+</button></div></div>
                 <div class="field" data-show="anim.mode=camera"><span class="lbl scrub" title="100% = locked to the grid; lower drifts slower (further back), higher faster (in front)">Parallax</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="look.ruleParallax" min="0" max="400" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
+                <div class="field" data-show="anim.mode=camera"><span class="lbl scrub" title="The rules trail the camera by this many frames">Delay</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="look.ruleLag" min="0" max="120" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
                 <label class="check"><input type="checkbox" data-bind="look.border"> Outer border lines</label>
               </div>
             </div>

@@ -793,10 +793,12 @@ function GB_build(d){
         if(A.wrap3 && rulesL){
           var rw=GB_null(rulesC,"GB · Rules Wrap",true); rw.comment="GridBlocks:null"; shy.push(rw);
           rulesL.parent=rw;
-          if(d.rules.parallax!=null&&Math.abs(d.rules.parallax-1)>1e-3){
+          var rLag=d.rules.lag>0?d.rules.lag/fps:0;
+          if((d.rules.parallax!=null&&Math.abs(d.rules.parallax-1)>1e-3)||rLag>0){
             // parallax: the rules move k× the camera (the layer follows the camera by (1-k)), wrapped by whole periods
-            GB_xf(rw).property("ADBE Position").expression='var c='+camRefR+'.transform.position;\nvar px='+d.rules.period+', k='+d.rules.parallax+';\n'+
-              'var dx=c[0]-'+(main.width/2)+', dy=c[1]-'+(main.height/2)+';\nvar sx=dx*(1-k), sy=dy*(1-k);\n[sx+px*Math.round((dx-sx)/px), '+(A.wrap3.py>0?'sy+'+A.wrap3.py+'*Math.round((dy-sy)/'+A.wrap3.py+')':'0')+', 0]';
+            // delay: the rules follow where the camera was rLag seconds ago
+            GB_xf(rw).property("ADBE Position").expression='var c='+camRefR+'.transform.position;\nvar cL='+camRefR+'.transform.position.valueAtTime(time-'+rLag+');\nvar px='+d.rules.period+', k='+(d.rules.parallax!=null?d.rules.parallax:1)+';\n'+
+              'var dx=c[0]-'+(main.width/2)+', dy=c[1]-'+(main.height/2)+';\nvar dxL=cL[0]-'+(main.width/2)+', dyL=cL[1]-'+(main.height/2)+';\nvar sx=dx-k*dxL, sy=dy-k*dyL;\n[sx+px*Math.round((dx-sx)/px), '+(A.wrap3.py>0?'sy+'+A.wrap3.py+'*Math.round((dy-sy)/'+A.wrap3.py+')':'0')+', 0]';
           } else GB_xf(rw).property("ADBE Position").expression=wrapExpr(camRefR,d.rules.period,A.wrap3.py);
           locks.push(rw);
         }

@@ -35,7 +35,7 @@ const DEF={
   comp:{w:1920,h:1080,fps:24,dur:10,follow:true},
   grid:{rows:7,colsMode:'bleed',cols:12,gutter:1,margin:0,offsetX:0,snap:true,overX:8,overY:1},
   look:{bgOn:true,bg:'#1F1F1F',linesOn:true,line:'#3B484B',lineW:1,border:false,cellsMode:'none',cell:'#3B484B',
-        rulesOn:false,rule:'#3B484B',ruleW:1,ruleEvery:4,ruleStart:1,ruleLayer:'top',ruleParallax:100,ruleEnd:'stay',ruleFadeAt:0,ruleFadeLen:24},
+        rulesOn:false,rule:'#3B484B',ruleW:1,ruleEvery:4,ruleStart:1,ruleLayer:'top',ruleParallax:100,ruleLag:0,ruleEnd:'stay',ruleFadeAt:0,ruleFadeLen:24},
   block:{w:3,h:1,color:'#E6212F',color2:'#A2AFB2',color3:'#0061E2',color4:'#FF7F7B',upColor:'#FF7F7B',downColor:'#A2AFB2',ncol:2,sync:true,mix:'single',mixPct:25},
   palette:PALETTE.slice(),
   trans:{in:{on:false,mode:'clear',start:0,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:3,jitter:0,preset:'flood',behind:true},
@@ -3647,7 +3647,7 @@ function drawWorld(g,G,o){
   }
   const drawRules=()=>{
     if(!D.look.rulesOn) return;
-    const k=clamp((+D.look.ruleParallax||100)/100,0,4), ro=[gridOff[0]*k,gridOff[1]*k], dc=Math.round((gridOff[0]-ro[0])/G.p);
+    const k=clamp((+D.look.ruleParallax||100)/100,0,4), lagF=Math.max(0,+D.look.ruleLag||0), oL=camMode&&lagF>0&&A&&A.P?ev(A.P.cam,A.t-lagF,[0,0]):gridOff, ro=[oL[0]*k,oL[1]*k], dc=Math.round((gridOff[0]-ro[0])/G.p);   // delay: the rules follow where the camera was a few frames ago
     g.save(); g.translate(ro[0],ro[1]); g.globalAlpha=o.alpha*(live&&A.P&&A.P.ruleOp&&A.P.ruleOp.length?ev(A.P.ruleOp,A.t,100)/100:1);
     g.fillStyle=D.look.rule; const min=1/(sc*s);
     rulesFor(G,c0+dc-2,c1+dc+2,r0,r1,(+D.look.ruleW||1)/s).forEach(a=>{let x=a[0],w=a[2];if(w<min){x+=(w-min)/2;w=min;}g.fillRect(x,a[1],w,a[3]);});
@@ -5283,6 +5283,7 @@ const HELP={
   'exit.walkLen':'How long the camera travels with the walking line before it lets go. After that the line, with its short trail, carries on and walks off the edge of frame.',
   'exit.walkFollow':'How much of the walk-off the camera follows before it lets go and the line runs off screen. 100% = follows to the end.',
   'exit.trail':'How many blocks stay visible behind the head of the line as it walks off.',
+  'look.ruleLag':'The column rules trail the camera by this many frames, so they drift and catch up as the view moves. Camera follow only.',
   'look.ruleParallax':'How fast the column rules move with the camera. 100% = locked to the grid. Lower = they drift slower, like a layer further back; higher = faster, like a layer in front. Camera follow only.',
   'look.ruleEnd':'Column rules stay for the whole piece, or fade off when the walk-off starts (or after the scene if there is no walk-off).',
   'look.ruleFadeAt':'Frames after the walk-off starts (negative = before) when the rules begin to fade.',
@@ -5735,7 +5736,7 @@ function payload(){
     let rr=rulesFor(G,c0-N,c1+N,r0,r1);
     rr=free?rr.map(a=>a.map(r3)):rr.filter(inside).map(clip);
     const lwR=+D.look.ruleW||1;
-    rules={color:hexRgb(D.look.rule),lw:lwR,top:D.look.ruleLayer==='top',period:r3(N*G.p),parallax:r3(clamp((+D.look.ruleParallax||100)/100,0,4)),op:animOn&&P.ruleOp&&P.ruleOp.length?P.ruleOp:null,
+    rules={color:hexRgb(D.look.rule),lw:lwR,top:D.look.ruleLayer==='top',period:r3(N*G.p),parallax:r3(clamp((+D.look.ruleParallax||100)/100,0,4)),lag:Math.max(0,Math.round(+D.look.ruleLag||0)),op:animOn&&P.ruleOp&&P.ruleOp.length?P.ruleOp:null,
       mode:zoomOn?'strokes':'rects', rects:zoomOn?null:rr,
       segs:zoomOn?rr.map(a=>[r3(a[0]+a[2]/2),a[1],r3(a[0]+a[2]/2),r3(a[1]+a[3])]):null};
   }
