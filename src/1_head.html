@@ -496,6 +496,15 @@ button.mini:hover{color:var(--text)}
 .posgrid button.on i{background:var(--accent)}
 .zprow{display:grid;grid-template-columns:auto 1fr auto 1fr auto;gap:6px;align-items:center}
 .zprow .lbl{font-size:11px;color:var(--muted)}
+.tpre{display:grid;gap:6px}
+.tpre .tph{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-top:2px}
+.tpre .tpg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.tpre button{display:grid;gap:3px;text-align:left;padding:6px;border:1px solid var(--line);background:var(--field);border-radius:8px;color:var(--text);cursor:pointer}
+.tpre button:hover{border-color:var(--line2)}
+.tpre button.on{border-color:var(--accent);background:var(--accentA)}
+.tpre button b{font-size:11px;font-weight:600}
+.tpre button small{font-size:9.5px;color:var(--dim)}
+.tpre svg{border-radius:4px;background:#161618}
 .checkgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 10px}
 .num input[type=number]{cursor:ns-resize}
 .num input[type=number]:focus{cursor:text}
@@ -1269,18 +1278,20 @@ body.nohelp .qm{display:none}
           </div>
           <div class="group" data-ctx="trans-in">
             <div class="group-h">Transition in</div>
+            <div class="tpre" data-tk="in"></div>
             <div class="layer" data-layer="trans.in.on">
               <label class="switch"><input type="checkbox" data-bind="trans.in.on"><span></span></label>
               <div><div class="ln">Transition in</div><div class="ls">Starts covered, then clears to reveal</div></div>
               <label class="colorbtn" data-swatch="trans.in.color"><input type="color" data-bind="trans.in.color"></label>
-              <div class="extra" data-show="trans.in.on=true">
+              <div class="extra" data-show="trans.in.on=true"><details class="sub" data-sub="tr-in-cust"><summary>Customize <span class="note">pattern, timing, style</span></summary><div class="subbody">
                 <div class="field stack"><span class="lbl">Blocks</span><div class="seg" data-seg="trans.in.mode"><button data-v="clear">Clear away (reveal)</button><button data-v="build">Build up (cover)</button></div></div>
                 <div class="field"><span class="lbl scrub">Starts at</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="trans.in.start" min="-9999" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
                 <div class="field2">
                   <div class="field"><span class="lbl scrub" title="Frames from the first block to the last">Length</span><div class="num"><input type="number" data-bind="trans.in.dur" min="1" max="9999" step="1"><span class="unit">fr</span></div></div>
                   <div class="field"><span class="lbl scrub" title="Frames each block takes">Each</span><div class="num"><input type="number" data-bind="trans.in.len" min="1" max="600" step="1"><span class="unit">fr</span></div></div>
                 </div>
-                <div class="field stack"><span class="lbl">Pattern</span><div class="seg" data-seg="trans.in.pattern"><button data-v="walk" title="Sweeps the way the line walks, on the scene's own grid, with a stepped block-shaped front">Walk</button><button data-v="sweep">Sweep</button><button data-v="diag">Diagonal</button><button data-v="rows">Rows</button><button data-v="center">Centre out</button><button data-v="random">Random</button></div></div>
+                <div class="field stack"><span class="lbl">Pattern</span><div class="seg" data-seg="trans.in.pattern"><button data-v="flood">Flood</button><button data-v="trail">Retrace</button><button data-v="extrude">Extrude</button><button data-v="ribbons">Ribbons</button><button data-v="head">Head</button><button data-v="walk">Walk</button><button data-v="sweep">Wipe</button><button data-v="rows">Rows</button><button data-v="diag">Diagonal</button><button data-v="center">Iris</button><button data-v="corner">Corner</button><button data-v="checker">Checker</button><button data-v="venetian">Venetian</button><button data-v="random">Scatter</button></div></div>
+                <div class="field"><span class="lbl scrub" title="Breaks up the order: 0 = clean, 100 = loose and organic">Randomness</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="trans.in.jitter" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
                 <div class="field stack"><span class="lbl">Direction</span><div class="seg" data-seg="trans.in.dir"><button data-v="fwd">Forward</button><button data-v="rev">Reverse</button></div></div>
                 <div class="field stack"><span class="lbl">Each block</span><div class="seg" data-seg="trans.in.appear"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe</button><button data-v="scale">Scale</button></div></div>
                 <div class="field2">
@@ -1291,17 +1302,18 @@ body.nohelp .qm{display:none}
                 <label class="check"><input type="checkbox" data-bind="trans.in.cover"> Cover the gutters (solid, no grid lines)</label>
                 <div class="field stack"><span class="lbl">Build as</span><div class="seg" data-seg="trans.in.output"><button data-v="blocks">Blocks in the comp</button><button data-v="matte">Matte precomp</button></div></div>
                 <div class="curve" data-curve="trans.in.curve" data-title="Transition in easing"></div>
-                <button class="btn" data-transshuffle="in" data-show="trans.in.pattern=random">Shuffle order</button>
+                <button class="btn" data-transshuffle="in" >Shuffle randomness</button></div></details>
               </div>
             </div>
           </div>
           <div class="group" data-ctx="trans-out">
             <div class="group-h">Transition out</div>
+            <div class="tpre" data-tk="out"></div>
             <div class="layer" data-layer="trans.out.on">
               <label class="switch"><input type="checkbox" data-bind="trans.out.on"><span></span></label>
               <div><div class="ln">Transition out</div><div class="ls">Covers the frame at the end</div></div>
               <label class="colorbtn" data-swatch="trans.out.color"><input type="color" data-bind="trans.out.color"></label>
-              <div class="extra" data-show="trans.out.on=true">
+              <div class="extra" data-show="trans.out.on=true"><details class="sub" data-sub="tr-out-cust"><summary>Customize <span class="note">pattern, timing, style</span></summary><div class="subbody">
                 <div class="field stack"><span class="lbl">Blocks</span><div class="seg" data-seg="trans.out.mode"><button data-v="clear">Clear away (reveal)</button><button data-v="build">Build up (cover)</button></div></div>
                 <label class="check"><input type="checkbox" data-bind="trans.out.atEnd"> Finish when the comp ends</label>
                 <div class="field" data-show="trans.out.atEnd=false"><span class="lbl scrub">Starts at</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="trans.out.start" min="-9999" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
@@ -1309,7 +1321,8 @@ body.nohelp .qm{display:none}
                   <div class="field"><span class="lbl scrub" title="Frames from the first block to the last">Length</span><div class="num"><input type="number" data-bind="trans.out.dur" min="1" max="9999" step="1"><span class="unit">fr</span></div></div>
                   <div class="field"><span class="lbl scrub" title="Frames each block takes">Each</span><div class="num"><input type="number" data-bind="trans.out.len" min="1" max="600" step="1"><span class="unit">fr</span></div></div>
                 </div>
-                <div class="field stack"><span class="lbl">Pattern</span><div class="seg" data-seg="trans.out.pattern"><button data-v="walk" title="Sweeps the way the line walks, on the scene's own grid, with a stepped block-shaped front">Walk</button><button data-v="sweep">Sweep</button><button data-v="diag">Diagonal</button><button data-v="rows">Rows</button><button data-v="center">Centre out</button><button data-v="random">Random</button></div></div>
+                <div class="field stack"><span class="lbl">Pattern</span><div class="seg" data-seg="trans.out.pattern"><button data-v="flood">Flood</button><button data-v="trail">Retrace</button><button data-v="extrude">Extrude</button><button data-v="ribbons">Ribbons</button><button data-v="head">Head</button><button data-v="walk">Walk</button><button data-v="sweep">Wipe</button><button data-v="rows">Rows</button><button data-v="diag">Diagonal</button><button data-v="center">Iris</button><button data-v="corner">Corner</button><button data-v="checker">Checker</button><button data-v="venetian">Venetian</button><button data-v="random">Scatter</button></div></div>
+                <div class="field"><span class="lbl scrub" title="Breaks up the order: 0 = clean, 100 = loose and organic">Randomness</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="trans.out.jitter" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
                 <div class="field stack"><span class="lbl">Direction</span><div class="seg" data-seg="trans.out.dir"><button data-v="fwd">Forward</button><button data-v="rev">Reverse</button></div></div>
                 <div class="field stack"><span class="lbl">Each block</span><div class="seg" data-seg="trans.out.appear"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe</button><button data-v="scale">Scale</button></div></div>
                 <div class="field2">
@@ -1320,7 +1333,7 @@ body.nohelp .qm{display:none}
                 <label class="check"><input type="checkbox" data-bind="trans.out.cover"> Cover the gutters (solid, no grid lines)</label>
                 <div class="field stack"><span class="lbl">Build as</span><div class="seg" data-seg="trans.out.output"><button data-v="blocks">Blocks in the comp</button><button data-v="matte">Matte precomp</button></div></div>
                 <div class="curve" data-curve="trans.out.curve" data-title="Transition out easing"></div>
-                <button class="btn" data-transshuffle="out" data-show="trans.out.pattern=random">Shuffle order</button>
+                <button class="btn" data-transshuffle="out" >Shuffle randomness</button></div></details>
               </div>
             </div>
           </div>
