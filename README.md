@@ -373,3 +373,6 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.49 — Point handles, linear moves, animatable reveal zone
 - Zoom has one graph now (the separate easing graph is gone). Every point has its own in/out bezier handles, on the sidebar graph and on the timeline row. ⌥-click a point to switch it between linear (diamond, no handles) and eased (circle, handles); ⇧⌥-click removes it (or select it on the graph and press Delete). **All eased / All linear** reset every point at once.
 - **Reveal zone → Animate on the timeline**: adds a green Reveal zone row (and a sidebar graph) with the same points + handles. The zone width changes over time; the camera keeps the newest block on the zone's edge wherever it is, and blocks appear when they enter the zone at that moment.
+
+### v3.49.1 — Crash guard
+- On the web, if the last load never finished (froze or crashed while opening the saved scene), the app starts fresh and keeps that scene in Layouts as "Recovered" instead of reloading it into the same freeze.
