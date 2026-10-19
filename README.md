@@ -318,3 +318,6 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - Motion → **Zoom**: From % → To % between an **In** and **Out** frame with its own easing curve, plus optional **Zoom back** (its own in/out and easing). Shows as a **Zoom** row on the timeline: drag the ends, or drag the bar to move it; click it for settings.
 - By default gaps between blocks, grid/rule lines and text stay the same size on screen while the view zooms (blocks grow into their gaps; text scales back). **Scale the whole scene** zooms everything instead.
 - After Effects: the GB · Zoom null is keyed; with "keep" on, block rects get a size expression and text layers a scale expression so gaps and text stay constant. (3D camera rig: zoom scales everything.)
+
+### v3.36 — Zoom points
+- Zoom is now a set of points (frame + zoom %), eased between each pair with the Zoom easing curve. On the Zoom timeline row: drag a point (left/right = time, up/down = zoom), double-click the row to add one (at the current zoom), ⌥-click to remove. The Zoom panel lists the points with frame / % fields, + Add point and × to remove.
