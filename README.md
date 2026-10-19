@@ -376,3 +376,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 
 ### v3.49.1 — Crash guard
 - On the web, if the last load never finished (froze or crashed while opening the saved scene), the app starts fresh and keeps that scene in Layouts as "Recovered" instead of reloading it into the same freeze.
+
+### v3.50 — Linked handles, ⇧ keep angle, ⌥ split; zoom follows the retime
+- Every point handle (zoom + reveal zone graphs and timeline rows, Scene time-remap handles, custom scene curve): the two handles of a point are linked and stay in line; **⌥-drag** a handle to split it from the other side; **⇧-drag** keeps the handle's current angle (only its length changes). ⌥-click a point (linear ↔ eased) re-joins split handles.
+- Zoom **Follow the scene retime** (on by default): zoom points live on the blocks' clock, so retiming the scene moves and re-speeds the zoom along with the blocks. Point frames in the list are still shown in output frames. Turn it off to pin the zoom to fixed output frames.

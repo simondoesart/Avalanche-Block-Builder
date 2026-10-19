@@ -1239,6 +1239,7 @@ body.nohelp .qm{display:none}
                 <div class="field"><span class="lbl scrub" title="0 = left edge, 100 = right edge">X</span><div class="num"><input type="number" data-bind="anim.zm.ax" min="-50" max="150" step="1"><span class="unit">%</span></div></div>
                 <div class="field"><span class="lbl scrub" title="0 = top, 100 = bottom">Y</span><div class="num"><input type="number" data-bind="anim.zm.ay" min="-50" max="150" step="1"><span class="unit">%</span></div></div>
               </div>
+              <label class="check" title="On: zoom points sit on the blocks' clock, so retiming the scene (Scene · time remap) moves and re-speeds the zoom with everything else. Off: the zoom stays on fixed output frames."><input type="checkbox" data-bind="anim.zm.followRemap"> Follow the scene retime</label>
               <label class="check" title="Off: gaps between blocks, grid/rule lines and text stay the same size on screen while the view zooms"><input type="checkbox" data-bind="anim.zm.scaleAll"> Scale the whole scene (gaps, lines and text zoom too)</label>
             </div>
             <div hidden><div id="zoomList"></div><button id="btnAddZoom"></button><div class="curve" data-curve="anim.zoomCurve" data-title="Grid change easing" hidden></div></div>
@@ -2479,7 +2480,7 @@ const DEF={
   anim:{seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,rzOn:false,rzPts:null,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.42,0,0.58,1],curvePh:null,sceneEase:{on:true,hd:null,holdH:null,onAt:null,holdAt:null,start:40,land:75,landOut:50,leaveIn:50,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
-        zoomOn:false,zm:{pts:null,focus:'follow',ax:50,ay:50,in:24,out:96,from:100,to:140,curve:[0.65,0,0.35,1],scaleAll:false,back:false,backIn:180,backOut:228,backCurve:[0.65,0,0.35,1]},extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
+        zoomOn:false,zm:{pts:null,focus:'follow',ax:50,ay:50,in:24,out:96,from:100,to:140,curve:[0.65,0,0.35,1],scaleAll:false,followRemap:true,back:false,backIn:180,backOut:228,backCurve:[0.65,0,0.35,1]},extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
   lab:{flicker:{on:false,frames:8,seed:3},
        pulse:{on:false,scale:1.35,len:18,width:2,color:'#E6212F'},
        trail:{on:false,count:3,length:1.2,len:12,width:2,color:'#A2AFB2'},
@@ -4090,11 +4091,11 @@ function syncSceneEase(G){
 /* ---- KEYED TRACKS (zoom, reveal zone): points {f,v} with per-point bezier handles.
    p.o = out handle, p.i = in handle — both [x,y] in the segment's own 0..1 space (x = time, y = value);
    p.lin = linear on both sides of the point (no handles). Missing handles use the track's default ease. */
-function trkPt(p,o){ if(p.lin) o.lin=true; if(Array.isArray(p.o)) o.o=[+p.o[0],+p.o[1]]; if(Array.isArray(p.i)) o.i=[+p.i[0],+p.i[1]]; return o; }
+function trkPt(p,o){ if(p.lin) o.lin=true; if(p.brk) o.brk=true; if(Array.isArray(p.o)) o.o=[+p.o[0],+p.o[1]]; if(Array.isArray(p.i)) o.i=[+p.i[0],+p.i[1]]; return o; }
 function trkSeg(a,b,C){ const o=a.lin?[1/3,1/3]:(a.o||[C[0],C[1]]), i=b.lin?[2/3,2/3]:(b.i||[C[2],C[3]]); return [clamp(o[0],0,1),o[1],clamp(i[0],0,1),i[1]]; }
 function trkKeys(pts,C,stop){ const K=[]; pts.forEach((p,j)=>{ let f=p.f; if(K.length&&f<=K[K.length-1][0]) f=K[K.length-1][0]+1; K.push([f,p.v,stop?'h':'e',j<pts.length-1?trkSeg(p,pts[j+1],C):C]); }); return K; }
 const TRACKS={
-  zoom:{name:'zoom',col:'#C9A7FF',min:5,max:2000,ref:100,minPts:2,real:true,
+  zoom:{name:'zoom',col:'#C9A7FF',min:5,max:2000,ref:100,minPts:2,get real(){return !zoomFollows();},
     read:()=>zoomPts(), get:()=>ensureZoomPts(), set:p=>{D.anim.zm.pts=p;}, C:()=>(D.anim.zm.curve||[0.65,0,0.35,1]).map(Number), keys:()=>zoomKeys()},
   rz:{name:'reveal zone',col:'#2BD98F',min:50,max:120,ref:null,minPts:2,real:false,
     read:()=>rzPts(), get:()=>ensureRzPts(), set:p=>{D.anim.rzPts=p;}, C:()=>[0.33,0,0.67,1], keys:()=>rzKeys()}
@@ -4120,10 +4121,24 @@ function trkDraw(g,T,o){
     const px=X(a.f+hx*(b.f-a.f)), py=flat?Y(q.v):Y(a.v+hy*(b.v-a.v)), qx=X(q.f), qy=Y(q.v);
     g.strokeStyle='rgba(255,255,255,.45)'; g.lineWidth=1; g.beginPath(); g.moveTo(qx,qy); g.lineTo(px,py); g.stroke();
     g.fillStyle=col; g.beginPath(); g.arc(px,py,3.5,0,7); g.fill();
-    out.push({x:px,y:py,kind:'handle',i:j,tip:`${T.name} easing handle — drag to shape the move${flat?' (flat move: sideways sets the speed)':''} · ⌥-click the point to make it linear`,
-      drag:(fx,fy)=>{ const P2=T.get().slice().sort((m,n)=>m.f-n.f), A2=side==='o'?P2[j]:P2[j-1], B2=side==='o'?P2[j+1]:P2[j]; if(!A2||!B2) return;
-        const ux=clamp((F(fx)-A2.f)/Math.max(1e-6,B2.f-A2.f),0,1), dv=B2.v-A2.v, uy=Math.abs(dv)<1e-6?(side==='o'?0:1):clamp((V(fy)-A2.v)/dv,-3,4);
-        const cur=trkSeg(A2,B2,C); if(side==='o') A2.o=[ux,Math.abs(dv)<1e-6?cur[1]:uy]; else B2.i=[ux,Math.abs(dv)<1e-6?cur[3]:uy]; commit(P2); }}); };
+    let st0=null;   // the handle's direction when the drag started (⇧ keeps it)
+    out.push({x:px,y:py,kind:'handle',i:j,tip:`${T.name} easing handle — drag to shape the move${flat?' (flat move: sideways sets the speed)':''} · ⇧ keeps its angle · ⌥-drag splits it from the other side${q.brk?' (split)':''}`,
+      drag:(fx,fy,sh,alt)=>{ const P2=T.get().slice().sort((m,n)=>m.f-n.f), Q=P2[j]; if(!Q) return;
+        const segOf=sd=>sd==='o'?[P2[j],P2[j+1]]:[P2[j-1],P2[j]];
+        const offOf=sd=>{ const [m,n]=segOf(sd); if(!m||!n) return null; const c=trkSeg(m,n,C); return sd==='o'?{df:c[0]*(n.f-m.f),dv:c[1]*(n.v-m.v)}:{df:(c[2]-1)*(n.f-m.f),dv:(c[3]-1)*(n.v-m.v)}; };
+        const setOff=(sd,df,dv)=>{ const [m,n]=segOf(sd), Lf=Math.max(1e-6,n.f-m.f), Lv=n.v-m.v, fl=Math.abs(Lv)<1e-6, c=trkSeg(m,n,C);
+          if(sd==='o') m.o=[clamp(df/Lf,0,1), fl?c[1]:clamp(dv/Lv,-3,4)]; else n.i=[clamp(1+df/Lf,0,1), fl?c[3]:clamp(1+dv/Lv,-3,4)]; };
+        const sx=(X(Q.f+10)-X(Q.f))/10||1, sy=(Y(Q.v+1)-Y(Q.v))||1;   // data → px, so angles and lengths match what's on screen
+        if(!st0) st0=offOf(side);
+        let df=F(fx)-Q.f, dv=V(fy)-Q.v;
+        if(sh&&st0){ const ux=st0.df*sx, uy=st0.dv*sy, L=Math.hypot(ux,uy)||1, t=Math.max(0,(df*sx*ux+dv*sy*uy)/L); df=ux/L*t/sx; dv=uy/L*t/sy; }
+        if(side==='o') df=Math.max(0,df); else df=Math.min(0,df);
+        if(alt) Q.brk=true;
+        setOff(side,df,dv);
+        const oth=side==='o'?'i':'o', so=segOf(oth);
+        if(!Q.brk&&so[0]&&so[1]){ const cur=offOf(oth), lo=Math.hypot(cur.df*sx,cur.dv*sy), pxx=df*sx, pyy=dv*sy, L=Math.hypot(pxx,pyy);
+          if(L>1e-6&&lo>1e-6) setOff(oth,-pxx/L*lo/sx,-pyy/L*lo/sy); }
+        commit(P2); }}); };
   pts.forEach((p,j)=>{ if(j<pts.length-1) hdl(j,'o'); if(j>0) hdl(j,'i'); });
   pts.forEach((p,j)=>{ const x=X(p.f), y=Y(p.v), sel=o.sel===j;
     g.fillStyle=sel?'#fff':col; g.strokeStyle=sel?col:'#fff'; g.lineWidth=1.2; g.beginPath();
@@ -4135,13 +4150,13 @@ function trkDraw(g,T,o){
         q.f=Math.round(clamp(F(fx),pv?pv.f+1:-99999,nx?nx.f-1:99999)); let v=clamp(V(fy),T.min,T.max); v=sh?Math.round(v/5)*5:Math.round(v); q.v=v; commit(P2); },
       alt:e=>{ const P2=T.get().slice().sort((m,n)=>m.f-n.f), q=P2[j]; if(!q) return; pushHist(true);
         if(e&&e.shiftKey){ if(P2.length<=T.minPts) return toast('Needs at least two points'); P2.splice(j,1); }
-        else { if(q.lin) delete q.lin; else q.lin=true; delete q.o; delete q.i; }
+        else { if(q.lin) delete q.lin; else q.lin=true; delete q.o; delete q.i; delete q.brk; }
         commit(P2); planCache.k=''; syncInputs(true); refresh(); }}); });
   return out;
 }
 function trkAddAt(T,f){ const P2=T.get().slice().sort((a,b)=>a.f-b.f); f=Math.round(f); if(P2.some(q=>q.f===f)) return false;
   const K=trkKeys(T.read(),T.C(),false), v=Math.round(ev(K,f,P2[0].v)); pushHist(true); P2.push({f,v}); P2.sort((a,b)=>a.f-b.f); T.set(P2); return P2.findIndex(q=>q.f===f); }
-function trkAll(T,lin){ pushHist(true); const P2=T.get().slice(); P2.forEach(q=>{ delete q.o; delete q.i; if(lin) q.lin=true; else delete q.lin; }); T.set(P2); planCache.k=''; syncInputs(true); refresh(); }
+function trkAll(T,lin){ pushHist(true); const P2=T.get().slice(); P2.forEach(q=>{ delete q.o; delete q.i; delete q.brk; if(lin) q.lin=true; else delete q.lin; }); T.set(P2); planCache.k=''; syncInputs(true); refresh(); }
 /* zoom points: [{f,v}] sorted by frame (older layouts: built from In/Out/From/To/Back) */
 function zoomPts(){
   const Z=D.anim.zm||{}; if(Array.isArray(Z.pts)&&Z.pts.length>=2) return Z.pts.map(p=>trkPt(p,{f:Math.round(+p.f||0),v:Math.max(5,+p.v||100)})).sort((a,b)=>a.f-b.f);
@@ -4150,6 +4165,7 @@ function zoomPts(){
   return o;
 }
 function ensureZoomPts(){ const Z=D.anim.zm; if(!Array.isArray(Z.pts)||Z.pts.length<2) Z.pts=zoomPts(); return Z.pts; }
+function zoomFollows(){ const Z=D.anim.zm||{}; return Z.followRemap!==false; }
 function zoomKeys(){
   const A=D.anim, Z=A.zm; if(!A.zoomOn||!Z||A.mode==='static') return [];
   const K=trkKeys(zoomPts(),(Z.curve||[0.65,0,0.35,1]).map(Number),A.motion==='stop');
@@ -4158,8 +4174,8 @@ function zoomKeys(){
 function renderZoomPts(){
   $$('#zoomPos [data-zpos]').forEach(b=>{const v=b.dataset.zpos.split(',').map(Number);b.classList.toggle('on',+D.anim.zm.ax===v[0]&&+D.anim.zm.ay===v[1]);});
   const el=$('#zoomPts'); if(!el) return; const a=document.activeElement; if(a&&el.contains(a)) return;
-  const pts=zoomPts();
-  el.innerHTML=pts.map((p,i)=>`<div class="zprow"><span class="lbl">f</span><div class="num"><input type="number" data-zp="${i}:f" value="${p.f}" step="1"></div><span class="lbl">zoom</span><div class="num"><input type="number" data-zp="${i}:v" value="${Math.round(p.v)}" min="5" max="2000" step="5"><span class="unit">%</span></div><button class="btn ghost" data-zpdel="${i}" title="Remove this point" ${pts.length<=2?'disabled':''}>×</button></div>`).join('');
+  const pts=zoomPts(), Pz=zoomFollows()?plan(geom()):null, fr=f=>Pz&&Pz.toReal?Math.round(Pz.toReal(f)):f;
+  el.innerHTML=pts.map((p,i)=>`<div class="zprow"><span class="lbl">f</span><div class="num"><input type="number" data-zp="${i}:f" value="${fr(p.f)}" step="1"></div><span class="lbl">zoom</span><div class="num"><input type="number" data-zp="${i}:v" value="${Math.round(p.v)}" min="5" max="2000" step="5"><span class="unit">%</span></div><button class="btn ghost" data-zpdel="${i}" title="Remove this point" ${pts.length<=2?'disabled':''}>×</button></div>`).join('');
 }
 /* sidebar graphs for keyed tracks: every point, handles, playhead; drag / double-click add / ⌥-click linear↔eased / ⇧⌥-click remove */
 const TG={};
@@ -4197,7 +4213,7 @@ $$('canvas[data-track]').forEach(c=>{ const id=c.id, T=TRACKS[c.dataset.track]; 
     if(e.altKey&&H.h.kind==='point'){ S.sel=-1; H.h.alt(e); return; }
     if(H.h.kind==='point') S.sel=H.h.i; S.drag={h:H.h,pushed:false}; c.setPointerCapture(e.pointerId); drawTrackGraph(id); });
   c.addEventListener('pointermove',e=>{ const S=st(), d=S.drag; if(!d){ const H=hit(e); c.style.cursor=H.h?'move':'crosshair'; c.title=H.h?H.h.tip:'double-click to add a point'; return; }
-    const r=c.getBoundingClientRect(); if(!d.pushed){ pushHist(true); d.pushed=true; } d.h.drag(e.clientX-r.left,e.clientY-r.top,e.shiftKey); tgAfter(false); });
+    const r=c.getBoundingClientRect(); if(!d.pushed){ pushHist(true); d.pushed=true; } d.h.drag(e.clientX-r.left,e.clientY-r.top,e.shiftKey,e.altKey); tgAfter(false); });
   const up=()=>{ const S=st(); if(!S.drag) return; const p=S.drag.pushed; S.drag=null; if(p) tgAfter(true); };
   c.addEventListener('pointerup',up); c.addEventListener('pointercancel',up);
   c.addEventListener('dblclick',e=>{ const H=hit(e); if(H.h) return; const z=tgGeo(c,T), i=trkAddAt(T,z.F(H.x)); if(i===false) return; st().sel=i; tgAfter(true); });
@@ -4205,8 +4221,16 @@ $$('canvas[data-track]').forEach(c=>{ const id=c.id, T=TRACKS[c.dataset.track]; 
 });
 $$('[data-trkall]').forEach(b=>b.addEventListener('click',()=>{ const [k,m]=b.dataset.trkall.split(':'); trkAll(TRACKS[k],m==='lin'); }));
 function applyZoom(P){
-  const K=zoomKeys(); if(!K.length) return;
-  P.zs=clip0(K); P.sMin=Math.min(P.sMin||1,...K.map(k=>k[1]/100));
+  const K0=zoomKeys(); if(!K0.length) return;
+  /* zoom follows the scene retime: its points live on the blocks' clock, so retiming the scene moves (and re-speeds) the zoom too.
+     The eased shape is sampled on the output clock so the zoom you see matches the curve on the timeline exactly. */
+  const fol=zoomFollows()&&P.toReal&&P.toContent, K=fol?K0.map(k=>{const n=k.slice(); n[0]=P.toReal(k[0]); return n;}):K0;
+  let ZS=K;
+  if(fol&&remapActive()){ const a=Math.floor(K[0][0]), b=Math.ceil(K[K.length-1][0]), out=[];
+    for(let t=a;t<=b;t++){ const v=ev(K0,P.toContent(t),K0[0][1]); out.push([t,r3(v),'l']); }
+    ZS=out.filter((k,i)=>{ if(i===0||i===out.length-1) return true; const p=out[i-1], n=out[i+1]; return Math.abs(k[1]-(p[1]+n[1])/2)>0.02; });   // drop frames on a straight run
+    if(ZS.length) ZS[ZS.length-1][2]='h'; }
+  P.zs=clip0(ZS); P.sMin=Math.min(P.sMin||1,...K.map(k=>k[1]/100));
   P.end=Math.max(P.end,K[K.length-1][0]+1);
   // where the zoom holds still: a point in the frame, or a block that ends up at that point
   const Z=D.anim.zm, G=geom(), T=[G.W*clamp(+Z.ax||50,-50,150)/100, G.H*clamp(+Z.ay||50,-50,150)/100];
@@ -5517,15 +5541,22 @@ function drawDope(){
           const ax=cxp(q.x), ay=cyp(q.y), hx=cxp(q.x+dx), hy=cyp(q.y+dy), a0=Math.atan2(dy,dx);
           g.strokeStyle='rgba(255,127,123,.7)'; g.lineWidth=1; g.beginPath(); g.moveTo(ax,ay); g.lineTo(hx,hy); g.stroke();
           g.fillStyle='#FF7F7B'; g.beginPath(); g.arc(hx,hy,4,0,7); g.fill();
-          item({type:'point',x:hx,y:hy,cur:'move',tip:`${EN[key]} — drag the handle (angle + length) · hold ⇧ to keep its angle`,drag:(fx,fy,sh)=>{
+          const pr=side==='o'?[q.ki,q.ix,q.iy,q.segI,q.segIy]:[q.ko,q.ox,q.oy,q.segO,q.segOy], brk0=((D.anim.sceneEase.brk||{})[q.role]);
+          item({type:'point',x:hx,y:hy,cur:'move',tip:`${EN[key]} — drag the handle (angle + length) · ⇧ keeps its angle${pr[0]&&pr[3]?' · ⌥-drag splits it from the other side'+(brk0?' (split)':''):''}`,drag:(fx,fy,sh,alt)=>{
+            const sxp=Math.max(1,cxp(1)-cxp(0)), syp=Math.max(1,ch);   // unit → px
             let u=(fx-cxp(0))/W-q.x, v=(cy0-fy)/Math.max(1,ch)-q.y;
-            if(sh&&(dx||dy)){const cx=Math.cos(a0), cy=Math.sin(a0), len=Math.max(0,u*cx+v*cy); u=cx*len; v=cy*len;}
+            if(sh&&(dx||dy)){ const ux=dx*sxp, uy=dy*syp, L=Math.hypot(ux,uy)||1, t=Math.max(0,(u*sxp*ux+v*syp*uy)/L); u=ux/L*t/sxp; v=uy/L*t/syp; }
             const rx=clamp(Math.abs(u)/Math.max(1e-6,seg),0,1), ry=clamp((side==='o'?v:-v)/Math.max(1e-6,segy),0,1);
-            const SE=D.anim.sceneEase; SE.hd=Object.assign({},SE.hd||{}); SE.hd[key]=[r3(rx),r3(ry)]; }}); }); });
+            const SE=D.anim.sceneEase; SE.hd=Object.assign({},SE.hd||{}); SE.hd[key]=[r3(rx),r3(ry)];
+            if(alt){ SE.brk=Object.assign({},SE.brk||{}); SE.brk[q.role]=true; }
+            // linked: the handle on the other side of the point stays in line (keeps its own length)
+            const [pk,pdx,pdy,pseg,psegy]=pr;
+            if(pk&&pseg&&!(SE.brk||{})[q.role]){ const au=(side==='o'?rx:-rx)*seg, av=(side==='o'?ry:-ry)*segy, pxx=au*sxp, pyy=av*syp, L=Math.hypot(pxx,pyy), lp=Math.hypot(pdx*sxp,pdy*syp);
+              if(L>1e-6&&lp>1e-6){ const nu=-pxx/L*lp/sxp, nv=-pyy/L*lp/syp; SE.hd[pk]=[r3(clamp(Math.abs(nu)/Math.max(1e-6,pseg),0,1)),r3(clamp((side==='o'?-nv:nv)/Math.max(1e-6,psegy),0,1))]; } } }}); }); });
       hs.forEach(q=>{g.fillStyle='#fff';g.beginPath();g.arc(cxp(q.x),cyp(q.y),3.5,0,7);g.fill();
         if(q.role==='hold'||q.role==='out'){ const key=q.role==='hold'?'landOut':'leaveIn';
           item({type:'point',x:cxp(q.x),y:cyp(q.y),cur:'pointer',tip:`${q.role==='hold'?'Hold starts':'Hold ends'} point — ⌥-click to ${((D.anim.sceneEase.holdH||{})[key])?'remove the handle inside the hold (straight again)':'add a handle inside the hold'}`,drag:()=>{},
-            alt:()=>{pushHist(true);const SE=D.anim.sceneEase;SE.holdH=Object.assign({},SE.holdH||{});SE.holdH[key]=!SE.holdH[key];if(!SE.holdH[key]&&SE.hd){SE.hd=Object.assign({},SE.hd);delete SE.hd[key];}refresh();}}); } });
+            alt:()=>{pushHist(true);const SE=D.anim.sceneEase;SE.holdH=Object.assign({},SE.holdH||{});SE.holdH[key]=!SE.holdH[key];if(!SE.holdH[key]&&SE.hd){SE.hd=Object.assign({},SE.hd);delete SE.hd[key];}if(SE.brk){SE.brk=Object.assign({},SE.brk);delete SE.brk[q.role];}refresh();}}); } });
     }
     if(!simple&&X(s1)-X(s0)>50){
       const Hs=toH(D.anim.sceneCurve||[0,0,1,1]);
@@ -5535,12 +5566,19 @@ function drawDope(){
         const hd=(dx,dy,which)=>{const hx=cxp(p.x+dx), hy=cyp(p.y+dy); g.strokeStyle='rgba(255,127,123,.6)'; g.lineWidth=1; g.beginPath(); g.moveTo(ax,ay); g.lineTo(hx,hy); g.stroke();
           g.fillStyle='#FF7F7B'; g.beginPath(); g.arc(hx,hy,3.5,0,7); g.fill();
           const a0=Math.atan2(dy,dx);
-          item({type:'point',x:hx,y:hy,cur:'move',tip:'easing handle — drag to shape the curve · hold ⇧ to keep its angle',drag:(fx,fy,sh)=>{const h=toH(D.anim.sceneCurve||[0,0,1,1]),q=h[k]; if(!q) return;
+          item({type:'point',x:hx,y:hy,cur:'move',tip:'easing handle — drag to shape the curve · ⇧ keeps its angle · ⌥-drag splits it from the other side',drag:(fx,fy,sh,alt)=>{const h=toH(D.anim.sceneCurve||[0,0,1,1]),q=h[k]; if(!q) return;
             const u=(fx-cxp(0))/Math.max(1,cxp(1)-cxp(0)), v=(cy0-fy)/Math.max(1,ch);
             let ddx=u-q.x, ddy=v-q.y;
             if(sh&&(dx||dy)){const cx=Math.cos(a0), cy=Math.sin(a0), len=Math.max(0,ddx*cx+ddy*cy); ddx=cx*len; ddy=cy*len;}
-            if(which==='o'){const mx=(k<h.length-1?h[k+1].x:1)-q.x, ny=k<h.length-1?h[k+1].y:1; if(sh&&ddx>mx&&ddx>0){ddy*=mx/ddx;ddx=mx;} q.ox=clamp(ddx,0,mx); q.oy=clamp(ddy,0,Math.max(0,ny-q.y));}
-            else {const mn=-(q.x-(k>0?h[k-1].x:0)), py=k>0?h[k-1].y:0; if(sh&&ddx<mn&&ddx<0){ddy*=mn/ddx;ddx=mn;} q.ix=clamp(ddx,mn,0); q.iy=clamp(ddy,-Math.max(0,q.y-py),0);}
+            const mx=(k<h.length-1?h[k+1].x:1)-q.x, ny=k<h.length-1?h[k+1].y:1, mn=-(q.x-(k>0?h[k-1].x:0)), py=k>0?h[k-1].y:0;
+            if(which==='o'){ if(sh&&ddx>mx&&ddx>0){ddy*=mx/ddx;ddx=mx;} q.ox=clamp(ddx,0,mx); q.oy=clamp(ddy,0,Math.max(0,ny-q.y));}
+            else { if(sh&&ddx<mn&&ddx<0){ddy*=mn/ddx;ddx=mn;} q.ix=clamp(ddx,mn,0); q.iy=clamp(ddy,-Math.max(0,q.y-py),0);}
+            if(alt){ D.anim.curveBrk=Object.assign({},D.anim.curveBrk||{}); D.anim.curveBrk[k]=true; }
+            // linked: the other handle of this point stays in line (keeps its own length), unless split with ⌥
+            if(k>0&&k<h.length-1&&!((D.anim.curveBrk||{})[k])){ const sxp=Math.max(1,cxp(1)-cxp(0)), syp=Math.max(1,ch);
+              const a1=which==='o'?[q.ox,q.oy]:[q.ix,q.iy], b1=which==='o'?[q.ix,q.iy]:[q.ox,q.oy], L=Math.hypot(a1[0]*sxp,a1[1]*syp), lp=Math.hypot(b1[0]*sxp,b1[1]*syp);
+              if(L>1e-6&&lp>1e-6){ const nx=-a1[0]*sxp/L*lp/sxp, nyy=-a1[1]*syp/L*lp/syp;
+                if(which==='o'){ q.ix=clamp(nx,mn,0); q.iy=clamp(nyy,-Math.max(0,q.y-py),0); } else { q.ox=clamp(nx,0,mx); q.oy=clamp(nyy,0,Math.max(0,ny-q.y)); } } }
             save(h);}});};
         if(k>0) hd(p.ix,p.iy,'i'); if(k<Hs.length-1) hd(p.ox,p.oy,'o');
         g.fillStyle='#fff'; g.beginPath(); g.arc(ax,ay,4,0,7); g.fill(); g.strokeStyle='#E6212F'; g.lineWidth=1.5; g.stroke();
@@ -5549,7 +5587,7 @@ function drawDope(){
           drag:(fx,fy)=>{const h=toH(D.anim.sceneCurve||[0,0,1,1]),q=h[k]; if(!q) return; let u=(fx-cxp(0))/Math.max(1,cxp(1)-cxp(0)); const v=clamp((cy0-fy)/Math.max(1,ch),h[k-1].y,h[k+1].y);   // never goes backwards
             u=clamp(u,h[k-1].x+.01,h[k+1].x-.01); q.ox=Math.min(q.ox,h[k+1].x-u); q.ix=Math.max(q.ix,-(u-h[k-1].x)); q.x=u; q.y=v;
             q.oy=clamp(q.oy,0,h[k+1].y-v); q.iy=clamp(q.iy,-(v-h[k-1].y),0); h[k-1].oy=clamp(h[k-1].oy,0,v-h[k-1].y); h[k+1].iy=clamp(h[k+1].iy,-(h[k+1].y-v),0); save(h);},
-          alt:()=>{const h=toH(D.anim.sceneCurve||[0,0,1,1]); pushHist(true);h.splice(k,1);save(h);planCache.k='';refresh();}});
+          alt:()=>{const h=toH(D.anim.sceneCurve||[0,0,1,1]); pushHist(true);h.splice(k,1);D.anim.curveBrk={};save(h);planCache.k='';refresh();}});
       });
       item({type:'curve',x0:cxp(0),x1:cxp(1),y0:yb,y1:yb+hb,cy:u=>cyp(sf(u)),u:x=>(x-cxp(0))/Math.max(1,cxp(1)-cxp(0)),cur:'copy',tip:'click the line (or double-click the row) to add an easing point'});
     }
@@ -5773,7 +5811,7 @@ function tlPick(id,mode){
   U.dopeSel=s; U.selIds=s.filter(x=>byId(x)); U.ctx=null; U.sel=null; refresh();
 }
 /* add a point to the scene easing at u (0–1 across the scene), on the curve, with a smooth tangent */
-function tlAddPoint(u){
+function tlAddPoint(u){ D.anim.curveBrk={};
   const cur=D.anim.sceneCurve||[0,0,1,1], hh=toH(cur); u=clamp(u,.02,.98);
   if(hh.some(q=>Math.abs(q.x-u)<.025)) return;
   pushHist(true); const fn=curveFn(cur), v=fn(u);
@@ -5829,7 +5867,7 @@ function initDope(){
     if(d.marquee){ const m=d.marquee; m.x1=p.x; m.y1=p.y; const x0=Math.min(m.x0,m.x1),x1=Math.max(m.x0,m.x1),y0=Math.min(m.y0,m.y1),y1=Math.max(m.y0,m.y1);
       const hit=TL.items.filter(it=>it.type==='block'&&it.x1>=x0&&it.x0<=x1&&it.y1>=y0&&it.y0<=y1).map(it=>it.id);
       const ids=[...new Set(d.keep.concat(hit))]; U.dopeSel=ids; U.selIds=ids.filter(id=>byId(id)); drawDope(); showTip(`${ids.length} block${ids.length===1?'':'s'} selected`); return; }
-    if(d.point){d.point.drag(p.x,p.y,e.shiftKey); try{ if($('#zoomPts')) $('#zoomPts').innerHTML=''; renderZoomPts(); drawZoomGraph(); }catch(x){}}
+    if(d.point){d.point.drag(p.x,p.y,e.shiftKey,e.altKey); try{ if($('#zoomPts')) $('#zoomPts').innerHTML=''; renderZoomPts(); drawZoomGraph(); }catch(x){}}
     else if(d.handle){d.handle.apply(f);}
     else if(d.blocks){
       const df=Math.round(f-d.f0); if(df) d.moved=true; D.anim.dt=D.anim.dt||{}; D.anim.dx=D.anim.dx||{};   // block offsets live on the blocks' own clock
@@ -7692,12 +7730,13 @@ function zoomPreset(kind){
   else if(kind==='hold'&&ho!=null) pts=[{f:Math.max(f0,on-ramp(18)),v:100},{f:on+ramp((ho-on)*.3),v:Z},{f:ho,v:Z},{f:ho+ramp(18),v:100}];
   else if(kind==='walk'&&ho!=null) pts=[{f:ho,v:100},{f:ho+ramp((end-ho)*.25),v:Z},{f:end,v:Z}];
   else pts=[{f:f0,v:100},{f:f0+ramp((end-f0)*.3),v:Z},{f:end,v:Z}];
+  if(zoomFollows()&&P.toContent) pts.forEach(q=>{q.f=Math.round(P.toContent(q.f));});   // points live on the blocks' clock
   pushHist(true); D.anim.zm.pts=pts; D.anim.zoomOn=true; syncInputs(true); refresh(); toast('Zoom set for the '+({build:'build',hold:'hold',walk:'walk-off',all:'whole scene'})[kind],'',true);
 }
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-zpre]'); if(b) zoomPreset(b.dataset.zpre);});
 ($('#btnZoomPt')||{}).onclick=()=>{ pushHist(true); const P2=ensureZoomPts().slice().sort((a,b)=>a.f-b.f), l=P2[P2.length-1]; P2.push({f:l.f+24,v:l.v}); D.anim.zm.pts=P2; $('#zoomPts').innerHTML=''; refresh(); };
 ($('#zoomPts')||{addEventListener(){}}).addEventListener('input',e=>{ const t=e.target, k=t.dataset&&t.dataset.zp; if(!k) return; const [i,f]=k.split(':'), v=parseFloat(t.value); if(isNaN(v)) return;
-  if(!U._zpEdit){pushHist(true);U._zpEdit=true;} const P2=ensureZoomPts().slice().sort((a,b)=>a.f-b.f); P2[+i][f]=f==='v'?clamp(v,5,2000):Math.round(v); D.anim.zm.pts=P2; planCache.k=''; render(); drawDope(); });
+  if(!U._zpEdit){pushHist(true);U._zpEdit=true;} const P2=ensureZoomPts().slice().sort((a,b)=>a.f-b.f); const Pz=f==='f'&&zoomFollows()?plan(geom()):null; P2[+i][f]=f==='v'?clamp(v,5,2000):Math.round(Pz&&Pz.toContent?Pz.toContent(v):v); D.anim.zm.pts=P2; planCache.k=''; render(); drawDope(); });
 ($('#zoomPts')||{addEventListener(){}}).addEventListener('change',()=>{U._zpEdit=false; $('#zoomPts').innerHTML=''; refresh();});
 ($('#zoomPts')||{addEventListener(){}}).addEventListener('click',e=>{ const b=e.target.closest('[data-zpdel]'); if(!b||b.disabled) return; pushHist(true); const P2=ensureZoomPts().slice().sort((a,b)=>a.f-b.f); P2.splice(+b.dataset.zpdel,1); D.anim.zm.pts=P2; $('#zoomPts').innerHTML=''; refresh(); });
 $('#btnAddZoom').onclick=()=>{
