@@ -329,7 +329,7 @@ function GB_trans(comp,d,fps,org,folder,comps,below,camL){
     }
     /* solid under the tiles: hides the grid lines once the frame is covered */
     if(G.solid){ try{ var S=GB_box(target,(G.k=="in"?"In":"Out")+" · Solid",0,0,comp.width,comp.height,G.solid.color,0); S.comment="GridBlocks:trans"; S.label=lab;
-      GB_keys(GB_xf(S).property("ADBE Opacity"),G.solid.op,fps); if(G.behind&&below&&!pre) S.moveAfter(below); n++; }catch(eS){} }
+      GB_keys(GB_xf(S).property("ADBE Opacity"),G.solid.op,fps); if(org.trim) GB_trimByOp(S,G.solid.op,fps,comp); if(G.behind&&below&&!pre) S.moveAfter(below); n++; }catch(eS){} }
     for(var i=0;i<G.tiles.length;i++){
       var t=G.tiles[i], L=GB_box(target,(G.k=="in"?"In ":"Out ")+GB_pad3(i+1),t.x,t.y,t.w,t.h,t.color,0);
       L.comment="GridBlocks:trans"; L.label=lab;
@@ -343,17 +343,28 @@ function GB_trans(comp,d,fps,org,folder,comps,below,camL){
           GB_keys(rect.property("ADBE Vector Rect Position"),k.rp,fps);
         }
       }
+      if(org.trim&&k) GB_trimByOp(L,k.op,fps,comp);
       if(G.behind&&below&&!pre){ try{L.moveAfter(below);}catch(eB){} }
       if(G.world&&camL&&!pre){ try{L.parent=camL;}catch(eP){} }
       n++;
     }
     if(G.behind&&below&&pre){ try{pre.layer.moveAfter(below);}catch(eB2){} }
+    if(!pre&&!G.behind&&org.headers!==false&&G.tiles.length) GB_header(comp,(G.k=="in"?"TRANSITION IN":"TRANSITION OUT")+" ("+G.tiles.length+")",null);
     // trim the precomp layer to when the transition is on screen
     if(pre&&org.trim&&G.vis){
       try{ if(G.vis[0]>0) pre.layer.inPoint=G.vis[0]/fps; if(G.vis[1]+1<comp.duration*fps) pre.layer.outPoint=(G.vis[1]+1)/fps; }catch(eT){}
     }
   }
   return n;
+}
+/* trim a layer to when its opacity keys make it visible */
+function GB_trimByOp(L,op,fps,comp){
+  if(!op||!op.length) return; var a=null, j;
+  for(j=0;j<op.length;j++){ if(op[j][1]>0){ a=j>0?op[j-1][0]:(op[j][0]>0&&op[j][2]=="h"?op[j][0]:0); break; } }
+  if(a==null) return;
+  var last=op[op.length-1], b=last[1]<=0?last[0]+1:null;
+  try{ if(a>0&&a/fps<comp.duration) L.inPoint=a/fps; }catch(e1){}
+  try{ if(b!=null&&b/fps<comp.duration&&b/fps>L.inPoint) L.outPoint=b/fps; }catch(e2){}
 }
 function GB_pad3(n){n=String(n);while(n.length<2)n="0"+n;return n;}
 function GB_clearActive(){
@@ -626,6 +637,7 @@ function GB_fillItems(comp,items,parent,list){
       else L=GB_fillText(comp,it);
     }catch(eI){L=null;}
     if(L){
+      if(GB_TRIM&&it.t0>0){ try{ if(it.t0<L.outPoint) L.inPoint=it.t0; }catch(eTi){} }
       if(it.opx){try{GB_xf(L).property("ADBE Opacity").expression=it.opx;}catch(eO){}}
       if(parent){ L.parent=parent; L.name=parent.name+" · "+L.name; }
       list.push(L);
@@ -714,6 +726,16 @@ function GB_mediaMattes(list){
   for(var i=0;i<list.length;i++){ var L=list[i].L, B=list[i].B; if(!L||list[i].ok) continue;
     try{ var dup=B.duplicate(); dup.name=B.name+" · Media Matte"; dup.moveBefore(L); L.trackMatteType=TrackMatteType.ALPHA; }catch(e){} }
 }
+/* ---------- timeline tidiness: section dividers (disabled, locked nulls) ---------- */
+var GB_TRIM=false;
+function GB_header(comp,title,folder){
+  var h=comp.layers.addNull(); h.name="\u2501\u2501\u2501  "+title+"  \u2501\u2501\u2501"; h.comment="GridBlocks:header"; h.label=0;
+  try{h.enabled=false;}catch(e1){} try{h.guideLayer=true;}catch(e2){}
+  try{ if(folder&&h.source) h.source.parentFolder=folder; }catch(e3){}
+  try{h.locked=true;}catch(e4){}
+  return h;
+}
+function GB_labelAll(list,lab){ for(var i=0;i<list.length;i++){ try{ if(list[i]) list[i].label=lab; }catch(e){} } }
 /* ---------- column rules ---------- */
 function GB_mkRules(comp,R){
   var L;
@@ -771,6 +793,7 @@ function GB_build(d){
       if(made) main.parentFolder=root;
     }
     var comps=[main], locks=[], gridKids=[], linesL=null, rulesL=null, shy=[];
+    var hdrF=folder?GB_folder("Helpers",folder):null, mediaF=folder?GB_folder("Media",folder):null;
     function inFolder(L){ if(folder){try{if(L.source&&!(L.source instanceof CompItem))L.source.parentFolder=folder;}catch(eF){}} }
 
     /* ---- background (always in the main comp, 2D) ---- */
@@ -810,6 +833,7 @@ function GB_build(d){
     }
     var rulesC=gridC;
     if(d.rules && !d.rules.top){rulesL=GB_mkRules(gridC,d.rules); if(rulesL){locks.push(rulesL);out.push("column rules");}}
+    if(org.headers!==false&&gridC===main&&(linesL||rulesL||d.cells)) GB_header(main,"GRID",hdrF);
 
     /* ---- blocks, echoes, content ---- */
     var blockC=main, blockPre=null;
@@ -818,7 +842,8 @@ function GB_build(d){
       blockPre.layer.name="GB · Blocks"; blockC=blockPre.comp; comps.push(blockC);
     }
     var camRefB=blockC===main?camRefMain:camRefPre;
-    var blocks=[], fillLayers=[], blockLayers=[], mediaL=[]; GB_mediaItems={};
+    var blocks=[], fillLayers=[], blockLayers=[], mediaL=[]; GB_mediaItems={}; GB_TRIM=!!org.trim;
+
     function trimTo(Lr,t){ if(org.trim&&t>0){try{Lr.inPoint=Math.min(main.duration-1/fps,t/fps);}catch(eT){}} }
     function trimOut(Lr,t){ if(org.trim&&t!=null&&t/fps<main.duration){try{if(t/fps>Lr.inPoint)Lr.outPoint=t/fps;}catch(eT2){}} }
     if(d.echoes){for(i=0;i<d.echoes.length;i++){
@@ -827,14 +852,17 @@ function GB_build(d){
       if(e.tIn!=null) trimTo(EL,e.tIn);
       var f0e=fillLayers.length; GB_fillItems(blockC,e.fill,EL,fillLayers);
       if(e.tOut!=null){trimOut(EL,e.tOut); for(var fe=f0e;fe<fillLayers.length;fe++) trimOut(fillLayers[fe],e.tOut);}
-    }}
+      for(var fl=f0e;fl<fillLayers.length;fl++){ try{fillLayers[fl].label=4;}catch(eLb){} }
+    }
+    if(org.headers!==false&&d.echoes.length) GB_header(blockC,"ECHOES ("+d.echoes.length+")",hdrF);
+    }
     var nEcho=blocks.length;
     for(i=0;i<d.blocks.length;i++){
       var b=d.blocks[i];
       var B=GB_box(blockC,b.name,b.x,b.y,b.bw,b.bh,b.color,b.outline?b.outline.w:0);
       B.comment="GridBlocks:block|order="+b.order+"|c="+b.c+"|r="+b.r+"|w="+b.w+"|h="+b.h;
       B.label=1;
-      var ML=null; if(b.media){ var mr=null; try{ mr=GB_mediaLayer(blockC,B,b,b.media,d.mediaRoot,folder,main,fps); }catch(eMd){ mr=null; }
+      var ML=null; if(b.media){ var mr=null; try{ mr=GB_mediaLayer(blockC,B,b,b.media,d.mediaRoot,mediaF||folder,main,fps); }catch(eMd){ mr=null; }
         if(mr){ ML=mr.L; mediaL.push({L:ML,B:B,ok:mr.ok}); fillLayers.push(ML); } }
       var T=b.text?GB_text(blockC,B,b):null;
       if(T) T.label=1;
@@ -844,11 +872,15 @@ function GB_build(d){
       if(ML&&b.tOut!=null) trimOut(ML,b.tOut);
       var f0=fillLayers.length; GB_fillItems(blockC,b.fill,B,fillLayers);
       if(b.tOut!=null){trimOut(B,b.tOut); if(T) trimOut(T,b.tOut); if(NT) trimOut(NT,b.tOut); for(var fb=f0;fb<fillLayers.length;fb++) trimOut(fillLayers[fb],b.tOut);}
+      // one colour per block group (alternating), so each block and everything inside it reads as a band in the timeline
+      var grp=[B,T,NT,ML]; for(var fg=f0;fg<fillLayers.length;fg++) grp.push(fillLayers[fg]); GB_labelAll(grp,i%2?11:1);
     }
+    if(org.headers!==false&&d.blocks.length) GB_header(blockC,"BLOCKS ("+d.blocks.length+")",hdrF);
     if(d.blocks.length) out.push(d.blocks.length+(d.blocks.length==1?" block":" blocks"));
     if(nEcho) out.push(nEcho+(nEcho==1?" echo":" echoes"));
     var gapLayers=[];
-    if(d.gaps){GB_fillItems(blockC,d.gaps,null,gapLayers); for(i=0;i<gapLayers.length;i++){gapLayers[i].name="Gap · "+gapLayers[i].name; blocks.push({L:gapLayers[i],T:null,b:{keys:null}});}}
+    if(d.gaps){GB_fillItems(blockC,d.gaps,null,gapLayers); for(i=0;i<gapLayers.length;i++){gapLayers[i].name="Gap · "+gapLayers[i].name; gapLayers[i].label=2; blocks.push({L:gapLayers[i],T:null,b:{keys:null}});}
+      if(org.headers!==false&&gapLayers.length) GB_header(blockC,"BETWEEN BLOCKS ("+gapLayers.length+")",hdrF);}
     if(fillLayers.length||gapLayers.length) out.push((fillLayers.length+gapLayers.length)+" content layers");
     if(d.lab){var nl=GB_labWorld(blockC,d.lab,blocks,blockLayers,fps,org,main); if(nl) out.push(nl+" lab layers");}
     if(d.rules && d.rules.top){rulesC=blockC; rulesL=GB_mkRules(blockC,d.rules); if(rulesL){locks.push(rulesL);out.push("column rules on top");}}
