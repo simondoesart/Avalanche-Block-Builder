@@ -401,3 +401,10 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.52.1 — Loading screen + safe mode
 - The panel shows a "Loading Grid Blocks…" screen until the interface is drawn (with the current step, and an error note if it's still loading after 12s) — so a black panel now means After Effects didn't render the page at all.
 - **Window › Extensions › Grid Blocks (safe mode)** opens the panel without loading your last scene (it stays saved).
+
+### v3.53 — Tidier After Effects builds
+- Blocks are their own layers in your comp by default (no "GB · Blocks" precomp), so clicking a block in the viewer selects just that block. Older saved scenes switch over automatically; "Precomp blocks & content" is still an option.
+- Timeline sections: locked, disabled divider layers — ━ GRID ━, ━ ECHOES ━, ━ BLOCKS ━, ━ BETWEEN BLOCKS ━, ━ TRANSITION IN/OUT ━ (option: "Section dividers & colour-coded block groups").
+- Each block's group (block, media, text, number, content) is contiguous, parented to the block and shares one label colour, alternating red / orange block to block; echoes and gap content have their own colours.
+- Trimming: content layers start at their own first frame; transition tiles and solids are trimmed to when they're visible (plus blocks/text/media/content to reveal → exit as before).
+- Project panel: Grid Blocks › comp › Media (footage) and Helpers (divider nulls).

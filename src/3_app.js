@@ -89,7 +89,7 @@ const DEF={
     assign:'same',pool:[],dir:{up:'',down:'',flat:''},seed:1,per:{},assets:[]},
   timing:{beats:[],markers:[],use:'beats',offset:0,sync:false,sens:1.3,minGap:4,media:null,video:true,videoOpacity:60,sound:true},
   exit:{on:false,holdOn:true,walkHold:24,walkPace:1,walkLen:48,walkFollow:60,trail:3,slide:1.5,mode:'hold',hold:36,at:24,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
-  out:{replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180,folder:true,preGrid:true,preBlocks:true,preTrans:true,shy:true,trim:true,markers:true},
+  out:{replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180,folder:true,preGrid:true,preBlocks:false,preTrans:true,shy:true,trim:true,markers:true,headers:true,orgV:2},
   blocks:[]
 };
 /* the Avalanche HUD example (what used to be the default): rules, starter walk, transitions, grid zoom */
@@ -1121,6 +1121,7 @@ const H={u:[],r:[]};
 const snap=()=>JSON.stringify(D);
 function pushHist(keepLive){H.u.push(snap());if(H.u.length>150)H.u.shift();H.r=[];if(!keepLive)U.live=false;updUndo();}
 function setDoc(obj){
+  if(obj&&obj.out&&!(obj.out.orgV>=2)){ obj.out.preBlocks=false; obj.out.headers=true; obj.out.orgV=2; }   // blocks are their own layers now (click one → just that block)
   U._mediaUI=0;
   if(obj&&obj.anim){ // older layouts
     if(obj.anim.motion==='step'){obj.anim.motion='smooth';obj.anim.camMove='step';}
@@ -5653,7 +5654,8 @@ const HELP={
   'out.lock':'Lock the background, lines and tiles so you don’t move them by accident.',
   'out.fitDur':'If the animation is longer than the comp, make the comp longer.',
   'out.preGrid':'Puts the tiles, grid lines and column rules (and their wrap helper) in one “GB · Grid” precomp. With the AE camera it is collapsed + 3D, so the main camera still moves it.',
-  'out.preBlocks':'Puts every block, its text and content, echoes and gap content in one “GB · Blocks” precomp. Open it to tweak a block; the main comp stays short.',
+  'out.preBlocks':'Off (default): every block is its own layer in your comp — click it in the viewer to select just that block. On: blocks, echoes and gap content go into one “GB · Blocks” precomp (clicking selects the whole precomp).',
+  'out.headers':'Locked, disabled divider layers (━ BLOCKS ━, ━ ECHOES ━ …) so the timeline reads in sections. Each block and its text, media and content share one label colour, alternating block to block.',
   'out.preTrans':'Each transition (in / out) becomes its own precomp instead of dozens of tiles in your comp. Matte transitions are always precomps.',
   'out.folder':'Files the precomps and the background solid under Grid Blocks › your comp name in the Project panel. Rebuilding cleans up the old ones.',
   'out.shy':'Marks the wrap and framing helper nulls as shy and turns on “hide shy layers”, so the timeline shows only what you animate.',
@@ -6204,7 +6206,7 @@ function orgPayload(P,animOn,G){
     if(animOn){mk.push([P.startF,'Scene start',0]); mk.push([P.startF+P.L,'Scene end',0]);}
     if(transOn()){const TP=transP(G); TP.groups.forEach(g=>{const v=transVis(TP,g.k); if(v) mk.push([v[0],g.k==='in'?'Transition in':'Transition out',v[1]-v[0]]);});}
   }
-  return {folder:!!O.folder, preGrid:!!O.preGrid, preBlocks:!!O.preBlocks, preTrans:!!O.preTrans, shy:!!O.shy, trim:!!O.trim, markers:mk.filter(m=>m[0]>=0)};
+  return {headers:O.headers!==false, folder:!!O.folder, preGrid:!!O.preGrid, preBlocks:!!O.preBlocks, preTrans:!!O.preTrans, shy:!!O.shy, trim:!!O.trim, markers:mk.filter(m=>m[0]>=0)};
 }
 function renderBuildSummary(G){
   const d=payload(), o=d.org||{}, cam3=d.rig==='camera', canPre=cam3||!d.anim;
