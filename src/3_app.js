@@ -1693,13 +1693,13 @@ function applyZoom(P){
   const Z=D.anim.zm, G=geom(), T=[G.W*clamp(+Z.ax||50,-50,150)/100, G.H*clamp(+Z.ay||50,-50,150)/100];
   P.zc=[]; P.pan=[];
   if(Z.focus!=='block'||!P.seq.length){ P.zc=[[0,T,'h']]; return; }
-  // the block: the newest one on screen when the zoom starts
+  // the block: the newest one on screen at the end of the first zoom move
   let ext=K[0]; K.forEach(k=>{ if(Math.abs(k[1]-100)>Math.abs(ext[1]-100)) ext=k; });
-  let bi=0; const tPick=K[0][0]+1; P.T.forEach((t,i)=>{ if(t<=tPick&&!P.seq[i].stack) bi=i; });   // the newest block on screen when the zoom starts
+  let bi=0; const tPick=(K[1]||K[0])[0]; P.T.forEach((t,i)=>{ if(t<=tPick&&!P.seq[i].stack) bi=i; });   // the newest block on screen at the end of the first zoom move
   const b=P.seq[bi], q=cellRect(G,b.c,b.r,b.w,b.h), wc=[q.x+q.w/2,q.y+q.h/2], sE=ext[1]/100;
   const f0=K[0][0], f1=Math.max(K[K.length-1][0],f0+1);
   for(let t=f0;t<=f1;t++){
-    const off=ev(P.cam,t,[0,0]), p=[wc[0]+off[0],wc[1]+off[1]], sc=ev(P.zs,t,100)/100, k=Math.abs(sE-1)<1e-6?0:clamp((sc-1)/(sE-1),0,1);
+    const off=ev(P.cam,t,[0,0]), p=[wc[0]+off[0],wc[1]+off[1]], sc=ev(P.zs,t,100)/100, s1=(K[1]||K[0])[1]/100, k=t>=(K[1]||K[0])[0]?1:(Math.abs(s1-(K[0][1]/100))<1e-6?0:clamp((sc-K[0][1]/100)/(s1-K[0][1]/100),0,1));
     P.zc.push([t,[r3(p[0]),r3(p[1])],'l']); P.pan.push([t,[r3((T[0]-p[0])*k),r3((T[1]-p[1])*k)],'l']);
   }
 }
