@@ -397,3 +397,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - **Download for After Effects** (Build step on the website → `downloads/GridBlocks-AE.zip`): `GridBlocks/` panel + `Install on Mac.command` + `Install on Windows.bat` + README. Installers copy the panel into the CEP extensions folder, turn on PlayerDebugMode (CEP 9–13), install any brand fonts placed in `Fonts/`, and clear the panel cache. The public zip has no desktop font files (licensing); `package.sh` also makes `GridBlocks-AE (internal, with fonts).zip` locally (git/Vercel-ignored).
 - After Effects 2022 (v22) and newer: manifest `AEFT [22.0,99.9]`, CSXS 11; newer-only APIs (track matte to any layer, app.fonts) fall back automatically.
 - `ship.command`: rebuilds, packages, commits and pushes to GitHub `main` (Vercel deploys from it). `install.command`: updates the panel in your local After Effects.
+
+### v3.52.1 — Loading screen + safe mode
+- The panel shows a "Loading Grid Blocks…" screen until the interface is drawn (with the current step, and an error note if it's still loading after 12s) — so a black panel now means After Effects didn't render the page at all.
+- **Window › Extensions › Grid Blocks (safe mode)** opens the panel without loading your last scene (it stays saved).
