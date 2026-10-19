@@ -321,3 +321,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 
 ### v3.36 — Zoom points
 - Zoom is now a set of points (frame + zoom %), eased between each pair with the Zoom easing curve. On the Zoom timeline row: drag a point (left/right = time, up/down = zoom), double-click the row to add one (at the current zoom), ⌥-click to remove. The Zoom panel lists the points with frame / % fields, + Add point and × to remove.
+
+### v3.37 — Zoom focus
+- Zoom → **Zoom on**: *A point in the frame* (that point stays put while everything zooms around it) or *The newest block* (the newest block on screen when the zoom starts glides to the chosen spot as it zooms). **Position**: 3×3 picker (top left … bottom right) or custom X / Y %.
+- After Effects: GB · Zoom gets its anchor/position at the chosen point (keyed per frame for block focus). Block focus works best while the camera is still (e.g. during the hold).
