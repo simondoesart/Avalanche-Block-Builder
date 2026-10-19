@@ -318,15 +318,18 @@ function GB_precomp(main,name,folder,collapse3D,tag,label){
   if(collapse3D){ try{L.collapseTransformation=true;}catch(eC){} try{L.threeDLayer=true;}catch(e3){} }
   return {comp:pc,layer:L};
 }
-function GB_trans(comp,d,fps,org,folder,comps,below){
+function GB_trans(comp,d,fps,org,folder,comps,below,camL){
   var T=d.trans, n=0; if(!T) return 0;
   for(var g=0;g<T.groups.length;g++){
     var G=T.groups[g], target=comp, pre=null, matte=G.output=="matte", lab=G.k=="in"?9:14;
-    if(matte||org.preTrans){
+    if(matte||(org.preTrans&&!G.world)){
       pre=GB_precomp(comp,(G.k=="in"?"GB Transition In":"GB Transition Out")+(matte?" (matte)":"")+" · "+comp.name,folder,false,"trans",lab);
       pre.layer.name=G.name+(matte?" (matte)":"");
       target=pre.comp; comps.push(target);
     }
+    /* solid under the tiles: hides the grid lines once the frame is covered */
+    if(G.solid){ try{ var S=GB_box(target,(G.k=="in"?"In":"Out")+" · Solid",0,0,comp.width,comp.height,G.solid.color,0); S.comment="GridBlocks:trans"; S.label=lab;
+      GB_keys(GB_xf(S).property("ADBE Opacity"),G.solid.op,fps); if(G.behind&&below&&!pre) S.moveAfter(below); n++; }catch(eS){} }
     for(var i=0;i<G.tiles.length;i++){
       var t=G.tiles[i], L=GB_box(target,(G.k=="in"?"In ":"Out ")+GB_pad3(i+1),t.x,t.y,t.w,t.h,t.color,0);
       L.comment="GridBlocks:trans"; L.label=lab;
@@ -341,6 +344,7 @@ function GB_trans(comp,d,fps,org,folder,comps,below){
         }
       }
       if(G.behind&&below&&!pre){ try{L.moveAfter(below);}catch(eB){} }
+      if(G.world&&camL&&!pre){ try{L.parent=camL;}catch(eP){} }
       n++;
     }
     if(G.behind&&below&&pre){ try{pre.layer.moveAfter(below);}catch(eB2){} }
@@ -894,7 +898,7 @@ function GB_build(d){
       out.push(A.label);
     }
     if(d.lab){GB_labScreen(main,d.lab,fps);}
-    if(d.trans){var belowL=blockPre?blockPre.layer:(blocks.length?blocks[0].L:null); var nt=GB_trans(main,d,fps,org,folder,comps,belowL); if(nt) out.push(nt+" transition blocks");}
+    if(d.trans){var belowL=blockPre?blockPre.layer:(blocks.length?blocks[0].L:null); var nt=GB_trans(main,d,fps,org,folder,comps,belowL,cam); if(nt) out.push(nt+" transition blocks");}
     // the camera (and its framing helper) on top, where animators look for it
     try{ if(cam) cam.moveToBeginning(); }catch(eTop){}
 
