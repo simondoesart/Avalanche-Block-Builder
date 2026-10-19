@@ -55,7 +55,7 @@ const DEF={
         wander:1,climb:0,stackPct:20,stackGap:0,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,offX:0,offY:0,tracking:0,leading:0,kern:'metrics',caps:'none'},
   anim:{seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
-        axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
+        axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,rzOn:false,rzPts:null,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.42,0,0.58,1],curvePh:null,sceneEase:{on:true,hd:null,holdH:null,onAt:null,holdAt:null,start:40,land:75,landOut:50,leaveIn:50,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zoomOn:false,zm:{pts:null,focus:'follow',ax:50,ay:50,in:24,out:96,from:100,to:140,curve:[0.65,0,0.35,1],scaleAll:false,back:false,backIn:180,backOut:228,backCurve:[0.65,0,0.35,1]},extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
   lab:{flicker:{on:false,frames:8,seed:3},
@@ -1665,9 +1665,64 @@ function syncSceneEase(G){
   D.anim.sceneCurve=c; D.anim.curvePh={on:B.on!=null?r3((B.on-B.c0)/C):null,hold:B.hold!=null?r3((B.hold-B.c0)/C):null}; easeSync={k,c:JSON.stringify(c),m:M};
 }
 /* ---- ZOOM: one move (and an optional way back) on the output clock, with its own easing */
+/* ---- KEYED TRACKS (zoom, reveal zone): points {f,v} with per-point bezier handles.
+   p.o = out handle, p.i = in handle — both [x,y] in the segment's own 0..1 space (x = time, y = value);
+   p.lin = linear on both sides of the point (no handles). Missing handles use the track's default ease. */
+function trkPt(p,o){ if(p.lin) o.lin=true; if(Array.isArray(p.o)) o.o=[+p.o[0],+p.o[1]]; if(Array.isArray(p.i)) o.i=[+p.i[0],+p.i[1]]; return o; }
+function trkSeg(a,b,C){ const o=a.lin?[1/3,1/3]:(a.o||[C[0],C[1]]), i=b.lin?[2/3,2/3]:(b.i||[C[2],C[3]]); return [clamp(o[0],0,1),o[1],clamp(i[0],0,1),i[1]]; }
+function trkKeys(pts,C,stop){ const K=[]; pts.forEach((p,j)=>{ let f=p.f; if(K.length&&f<=K[K.length-1][0]) f=K[K.length-1][0]+1; K.push([f,p.v,stop?'h':'e',j<pts.length-1?trkSeg(p,pts[j+1],C):C]); }); return K; }
+const TRACKS={
+  zoom:{name:'zoom',col:'#C9A7FF',min:5,max:2000,ref:100,minPts:2,real:true,
+    read:()=>zoomPts(), get:()=>ensureZoomPts(), set:p=>{D.anim.zm.pts=p;}, C:()=>(D.anim.zm.curve||[0.65,0,0.35,1]).map(Number), keys:()=>zoomKeys()},
+  rz:{name:'reveal zone',col:'#2BD98F',min:50,max:120,ref:null,minPts:2,real:false,
+    read:()=>rzPts(), get:()=>ensureRzPts(), set:p=>{D.anim.rzPts=p;}, C:()=>[0.33,0,0.67,1], keys:()=>rzKeys()}
+};
+/* reveal zone over time (content clock): points of anim.revealX */
+function rzPts(){
+  const A=D.anim; if(Array.isArray(A.rzPts)&&A.rzPts.length>=2) return A.rzPts.map(p=>trkPt(p,{f:Math.round(+p.f||0),v:clamp(+p.v||75,50,120)})).sort((a,b)=>a.f-b.f);
+  const s=Math.round(+A.startF||0), v=clamp(+A.revealX||75,50,120); return [{f:s,v},{f:s+Math.max(12,Math.round(+A.lenF||72)),v}];
+}
+function ensureRzPts(){ const A=D.anim; if(!Array.isArray(A.rzPts)||A.rzPts.length<2) A.rzPts=rzPts(); return A.rzPts; }
+function rzKeys(){ const A=D.anim; if(!A.rzOn||A.revealWhen!=='arrive') return []; return trkKeys(rzPts(),[0.33,0,0.67,1],false); }
+function revealXAt(t){ const K=rzKeys(); return K.length?ev(K,t,+D.anim.revealX||75):(+D.anim.revealX||75); }
+/* draw a track's curve, points and handles; returns interactive bits [{x,y,kind,i,drag(fx,fy,sh),alt(e)}]
+   X/Y: frame/value → px, F/V: px → frame/value (on the track's own clock) */
+function trkDraw(g,T,o){
+  const pts=T.read(), C=T.C(), K=trkKeys(pts,C,false), {X,Y,F,V,x0,x1}=o, out=[], col=T.col;
+  g.strokeStyle=col; g.lineWidth=o.lw||1.8; g.beginPath(); g.moveTo(x0,Y(pts[0].v)); g.lineTo(X(pts[0].f),Y(pts[0].v));
+  for(let j=0;j<pts.length-1;j++){ const a=pts[j], b=pts[j+1], fn=curveFn(K[j][3]); for(let k=1;k<=32;k++){const u=k/32; g.lineTo(X(a.f+(b.f-a.f)*u),Y(a.v+(b.v-a.v)*fn(u)));} }
+  g.lineTo(x1,Y(pts[pts.length-1].v)); g.stroke();
+  const commit=P2=>{ T.set(P2); };
+  const hdl=(j,side)=>{ const a=side==='o'?pts[j]:pts[j-1], b=side==='o'?pts[j+1]:pts[j], q=pts[j]; if(q.lin) return;
+    const seg=trkSeg(a,b,C), hx=side==='o'?seg[0]:seg[2], hy=side==='o'?seg[1]:seg[3], flat=Math.abs(b.v-a.v)<1e-6;
+    const px=X(a.f+hx*(b.f-a.f)), py=flat?Y(q.v):Y(a.v+hy*(b.v-a.v)), qx=X(q.f), qy=Y(q.v);
+    g.strokeStyle='rgba(255,255,255,.45)'; g.lineWidth=1; g.beginPath(); g.moveTo(qx,qy); g.lineTo(px,py); g.stroke();
+    g.fillStyle=col; g.beginPath(); g.arc(px,py,3.5,0,7); g.fill();
+    out.push({x:px,y:py,kind:'handle',i:j,tip:`${T.name} easing handle — drag to shape the move${flat?' (flat move: sideways sets the speed)':''} · ⌥-click the point to make it linear`,
+      drag:(fx,fy)=>{ const P2=T.get().slice().sort((m,n)=>m.f-n.f), A2=side==='o'?P2[j]:P2[j-1], B2=side==='o'?P2[j+1]:P2[j]; if(!A2||!B2) return;
+        const ux=clamp((F(fx)-A2.f)/Math.max(1e-6,B2.f-A2.f),0,1), dv=B2.v-A2.v, uy=Math.abs(dv)<1e-6?(side==='o'?0:1):clamp((V(fy)-A2.v)/dv,-3,4);
+        const cur=trkSeg(A2,B2,C); if(side==='o') A2.o=[ux,Math.abs(dv)<1e-6?cur[1]:uy]; else B2.i=[ux,Math.abs(dv)<1e-6?cur[3]:uy]; commit(P2); }}); };
+  pts.forEach((p,j)=>{ if(j<pts.length-1) hdl(j,'o'); if(j>0) hdl(j,'i'); });
+  pts.forEach((p,j)=>{ const x=X(p.f), y=Y(p.v), sel=o.sel===j;
+    g.fillStyle=sel?'#fff':col; g.strokeStyle=sel?col:'#fff'; g.lineWidth=1.2; g.beginPath();
+    if(p.lin){ g.moveTo(x,y-5.5); g.lineTo(x+5.5,y); g.lineTo(x,y+5.5); g.lineTo(x-5.5,y); g.closePath(); } else g.arc(x,y,4.6,0,7);
+    g.fill(); g.stroke();
+    if(o.labels){ g.font='600 10px sans-serif'; g.fillStyle='#eee'; g.fillText(Math.round(p.v)+'%',x+7,y<o.yTop+12?y+12:y-7); }
+    out.push({x,y,kind:'point',i:j,tip:`${T.name} point · f${Math.round(T.real?p.f:(o.toReal?o.toReal(p.f):p.f))} · ${Math.round(p.v)}% — drag (left/right = time, up/down = value) · ⌥-click: linear ↔ eased · ⇧⌥-click removes`,
+      drag:(fx,fy,sh)=>{ const P2=T.get().slice().sort((m,n)=>m.f-n.f), q=P2[j]; if(!q) return; const pv=P2[j-1], nx=P2[j+1];
+        q.f=Math.round(clamp(F(fx),pv?pv.f+1:-99999,nx?nx.f-1:99999)); let v=clamp(V(fy),T.min,T.max); v=sh?Math.round(v/5)*5:Math.round(v); q.v=v; commit(P2); },
+      alt:e=>{ const P2=T.get().slice().sort((m,n)=>m.f-n.f), q=P2[j]; if(!q) return; pushHist(true);
+        if(e&&e.shiftKey){ if(P2.length<=T.minPts) return toast('Needs at least two points'); P2.splice(j,1); }
+        else { if(q.lin) delete q.lin; else q.lin=true; delete q.o; delete q.i; }
+        commit(P2); planCache.k=''; syncInputs(true); refresh(); }}); });
+  return out;
+}
+function trkAddAt(T,f){ const P2=T.get().slice().sort((a,b)=>a.f-b.f); f=Math.round(f); if(P2.some(q=>q.f===f)) return false;
+  const K=trkKeys(T.read(),T.C(),false), v=Math.round(ev(K,f,P2[0].v)); pushHist(true); P2.push({f,v}); P2.sort((a,b)=>a.f-b.f); T.set(P2); return P2.findIndex(q=>q.f===f); }
+function trkAll(T,lin){ pushHist(true); const P2=T.get().slice(); P2.forEach(q=>{ delete q.o; delete q.i; if(lin) q.lin=true; else delete q.lin; }); T.set(P2); planCache.k=''; syncInputs(true); refresh(); }
 /* zoom points: [{f,v}] sorted by frame (older layouts: built from In/Out/From/To/Back) */
 function zoomPts(){
-  const Z=D.anim.zm||{}; if(Array.isArray(Z.pts)&&Z.pts.length>=2) return Z.pts.map(p=>({f:Math.round(+p.f||0),v:Math.max(5,+p.v||100)})).sort((a,b)=>a.f-b.f);
+  const Z=D.anim.zm||{}; if(Array.isArray(Z.pts)&&Z.pts.length>=2) return Z.pts.map(p=>trkPt(p,{f:Math.round(+p.f||0),v:Math.max(5,+p.v||100)})).sort((a,b)=>a.f-b.f);
   const f0=Math.round(+Z.in||0), f1=Math.max(f0+1,Math.round(+Z.out||f0+1)), a=Math.max(5,+Z.from||100), b=Math.max(5,+Z.to||100), o=[{f:f0,v:a},{f:f1,v:b}];
   if(Z.back){const g0=Math.max(f1+1,Math.round(+Z.backIn||f1+1)), g1=Math.max(g0+1,Math.round(+Z.backOut||g0+1)); o.push({f:g0,v:b},{f:g1,v:a});}
   return o;
@@ -1675,8 +1730,7 @@ function zoomPts(){
 function ensureZoomPts(){ const Z=D.anim.zm; if(!Array.isArray(Z.pts)||Z.pts.length<2) Z.pts=zoomPts(); return Z.pts; }
 function zoomKeys(){
   const A=D.anim, Z=A.zm; if(!A.zoomOn||!Z||A.mode==='static') return [];
-  const pts=zoomPts(), C=(Z.curve||[0.65,0,0.35,1]).map(Number), stop=A.motion==='stop';
-  const K=[]; pts.forEach(p=>{ let f=p.f; if(K.length&&f<=K[K.length-1][0]) f=K[K.length-1][0]+1; K.push([f,p.v,stop?'h':'e',C]); });
+  const K=trkKeys(zoomPts(),(Z.curve||[0.65,0,0.35,1]).map(Number),A.motion==='stop');
   return K.length>=2&&K.some(k=>k[1]!==K[0][1])?K:[];
 }
 function renderZoomPts(){
@@ -1685,51 +1739,49 @@ function renderZoomPts(){
   const pts=zoomPts();
   el.innerHTML=pts.map((p,i)=>`<div class="zprow"><span class="lbl">f</span><div class="num"><input type="number" data-zp="${i}:f" value="${p.f}" step="1"></div><span class="lbl">zoom</span><div class="num"><input type="number" data-zp="${i}:v" value="${Math.round(p.v)}" min="5" max="2000" step="5"><span class="unit">%</span></div><button class="btn ghost" data-zpdel="${i}" title="Remove this point" ${pts.length<=2?'disabled':''}>×</button></div>`).join('');
 }
-/* sidebar "Zoom over time" graph: every point, eased segments, playhead; drag / double-click add / ⌥-click remove */
-const ZG={sel:-1,drag:null};
-function zgGeo(c){
-  const r=c.getBoundingClientRect(), pts=zoomPts(), G=geom(), end=Math.max(sceneEnd(G),pts[pts.length-1].f+12);
-  const f0=Math.min(0,pts[0].f-6), vs=pts.map(p=>p.v).concat(100), lo=Math.max(5,Math.min(...vs)), hi=Math.max(...vs), pv=Math.max(10,(hi-lo)*.18);
-  const L=lo-pv, H=hi+pv, pl=34, pr=10, pt=10, pb=16, W=r.width-pl-pr, Hh=r.height-pt-pb;
-  return {r,pts,f0,end,L,H,X:f=>pl+(f-f0)/Math.max(1,end-f0)*W,Y:v=>pt+Hh-(v-L)/(H-L)*Hh,F:x=>f0+(x-pl)/W*(end-f0),V:y=>L+(pt+Hh-y)/Hh*(H-L),pl,pt,W,Hh};
+/* sidebar graphs for keyed tracks: every point, handles, playhead; drag / double-click add / ⌥-click linear↔eased / ⇧⌥-click remove */
+const TG={};
+function tgGeo(c,T){
+  const r=c.getBoundingClientRect(), pts=T.read(), G=geom(), Pp=plan(G), toR=T.real?(f=>f):(f=>Pp.toReal(f)), toC=T.real?(f=>f):(f=>Pp.toContent(f));
+  const endR=Math.max(sceneEnd(G),toR(pts[pts.length-1].f)+12), f0R=Math.min(0,toR(pts[0].f)-6);
+  const vs=pts.map(p=>p.v).concat(T.ref!=null?[T.ref]:[]), lo=Math.min(...vs), hi=Math.max(...vs), pv=Math.max(T.ref!=null?10:6,(hi-lo)*.25);
+  const L=Math.max(T.min-5,lo-pv), H=hi+pv, pl=34, pr=10, pt=10, pb=16, W=r.width-pl-pr, Hh=r.height-pt-pb;
+  const XR=f=>pl+(f-f0R)/Math.max(1,endR-f0R)*W;
+  return {r,pts,L,H,pl,pt,W,Hh,endR,X:f=>XR(toR(f)),XR,Y:v=>pt+Hh-(v-L)/(H-L)*Hh,F:x=>toC(f0R+(x-pl)/W*(endR-f0R)),V:y=>L+(pt+Hh-y)/Hh*(H-L),x0:pl,x1:pl+W,yTop:pt,toReal:toR};
 }
-function drawZoomGraph(){
-  const c=$('#zoomGraph'); if(!c) return; const r=c.getBoundingClientRect(); if(!r.width) return;
+function drawTrackGraph(id){
+  const c=$('#'+id); if(!c) return; const T=TRACKS[c.dataset.track]; const r=c.getBoundingClientRect(); if(!r.width||!T) return;
+  const st=TG[id]||(TG[id]={sel:-1,drag:null});
   const dpr=window.devicePixelRatio||1; c.width=Math.round(r.width*dpr); c.height=Math.round(r.height*dpr);
   const g=c.getContext('2d'); g.scale(dpr,dpr); g.clearRect(0,0,r.width,r.height);
-  const z=zgGeo(c), K=zoomKeys(), fps=D.comp.fps||30;
+  const z=tgGeo(c,T), fps=D.comp.fps||30;
   g.font='9px Inter,Helvetica,Arial'; g.fillStyle='#686871'; g.strokeStyle='#2f2f35'; g.lineWidth=1;
-  // 100% guide + range labels
-  const y100=z.Y(100); g.setLineDash([3,3]); g.beginPath(); g.moveTo(z.pl,y100+.5); g.lineTo(z.pl+z.W,y100+.5); g.stroke(); g.setLineDash([]); g.fillText('100%',4,y100+3);
-  [z.H,z.L].forEach(v=>{ if(Math.abs(v-100)<(z.H-z.L)*.12) return; g.fillText(Math.round(v)+'%',4,z.Y(v)+3); });
-  // scene end / comp
-  const xe=z.X(sceneEnd(geom())); g.strokeStyle='rgba(255,255,255,.12)'; g.beginPath(); g.moveTo(xe+.5,z.pt); g.lineTo(xe+.5,z.pt+z.Hh); g.stroke();
-  g.fillText('0s',z.X(0)+2,r.height-4); g.fillText(fmtT(sceneEnd(geom()),fps),Math.min(xe-22,z.pl+z.W-22),r.height-4);
-  // curve
-  g.strokeStyle='#E6212F'; g.lineWidth=2; g.beginPath();
-  for(let i=0;i<=200;i++){ const f=z.f0+(z.end-z.f0)*i/200, v=K.length?ev(K,f,100):z.pts[0].v, x=z.X(f), y=z.Y(v); i?g.lineTo(x,y):g.moveTo(x,y); } g.stroke();
-  // playhead
-  if(U.t!=null){ const x=z.X(U.t); g.strokeStyle='rgba(230,33,47,.55)'; g.beginPath(); g.moveTo(x+.5,z.pt); g.lineTo(x+.5,z.pt+z.Hh); g.stroke(); }
-  // points
-  z.pts.forEach((p,i)=>{ const x=z.X(p.f), y=z.Y(p.v); g.fillStyle=i===ZG.sel?'#E6212F':'#fff'; g.strokeStyle='#E6212F'; g.lineWidth=2; g.beginPath(); g.rect(x-4.5,y-4.5,9,9); g.fill(); g.stroke(); });
-  const s=z.pts[ZG.sel], v=$('#zoomGraphVal'); if(v) v.textContent=s?`Point ${ZG.sel+1} · frame ${s.f} (${fmtT(s.f,fps)}) · ${Math.round(s.v)}%`:`${z.pts.length} points · ${Math.round(Math.min(...z.pts.map(p=>p.v)))}–${Math.round(Math.max(...z.pts.map(p=>p.v)))}%`;
+  if(T.ref!=null){ const yr=z.Y(T.ref); g.setLineDash([3,3]); g.beginPath(); g.moveTo(z.pl,yr+.5); g.lineTo(z.pl+z.W,yr+.5); g.stroke(); g.setLineDash([]); g.fillText(T.ref+'%',4,yr+3); }
+  [z.H,z.L].forEach(v=>{ if(T.ref!=null&&Math.abs(v-T.ref)<(z.H-z.L)*.12) return; g.fillText(Math.round(v)+'%',4,z.Y(v)+3); });
+  const xe=z.XR(sceneEnd(geom())); g.strokeStyle='rgba(255,255,255,.12)'; g.beginPath(); g.moveTo(xe+.5,z.pt); g.lineTo(xe+.5,z.pt+z.Hh); g.stroke();
+  g.fillText('0s',z.XR(0)+2,r.height-4); g.fillText(fmtT(sceneEnd(geom()),fps),Math.min(xe-22,z.pl+z.W-22),r.height-4);
+  if(U.t!=null){ const x=z.XR(U.t); g.strokeStyle='rgba(230,33,47,.55)'; g.beginPath(); g.moveTo(x+.5,z.pt); g.lineTo(x+.5,z.pt+z.Hh); g.stroke(); }
+  st.hits=trkDraw(g,T,Object.assign({sel:st.sel,lw:2},z));
+  const s=z.pts[st.sel], v=c.parentNode.querySelector('.cv-val');
+  if(v) v.textContent=s?`Point ${st.sel+1} · frame ${Math.round(z.toReal(s.f))} (${fmtT(z.toReal(s.f),fps)}) · ${Math.round(s.v)}% · ${s.lin?'linear':'eased'}`:`${z.pts.length} points · ${Math.round(Math.min(...z.pts.map(p=>p.v)))}–${Math.round(Math.max(...z.pts.map(p=>p.v)))}%`;
 }
-function zgAfter(full){ planCache.k=''; $('#zoomPts')&&($('#zoomPts').innerHTML=''); renderZoomPts(); drawZoomGraph(); if(full){ syncInputs(true); refresh(); } else { render(); try{drawDope();}catch(e){} } }
-(()=>{ const c=$('#zoomGraph'); if(!c) return;
-  const hit=(e,z)=>{ const r=c.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top; let b=-1,bd=10; z.pts.forEach((p,i)=>{const d=Math.hypot(z.X(p.f)-x,z.Y(p.v)-y); if(d<bd){bd=d;b=i;}}); return {i:b,x,y}; };
-  c.addEventListener('pointerdown',e=>{ const z=zgGeo(c), h=hit(e,z); if(h.i<0) return;
-    if(e.altKey){ const P2=ensureZoomPts().slice().sort((a,b)=>a.f-b.f); if(P2.length<=2) return toast('A zoom needs at least two points'); pushHist(true); P2.splice(h.i,1); D.anim.zm.pts=P2; ZG.sel=-1; zgAfter(true); return; }
-    ZG.sel=h.i; ZG.drag={z,i:h.i,pushed:false}; c.setPointerCapture(e.pointerId); drawZoomGraph(); });
-  c.addEventListener('pointermove',e=>{ const d=ZG.drag; if(!d) return; const r=c.getBoundingClientRect(), z=d.z;
-    if(!d.pushed){ pushHist(true); d.pushed=true; }
-    const P2=ensureZoomPts().slice().sort((a,b)=>a.f-b.f), q=P2[d.i], pv=P2[d.i-1], nx=P2[d.i+1];
-    q.f=Math.round(clamp(z.F(e.clientX-r.left),pv?pv.f+1:-99999,nx?nx.f-1:99999)); let v=clamp(z.V(e.clientY-r.top),5,2000); if(e.shiftKey) v=Math.round(v/25)*25; else v=Math.round(v);
-    q.v=v; D.anim.zm.pts=P2; zgAfter(false); });
-  const up=()=>{ if(!ZG.drag) return; const p=ZG.drag.pushed; ZG.drag=null; if(p) zgAfter(true); };
+function drawTrackGraphs(){ $$('canvas[data-track]').forEach(c=>drawTrackGraph(c.id)); }
+function drawZoomGraph(){ drawTrackGraphs(); }
+function tgAfter(full){ planCache.k=''; if($('#zoomPts')) $('#zoomPts').innerHTML=''; renderZoomPts(); drawTrackGraphs(); if(full){ syncInputs(true); refresh(); } else { render(); try{drawDope();}catch(e){} } }
+$$('canvas[data-track]').forEach(c=>{ const id=c.id, T=TRACKS[c.dataset.track]; c.tabIndex=0;
+  const st=()=>TG[id]||(TG[id]={sel:-1,drag:null});
+  const hit=e=>{ const r=c.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top; let b=null,bd=9; (st().hits||[]).forEach(h=>{const d=Math.hypot(h.x-x,h.y-y)-(h.kind==='handle'?1:0); if(d<bd){bd=d;b=h;}}); return {h:b,x,y}; };
+  c.addEventListener('pointerdown',e=>{ const H=hit(e); if(!H.h) return; const S=st();
+    if(e.altKey&&H.h.kind==='point'){ S.sel=-1; H.h.alt(e); return; }
+    if(H.h.kind==='point') S.sel=H.h.i; S.drag={h:H.h,pushed:false}; c.setPointerCapture(e.pointerId); drawTrackGraph(id); });
+  c.addEventListener('pointermove',e=>{ const S=st(), d=S.drag; if(!d){ const H=hit(e); c.style.cursor=H.h?'move':'crosshair'; c.title=H.h?H.h.tip:'double-click to add a point'; return; }
+    const r=c.getBoundingClientRect(); if(!d.pushed){ pushHist(true); d.pushed=true; } d.h.drag(e.clientX-r.left,e.clientY-r.top,e.shiftKey); tgAfter(false); });
+  const up=()=>{ const S=st(); if(!S.drag) return; const p=S.drag.pushed; S.drag=null; if(p) tgAfter(true); };
   c.addEventListener('pointerup',up); c.addEventListener('pointercancel',up);
-  c.addEventListener('dblclick',e=>{ const z=zgGeo(c), h=hit(e,z); if(h.i>=0) return; const f=Math.round(z.F(h.x)), P2=ensureZoomPts().slice().sort((a,b)=>a.f-b.f); if(P2.some(q=>q.f===f)) return;
-    const K=zoomKeys(), v=K.length?Math.round(ev(K,f,100)):P2[0].v; pushHist(true); P2.push({f,v}); P2.sort((a,b)=>a.f-b.f); D.anim.zm.pts=P2; ZG.sel=P2.findIndex(q=>q.f===f); zgAfter(true); });
-})();
+  c.addEventListener('dblclick',e=>{ const H=hit(e); if(H.h) return; const z=tgGeo(c,T), i=trkAddAt(T,z.F(H.x)); if(i===false) return; st().sel=i; tgAfter(true); });
+  c.addEventListener('keydown',e=>{ const S=st(); if((e.key==='Delete'||e.key==='Backspace')&&S.sel>=0){ e.preventDefault(); e.stopPropagation(); const P2=T.get().slice().sort((a,b)=>a.f-b.f); if(P2.length<=T.minPts) return toast('Needs at least two points'); pushHist(true); P2.splice(S.sel,1); T.set(P2); S.sel=-1; tgAfter(true); } });
+});
+$$('[data-trkall]').forEach(b=>b.addEventListener('click',()=>{ const [k,m]=b.dataset.trkall.split(':'); trkAll(TRACKS[k],m==='lin'); }));
 function applyZoom(P){
   const K=zoomKeys(); if(!K.length) return;
   P.zs=clip0(K); P.sMin=Math.min(P.sMin||1,...K.map(k=>k[1]/100));
@@ -2078,7 +2130,7 @@ function computePlan(G){
         /* CURVE CAMERA: no lag, no reaction. The newest block is kept on the reveal line, so the camera's speed is
            exactly the pace of the reveals — which is the scene easing curve. Corners are rounded with a light
            symmetric blur; it doesn't move until the blocks reach the line, and holds once the last one lands. */
-        const line=G.W*(A.revealWhen==='arrive'?clamp(+A.revealX||75,50,120)/100:0.62), dirO=A.order==='rtl'?-1:1;
+        const rzK=rzKeys(), line=G.W*(A.revealWhen==='arrive'?clamp(rzK.length?revealXAt(startF):(+A.revealX||75),50,120)/100:0.62), dirO=A.order==='rtl'?-1:1;
         const lineX=dirO>0?line:G.W-line;
         let lastFrontX=null; for(let g=0;g<usedB;g++){ seq.forEach((b,i)=>{ if(gi[i]!==g||b.stack) return; const r=cellRect(G,b.c,b.r,b.w,b.h), cx2=r.x+r.w/2; if(lastFrontX==null||dirO*cx2>dirO*lastFrontX) lastFrontX=cx2; }); }
         const key=[]; let pvx=0,pvy=0, front=null;
@@ -2129,6 +2181,8 @@ function computePlan(G){
           const atA=dd=>{if(pA.length<2||totA<=0)return pA[0];let k=1;while(k<cA.length-1&&cA[k]<dd)k++;const sgm=Math.max(1e-9,cA[k]-cA[k-1]),q=clamp((dd-cA[k-1])/sgm,0,1);return[pA[k-1][0]+(pA[k][0]-pA[k-1][0])*q,pA[k-1][1]+(pA[k][1]-pA[k-1][1])*q];};
           for(let i=0;i<N;i++){const o=atA(clamp(dAt(a+i),0,totA)); xs[i]=o[0]; ys[i]=o[1];}
         }
+        // animated reveal zone: the frame shifts so the newest block sits on the line wherever it is at that moment
+        if(rzK.length) for(let i=0;i<N;i++){ const ln=G.W*clamp(revealXAt(a+i),50,120)/100, lx=dirO>0?ln:G.W-ln; xs[i]+=lx-lineX; }
         P.curveLine=lineX;
         const gsg=A.axis==='xy'?Math.max(1,(+A.motionBlurF||4)*.5):0.8, R=Math.ceil(3*gsg), kk=[]; let ks=0; for(let j=-R;j<=R;j++){const v=Math.exp(-j*j/(2*gsg*gsg));kk.push(v);ks+=v;}
         const sm=arr=>{const o=new Float64Array(N);for(let i=0;i<N;i++){let acc=0;for(let j=-R;j<=R;j++)acc+=arr[clamp(i+j,0,N-1)]*kk[j+R];o[i]=acc/ks;}return o;};
@@ -2195,8 +2249,8 @@ function computePlan(G){
     if(cm==='curve'&&P.cam.length&&!(D.timing&&D.timing.sync)){
       /* curve camera: the camera leads, so each block appears while it's on screen — on its schedule if that's
          when it's visible, otherwise as soon as it enters (arrive: the reveal zone; ahead: the frame), before it leaves */
-      const band=A.revealWhen==='arrive'?clamp(+A.revealX||70,50,120)/100:1, bandY=A.axis==='xy'?(A.revealWhen==='arrive'?clamp(+A.revealY||100,50,120)/100:1):1e6;
-      const xl=G.W*(1-band), xr=G.W*band, yt=G.H*(1-bandY), yb=G.H*bandY;
+      const bandAt=t=>A.revealWhen==='arrive'?clamp(revealXAt(t),50,120)/100:1, bandY=A.axis==='xy'?(A.revealWhen==='arrive'?clamp(+A.revealY||100,50,120)/100:1):1e6;
+      const yt=G.H*(1-bandY), yb=G.H*bandY;
       const scrAt=(t,px,py)=>{const off=ev(P.cam,t,[0,0]),s=ev(P.zs,t,100)/100,pn=ev(P.pan,t,[0,0]);return [G.W/2+s*(px+off[0]-G.W/2)+pn[0],G.H/2+s*(py+off[1]-G.H/2)+pn[1]];};
       const tBuild=Math.min(endF-1,Math.floor(W(L-Math.max(1,tr0))));   // build blocks are all in by the scene end
       let prev=-1e9;
@@ -2206,7 +2260,7 @@ function computePlan(G){
         const r=cellRect(G,b.c,b.r,b.w,b.h), px=r.x+r.w/2, py=r.y+r.h/2;
         // the camera carries each block onto the reveal line: it appears the frame it gets there
         // on its schedule if it's in the reveal zone then; otherwise the first frame the camera has it in the zone
-        const inZ=t=>{const q=scrAt(t,px,py);return q[0]>=xl&&q[0]<=xr*1.015+2&&q[1]>=yt&&q[1]<=yb;};
+        const inZ=t=>{const q=scrAt(t,px,py), band=bandAt(t), xl=G.W*(1-band), xr=G.W*band;return q[0]>=xl&&q[0]<=xr*1.015+2&&q[1]>=yt&&q[1]<=yb;};
         const lo=Math.max(startF,Math.round(prev)), sched=Math.max(lo,P.T[i]);
         let t=Math.max(lo,Math.min(sched,tMax));   // on its schedule (the build's last one right at the end), if it's in the zone then
         if(!inZ(t)){ let found=null; for(let k=walk?t:lo;k<=tMax;k++){ if(inZ(k)){found=k;break;} } if(found!=null) t=found; }   // walking blocks never come in before their schedule
@@ -2214,8 +2268,8 @@ function computePlan(G){
       });
     } else
     if(A.revealWhen==='arrive'&&P.cam.length){
-      const band=clamp(+A.revealX||70,50,120)/100, bandY=A.axis==='xy'?clamp(+A.revealY||100,50,120)/100:1e6;  // sideways-only camera: height doesn't matter
-      const xl=G.W*(1-band), xr=G.W*band, yt=G.H*(1-bandY), yb=G.H*bandY;
+      const bandY=A.axis==='xy'?clamp(+A.revealY||100,50,120)/100:1e6;  // sideways-only camera: height doesn't matter
+      let xl, xr; const yt=G.H*(1-bandY), yb=G.H*bandY; const setB=t=>{const band=clamp(revealXAt(t),50,120)/100; xl=G.W*(1-band); xr=G.W*band;}; setB(0);
       const scrAt=(t,px,py)=>{const off=ev(P.cam,t,[0,0]),s=ev(P.zs,t,100)/100,pn=ev(P.pan,t,[0,0]);return [G.W/2+s*(px+off[0]-G.W/2)+pn[0],G.H/2+s*(py+off[1]-G.H/2)+pn[1]];};
       const tMax=WO?endF-1:Math.min(endF-1,Math.floor(W(L-Math.max(1,tr0))));   // a delayed reveal still finishes by the scene end
       let prev=-1e9; const T0=P.T.slice();
@@ -2227,7 +2281,7 @@ function computePlan(G){
         // the frame it comes closest (never its off-screen schedule)
         let q0=null, best=null, bestD=1e18; const t0=t;
         for(;t<=tMax;t++){
-          const q=scrAt(t,px,py), inX=q[0]>=xl&&q[0]<=xr, inY=q[1]>=yt&&q[1]<=yb;
+          setB(t); const q=scrAt(t,px,py), inX=q[0]>=xl&&q[0]<=xr, inY=q[1]>=yt&&q[1]<=yb;
           const crossX=q0&&((q0[0]<xl&&q[0]>xr)||(q0[0]>xr&&q[0]<xl)), crossY=q0&&((q0[1]<yt&&q[1]>yb)||(q0[1]>yb&&q[1]<yt));
           if((inX||crossX)&&(inY||crossY)){hit=true;break;}
           const dd=Math.max(inX||crossX?0:Math.min(Math.abs(q[0]-xl),Math.abs(q[0]-xr)), inY||crossY?0:Math.min(Math.abs(q[1]-yt),Math.abs(q[1]-yb)));
@@ -2961,6 +3015,7 @@ function drawDope(){
   row('scene',ROWS.scene,{name:'Scene · time remap',ctx:'scene'});
   row('trans',ROWS.trans,{name:'Transitions',ctx:'trans'});
   if(anim&&D.anim.zoomOn) row('zoom',40,{name:'Zoom',ctx:'zoom'});
+  if(anim&&D.anim.rzOn&&D.anim.revealWhen==='arrive'&&(D.anim.mode==='camera'||D.anim.mode==='push')) row('rzone',40,{name:'Reveal zone',ctx:'camera'});
   TL.contentY0=y;
   if(anim) row('phases',ROWS.phases,{name:'Blocks · in hold out',ctx:'inout'});
   if(camOn) row('camera',ROWS.camera,{name:'Camera',ctx:'camera'});
@@ -3105,24 +3160,14 @@ function drawDope(){
     }
   } else {g.fillStyle='#686871';g.font='11px sans-serif';g.fillText(anim?'Generate a line to start — Blocks step, or press G':'Static — pick an animation style in Motion',LW+8,RSc.y0+RSc.h/2);}
   // ---- zoom: a bar from In to Out (and Back), with its easing drawn inside · drag the ends or the whole bar
-  const RZ=TL.rows.find(R=>R.k==='zoom');
-  if(RZ){ const Z=D.anim.zm, zc='#C9A7FF', pts=zoomPts(), E=curveFn((Z.curve||[0.65,0,0.35,1]).map(Number));
-    const vs=pts.map(p=>p.v), lo0=Math.min(100,...vs), hi0=Math.max(100,...vs), pad=Math.max(10,(hi0-lo0)*.15), lo=lo0-pad, hi=hi0+pad, y0=RZ.y0+5, h=RZ.h-10;
-    const Y=v=>y0+h-(v-lo)/(hi-lo)*h;
-    g.strokeStyle='rgba(255,255,255,.12)'; g.setLineDash([2,3]); g.beginPath(); g.moveTo(LW,Y(100)+.5); g.lineTo(r.width,Y(100)+.5); g.stroke(); g.setLineDash([]);
-    // the zoom curve through the points
-    g.strokeStyle='rgba(201,167,255,.9)'; g.lineWidth=1.5; g.beginPath(); g.moveTo(LW,Y(pts[0].v)); g.lineTo(X(pts[0].f),Y(pts[0].v));
-    for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1]; for(let k=1;k<=24;k++){const u=k/24; g.lineTo(X(a.f+(b.f-a.f)*u),Y(a.v+(b.v-a.v)*E(u)));}}
-    { const compEnd=Math.round((D.comp.dur||10)*fps); if(pts[pts.length-1].f<compEnd) g.lineTo(X(compEnd),Y(pts[pts.length-1].v)); } g.stroke();
-    pts.forEach((p,i)=>{ const x=X(p.f), yy=Y(p.v);
-      g.fillStyle=zc; g.beginPath(); g.moveTo(x,yy-5); g.lineTo(x+5,yy); g.lineTo(x,yy+5); g.lineTo(x-5,yy); g.closePath(); g.fill(); g.strokeStyle='#fff'; g.lineWidth=1; g.stroke();
-      g.font='600 10px sans-serif'; label(Math.round(p.v)+'%',x+7,yy<y0+12?yy+9:yy-7,'#eadcff');
-      item({type:'point',x,y:yy,cur:'move',tip:`zoom point · f${p.f} · ${Math.round(p.v)}% — drag (left/right = time, up/down = zoom) · ⌥-click removes · double-click the row to add`,
-        drag:((L0,H0)=>(fx,fy)=>{ const P2=ensureZoomPts().slice().sort((a,b)=>a.f-b.f), q=P2[i]; if(!q) return; const prev=P2[i-1], next=P2[i+1];
-          q.f=Math.round(clamp(F(fx),prev?prev.f+1:-99999,next?next.f-1:99999)); q.v=Math.round(clamp(L0+(y0+h-fy)/h*(H0-L0),5,2000)); D.anim.zm.pts=P2; })(lo,hi),
-        alt:()=>{ const P2=ensureZoomPts().slice().sort((a,b)=>a.f-b.f); if(P2.length<=2) return toast('A zoom needs at least two points'); pushHist(true); P2.splice(i,1); D.anim.zm.pts=P2; syncInputs(true); refresh(); }}); });
-    item({type:'row',row:RZ,x0:LW,x1:r.width,y0:RZ.y0,y1:RZ.y1,cur:'pointer',tip:'Zoom — double-click to add a point · click for settings'});
-  }
+  [['zoom','zoom'],['rzone','rz']].forEach(([rk,tk])=>{ const RZ=TL.rows.find(R=>R.k===rk); if(!RZ) return; const T=TRACKS[tk], pts=T.read();
+    const vs=pts.map(p=>p.v).concat(T.ref!=null?[T.ref]:[]), lo0=Math.min(...vs), hi0=Math.max(...vs), pad=Math.max(T.ref!=null?10:5,(hi0-lo0)*.2), lo=lo0-pad, hi=hi0+pad, y0=RZ.y0+6, h=RZ.h-12;
+    const Y=v=>y0+h-(v-lo)/(hi-lo)*h, Vv=y=>lo+(y0+h-y)/h*(hi-lo), toR=T.real?(f=>f):(f=>P.toReal(f)), toC=T.real?(f=>f):(f=>P.toContent(f));
+    if(T.ref!=null){ g.strokeStyle='rgba(255,255,255,.12)'; g.setLineDash([2,3]); g.beginPath(); g.moveTo(LW,Y(T.ref)+.5); g.lineTo(r.width,Y(T.ref)+.5); g.stroke(); g.setLineDash([]); }
+    const hits=trkDraw(g,T,{X:f=>X(toR(f)),Y,F:x=>toC(F(x)),V:Vv,x0:LW,x1:r.width,labels:true,yTop:y0,lw:1.5,toReal:toR});
+    hits.forEach(it=>item({type:'point',x:it.x,y:it.y,cur:'move',tip:it.tip,drag:it.drag,alt:it.alt}));
+    item({type:'row',row:RZ,x0:LW,x1:r.width,y0:RZ.y0,y1:RZ.y1,cur:'pointer',tip:`${T.name[0].toUpperCase()+T.name.slice(1)} — double-click to add a point · click for settings`});
+  });
   // ---- camera
   const RC=TL.rows.find(R=>R.k==='camera');
   if(RC){ if(Pc.cam.length){const v=[];let mx=1;const a0=Math.floor(V0.f0),a1=Math.ceil(V0.f1);for(let f=a0;f<=a1;f++){const a=ev(Pc.cam,f,[0,0]),b=ev(Pc.cam,f+1,[0,0]);const s=Math.hypot(b[0]-a[0],b[1]-a[1]);v.push(s);mx=Math.max(mx,s);}
@@ -3325,8 +3370,8 @@ function initDope(){
   c.addEventListener('contextmenu',e=>{e.preventDefault(); const p=rect(e), h=tlHit(p.x,p.y); tlMenu(e,h);});
   c.addEventListener('dblclick',e=>{const p=rect(e), h=tlHit(p.x,p.y); const R=TL.rows.find(R=>R.k==='scene'); const cvv=TL.items.find(it=>it.type==='curve');
     if(R&&cvv&&p.y>=R.y0&&p.y<R.y1&&h.type!=='handle'&&h.type!=='point'&&p.x>=cvv.x0&&p.x<=cvv.x1) tlAddPoint(cvv.u(p.x));
-    const RZ2=TL.rows.find(R=>R.k==='zoom'); if(RZ2&&p.y>=RZ2.y0&&p.y<RZ2.y1&&h.type!=='point'&&p.x>TL.LW){ const f=Math.round(TL.F(p.x)), P2=ensureZoomPts().slice().sort((a,b)=>a.f-b.f); if(P2.some(q=>q.f===f)) return;
-      const Kz=zoomKeys(), v=Kz.length?Math.round(ev(Kz,f,100)):100; pushHist(true); P2.push({f,v}); P2.sort((a,b)=>a.f-b.f); D.anim.zm.pts=P2; syncInputs(true); refresh(); return; }
+    for(const [rk,tk] of [['zoom','zoom'],['rzone','rz']]){ const RZ2=TL.rows.find(R=>R.k===rk); if(RZ2&&p.y>=RZ2.y0&&p.y<RZ2.y1&&h.type!=='point'&&p.x>TL.LW){ const T=TRACKS[tk], fr=TL.F(p.x), f=T.real?fr:plan(geom()).toContent(fr);
+      if(trkAddAt(T,f)!==false){ planCache.k=''; syncInputs(true); refresh(); } return; } }
     const SE=D.anim.sceneEase; if(R&&SE&&SE.on&&SE.mid==='smooth'&&D.exit.holdOn===false&&p.y>=R.y0&&p.y<R.y1&&h.type!=='point'){ const P=plan(geom()), V=tlView(), Wt=Math.max(40,c.getBoundingClientRect().width-TL.LW-8), f=V.f0+(p.x-TL.LW)/Wt*(V.f1-V.f0), u=(f-P.startF)/Math.max(1,P.R);
       if(u>.04&&u<.96){pushHist(true);SE.mid='point';SE.onAt=Math.round(u*100);syncInputs(true);refresh();} } });
   c.addEventListener('pointerdown',e=>{
@@ -3339,7 +3384,7 @@ function initDope(){
     if(h.type==='ruler'){ freeze(); TL.drag={scrub:true}; tlSetT(TL.F(p.x)); return; }
     if(U.t!=null&&h.type!=='point'&&h.type!=='handle'&&h.type!=='exit'&&h.type!=='inedge'){ const content=p.y>=TL.contentY0&&TL.P&&TL.P.remapped, px=content?TL.X(TL.P.toContent(U.t)):TL.X(U.t);
       if(Math.abs(p.x-px)<=5&&p.x>TL.LW){ freeze(); TL.drag={scrub:true,content}; return; } }
-    if(h.type==='point'){ if(e.altKey&&h.alt){h.alt();return;} pushHist(true); freeze(); TL.drag={point:h}; return; }
+    if(h.type==='point'){ if(e.altKey&&h.alt){h.alt(e);return;} pushHist(true); freeze(); TL.drag={point:h}; return; }
     if(h.type==='curve'){ tlAddPoint(h.u(p.x)); return; }
     if(h.type==='handle'){ pushHist(true); freeze(); TL.drag={handle:h}; return; }
     const mods=e.shiftKey?'range':(e.metaKey||e.ctrlKey)?'toggle':null;
@@ -3789,7 +3834,7 @@ function drawOverlays(G,A){
   const sc=V.sc, tool=U.tool, live=!!(A&&A.live), s=live?A.s:1, bo=live?A.off:[0,0];
   // reveal zone (camera modes, 'when the camera arrives')
   if(STEPS[U.step].id==='animate'&&(D.anim.mode==='camera'||D.anim.mode==='push')&&D.anim.revealWhen==='arrive'){
-    const bx=clamp(+D.anim.revealX||70,50,120)/100, by=D.anim.axis==='xy'?clamp(+D.anim.revealY||100,50,120)/100:1;
+    const tc=live&&D.anim.rzOn?plan(G).toContent(A.t):null, bx=clamp(tc!=null?revealXAt(tc):(+D.anim.revealX||70),50,120)/100, by=D.anim.axis==='xy'?clamp(+D.anim.revealY||100,50,120)/100:1;
     ctx.save(); ctx.setLineDash([6/sc,5/sc]); ctx.lineWidth=1.25/sc; ctx.strokeStyle='rgba(43,217,143,.75)';
     ctx.strokeRect(G.W*(1-bx),G.H*(1-by),G.W*(2*bx-1),G.H*(2*by-1));
     ctx.setLineDash([]); ctx.fillStyle='rgba(43,217,143,.9)'; ctx.font=`${11/sc}px sans-serif`; ctx.fillText('reveal zone',G.W*(1-bx)+6/sc,G.H*(1-by)+14/sc);

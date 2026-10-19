@@ -420,8 +420,8 @@ body.simple [data-adv]{display:none!important}
 
 /* curve editor */
 .curve{display:grid;gap:6px}
-.zgraph{display:grid;gap:6px}.zg-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.zg-hint{font-size:10px;white-space:nowrap;color:var(--mut,#686871)}
-#zoomGraph{width:100%;height:130px;background:var(--bg);border:1px solid var(--line);border-radius:9px;cursor:crosshair;touch-action:none;display:block}
+.zgraph{display:grid;gap:6px}.zg-h{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 8px}.zg-h .lbl{white-space:nowrap}.zg-hint{font-size:10px;white-space:nowrap;color:var(--mut,#686871)}
+canvas.tgraph{width:100%;height:130px;outline:none;background:var(--bg);border:1px solid var(--line);border-radius:9px;cursor:crosshair;touch-action:none;display:block}
 .curve canvas{width:100%;height:150px;background:var(--bg);border:1px solid var(--line);border-radius:9px;cursor:crosshair;touch-action:none;display:block}
 .curve .cv-row{display:flex;flex-wrap:wrap;gap:4px}
 .curve .cv-val{font-variant-numeric:tabular-nums;color:var(--dim);font-size:10.5px}
@@ -1178,6 +1178,9 @@ body.nohelp .qm{display:none}
               <div data-show="anim.revealWhen=arrive" style="display:grid;gap:9px">
                 <div class="field"><span class="lbl scrub" title="How far across the frame a block's centre must be before it appears. 50 = only at the centre, 100 = as soon as it's on screen">Reveal zone</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.revealX" min="50" max="120" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
                 <div data-adv class="field" data-show="anim.axis=xy"><span class="lbl scrub" title="Same, for up/down">Zone height</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.revealY" min="50" max="120" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
+                <label class="check" title="Key the reveal zone over time: a Reveal zone row appears on the timeline with points and easing handles. The camera keeps the newest block on the zone's edge wherever it is at that moment."><input type="checkbox" data-bind="anim.rzOn"> Animate on the timeline</label>
+                <div class="zgraph" data-show="anim.rzOn=true"><div class="zg-h"><span class="lbl">Reveal zone over time</span><span class="zg-hint">dbl-click add · ⌥-click linear/eased · ⇧⌥-click remove</span></div><canvas id="rzGraph" class="tgraph" data-track="rz"></canvas><div class="cv-val"></div>
+                  <div class="seg"><button data-trkall="rz:ease">All eased</button><button data-trkall="rz:lin">All linear</button></div></div>
                 <div class="seg" id="zonePreset"><button data-z="55" title="Appear right at the centre">Centre</button><button data-z="65">Near centre</button><button data-z="75">Inside</button><button data-z="95" title="As soon as the block is on screen">On screen</button></div>
                 <div class="note">The dashed lines on the canvas show the zone. Blocks pop in once the camera carries them inside it.</div>
               </div>
@@ -1224,12 +1227,12 @@ body.nohelp .qm{display:none}
             <div class="group-h">Zoom<label class="switch hswitch" title="Zoom the view in or out"><input type="checkbox" data-bind="anim.zoomOn"><span></span></label></div>
             <div class="note" data-show="anim.zoomOn=false">Zoom the view in or out between two frames, with its own easing. It shows as a row on the timeline.</div>
             <div data-show="anim.zoomOn=true" style="display:grid;gap:9px">
-              <div class="note">Points on the <b>Zoom</b> timeline row: drag them (left/right = time, up/down = zoom), double-click the row to add one, ⌥-click to remove.</div>
+              <div class="note">Points on the <b>Zoom</b> timeline row: drag them (left/right = time, up/down = zoom) and their handles to shape each move, double-click to add one, ⌥-click to switch a point between linear and eased, ⇧⌥-click to remove.</div>
               <div class="field stack"><span class="lbl">Quick timing</span><div class="seg"><button data-zpre="build" title="Zoom in while the line builds, back out after">During the build</button><button data-zpre="hold" title="Zoom in for the hold, back out as it leaves">For the hold</button><button data-zpre="walk" title="Zoom in as the walk-off starts and stay in">The walk-off</button><button data-zpre="all" title="Zoom in early and stay in">Whole scene</button></div></div>
               <div id="zoomPts" style="display:grid;gap:5px"></div>
               <div class="row-btns"><button class="btn" id="btnZoomPt">+ Add point</button></div>
-              <div class="zgraph"><div class="zg-h"><span class="lbl">Zoom over time</span><span class="zg-hint">drag · dbl-click add · ⌥-click remove</span></div><canvas id="zoomGraph"></canvas><div class="cv-val" id="zoomGraphVal"></div></div>
-              <div class="curve" data-curve="anim.zm.curve" data-title="Easing · used between every pair of points"></div>
+              <div class="zgraph"><div class="zg-h"><span class="lbl">Zoom over time</span><span class="zg-hint">dbl-click add · ⌥-click linear/eased · ⇧⌥-click remove</span></div><canvas id="zoomGraph" class="tgraph" data-track="zoom"></canvas><div class="cv-val"></div>
+                <div class="seg"><button data-trkall="zoom:ease" title="Every point gets default ease handles">All eased</button><button data-trkall="zoom:lin" title="Straight, constant-speed moves between every point">All linear</button></div></div>
               <div class="field stack"><span class="lbl" title="What the zoom keeps in view">Zoom on</span><div class="seg" data-seg="anim.zm.focus"><button data-v="follow" title="Follows the walking line: the newest block stays near the chosen spot the whole time it's zoomed">Follow the line</button><button data-v="block" title="One block (newest at the end of the first zoom move) glides to the chosen spot">One block</button><button data-v="frame" title="A point in the frame stays put while everything zooms around it">Frame point</button></div></div>
               <div class="field"><span class="lbl" title="Where it sits in the frame">Position</span><div class="posgrid" id="zoomPos"><button data-zpos="15,15" title="Top left"><i></i></button><button data-zpos="50,15" title="Top"><i></i></button><button data-zpos="85,15" title="Top right"><i></i></button><button data-zpos="15,50" title="Left"><i></i></button><button data-zpos="50,50" title="Centre"><i></i></button><button data-zpos="85,50" title="Right"><i></i></button><button data-zpos="15,85" title="Bottom left"><i></i></button><button data-zpos="50,85" title="Bottom"><i></i></button><button data-zpos="85,85" title="Bottom right"><i></i></button></div></div>
               <div class="field2">
