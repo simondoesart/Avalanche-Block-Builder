@@ -2447,8 +2447,8 @@ const DEF={
         rulesOn:false,rule:'#3B484B',ruleW:1,ruleEvery:4,ruleStart:1,ruleLayer:'top',ruleParallax:100,ruleLag:0,ruleEnd:'stay',ruleFadeAt:0,ruleFadeLen:24},
   block:{w:3,h:1,color:'#E6212F',color2:'#A2AFB2',color3:'#0061E2',color4:'#FF7F7B',upColor:'#FF7F7B',downColor:'#A2AFB2',ncol:2,sync:true,mix:'single',mixPct:25},
   palette:PALETTE.slice(),
-  trans:{in:{on:false,mode:'clear',start:0,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:3,jitter:0,preset:'flood',behind:true,world:true,solid:true,solidFade:8},
-         out:{on:false,mode:'build',start:72,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:5,jitter:0,preset:'flood',behind:true,world:true,solid:true,solidFade:8}},
+  trans:{in:{on:false,mode:'clear',start:0,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:3,jitter:0,preset:'flood',behind:false,world:true,solid:true,solidFade:8},
+         out:{on:false,mode:'build',start:72,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:5,jitter:0,preset:'flood',behind:false,world:true,solid:true,solidFade:8}},
   fill:{on:true,seed:7,density:'medium',family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:8,leading:100,caps:'upper',
         textColor:'#121212',outlinePct:0,outlineW:2,skipText:true,textPct:60,patternPct:40,dotSpacing:8,iconPct:20,iconSize:24,iconLib:'pixel',buildDur:12,graphW:1.5,look:'custom',
         mix:{text:45,graph:30,combo:25},graphs:{line:true,step:false,area:true,bars:true,hist:false,candles:true,meter:true,heat:true,network:true,wave:false,depth:false},
@@ -4770,7 +4770,7 @@ function mixHex(a,b,t){const p=h=>{h=String(h||'#000').replace('#','');return [0
 function applyTransPreset(k,id){ const pr=TRANS_PRESETS.find(p=>p.id===id); if(!pr) return; const T=D.trans[k];
   Object.assign(T,{withWalk:false},pr.set,{preset:id,on:true}); if(T.mode==null) T.mode=k==='in'?'clear':'build';
   // walk presets grow out from behind the line (primary block colour), so the line stays on top
-  T.color=D.block.color; if(pr.g==='line'){ T.behind=true; T.blockColors=false; } else T.behind=false; }
+  T.color=D.block.color; T.behind=false; if(pr.g==='line') T.blockColors=false; }
 /* a little preview of a preset: a mini grid shaded by when each tile goes */
 function transThumb(id){
   const pr=TRANS_PRESETS.find(p=>p.id===id)||TRANS_PRESETS[0], pat=pr.set.pattern, C=12, R=7, rnd=rng(id.length*977+7), line=[];
