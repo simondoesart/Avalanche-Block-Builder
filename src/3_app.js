@@ -38,8 +38,8 @@ const DEF={
         rulesOn:false,rule:'#3B484B',ruleW:1,ruleEvery:4,ruleStart:1,ruleLayer:'top',ruleParallax:100,ruleLag:0,ruleEnd:'stay',ruleFadeAt:0,ruleFadeLen:24},
   block:{w:3,h:1,color:'#E6212F',color2:'#A2AFB2',color3:'#0061E2',color4:'#FF7F7B',upColor:'#FF7F7B',downColor:'#A2AFB2',ncol:2,sync:true,mix:'single',mixPct:25},
   palette:PALETTE.slice(),
-  trans:{in:{on:false,mode:'clear',start:0,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:3,jitter:0,preset:'flood',behind:false,world:true,solid:true,solidFade:8,solidAt:null},
-         out:{on:false,mode:'build',start:72,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:5,jitter:0,preset:'flood',behind:false,world:true,solid:true,solidFade:8}},
+  trans:{in:{on:false,mode:'clear',start:0,atEnd:false,dur:24,pattern:'walkon',withWalk:true,wEnd:null,blockColors:false,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:3,jitter:0,preset:'walkon',behind:false,world:true,solid:true,solidFade:8,solidAt:null},
+         out:{on:false,mode:'build',start:72,atEnd:false,dur:24,pattern:'walkoff',withWalk:true,wEnd:null,blockColors:false,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:5,jitter:0,preset:'walkoff',behind:false,world:true,solid:true,solidFade:8,solidAt:null}},
   fill:{on:true,seed:7,density:'medium',family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:8,leading:100,caps:'upper',
         textColor:'#121212',outlinePct:0,outlineW:2,skipText:true,textPct:60,patternPct:40,dotSpacing:8,iconPct:20,iconSize:24,iconLib:'pixel',buildDur:12,graphW:1.5,look:'custom',
         mix:{text:45,graph:30,combo:25},graphs:{line:true,step:false,area:true,bars:true,hist:false,candles:true,meter:true,heat:true,network:true,wave:false,depth:false},
@@ -2318,6 +2318,7 @@ function computePlan(G){
 function transWin(G,k,T,compF){
   let dur=Math.max(1,Math.round(T.dur)||24), st=k==='out'&&T.atEnd?compF-dur:Math.round(+T.start||0);
   let nat=null;
+  if(k==='in'&&T.withWalk&&D.anim.mode!=='static'){ const P=plan(G); if(P.seq.length){ st=Math.round(Math.min(...P.T))-1; const e=Math.round(P.onEnd!=null?P.onEnd:P.end); nat=Math.max(12,e-st); dur=T.wEnd!=null?Math.max(6,Math.round(+T.wEnd)-st):nat; } }
   if(k==='out'&&T.withWalk&&D.anim.mode!=='static'){ const P=plan(G); if(P.walkT!=null){ st=Math.round(P.walkT); const e=Math.min(compF,Math.round(P.walkEnd!=null?P.walkEnd+8:P.end)); nat=Math.max(12,e-st); dur=T.wEnd!=null?Math.max(6,Math.round(+T.wEnd)-st):nat; } }
   return {st,dur,nat:nat||dur};
 }
@@ -2342,8 +2343,9 @@ function transLineTimed(G,k,T,compF,fixOff){
   return out;
 }
 const TRANS_PRESETS=[
-  {id:'flood',name:'Line flood',sub:'floods out from the newest block as the line keeps building',g:'line',set:{pattern:'flood',dur:28,len:8,appear:'wipe',jitter:10,dir:'fwd'}},
   {id:'walkoff',name:'Walk-off build',sub:'builds behind the line as it walks off',g:'line',out:true,set:{pattern:'walkoff',len:8,appear:'wipe',jitter:0,dir:'fwd',withWalk:true,mode:'build'}},
+  {id:'walkon',name:'Walk-on build',sub:'clears around the line as it walks on',g:'line',inOnly:true,set:{pattern:'walkon',len:8,appear:'wipe',jitter:0,dir:'fwd',withWalk:true,mode:'clear'}},
+  {id:'flood',name:'Line flood',sub:'floods out from the newest block as the line keeps building',g:'line',set:{pattern:'flood',dur:28,len:8,appear:'wipe',jitter:10,dir:'fwd'}},
   {id:'trail',name:'Retrace',sub:'follows the walk, then spills',g:'line',set:{pattern:'trail',dur:32,len:8,appear:'wipe',jitter:0,dir:'fwd'}},
   {id:'extrude',name:'Extrude',sub:'the line grows up and down',g:'line',set:{pattern:'extrude',dur:26,len:7,appear:'wipe',jitter:0,dir:'fwd'}},
   {id:'ribbons',name:'Ribbons',sub:'echoes of the line stack out',g:'line',set:{pattern:'ribbons',dur:30,len:8,appear:'wipe',jitter:0,dir:'fwd'}},
@@ -2369,7 +2371,7 @@ function transThumb(id){
   let r=3; for(let c=1;c<9;c++){ line.push([c,r]); const u=rnd(); r=clamp(r+(u<.33?-1:u<.66?1:0),1,5); }
   const v=[]; for(let y=0;y<R;y++)for(let x=0;x<C;x++){ let d;
     const near=Math.min(...line.map(q=>Math.max(Math.abs(q[0]-x),Math.abs(q[1]-y)))), ni=line.reduce((m,q,i)=>{const dd=Math.max(Math.abs(q[0]-x),Math.abs(q[1]-y));return dd<m.d?{d:dd,i}:m;},{d:1e9,i:0}).i, ly=(line.find(q=>q[0]===x)||line[x<1?0:line.length-1])[1], hd=line[line.length-1];
-    if(pat==='walkoff') d=(x<line[3][0]?Math.abs(y-line[3][1])+(line[3][0]-x)*.6:(line.find(q=>q[0]===x)?Math.abs(y-line.find(q=>q[0]===x)[1])+(x-line[3][0])*2:(x-line[3][0])*2+Math.abs(y-hd[1]))); else if(pat==='flood') d=near+rnd()*.5; else if(pat==='trail') d=ni*1.4+near; else if(pat==='extrude') d=Math.abs(y-ly)*1.3+x*.35; else if(pat==='ribbons') d=x*.6+Math.abs(Math.round(y-ly))*2.2;
+    if(pat==='walkon') d=near*1.2+(x<5?0:x*.3)+rnd()*.8; else if(pat==='walkoff') d=(x<line[3][0]?Math.abs(y-line[3][1])+(line[3][0]-x)*.6:(line.find(q=>q[0]===x)?Math.abs(y-line.find(q=>q[0]===x)[1])+(x-line[3][0])*2:(x-line[3][0])*2+Math.abs(y-hd[1]))); else if(pat==='flood') d=near+rnd()*.5; else if(pat==='trail') d=ni*1.4+near; else if(pat==='extrude') d=Math.abs(y-ly)*1.3+x*.35; else if(pat==='ribbons') d=x*.6+Math.abs(Math.round(y-ly))*2.2;
     else if(pat==='head') d=Math.hypot(x-hd[0],y-hd[1]); else if(pat==='walk') d=x+(y%3)*.8; else if(pat==='rows') d=y; else if(pat==='diag') d=x+y; else if(pat==='center') d=Math.hypot(x-5.5,y-3);
     else if(pat==='checker') d=((x+y)%2)*12+x; else if(pat==='venetian') d=(y%2?C-x:x)+y*.3; else if(pat==='random') d=rnd(); else d=x;
     v.push(d); }
@@ -2389,7 +2391,7 @@ function transPlan(G){
     // walk: tiles sit on the scene's own grid (where the camera has it when the transition starts),
     // and sweep in the direction the line walks with a stepped, block-shaped front
     let sx=0, sy=0;
-    const onGrid=walk||['flood','head','extrude','ribbons','trail','walkoff'].indexOf(T.pattern)>=0;
+    const onGrid=walk||['flood','head','extrude','ribbons','trail','walkoff','walkon'].indexOf(T.pattern)>=0;
     // 'moves with the blocks': tiles live on the scene's grid and travel with the camera; others are fixed to the frame
     const WRLD=T.world!==false&&T.output!=='matte'&&D.anim.mode==='camera';
     const Wn=transWin(G,k,T,compF), PP=D.anim.mode!=='static'?plan(G):null, oRef=PP?ev(PP.cam,k==='out'?Wn.st:Wn.st+Wn.dur,[0,0]):[0,0];
@@ -2413,13 +2415,13 @@ function transPlan(G){
     const LINE=['flood','head','extrude','ribbons','trail'].indexOf(T.pattern)>=0?transLine(G,k,T,compF,WRLD?oRef:null):null;
     const dirX=(D.anim.order==='rtl')?-1:1;
     // flood: a wave from the newest block that keeps moving as the line keeps building (each new block sends its own wave)
-    const FL=(T.pattern==='flood'||T.pattern==='walkoff')?transLineTimed(G,k,T,compF,WRLD?oRef:null):null;
+    const FL=(T.pattern==='flood'||T.pattern==='walkoff'||T.pattern==='walkon')?transLineTimed(G,k,T,compF,WRLD?oRef:null):null;
     let flF=1; if(FL&&FL.length){ const h0=FL[0], dd=tiles.map(t=>Math.hypot(t.x+t.w/2-(h0.x+h0.w/2),t.y+t.h/2-(h0.y+h0.h/2))/G.p); flF=Math.max(.5,transWin(G,k,T,compF).dur*.55/Math.max(1,Math.max(...dd))); }
     tiles.forEach(t=>{const mx=t.x+t.w/2+(WRLD?oRef[0]:0),my=t.y+t.h/2+(WRLD?oRef[1]:0), pat=T.pattern;
-      if(FL&&FL.length&&pat==='walkoff'){
+      if(FL&&FL.length&&(pat==='walkoff'||pat==='walkon')){
         /* builds with the walk-off: the block that kicks it off spreads up/down and back over what's behind it; every block
            after it only fills its own column (up and down from it); ahead of the head nothing comes on until the line gets there */
-        const vk=flF*.9, EM=FL.filter((b,j)=>j>0||FL.length===1); let best=Infinity, bd=0;   // only blocks that come in for the walk-off
+        const vk=flF*.9, EM=pat==='walkon'?FL:FL.filter((b,j)=>j>0||FL.length===1); let best=Infinity, bd=0;   // only blocks that come in for the walk-off
         // each tile answers to whichever walk-off block reaches it first (distance, sideways a little slower than up/down)
         EM.forEach(b=>{ const dx=Math.max(0,b.x-mx,mx-(b.x+b.w))/G.p, dy=Math.max(0,Math.abs(my-(b.y+b.h/2))-b.h/2)/G.p, d=Math.hypot(dx*1.25,dy), v=b.t+d*vk;
           if(v<best){ best=v; bd=d; t.base=b.t; } });
@@ -2458,8 +2460,9 @@ function transPlan(G){
     });
     // a solid under the tiles that hides the grid lines once the frame is covered (fades on after the last block; fades off before the first one clears)
     let solid=null; if(T.solid!==false){ const fd=Math.max(1,Math.round(+T.solidFade||8)), mine=out.tiles.filter(q=>q.g===k);
-      if(T.mode==='build'){ const tAll=Math.max(...mine.map(q=>q.on)), tOn=T.solidAt!=null&&T.solidAt!==''&&+T.solidAt!==0?Math.round(start+(+T.solidAt)):tAll; solid={color:T.output==='matte'?'#FFFFFF':T.color,op:[[tOn,0,'e',[0.33,0,0.67,1]],[tOn+fd,100,'h']],t0:tOn,t1:tOn+fd,auto:tAll}; }
-      else { const tOff=T.solidAt!=null&&T.solidAt!==''&&+T.solidAt!==0?Math.round(start+(+T.solidAt)):start; solid={color:T.output==='matte'?'#FFFFFF':T.color,op:clip0([[tOff-fd,100,'e',[0.33,0,0.67,1]],[tOff,0,'h']]),t0:tOff-fd,t1:tOff,auto:start}; } }
+      const tEnd=start+dur, set=T.solidAt!=null&&T.solidAt!==''&&+T.solidAt!==0;
+      if(k==='out'){ const a=clamp(set?Math.round(start+(+T.solidAt)):tEnd-fd,start-600,tEnd-1); solid={color:T.output==='matte'?'#FFFFFF':T.color,op:[[a,0,'e',[0.33,0,0.67,1]],[tEnd,100,'h']],t0:a,t1:tEnd,drag:'t0'}; }
+      else { const b=clamp(set?Math.round(start+(+T.solidAt)):start+fd,start+1,tEnd+600); solid={color:T.output==='matte'?'#FFFFFF':T.color,op:clip0([[start,100,'e',[0.33,0,0.67,1]],[b,0,'h']]),t0:start,t1:b,drag:'t1'}; } }
     out.groups.push({k,output:T.output,start,dur,count:tiles.length,behind:!!T.behind&&T.output!=='matte',world:WRLD,solid});
     out.end=Math.max(out.end,start+dur);
   });
@@ -2478,7 +2481,7 @@ function vanishKeys(appear,t0,len,r){
 let transCache={k:'',v:null};
 /* a tile colour under the block colour-mix rule (transition 'use the block colours') */
 function mixColorFor(i,rnd,fallback){const B=D.block;if(B.mix==='alternate'||B.mix==='cycle'){const cs=modeColors();return cs[i%cs.length];}if(B.mix==='random'||B.mix==='updown'){const cs=B.mix==='updown'?[B.color,B.upColor,B.downColor]:modeColors();return cs[Math.floor(rnd()*cs.length)%cs.length];}return B.color||fallback;}
-function transP(G){const LP=['walk','flood','head','extrude','ribbons','trail','walkoff'], walkT=D.trans&&((D.trans.in&&LP.indexOf(D.trans.in.pattern)>=0)||(D.trans.out&&LP.indexOf(D.trans.out.pattern)>=0));
+function transP(G){const LP=['walk','flood','head','extrude','ribbons','trail','walkoff','walkon'], walkT=D.trans&&((D.trans.in&&LP.indexOf(D.trans.in.pattern)>=0)||(D.trans.out&&LP.indexOf(D.trans.out.pattern)>=0));
   const key=JSON.stringify(D.trans)+JSON.stringify(D.block)+JSON.stringify(D.grid)+D.comp.w+D.comp.h+D.comp.fps+D.comp.dur+(walkT?JSON.stringify(D.anim)+JSON.stringify(D.exit)+JSON.stringify(D.blocks):'');if(transCache.k!==key)transCache={k:key,v:transPlan(G)};return transCache.v;}
 function sceneEnd(G){const P=plan(G),T=transP(G);return Math.max(P.end||0,T.end?T.end+12:0,1);}
 function transOn(){return !!(D.trans&&((D.trans.in&&D.trans.in.on)||(D.trans.out&&D.trans.out.on)));}
@@ -3093,10 +3096,11 @@ function drawDope(){
       knob(gr.start,RT.y0+2,RT.h-4,'#ececef'); knob(gr.start+gr.dur,RT.y0+2,RT.h-4,'#ececef');
       if(gr.solid&&gr.solid.t0!=null){ const sy=RT.y1-6; g.fillStyle='rgba(255,255,255,.75)'; g.fillRect(X(gr.solid.t0),sy,Math.max(2,X(gr.solid.t1)-X(gr.solid.t0)),3);
         g.fillStyle='#fff'; g.beginPath(); g.moveTo(X(gr.solid.t0),sy-4); g.lineTo(X(gr.solid.t0)+4,sy+1.5); g.lineTo(X(gr.solid.t0),sy+7); g.lineTo(X(gr.solid.t0)-4,sy+1.5); g.closePath(); g.fill();
-        const fd0=Math.max(1,+T.solidFade||8);
-        item({type:'point',x:X(gr.solid.t0),y:sy+1,cur:'ew-resize',tip:`solid fades ${T.mode==='build'?'on':'off'} here (${fd0}f) — hides the grid lines · drag to change when · ⌥-click = automatic`,
-          drag:(fx)=>{ const f=Math.round(TL.F(fx)); T.solidAt=T.mode==='build'?f-gr.start:f+fd0-gr.start; transCache.k=''; }, alt:()=>{pushHist(true);T.solidAt=null;transCache.k='';refresh();}}); }
-      if(gr.k==='out'&&T.withWalk){ H(gr.start+gr.dur,RT,'ew-resize',f=>{T.wEnd=Math.max(gr.start+6,Math.round(f));},'end of the walk-off transition — drag to make it finish sooner or later (it still follows the walk-off) · ⌥-click the bar\'s settings to reset'); }
+        const hx=gr.solid.drag==='t1'?gr.solid.t1:gr.solid.t0;
+        if(gr.solid.drag==='t1'){ g.fillStyle='#fff'; g.beginPath(); g.moveTo(X(hx),sy-4); g.lineTo(X(hx)+4,sy+1.5); g.lineTo(X(hx),sy+7); g.lineTo(X(hx)-4,sy+1.5); g.closePath(); g.fill(); }
+        item({type:'point',x:X(hx),y:sy+1,cur:'ew-resize',tip:gr.k==='out'?'solid fade-in starts here and finishes at the end of the transition — drag to change · ⌥-click = default':'solid is on at the start and finishes fading out here — drag to change · ⌥-click = default',
+          drag:(fx)=>{ const f=Math.round(TL.F(fx)); T.solidAt=f-gr.start||1; transCache.k=''; }, alt:()=>{pushHist(true);T.solidAt=null;transCache.k='';refresh();}}); }
+      if(T.withWalk){ H(gr.start+gr.dur,RT,'ew-resize',f=>{T.wEnd=Math.max(gr.start+6,Math.round(f));},'end of the walk-synced transition — drag to make it finish sooner or later (it still follows the walk-off) · ⌥-click the bar\'s settings to reset'); }
       else { H(gr.start,RT,'ew-resize',f=>{const e=T.start+T.dur;T.atEnd=false;T.start=Math.round(f);T.dur=Math.max(2,e-T.start);},'transition '+gr.k+' start');
       H(gr.start+gr.dur,RT,'ew-resize',f=>{T.atEnd=false;T.dur=Math.max(2,Math.round(f-T.start));},'transition '+gr.k+' end'); }
       item({type:'clip',x0:X(gr.start),x1:X(gr.start+gr.dur),y0:RT.y0,y1:RT.y1,cur:'grab',tip:'transition '+gr.k+' — drag to move, click for its settings',ctx:'trans-'+gr.k,start:T.start,
@@ -4789,7 +4793,7 @@ $('#fontStyle').addEventListener('change',e=>{pushHist(true);setStyle(D.text,e.t
   renderFontUI();refresh();});
 {const rb=$('#btnRecolour'); if(rb) rb.onclick=recolourByRule;}
 function renderTransPresets(){ $$('.tpre[data-tk]').forEach(el=>{ const k=el.dataset.tk, T=D.trans[k];
-    if(!el._built){ el.innerHTML=['line','basic'].map(g=>`<div class="tph">${g==='line'?'Grow out of the walk':'Basics'}</div><div class="tpg">${TRANS_PRESETS.filter(p=>p.g===g&&!(p.out&&k==='in')).map(p=>`<button data-tpre="${p.id}" title="${p.sub}">${transThumb(p.id)}<b>${p.name}</b><small>${p.sub}</small></button>`).join('')}</div>`).join(''); el._built=true; }
+    if(!el._built){ el.innerHTML=['line','basic'].map(g=>`<div class="tph">${g==='line'?'Grow out of the walk':'Basics'}</div><div class="tpg">${TRANS_PRESETS.filter(p=>p.g===g&&!(p.out&&k==='in')&&!(p.inOnly&&k==='out')).map(p=>`<button data-tpre="${p.id}" title="${p.sub}">${transThumb(p.id)}<b>${p.name}</b><small>${p.sub}</small></button>`).join('')}</div>`).join(''); el._built=true; }
     $$('[data-tpre]',el).forEach(b=>b.classList.toggle('on',!!T.on&&T.preset===b.dataset.tpre)); }); }
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-tpre]'); if(!b) return; const k=b.closest('.tpre').dataset.tk; pushHist(true); applyTransPreset(k,b.dataset.tpre); transCache.k=''; syncInputs(true); refresh(); toast((k==='in'?'Transition in: ':'Transition out: ')+TRANS_PRESETS.find(p=>p.id===b.dataset.tpre).name,'',true);});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-transshuffle]');if(!b)return;pushHist(true);D.trans[b.dataset.transshuffle].seed=Math.floor(Math.random()*99999);refresh();});
