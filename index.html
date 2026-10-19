@@ -2410,7 +2410,7 @@ const DEF={
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,offX:0,offY:0,tracking:0,leading:0,kern:'metrics',caps:'none'},
   anim:{seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:false,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,relOn:false,relAt:85,relSlow:36,tail:24,
-        sceneCurve:[0.42,0,0.58,1],curvePh:null,sceneEase:{on:true,hd:null,onAt:null,holdAt:null,start:40,land:75,landOut:50,leaveIn:50,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
+        sceneCurve:[0.42,0,0.58,1],curvePh:null,sceneEase:{on:true,hd:null,holdH:null,onAt:null,holdAt:null,start:40,land:75,landOut:50,leaveIn:50,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zoomOn:false,extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
   lab:{flicker:{on:false,frames:8,seed:3},
        pulse:{on:false,scale:1.35,len:18,width:2,color:'#E6212F'},
@@ -3965,7 +3965,7 @@ function easeModel(yOn,yHold,E){
   const hasOn=yOn!=null&&yOn>.02&&yOn<.98, hasHold=hasOn&&yHold!=null&&yHold>yOn+.01&&yHold<.995;
   const pts=[{x:0,y:0,eo:E.start,ko:'start',role:'start'}];
   if(hasHold){ let xOn=xa(E.onAt)!=null?xa(E.onAt):yOn, xH=xa(E.holdAt)!=null?xa(E.holdAt):yHold; xH=clamp(xH,xOn+.03,.97);
-    pts.push({x:xOn,y:yOn,ei:E.land,ki:'land',lin:'o',role:'hold'},{x:xH,y:yHold,eo:E.leave,ko:'leave',lin:'i',role:'out'}); }   // the hold itself is a straight line
+    const HH=E.holdH||{}; pts.push(Object.assign({x:xOn,y:yOn,ei:E.land,ki:'land',role:'hold'},HH.landOut?{ko:'landOut'}:{lin:'o'}),Object.assign({x:xH,y:yHold,eo:E.leave,ko:'leave',role:'out'},HH.leaveIn?{ki:'leaveIn'}:{lin:'i'})); }   // the hold is a straight line unless handles were added (⌥-click the point)
   else if(false&&hasOn&&E.mid!=='smooth'){ /* no hold → no middle easing point (one smooth move) */ const xOn=xa(E.onAt)!=null?xa(E.onAt):yOn; pts.push({x:xOn,y:yOn,ei:E.land,eo:E.leave,ki:'land',ko:'leave',role:'mid'}); }
   pts.push({x:1,y:1,ei:E.end,ki:'end',role:'end'});
   const n=pts.length, sl=[]; for(let i=0;i<n-1;i++) sl.push((pts[i+1].y-pts[i].y)/Math.max(1e-6,pts[i+1].x-pts[i].x));
@@ -3973,7 +3973,7 @@ function easeModel(yOn,yHold,E){
   const h=pts.map((p,i)=>{ const sIn=i>0?sl[i-1]:null, sOut=i<n-1?sl[i]:null, eI=ef(p.ei), eO=ef(p.eo);
     const base=sIn==null?sOut:sOut==null?sIn:Math.min(sIn,sOut), eAvg=(i===0?eO:i===n-1?eI:(eI+eO)/2), slope=(1-eAvg)*base;
     const q={x:p.x,y:p.y,ix:0,iy:0,ox:0,oy:0,ki:p.ki,ko:p.ko,role:p.role};
-    const HD=Object.assign({land:[.3,.12],leave:[.3,.12]},E.hd||{});   // default: a soft (not stopped) arrival into the hold and departure from it
+    const HD=Object.assign({land:[.3,.12],leave:[.3,.12],landOut:[1/3,1/3],leaveIn:[1/3,1/3]},E.hd||{});   // default: a soft (not stopped) arrival into the hold and departure from it
     if(i>0){const dx=p.x-pts[i-1].x, dy=p.y-pts[i-1].y, len=dx*(.06+.42*eI); q.ix=-len; q.iy=-clamp(slope*len,0,dy*.95); q.segI=dx; q.segIy=dy;
       const r=HD[p.ki]; if(p.lin==='i'){ q.ix=-dx/3; q.iy=-dy/3; } else if(r){ q.ix=-clamp(Math.abs(+r[0]),0,1)*dx; q.iy=-clamp(Math.abs(+r[1]),0,1)*dy; } }
     if(i<n-1){const dx=pts[i+1].x-p.x, dy=pts[i+1].y-p.y, len=dx*(.06+.42*eO); q.ox=len; q.oy=clamp(slope*len,0,dy*.95); q.segO=dx; q.segOy=dy;
@@ -5166,7 +5166,7 @@ function drawDope(){
         item(Object.assign({type:'point',x,y:yb+hb/2,cur:'ew-resize',tip:`${NAME[q.role]} — drag left/right to move it${q.role==='mid'?' · ⌥-click removes the point':''}`,drag:(fx)=>{const uu=(fx-cxp(0))/W; let lo=4,hi=96; if(other){ if(q.role==='out') lo=other.x*100+3; else hi=other.x*100-3; } D.anim.sceneEase[key]=Math.round(clamp(uu*100,lo,hi));}},rm));
       });
       // ease handles (AE-style influence): drag along the time axis — longer = softer
-      const EN={start:'Start · out handle',land:'Hold start · in handle',leave:'Hold end · out handle',end:'End · in handle'};
+      const EN={start:'Start · out handle',land:'Hold start · in handle',landOut:'Hold start · out handle (into the hold)',leaveIn:'Hold end · in handle (inside the hold)',leave:'Hold end · out handle',end:'End · in handle'};
       hs.forEach(q=>{ [['i',q.ki,q.ix,q.iy,q.segI,q.segIy],['o',q.ko,q.ox,q.oy,q.segO,q.segOy]].forEach(([side,key,dx,dy,seg,segy])=>{ if(!key||!seg) return;
           const ax=cxp(q.x), ay=cyp(q.y), hx=cxp(q.x+dx), hy=cyp(q.y+dy), a0=Math.atan2(dy,dx);
           g.strokeStyle='rgba(255,127,123,.7)'; g.lineWidth=1; g.beginPath(); g.moveTo(ax,ay); g.lineTo(hx,hy); g.stroke();
@@ -5176,7 +5176,10 @@ function drawDope(){
             if(sh&&(dx||dy)){const cx=Math.cos(a0), cy=Math.sin(a0), len=Math.max(0,u*cx+v*cy); u=cx*len; v=cy*len;}
             const rx=clamp(Math.abs(u)/Math.max(1e-6,seg),0,1), ry=clamp((side==='o'?v:-v)/Math.max(1e-6,segy),0,1);
             const SE=D.anim.sceneEase; SE.hd=Object.assign({},SE.hd||{}); SE.hd[key]=[r3(rx),r3(ry)]; }}); }); });
-      hs.forEach(q=>{g.fillStyle='#fff';g.beginPath();g.arc(cxp(q.x),cyp(q.y),3.5,0,7);g.fill();});
+      hs.forEach(q=>{g.fillStyle='#fff';g.beginPath();g.arc(cxp(q.x),cyp(q.y),3.5,0,7);g.fill();
+        if(q.role==='hold'||q.role==='out'){ const key=q.role==='hold'?'landOut':'leaveIn';
+          item({type:'point',x:cxp(q.x),y:cyp(q.y),cur:'pointer',tip:`${q.role==='hold'?'Hold starts':'Hold ends'} point — ⌥-click to ${((D.anim.sceneEase.holdH||{})[key])?'remove the handle inside the hold (straight again)':'add a handle inside the hold'}`,drag:()=>{},
+            alt:()=>{pushHist(true);const SE=D.anim.sceneEase;SE.holdH=Object.assign({},SE.holdH||{});SE.holdH[key]=!SE.holdH[key];if(!SE.holdH[key]&&SE.hd){SE.hd=Object.assign({},SE.hd);delete SE.hd[key];}refresh();}}); } });
     }
     if(!simple&&X(s1)-X(s0)>50){
       const Hs=toH(D.anim.sceneCurve||[0,0,1,1]);
