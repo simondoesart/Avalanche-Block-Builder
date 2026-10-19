@@ -4,7 +4,7 @@ set -e
 cd "$(dirname "$0")"
 bash build.sh >/dev/null
 OUT=dist/GridBlocks-AE; rm -rf dist; mkdir -p "$OUT/GridBlocks" "$OUT/Fonts" downloads
-cp -R CSXS index.html host.jsx media "$OUT/GridBlocks/"
+cp -R CSXS index.html safe.html host.jsx media .debug "$OUT/GridBlocks/"
 mkdir -p "$OUT/GridBlocks/fonts"; cp fonts/*.woff fonts/*.woff2 "$OUT/GridBlocks/fonts/" 2>/dev/null || true
 cp dist-src/README.txt dist-src/"Install on Mac.command" dist-src/"Install on Windows.bat" "$OUT/"
 cp dist-src/sample-workflow.json "$OUT/Sample workflow.json"

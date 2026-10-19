@@ -6373,7 +6373,9 @@ $('#insp').addEventListener('change',e=>{ const t=e.target, ds=t.dataset||{};
 });
 $('#insp').addEventListener('input',e=>{ const t=e.target, k=t.dataset&&t.dataset.bm; if(!k) return; const v=parseFloat(t.value); if(isNaN(v)) return;
   if(!U._bmEdit){ pushHist(true); U._bmEdit=true; } mPer(mSelIds(),p=>{p[k]=v;}); render(); });
+const SAFE=(()=>{try{return window.name==='gbsafe';}catch(e){return false;}})();
 async function init(){
+  if(window.__gbPhase) window.__gbPhase('building the interface');
   D.blocks=D.blocks.map(b=>normBlock(b)); uid=D.blocks.reduce((m,b)=>Math.max(m,b.id),0)+1;   // starter layout
   buildStepper(); buildPicker(); buildCurves(); addHelp(); addResets(); addCollapse(); setHelp(true); renderFontUI();
   $$('.field').forEach(f=>{if(f.querySelector('.seg'))f.classList.add('stack');});
@@ -6382,7 +6384,9 @@ async function init(){
   if(!stepVisible(U.step)){ const j=nextVisible(-1,1); U.step=j>=0?j:0; }
   const paint=()=>{U.tool=STEPS[U.step].tool;syncPreset();syncInputs(true);syncPalettes();updUndo();resize();fitView('comp');refresh();};
   if(window.ResizeObserver) new ResizeObserver(resize).observe(wrap); else window.addEventListener('resize',resize);
+  if(window.__gbPhase) window.__gbPhase('drawing');
   try{paint();}catch(e){if(window.__gbShowErr)window.__gbShowErr('first draw: '+(e&&(e.stack||e.message)||e));}
+  try{ const bt=document.getElementById('gbBoot'); if(bt) bt.parentNode.removeChild(bt); }catch(e){}
   const soon=(p,ms,fb)=>Promise.race([Promise.resolve(p).catch(()=>fb),new Promise(r=>setTimeout(()=>r(fb),ms))]);
   if(inAE){
     $('#compTag').textContent='After Effects';
@@ -6393,7 +6397,7 @@ async function init(){
     await soon(libLoad(),5000);
     try{const pr=JSON.parse(await soon(evalHost('GB_readText("prefs.json")'),5000,'')||'{}');if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.mb===false)U.mbPrev=false;if(pr.adv)setAdv(true);if(pr.subs){U.subs=pr.subs;applySubs();}if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
     try{
-      const s=await soon(evalHost('GB_readText("autosave.json")'),5000,'');
+      const s=SAFE?'':await soon(evalHost('GB_readText("autosave.json")'),5000,'');
       if(s){const o=JSON.parse(s);if(o&&o.doc){setDoc(o.doc);U.step=savedStep(o);U.tool=STEPS[U.step].tool;}}
     }catch(e){}
     await soon(detect(),5000);
@@ -6423,6 +6427,7 @@ async function init(){
   try{if(document.fonts&&document.fonts.load){Promise.all([document.fonts.load("400 14px 'Aeonik Fono'"),document.fonts.load("900 14px 'Aeonik'")]).then(()=>{fontCW={};fillCache.clear();refresh();});}}catch(e){}
   if(!inAE) checkBrandFonts(); else renderFontStatus();
   window.__gbReady=true;
+  if(SAFE) setTimeout(()=>toast('Safe mode: started fresh — your last scene was not loaded (it is still saved). Open the normal Grid Blocks panel next time.','ok'),800);
 }
 init().catch(e=>{if(window.__gbShowErr)window.__gbShowErr('startup: '+(e&&(e.stack||e.message)||e));});
 })();
