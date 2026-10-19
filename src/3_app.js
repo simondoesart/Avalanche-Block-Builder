@@ -2419,13 +2419,13 @@ function transPlan(G){
       if(FL&&FL.length&&pat==='walkoff'){
         /* builds with the walk-off: the block that kicks it off spreads up/down and back over what's behind it; every block
            after it only fills its own column (up and down from it); ahead of the head nothing comes on until the line gets there */
-        const vk=flF*.9, EM=FL.filter((b,j)=>j>0||FL.length===1); let best=Infinity;   // only blocks that come in for the walk-off
-        EM.forEach(b=>{ const bx0=b.x, bx1=b.x+b.w, by=b.y+b.h/2, dy=Math.max(0,Math.abs(my-by)-b.h/2)/G.p;
-          if(mx>=bx0-G.p*.5&&mx<=bx1+G.p*.5){ const v=b.t+dy*vk; if(v<best){ best=v; t.base=b.t; } } });
-        if(!isFinite(best)){ // not under the walk-off: fills in last, spreading sideways from the nearest walk-off column
-          let nb=null, nd=Infinity; EM.forEach(b=>{const d=Math.max(0,b.x-mx,mx-(b.x+b.w))/G.p; if(d<nd){nd=d;nb=b;}});
-          const L=EM[EM.length-1], dy=nb?Math.max(0,Math.abs(my-(nb.y+nb.h/2))-nb.h/2)/G.p:0; t.base=Math.max(L.t,nb?nb.t:0); best=t.base+nd*vk*.8+dy*vk*.5; }
-        t.v=best+rnd()*vk*.4; return; }
+        const vk=flF*.9, EM=FL.filter((b,j)=>j>0||FL.length===1); let best=Infinity, bd=0;   // only blocks that come in for the walk-off
+        // each tile answers to whichever walk-off block reaches it first (distance, sideways a little slower than up/down)
+        EM.forEach(b=>{ const dx=Math.max(0,b.x-mx,mx-(b.x+b.w))/G.p, dy=Math.max(0,Math.abs(my-(b.y+b.h/2))-b.h/2)/G.p, d=Math.hypot(dx*1.25,dy), v=b.t+d*vk;
+          if(v<best){ best=v; bd=d; t.base=b.t; } });
+        // organic: the further from its block, the more random the extra delay — near blocks snap on, far ones trickle in
+        const jr=clamp((+T.jitter||0)/100,0,1)*.6+.55; best+=rnd()*bd*vk*jr+rnd()*vk*.35;
+        t.v=best; return; }
       if(FL&&FL.length){ let best=Infinity; FL.forEach(b=>{ const dx=Math.max(0,b.x-mx,mx-(b.x+b.w)), dy=Math.max(0,b.y-my,my-(b.y+b.h)), v=b.t+Math.hypot(dx,dy)/G.p*flF; if(v<best) best=v; }); t.v=best+rnd()*flF*.6; if(rev) t.v=-t.v; return; }
       if(LINE&&LINE.length){
         const near=(()=>{let best=null;LINE.forEach((b,i)=>{const dx=Math.max(0,b.x-mx,mx-(b.x+b.w)),dy=Math.max(0,b.y-my,my-(b.y+b.h)),d=Math.hypot(dx,dy)/G.p;if(!best||d<best.d)best={d,i,b};});return best;})();
@@ -2448,9 +2448,11 @@ function transPlan(G){
     const vmin=Math.min(...tiles.map(t=>t.v)), vmax=Math.max(...tiles.map(t=>t.v)), inv=invCurve(T.curve||[0.33,0,0.67,1]);
     const W1=transWin(G,k,T,compF), dur=W1.dur, len=Math.max(1,Math.min(dur,Math.round(T.len)||8));
     const start=W1.st;
+    // timed patterns: stretch the spread so the last tiles land as the walk-off ends (never earlier than their block)
+    let SF=1; if(FL&&FL.length){ const tb=tiles.filter(q=>q.base!=null); if(tb.length){ const nat=(W1.nat||dur)-len, mb=Math.max(...tb.map(q=>q.base)), ms=Math.max(...tb.map(q=>q.v-q.base)); if(ms>0) SF=clamp((nat-mb*.6)/ms,1,6); } }
     const color=T.output==='matte'?'#FFFFFF':T.color, crnd=rng(fillHash(91,T.seed|0)); let ci=0;
     tiles.forEach(t=>{ const tc=T.output!=='matte'&&T.blockColors?mixColorFor(ci++,crnd,T.color):color;
-      const timed=FL&&FL.length&&!rev, u=vmax>vmin?(t.v-vmin)/(vmax-vmin):0, t0=timed?Math.round(clamp(start+(t.base!=null?t.base+(t.v-t.base)*(W1.nat?dur/W1.nat:1):t.v),start,Math.max(start,compF-len))):Math.round(start+(dur-len)*inv(u)), r={x:t.x,y:t.y,w:t.w,h:t.h,k:0};
+      const timed=FL&&FL.length&&!rev, u=vmax>vmin?(t.v-vmin)/(vmax-vmin):0, t0=timed?Math.round(clamp(start+(t.base!=null?t.base+(t.v-t.base)*SF*(W1.nat?dur/W1.nat:1):t.v),start,Math.max(start,compF-len))):Math.round(start+(dur-len)*inv(u)), r={x:t.x,y:t.y,w:t.w,h:t.h,k:0};
       const K=T.mode==='build'?revealKeys(T.appear,t0,len,r,t.cells,G,false,1,[0.25,0.1,0.25,1]):vanishKeys(T.appear,t0,len,r);
       out.tiles.push({g:k,x:t.x,y:t.y,w:t.w,h:t.h,color:tc,K,behind:!!T.behind&&T.output!=='matte',world:WRLD,on:t0+len});
     });

@@ -355,3 +355,6 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.44 — Walk-off build follows only the walk-off
 - Walk-off build only adds transition blocks when new blocks come in for the walk-off (nothing at the moment it starts, nothing from earlier blocks). Each walk-off block fills its column; whatever's left fills in after, spreading out from the walk-off's path.
 - Drag the end of the Out bar on the Transitions row to make it finish sooner or later — it still follows the walk-off (tiles never come on before their block lands; the spread gets faster or slower).
+
+### v3.45 — Organic walk-off build
+- Walk-off build no longer comes in by columns: each tile answers to whichever walk-off block reaches it first (up/down a touch faster than sideways), and the further it is from that block the more random its extra delay — near tiles snap on, far ones trickle in. Randomness raises the scatter. The spread stretches so the last tiles land as the walk-off ends.
