@@ -1291,7 +1291,7 @@ body.nohelp .qm{display:none}
                   <div class="field"><span class="lbl scrub" title="Frames from the first block to the last">Length</span><div class="num"><input type="number" data-bind="trans.in.dur" min="1" max="9999" step="1"><span class="unit">fr</span></div></div>
                   <div class="field"><span class="lbl scrub" title="Frames each block takes">Each</span><div class="num"><input type="number" data-bind="trans.in.len" min="1" max="600" step="1"><span class="unit">fr</span></div></div>
                 </div>
-                <div class="field stack"><span class="lbl">Pattern</span><div class="seg" data-seg="trans.in.pattern"><button data-v="flood">Flood</button><button data-v="trail">Retrace</button><button data-v="extrude">Extrude</button><button data-v="ribbons">Ribbons</button><button data-v="head">Head</button><button data-v="walk">Walk</button><button data-v="sweep">Wipe</button><button data-v="rows">Rows</button><button data-v="diag">Diagonal</button><button data-v="center">Iris</button><button data-v="corner">Corner</button><button data-v="checker">Checker</button><button data-v="venetian">Venetian</button><button data-v="random">Scatter</button></div></div>
+                <div class="field stack"><span class="lbl">Pattern</span><div class="seg" data-seg="trans.in.pattern"><button data-v="flood">Flood</button><button data-v="walkoff" title="Builds behind the line as it walks off (best with ‘With the walk-off’)">Walk-off</button><button data-v="trail">Retrace</button><button data-v="extrude">Extrude</button><button data-v="ribbons">Ribbons</button><button data-v="head">Head</button><button data-v="walk">Walk</button><button data-v="sweep">Wipe</button><button data-v="rows">Rows</button><button data-v="diag">Diagonal</button><button data-v="center">Iris</button><button data-v="corner">Corner</button><button data-v="checker">Checker</button><button data-v="venetian">Venetian</button><button data-v="random">Scatter</button></div></div>
                 <div class="field"><span class="lbl scrub" title="Breaks up the order: 0 = clean, 100 = loose and organic">Randomness</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="trans.in.jitter" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
                 <div class="field stack"><span class="lbl">Direction</span><div class="seg" data-seg="trans.in.dir"><button data-v="fwd">Forward</button><button data-v="rev">Reverse</button></div></div>
                 <div class="field stack"><span class="lbl">Each block</span><div class="seg" data-seg="trans.in.appear"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe</button><button data-v="scale">Scale</button></div></div>
@@ -1317,13 +1317,14 @@ body.nohelp .qm{display:none}
               <label class="colorbtn" data-swatch="trans.out.color"><input type="color" data-bind="trans.out.color"></label>
               <div class="extra" data-show="trans.out.on=true"><details class="sub" data-sub="tr-out-cust"><summary>Customize <span class="note">pattern, timing, style</span></summary><div class="subbody">
                 <div class="field stack"><span class="lbl">Blocks</span><div class="seg" data-seg="trans.out.mode"><button data-v="clear">Clear away (reveal)</button><button data-v="build">Build up (cover)</button></div></div>
-                <label class="check"><input type="checkbox" data-bind="trans.out.atEnd"> Finish when the comp ends</label>
-                <div class="field" data-show="trans.out.atEnd=false"><span class="lbl scrub">Starts at</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="trans.out.start" min="-9999" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
+                <label class="check" title="Starts when the line starts walking off and lasts until it has gone"><input type="checkbox" data-bind="trans.out.withWalk"> With the walk-off</label>
+                <label class="check" data-show="trans.out.withWalk=false"><input type="checkbox" data-bind="trans.out.atEnd"> Finish when the comp ends</label>
+                <div class="field" data-show="trans.out.atEnd=false&amp;trans.out.withWalk=false"><span class="lbl scrub">Starts at</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="trans.out.start" min="-9999" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
                 <div class="field2">
                   <div class="field"><span class="lbl scrub" title="Frames from the first block to the last">Length</span><div class="num"><input type="number" data-bind="trans.out.dur" min="1" max="9999" step="1"><span class="unit">fr</span></div></div>
                   <div class="field"><span class="lbl scrub" title="Frames each block takes">Each</span><div class="num"><input type="number" data-bind="trans.out.len" min="1" max="600" step="1"><span class="unit">fr</span></div></div>
                 </div>
-                <div class="field stack"><span class="lbl">Pattern</span><div class="seg" data-seg="trans.out.pattern"><button data-v="flood">Flood</button><button data-v="trail">Retrace</button><button data-v="extrude">Extrude</button><button data-v="ribbons">Ribbons</button><button data-v="head">Head</button><button data-v="walk">Walk</button><button data-v="sweep">Wipe</button><button data-v="rows">Rows</button><button data-v="diag">Diagonal</button><button data-v="center">Iris</button><button data-v="corner">Corner</button><button data-v="checker">Checker</button><button data-v="venetian">Venetian</button><button data-v="random">Scatter</button></div></div>
+                <div class="field stack"><span class="lbl">Pattern</span><div class="seg" data-seg="trans.out.pattern"><button data-v="flood">Flood</button><button data-v="walkoff" title="Builds behind the line as it walks off (best with ‘With the walk-off’)">Walk-off</button><button data-v="trail">Retrace</button><button data-v="extrude">Extrude</button><button data-v="ribbons">Ribbons</button><button data-v="head">Head</button><button data-v="walk">Walk</button><button data-v="sweep">Wipe</button><button data-v="rows">Rows</button><button data-v="diag">Diagonal</button><button data-v="center">Iris</button><button data-v="corner">Corner</button><button data-v="checker">Checker</button><button data-v="venetian">Venetian</button><button data-v="random">Scatter</button></div></div>
                 <div class="field"><span class="lbl scrub" title="Breaks up the order: 0 = clean, 100 = loose and organic">Randomness</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="trans.out.jitter" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
                 <div class="field stack"><span class="lbl">Direction</span><div class="seg" data-seg="trans.out.dir"><button data-v="fwd">Forward</button><button data-v="rev">Reverse</button></div></div>
                 <div class="field stack"><span class="lbl">Each block</span><div class="seg" data-seg="trans.out.appear"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe</button><button data-v="scale">Scale</button></div></div>
@@ -4713,11 +4714,17 @@ function computePlan(G){
   return P;
 }
 /* ------------------------------------------------------------------ transitions (screen-space, fill the frame) */
+/* a transition's window: its own start/length, or (Out, 'with the walk-off') from when the line starts walking off to when it's gone */
+function transWin(G,k,T,compF){
+  let dur=Math.max(1,Math.round(T.dur)||24), st=k==='out'&&T.atEnd?compF-dur:Math.round(+T.start||0);
+  if(k==='out'&&T.withWalk&&D.anim.mode!=='static'){ const P=plan(G); if(P.walkT!=null){ st=Math.round(P.walkT); const e=Math.min(compF,Math.round(P.walkEnd!=null?P.walkEnd+8:P.end)); dur=Math.max(12,e-st); } }
+  return {st,dur};
+}
 /* the walking line on screen at the moment a transition happens: 'in' = once the scene has started, 'out' = as it goes */
 function transLine(G,k,T,compF){
   if(D.anim.mode==='static'){ return D.blocks.map(b=>cellRect(G,b.c,b.r,b.w,b.h)); }
   const P=plan(G); if(!P.seq.length) return [];
-  const dur=Math.max(1,Math.round(T.dur)||24), st=k==='out'&&T.atEnd?compF-dur:Math.round(+T.start||0);
+  const {dur,st}=transWin(G,k,T,compF);
   const tr=k==='out'?st:Math.max(st+dur,(P.T[0]||0)+1), off=ev(P.cam,tr,[0,0]), out=[];
   P.seq.forEach((b,i)=>{ if(P.T[i]>tr) return; if(P.exitT&&P.exitT[i]!=null&&P.exitT[i]<tr) return; const q=cellRect(G,b.c,b.r,b.w,b.h); out.push({x:q.x+off[0],y:q.y+off[1],w:q.w,h:q.h}); });
   if(!out.length){ const b=P.seq[0], q=cellRect(G,b.c,b.r,b.w,b.h); out.push({x:q.x+off[0],y:q.y+off[1],w:q.w,h:q.h}); }
@@ -4727,7 +4734,7 @@ function transLine(G,k,T,compF){
 /* the line as it keeps building through a transition: each block where it lands on screen, and when */
 function transLineTimed(G,k,T,compF){
   if(D.anim.mode==='static'||!plan(G).seq.length) return null;
-  const P=plan(G), dur=Math.max(1,Math.round(T.dur)||24), st=k==='out'&&T.atEnd?compF-dur:Math.round(+T.start||0), out=[];
+  const P=plan(G), {dur,st}=transWin(G,k,T,compF), out=[];
   let head=-1; P.T.forEach((t,i)=>{ if(t<=st&&!P.seq[i].stack) head=i; });
   P.seq.forEach((b,i)=>{ const t=P.T[i]; if(b.stack) return; if(i!==head&&(t<st||t>st+dur)) return; const tt=Math.max(st,t), off=ev(P.cam,tt,[0,0]), q=cellRect(G,b.c,b.r,b.w,b.h); out.push({x:q.x+off[0],y:q.y+off[1],w:q.w,h:q.h,t:tt-st}); });
   if(!out.length){ const b=P.seq[0], q=cellRect(G,b.c,b.r,b.w,b.h), off=ev(P.cam,st,[0,0]); out.push({x:q.x+off[0],y:q.y+off[1],w:q.w,h:q.h,t:Math.max(0,P.T[0]-st)}); }
@@ -4735,6 +4742,7 @@ function transLineTimed(G,k,T,compF){
 }
 const TRANS_PRESETS=[
   {id:'flood',name:'Line flood',sub:'floods out from the newest block as the line keeps building',g:'line',set:{pattern:'flood',dur:28,len:8,appear:'wipe',jitter:10,dir:'fwd'}},
+  {id:'walkoff',name:'Walk-off build',sub:'builds behind the line as it walks off',g:'line',out:true,set:{pattern:'walkoff',len:8,appear:'wipe',jitter:0,dir:'fwd',withWalk:true,mode:'build'}},
   {id:'trail',name:'Retrace',sub:'follows the walk, then spills',g:'line',set:{pattern:'trail',dur:32,len:8,appear:'wipe',jitter:0,dir:'fwd'}},
   {id:'extrude',name:'Extrude',sub:'the line grows up and down',g:'line',set:{pattern:'extrude',dur:26,len:7,appear:'wipe',jitter:0,dir:'fwd'}},
   {id:'ribbons',name:'Ribbons',sub:'echoes of the line stack out',g:'line',set:{pattern:'ribbons',dur:30,len:8,appear:'wipe',jitter:0,dir:'fwd'}},
@@ -4751,7 +4759,7 @@ const TRANS_PRESETS=[
 ];
 function mixHex(a,b,t){const p=h=>{h=String(h||'#000').replace('#','');return [0,2,4].map(i=>parseInt(h.substr(i,2),16)||0);},x=p(a),y=p(b);return '#'+x.map((v,i)=>Math.round(v+(y[i]-v)*t).toString(16).padStart(2,'0')).join('');}
 function applyTransPreset(k,id){ const pr=TRANS_PRESETS.find(p=>p.id===id); if(!pr) return; const T=D.trans[k];
-  Object.assign(T,pr.set,{preset:id,on:true}); if(T.mode==null) T.mode=k==='in'?'clear':'build';
+  Object.assign(T,{withWalk:false},pr.set,{preset:id,on:true}); if(T.mode==null) T.mode=k==='in'?'clear':'build';
   // walk presets grow out from behind the line (primary block colour), so the line stays on top
   T.color=D.block.color; if(pr.g==='line'){ T.behind=true; T.blockColors=false; } else T.behind=false; }
 /* a little preview of a preset: a mini grid shaded by when each tile goes */
@@ -4760,7 +4768,7 @@ function transThumb(id){
   let r=3; for(let c=1;c<9;c++){ line.push([c,r]); const u=rnd(); r=clamp(r+(u<.33?-1:u<.66?1:0),1,5); }
   const v=[]; for(let y=0;y<R;y++)for(let x=0;x<C;x++){ let d;
     const near=Math.min(...line.map(q=>Math.max(Math.abs(q[0]-x),Math.abs(q[1]-y)))), ni=line.reduce((m,q,i)=>{const dd=Math.max(Math.abs(q[0]-x),Math.abs(q[1]-y));return dd<m.d?{d:dd,i}:m;},{d:1e9,i:0}).i, ly=(line.find(q=>q[0]===x)||line[x<1?0:line.length-1])[1], hd=line[line.length-1];
-    if(pat==='flood') d=near+rnd()*.5; else if(pat==='trail') d=ni*1.4+near; else if(pat==='extrude') d=Math.abs(y-ly)*1.3+x*.35; else if(pat==='ribbons') d=x*.6+Math.abs(Math.round(y-ly))*2.2;
+    if(pat==='walkoff') d=(x<line[3][0]?Math.abs(y-line[3][1])+(line[3][0]-x)*.6:(line.find(q=>q[0]===x)?Math.abs(y-line.find(q=>q[0]===x)[1])+(x-line[3][0])*2:(x-line[3][0])*2+Math.abs(y-hd[1]))); else if(pat==='flood') d=near+rnd()*.5; else if(pat==='trail') d=ni*1.4+near; else if(pat==='extrude') d=Math.abs(y-ly)*1.3+x*.35; else if(pat==='ribbons') d=x*.6+Math.abs(Math.round(y-ly))*2.2;
     else if(pat==='head') d=Math.hypot(x-hd[0],y-hd[1]); else if(pat==='walk') d=x+(y%3)*.8; else if(pat==='rows') d=y; else if(pat==='diag') d=x+y; else if(pat==='center') d=Math.hypot(x-5.5,y-3);
     else if(pat==='checker') d=((x+y)%2)*12+x; else if(pat==='venetian') d=(y%2?C-x:x)+y*.3; else if(pat==='random') d=rnd(); else d=x;
     v.push(d); }
@@ -4780,8 +4788,8 @@ function transPlan(G){
     // walk: tiles sit on the scene's own grid (where the camera has it when the transition starts),
     // and sweep in the direction the line walks with a stepped, block-shaped front
     let sx=0, sy=0;
-    const onGrid=walk||['flood','head','extrude','ribbons','trail'].indexOf(T.pattern)>=0;
-    if(onGrid&&D.anim.mode!=='static'){ const P=plan(G), dur0=Math.max(1,Math.round(T.dur)||24), st0=k==='out'&&T.atEnd?compF-dur0:Math.round(+T.start||0), o=ev(P.cam,k==='out'?st0:st0+dur0,[0,0]);
+    const onGrid=walk||['flood','head','extrude','ribbons','trail','walkoff'].indexOf(T.pattern)>=0;
+    if(onGrid&&D.anim.mode!=='static'){ const P=plan(G), W0=transWin(G,k,T,compF), dur0=W0.dur, st0=W0.st, o=ev(P.cam,k==='out'?st0:st0+dur0,[0,0]);
       sx=((o[0]%G.p)+G.p)%G.p; sy=D.anim.axis==='xy'?((o[1]%G.p)+G.p)%G.p:0; }
     for(let r=r0;r<r1+1;r+=bh) for(let c=c0-1;c<c1;c+=bw){
       const q=cellRect(G,c,r,bw,bh); q.x+=sx; q.y+=sy;
@@ -4797,9 +4805,18 @@ function transPlan(G){
     const LINE=['flood','head','extrude','ribbons','trail'].indexOf(T.pattern)>=0?transLine(G,k,T,compF):null;
     const dirX=(D.anim.order==='rtl')?-1:1;
     // flood: a wave from the newest block that keeps moving as the line keeps building (each new block sends its own wave)
-    const FL=T.pattern==='flood'?transLineTimed(G,k,T,compF):null;
-    let flF=1; if(FL&&FL.length){ const h0=FL[0], dd=tiles.map(t=>Math.hypot(t.x+t.w/2-(h0.x+h0.w/2),t.y+t.h/2-(h0.y+h0.h/2))/G.p); flF=Math.max(.5,Math.max(1,Math.round(T.dur)||24)*.55/Math.max(1,Math.max(...dd))); }
+    const FL=(T.pattern==='flood'||T.pattern==='walkoff')?transLineTimed(G,k,T,compF):null;
+    let flF=1; if(FL&&FL.length){ const h0=FL[0], dd=tiles.map(t=>Math.hypot(t.x+t.w/2-(h0.x+h0.w/2),t.y+t.h/2-(h0.y+h0.h/2))/G.p); flF=Math.max(.5,transWin(G,k,T,compF).dur*.55/Math.max(1,Math.max(...dd))); }
     tiles.forEach(t=>{const mx=t.x+t.w/2,my=t.y+t.h/2, pat=T.pattern;
+      if(FL&&FL.length&&pat==='walkoff'){
+        /* builds with the walk-off: the block that kicks it off spreads up/down and back over what's behind it; every block
+           after it only fills its own column (up and down from it); ahead of the head nothing comes on until the line gets there */
+        const vk=flF*.9; let best=Infinity;
+        FL.forEach((b,j)=>{ const bx0=b.x, bx1=b.x+b.w, by=b.y+b.h/2, dy=Math.max(0,Math.abs(my-by)-b.h/2)/G.p;
+          if(j===0){ const dxBack=Math.max(0,(dirX>0?bx0-mx:mx-bx1))/G.p, ahead=dirX>0?mx>bx1:mx<bx0; if(!ahead){ const v=b.t+dy*vk+dxBack*vk*.6; if(v<best) best=v; } }
+          else if(mx>=bx0-G.p*.5&&mx<=bx1+G.p*.5){ const v=b.t+dy*vk; if(v<best) best=v; } });
+        if(!isFinite(best)){ const L=FL[FL.length-1], dx=Math.max(0,dirX>0?mx-(L.x+L.w):L.x-mx)/G.p, dy=Math.max(0,Math.abs(my-(L.y+L.h/2))-L.h/2)/G.p; best=L.t+dx*vk*1.2+dy*vk; }
+        t.v=best+rnd()*vk*.4; return; }
       if(FL&&FL.length){ let best=Infinity; FL.forEach(b=>{ const dx=Math.max(0,b.x-mx,mx-(b.x+b.w)), dy=Math.max(0,b.y-my,my-(b.y+b.h)), v=b.t+Math.hypot(dx,dy)/G.p*flF; if(v<best) best=v; }); t.v=best+rnd()*flF*.6; if(rev) t.v=-t.v; return; }
       if(LINE&&LINE.length){
         const near=(()=>{let best=null;LINE.forEach((b,i)=>{const dx=Math.max(0,b.x-mx,mx-(b.x+b.w)),dy=Math.max(0,b.y-my,my-(b.y+b.h)),d=Math.hypot(dx,dy)/G.p;if(!best||d<best.d)best={d,i,b};});return best;})();
@@ -4820,8 +4837,8 @@ function transPlan(G){
       if(rev) t.v=-t.v;});
     { const jit=clamp(+T.jitter||0,0,100)/100; if(jit>0){ const a=Math.min(...tiles.map(t=>t.v)), b=Math.max(...tiles.map(t=>t.v)), rj=rng(fillHash(55,T.seed|0)); tiles.forEach(t=>{t.v+=(rj()-.5)*jit*(b-a)*.6;}); } }
     const vmin=Math.min(...tiles.map(t=>t.v)), vmax=Math.max(...tiles.map(t=>t.v)), inv=invCurve(T.curve||[0.33,0,0.67,1]);
-    const dur=Math.max(1,Math.round(T.dur)||24), len=Math.max(1,Math.min(dur,Math.round(T.len)||8));
-    const start=k==='out'&&T.atEnd?compF-dur:Math.round(+T.start||0);
+    const W1=transWin(G,k,T,compF), dur=W1.dur, len=Math.max(1,Math.min(dur,Math.round(T.len)||8));
+    const start=W1.st;
     const color=T.output==='matte'?'#FFFFFF':T.color, crnd=rng(fillHash(91,T.seed|0)); let ci=0;
     tiles.forEach(t=>{ const tc=T.output!=='matte'&&T.blockColors?mixColorFor(ci++,crnd,T.color):color;
       const u=vmax>vmin?(t.v-vmin)/(vmax-vmin):0, t0=Math.round(start+(dur-len)*inv(u)), r={x:t.x,y:t.y,w:t.w,h:t.h,k:0};
@@ -4846,7 +4863,7 @@ function vanishKeys(appear,t0,len,r){
 let transCache={k:'',v:null};
 /* a tile colour under the block colour-mix rule (transition 'use the block colours') */
 function mixColorFor(i,rnd,fallback){const B=D.block;if(B.mix==='alternate'||B.mix==='cycle'){const cs=modeColors();return cs[i%cs.length];}if(B.mix==='random'||B.mix==='updown'){const cs=B.mix==='updown'?[B.color,B.upColor,B.downColor]:modeColors();return cs[Math.floor(rnd()*cs.length)%cs.length];}return B.color||fallback;}
-function transP(G){const LP=['walk','flood','head','extrude','ribbons','trail'], walkT=D.trans&&((D.trans.in&&LP.indexOf(D.trans.in.pattern)>=0)||(D.trans.out&&LP.indexOf(D.trans.out.pattern)>=0));
+function transP(G){const LP=['walk','flood','head','extrude','ribbons','trail','walkoff'], walkT=D.trans&&((D.trans.in&&LP.indexOf(D.trans.in.pattern)>=0)||(D.trans.out&&LP.indexOf(D.trans.out.pattern)>=0));
   const key=JSON.stringify(D.trans)+JSON.stringify(D.block)+JSON.stringify(D.grid)+D.comp.w+D.comp.h+D.comp.fps+D.comp.dur+(walkT?JSON.stringify(D.anim)+JSON.stringify(D.exit)+JSON.stringify(D.blocks):'');if(transCache.k!==key)transCache={k:key,v:transPlan(G)};return transCache.v;}
 function sceneEnd(G){const P=plan(G),T=transP(G);return Math.max(P.end||0,T.end?T.end+12:0,1);}
 function transOn(){return !!(D.trans&&((D.trans.in&&D.trans.in.on)||(D.trans.out&&D.trans.out.on)));}
@@ -7141,7 +7158,7 @@ $('#fontStyle').addEventListener('change',e=>{pushHist(true);setStyle(D.text,e.t
   renderFontUI();refresh();});
 {const rb=$('#btnRecolour'); if(rb) rb.onclick=recolourByRule;}
 function renderTransPresets(){ $$('.tpre[data-tk]').forEach(el=>{ const k=el.dataset.tk, T=D.trans[k];
-    if(!el._built){ el.innerHTML=['line','basic'].map(g=>`<div class="tph">${g==='line'?'Grow out of the walk':'Basics'}</div><div class="tpg">${TRANS_PRESETS.filter(p=>p.g===g).map(p=>`<button data-tpre="${p.id}" title="${p.sub}">${transThumb(p.id)}<b>${p.name}</b><small>${p.sub}</small></button>`).join('')}</div>`).join(''); el._built=true; }
+    if(!el._built){ el.innerHTML=['line','basic'].map(g=>`<div class="tph">${g==='line'?'Grow out of the walk':'Basics'}</div><div class="tpg">${TRANS_PRESETS.filter(p=>p.g===g&&!(p.out&&k==='in')).map(p=>`<button data-tpre="${p.id}" title="${p.sub}">${transThumb(p.id)}<b>${p.name}</b><small>${p.sub}</small></button>`).join('')}</div>`).join(''); el._built=true; }
     $$('[data-tpre]',el).forEach(b=>b.classList.toggle('on',!!T.on&&T.preset===b.dataset.tpre)); }); }
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-tpre]'); if(!b) return; const k=b.closest('.tpre').dataset.tk; pushHist(true); applyTransPreset(k,b.dataset.tpre); transCache.k=''; syncInputs(true); refresh(); toast((k==='in'?'Transition in: ':'Transition out: ')+TRANS_PRESETS.find(p=>p.id===b.dataset.tpre).name,'',true);});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-transshuffle]');if(!b)return;pushHist(true);D.trans[b.dataset.transshuffle].seed=Math.floor(Math.random()*99999);refresh();});
