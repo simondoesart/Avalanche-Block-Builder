@@ -343,3 +343,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.41 — Transitions that read as the walk
 - **Line flood** now floods from the *newest* block and keeps going as the line keeps building: every block that lands during the transition sends out its own wave.
 - Walk presets sit **Behind the line** (new option, on for walk presets) in a deeper shade of the block colour, so the walking blocks stay on top and you can see them drive the transition. In AE the tiles (or the transition precomp) go under the block layers.
+
+### v3.42 — Walk-off build transition
+- New Out preset **Walk-off build** (pattern *Walk-off* + **With the walk-off**): starts the moment the line starts walking off and lasts until it's gone. The block that kicks it off spreads up/down and back over what's behind it; every block after it only fills its own column; nothing comes on ahead of the head until the line gets there — so the transition builds behind the line as it moves right. Nothing comes from blocks before the one that starts it.
+- Transition Out → **With the walk-off** checkbox (times any pattern to the walk-off).
