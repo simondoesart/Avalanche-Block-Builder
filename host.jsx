@@ -318,7 +318,7 @@ function GB_precomp(main,name,folder,collapse3D,tag,label){
   if(collapse3D){ try{L.collapseTransformation=true;}catch(eC){} try{L.threeDLayer=true;}catch(e3){} }
   return {comp:pc,layer:L};
 }
-function GB_trans(comp,d,fps,org,folder,comps){
+function GB_trans(comp,d,fps,org,folder,comps,below){
   var T=d.trans, n=0; if(!T) return 0;
   for(var g=0;g<T.groups.length;g++){
     var G=T.groups[g], target=comp, pre=null, matte=G.output=="matte", lab=G.k=="in"?9:14;
@@ -340,8 +340,10 @@ function GB_trans(comp,d,fps,org,folder,comps){
           GB_keys(rect.property("ADBE Vector Rect Position"),k.rp,fps);
         }
       }
+      if(G.behind&&below&&!pre){ try{L.moveAfter(below);}catch(eB){} }
       n++;
     }
+    if(G.behind&&below&&pre){ try{pre.layer.moveAfter(below);}catch(eB2){} }
     // trim the precomp layer to when the transition is on screen
     if(pre&&org.trim&&G.vis){
       try{ if(G.vis[0]>0) pre.layer.inPoint=G.vis[0]/fps; if(G.vis[1]+1<comp.duration*fps) pre.layer.outPoint=(G.vis[1]+1)/fps; }catch(eT){}
@@ -890,7 +892,7 @@ function GB_build(d){
       out.push(A.label);
     }
     if(d.lab){GB_labScreen(main,d.lab,fps);}
-    if(d.trans){var nt=GB_trans(main,d,fps,org,folder,comps); if(nt) out.push(nt+" transition blocks");}
+    if(d.trans){var belowL=blockPre?blockPre.layer:(blocks.length?blocks[0].L:null); var nt=GB_trans(main,d,fps,org,folder,comps,belowL); if(nt) out.push(nt+" transition blocks");}
     // the camera (and its framing helper) on top, where animators look for it
     try{ if(cam) cam.moveToBeginning(); }catch(eTop){}
 

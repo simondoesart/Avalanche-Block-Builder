@@ -38,8 +38,8 @@ const DEF={
         rulesOn:false,rule:'#3B484B',ruleW:1,ruleEvery:4,ruleStart:1,ruleLayer:'top',ruleParallax:100,ruleEnd:'stay',ruleFadeAt:0,ruleFadeLen:24},
   block:{w:3,h:1,color:'#E6212F',color2:'#A2AFB2',color3:'#0061E2',color4:'#FF7F7B',upColor:'#FF7F7B',downColor:'#A2AFB2',ncol:2,sync:true,mix:'single',mixPct:25},
   palette:PALETTE.slice(),
-  trans:{in:{on:false,mode:'clear',start:0,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:3,jitter:0,preset:'flood'},
-         out:{on:false,mode:'build',start:72,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:5,jitter:0,preset:'flood'}},
+  trans:{in:{on:false,mode:'clear',start:0,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:3,jitter:0,preset:'flood',behind:true},
+         out:{on:false,mode:'build',start:72,atEnd:false,dur:24,pattern:'walk',blockColors:true,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:5,jitter:0,preset:'flood',behind:true}},
   fill:{on:true,seed:7,density:'medium',family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:8,leading:100,caps:'upper',
         textColor:'#121212',outlinePct:0,outlineW:2,skipText:true,textPct:60,patternPct:40,dotSpacing:8,iconPct:20,iconSize:24,iconLib:'pixel',buildDur:12,graphW:1.5,look:'custom',
         mix:{text:45,graph:30,combo:25},graphs:{line:true,step:false,area:true,bars:true,hist:false,candles:true,meter:true,heat:true,network:true,wave:false,depth:false},
@@ -2325,8 +2325,17 @@ function transLine(G,k,T,compF){
   // only what's on (or near) the screen
   return out.filter(q=>q.x+q.w>-G.W*.25&&q.x<G.W*1.25);
 }
+/* the line as it keeps building through a transition: each block where it lands on screen, and when */
+function transLineTimed(G,k,T,compF){
+  if(D.anim.mode==='static'||!plan(G).seq.length) return null;
+  const P=plan(G), dur=Math.max(1,Math.round(T.dur)||24), st=k==='out'&&T.atEnd?compF-dur:Math.round(+T.start||0), out=[];
+  let head=-1; P.T.forEach((t,i)=>{ if(t<=st&&!P.seq[i].stack) head=i; });
+  P.seq.forEach((b,i)=>{ const t=P.T[i]; if(b.stack) return; if(i!==head&&(t<st||t>st+dur)) return; const tt=Math.max(st,t), off=ev(P.cam,tt,[0,0]), q=cellRect(G,b.c,b.r,b.w,b.h); out.push({x:q.x+off[0],y:q.y+off[1],w:q.w,h:q.h,t:tt-st}); });
+  if(!out.length){ const b=P.seq[0], q=cellRect(G,b.c,b.r,b.w,b.h), off=ev(P.cam,st,[0,0]); out.push({x:q.x+off[0],y:q.y+off[1],w:q.w,h:q.h,t:Math.max(0,P.T[0]-st)}); }
+  return out;
+}
 const TRANS_PRESETS=[
-  {id:'flood',name:'Line flood',sub:'spreads out from the line',g:'line',set:{pattern:'flood',dur:28,len:8,appear:'wipe',jitter:10,dir:'fwd'}},
+  {id:'flood',name:'Line flood',sub:'floods out from the newest block as the line keeps building',g:'line',set:{pattern:'flood',dur:28,len:8,appear:'wipe',jitter:10,dir:'fwd'}},
   {id:'trail',name:'Retrace',sub:'follows the walk, then spills',g:'line',set:{pattern:'trail',dur:32,len:8,appear:'wipe',jitter:0,dir:'fwd'}},
   {id:'extrude',name:'Extrude',sub:'the line grows up and down',g:'line',set:{pattern:'extrude',dur:26,len:7,appear:'wipe',jitter:0,dir:'fwd'}},
   {id:'ribbons',name:'Ribbons',sub:'echoes of the line stack out',g:'line',set:{pattern:'ribbons',dur:30,len:8,appear:'wipe',jitter:0,dir:'fwd'}},
@@ -2341,8 +2350,11 @@ const TRANS_PRESETS=[
   {id:'scatter',name:'Scatter',sub:'random blocks',g:'basic',set:{pattern:'random',dur:22,len:4,appear:'cut',jitter:0,dir:'fwd'}},
   {id:'fade',name:'Soft fade',sub:'blocks fade in a wave',g:'basic',set:{pattern:'diag',dur:28,len:14,appear:'fade',jitter:20,dir:'fwd'}}
 ];
+function mixHex(a,b,t){const p=h=>{h=String(h||'#000').replace('#','');return [0,2,4].map(i=>parseInt(h.substr(i,2),16)||0);},x=p(a),y=p(b);return '#'+x.map((v,i)=>Math.round(v+(y[i]-v)*t).toString(16).padStart(2,'0')).join('');}
 function applyTransPreset(k,id){ const pr=TRANS_PRESETS.find(p=>p.id===id); if(!pr) return; const T=D.trans[k];
-  Object.assign(T,pr.set,{preset:id,on:true}); if(T.mode==null) T.mode=k==='in'?'clear':'build'; }
+  Object.assign(T,pr.set,{preset:id,on:true}); if(T.mode==null) T.mode=k==='in'?'clear':'build';
+  // walk presets grow out from behind the line in a deeper shade, so you can see the line drive them
+  if(pr.g==='line'){ T.behind=true; T.blockColors=false; T.color=mixHex(D.block.color,D.look.bg||'#1F1F1F',.45); } else T.behind=false; }
 /* a little preview of a preset: a mini grid shaded by when each tile goes */
 function transThumb(id){
   const pr=TRANS_PRESETS.find(p=>p.id===id)||TRANS_PRESETS[0], pat=pr.set.pattern, C=12, R=7, rnd=rng(id.length*977+7), line=[];
@@ -2385,7 +2397,11 @@ function transPlan(G){
     // the line as it is on screen when the transition happens (for patterns that grow out of the walk)
     const LINE=['flood','head','extrude','ribbons','trail'].indexOf(T.pattern)>=0?transLine(G,k,T,compF):null;
     const dirX=(D.anim.order==='rtl')?-1:1;
+    // flood: a wave from the newest block that keeps moving as the line keeps building (each new block sends its own wave)
+    const FL=T.pattern==='flood'?transLineTimed(G,k,T,compF):null;
+    let flF=1; if(FL&&FL.length){ const h0=FL[0], dd=tiles.map(t=>Math.hypot(t.x+t.w/2-(h0.x+h0.w/2),t.y+t.h/2-(h0.y+h0.h/2))/G.p); flF=Math.max(.5,Math.max(1,Math.round(T.dur)||24)*.55/Math.max(1,Math.max(...dd))); }
     tiles.forEach(t=>{const mx=t.x+t.w/2,my=t.y+t.h/2, pat=T.pattern;
+      if(FL&&FL.length){ let best=Infinity; FL.forEach(b=>{ const dx=Math.max(0,b.x-mx,mx-(b.x+b.w)), dy=Math.max(0,b.y-my,my-(b.y+b.h)), v=b.t+Math.hypot(dx,dy)/G.p*flF; if(v<best) best=v; }); t.v=best+rnd()*flF*.6; if(rev) t.v=-t.v; return; }
       if(LINE&&LINE.length){
         const near=(()=>{let best=null;LINE.forEach((b,i)=>{const dx=Math.max(0,b.x-mx,mx-(b.x+b.w)),dy=Math.max(0,b.y-my,my-(b.y+b.h)),d=Math.hypot(dx,dy)/G.p;if(!best||d<best.d)best={d,i,b};});return best;})();
         const head=LINE[LINE.length-1], hx=head.x+head.w/2, hy=head.y+head.h/2;
@@ -2411,9 +2427,9 @@ function transPlan(G){
     tiles.forEach(t=>{ const tc=T.output!=='matte'&&T.blockColors?mixColorFor(ci++,crnd,T.color):color;
       const u=vmax>vmin?(t.v-vmin)/(vmax-vmin):0, t0=Math.round(start+(dur-len)*inv(u)), r={x:t.x,y:t.y,w:t.w,h:t.h,k:0};
       const K=T.mode==='build'?revealKeys(T.appear,t0,len,r,t.cells,G,false,1,[0.25,0.1,0.25,1]):vanishKeys(T.appear,t0,len,r);
-      out.tiles.push({g:k,x:t.x,y:t.y,w:t.w,h:t.h,color:tc,K});
+      out.tiles.push({g:k,x:t.x,y:t.y,w:t.w,h:t.h,color:tc,K,behind:!!T.behind&&T.output!=='matte'});
     });
-    out.groups.push({k,output:T.output,start,dur,count:tiles.length});
+    out.groups.push({k,output:T.output,start,dur,count:tiles.length,behind:!!T.behind&&T.output!=='matte'});
     out.end=Math.max(out.end,start+dur);
   });
   return out;
@@ -3480,7 +3496,7 @@ function renderFrame(target,overlays){
   // transitions sit on top, in screen space (not affected by the camera)
   if(transOn()&&(A&&A.live||STEPS[U.step].id==='transitions')){
     const TP=transP(G); ctx.save(); ctx.beginPath(); ctx.rect(0,0,G.W,G.H); ctx.clip();
-    TP.tiles.forEach(tl=>{
+    TP.tiles.forEach(tl=>{ if(tl.behind&&A&&A.live) return;   // drawn under the blocks (in drawWorld)
       if(A&&A.live){const q={x:tl.x,y:tl.y,w:tl.w,h:tl.h};const st=blockState(tl.K,A.t,q);if(st.op<=0.001||st.w<=0.01||st.sx<=0.001)return;
         ctx.globalAlpha=st.op;const cx=st.x+st.w/2,cy=st.y+st.h/2;ctx.save();ctx.translate(cx,cy);ctx.scale(st.sx,st.sy);ctx.translate(-cx,-cy);ctx.fillStyle=tl.color;ctx.fillRect(st.x,st.y,st.w,st.h);ctx.restore();}
       else {ctx.globalAlpha=1;ctx.lineWidth=1/sc;ctx.strokeStyle=tl.g==='in'?'rgba(43,217,143,.55)':'rgba(255,194,26,.55)';ctx.strokeRect(tl.x+2/sc,tl.y+2/sc,tl.w-4/sc,tl.h-4/sc);}
@@ -3592,6 +3608,14 @@ function drawEcho(g,r,st,o,dx,dy,ghost){
 }
 let ZK=null;
 const zkGrow=q=>ZK?{x:q.x-ZK.dg/2,y:q.y-ZK.dg/2,w:q.w+ZK.dg,h:q.h+ZK.dg}:q;
+/* transition tiles that sit behind the line (screen space, under the grid and blocks) */
+function drawTransBehind(g,G,A){
+  if(!transOn()||!(A&&A.live)) return; const TP=transP(G); if(!TP.tiles.some(t=>t.behind)) return;
+  g.save(); g.beginPath(); g.rect(0,0,G.W,G.H); g.clip();
+  TP.tiles.forEach(tl=>{ if(!tl.behind) return; const q={x:tl.x,y:tl.y,w:tl.w,h:tl.h}, st=blockState(tl.K,A.t,q); if(st.op<=0.001||st.w<=0.01||st.sx<=0.001) return;
+    g.globalAlpha=st.op; const cx=st.x+st.w/2,cy=st.y+st.h/2; g.save(); g.translate(cx,cy); g.scale(st.sx,st.sy); g.translate(-cx,-cy); g.fillStyle=tl.color; g.fillRect(st.x,st.y,st.w,st.h); g.restore(); });
+  g.restore(); g.globalAlpha=1;
+}
 function drawWorld(g,G,o){
   const sc=o.sc, A=o.A, live=!!(A&&A.live), camMode=live&&D.anim.mode==='camera';
   const s=live?A.s:1, off=live?A.off:[0,0], gridOff=camMode?off:[0,0];
@@ -3601,6 +3625,7 @@ function drawWorld(g,G,o){
   const bgR=vb;
   if(D.look.bgOn){g.fillStyle=D.look.bg;g.fillRect(bgR.x,bgR.y,bgR.w,bgR.h);}
   if(o.inside) drawMediaBg(g,G);
+  if(o.inside) drawTransBehind(g,G,A);
   else if(o.inside){g.save();g.fillStyle=checker||'#222';g.scale(1/sc,1/sc);g.fillRect(0,0,G.W*sc,G.H*sc);g.restore();}
   const pan=live?A.pan:[0,0];
   g.save(); zoomXf(g,G,s,pan,live?A.zc:null);
@@ -5783,7 +5808,7 @@ function payload(){
     replace:D.out.replace, lock:D.out.lock, fitDur:D.out.fitDur, rig, mb:D.out.mb?{angle:+D.out.mbAngle||180}:null,
     bg:D.look.bgOn?{color:hexRgb(D.look.bg)}:null,
     cells, lines, rules, echoes, blocks, gaps,
-    trans:transOn()?(()=>{const TP=transP(G);return {groups:TP.groups.map(g=>({k:g.k,output:g.output,name:g.k==='in'?'GB · Transition In':'GB · Transition Out',
+    trans:transOn()?(()=>{const TP=transP(G);return {groups:TP.groups.map(g=>({k:g.k,output:g.output,behind:!!g.behind,name:g.k==='in'?'GB · Transition In':'GB · Transition Out',
       vis:transVis(TP,g.k),
       tiles:TP.tiles.filter(t=>t.g===g.k).map(t=>({x:r3(t.x),y:r3(t.y),w:r3(t.w),h:r3(t.h),color:hexRgb(t.color),keys:t.K}))}))};})():null,
     org:orgPayload(P,animOn,G),
