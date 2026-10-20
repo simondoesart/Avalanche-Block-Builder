@@ -455,3 +455,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - **Walk on before the beat** (off by default): the line walks in at an even pace (the song's beat spacing) from "Walk on from", then locks to the cues from "On the beat from".
 - **Walk off**: Walk off at (blank = one beat after the last cue), **Walk-off length** (how long the camera follows it), **Pace** (× the beat spacing) and **Follows the music** (0% = steady pace, 100% = every walk-off block on a beat — cues if there are any, otherwise the song's beat grid continued). Trail and exit style stay in Motion › Out.
 - Cues row flags: walk on, on the beat, walk off, and the walk-off's end — all draggable (⌥-click = automatic).
+
+### v3.60.1 — No more freezing on long songs
+- The Build step's summary was baking every content animation on every redraw — with a 2-minute song (≈200 blocks) that was ~18 s of work each time, which froze the panel (black). The summary no longer bakes.
+- Baking itself is ~40× faster: it only samples the frames where something can change (animate-on / off windows and live-effect ticks) instead of every frame; graph expressions are compiled once. A 2-minute, 200-block scene now exports in about half a second.

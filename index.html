@@ -3388,10 +3388,10 @@ function payShape(it,t0,tEnd,fps){
       grp.px='var gbD='+JSON.stringify(lv.vals.map(v=>r3(v)))+';var gbK=time<'+on+'?0:Math.floor((time-'+on+')*'+(+A.liveRate||6)+');var gbP=[];var gbN='+n+';'+
         'for(var i=0;i<gbN;i++){var v=gbD[(i+gbK)%gbD.length],x='+r3(lv.x)+'+i*'+r3(lv.w/Math.max(1,n-1))+',y='+r3(lv.y+lv.h)+'-v*'+r3(lv.h)+';'+(lv.step?'if(i>0)gbP.push([x,gbP[gbP.length-1][1]]);':'')+'gbP.push([x,y]);}'+
         (lv.area?'gbP.push(['+r3(lv.x+lv.w)+','+r3(lv.y+lv.h)+']);gbP.push(['+r3(lv.x)+','+r3(lv.y+lv.h)+']);':'')+'createPath(gbP,[],[],'+(lv.area?'true':'false')+');'; }
-    if(D.out.bake!==false&&BAKE_END>0){ const e1=Math.min(BAKE_END,tEnd!=null&&isFinite(tEnd)?Math.ceil(tEnd)+1:BAKE_END);
-      if(grp.tx){ const k=bakeExpr(grp.tx,t0,e1,fps,100); if(k){ grp.txk=k; delete grp.tx; } }
-      if(grp.gx){ const k=bakeExpr(grp.gx,t0,e1,fps,[100,100]); if(k){ grp.gxk=k; delete grp.gx; } }
-      if(grp.ox){ const k=bakeExpr(grp.ox,t0,e1,fps,grp.o==null?100:grp.o); if(k){ grp.oxk=k; delete grp.ox; } } }
+    if(D.out.bake!==false&&BAKE_END>0){ const e1=Math.min(BAKE_END,tEnd!=null&&isFinite(tEnd)?Math.ceil(tEnd)+1:BAKE_END), W2=[[t0,t0+T.on*fps+2]]; if(isFinite(T.off)) W2.push([t0+T.off*fps-1,t0+(T.off+T.outLen)*fps+2]);
+      if(grp.tx){ const k=bakeExpr(grp.tx,t0,e1,fps,100,W2); if(k){ grp.txk=k; delete grp.tx; } }
+      if(grp.gx){ const k=bakeExpr(grp.gx,t0,e1,fps,[100,100],W2); if(k){ grp.gxk=k; delete grp.gx; } }
+      if(grp.ox){ const k=bakeExpr(grp.ox,t0,e1,fps,grp.o==null?100:grp.o,W2); if(k){ grp.oxk=k; delete grp.ox; } } }
     if(grp.px&&D.out.bake!==false&&BAKE_END>0){ const lv=p.live, n=lv.n, onF=t0+T.on*fps, rate=+A.liveRate||6, keys=[]; let lastK=-1;
       const pathAt=k=>{ const P=[]; for(let i=0;i<n;i++){ const v=lv.vals[(i+k)%lv.vals.length], x=r3(lv.x+i*lv.w/Math.max(1,n-1)), y=r3(lv.y+lv.h-v*lv.h); if(lv.step&&i>0) P.push([x,P[P.length-1][1]]); P.push([x,y]); } if(lv.area){ P.push([r3(lv.x+lv.w),r3(lv.y+lv.h)]); P.push([r3(lv.x),r3(lv.y+lv.h)]); } return P; };
       const e1=Math.min(BAKE_END,tEnd!=null&&isFinite(tEnd)?Math.ceil(tEnd):BAKE_END);
@@ -3411,7 +3411,8 @@ function payShape(it,t0,tEnd,fps){
   }
   let ok=null;
   if(e&&D.out.bake!==false&&BAKE_END>0){ const ov=[], e1=Math.min(BAKE_END,tEnd!=null&&isFinite(tEnd)?Math.ceil(tEnd)+1:BAKE_END), base=it.o==null?100:Math.round(it.o*100);
-    for(let f=Math.max(0,Math.floor(t0));f<=e1;f++){ const gE=(f-t0)/fps; let gA=gE<0?0:1;
+    const W3=[[t0,t0+T.on*fps+2]]; if(isFinite(T.off)) W3.push([t0+T.off*fps-1,t0+(T.off+T.outLen)*fps+2]);
+    for(const f of bakeFrames(Math.max(0,Math.floor(t0)),e1,W3,blink?(+A.liveRate||6):0,fps)){ const gE=(f-t0)/fps; let gA=gE<0?0:1;
       if(fadeIn&&gE>=0) gA=Math.min(1,gE/Math.max(1e-3,T.on));
       if(blink&&gE>=T.on&&(!isFinite(T.off)||gE<T.off)&&Math.floor((gE-T.on)*(+A.liveRate||6))%2==1) gA*=0.2;
       if(fadeOut&&gE>=T.off) gA*=Math.max(0,1-(gE-T.off)/T.outLen);
@@ -3631,14 +3632,16 @@ function fillShapeAlpha(it,tf,fps){
 /* ---- baking content animation for After Effects: keyframes instead of per-frame expressions (much faster to play back) */
 let BAKE_END=0;
 /* evaluate a (simple, ES3) AE expression in JS at every frame and turn it into linear keyframes */
-function bakeExpr(expr,f0,f1,fps,value){
-  let fn; try{ fn=new Function('time','value','return eval('+JSON.stringify(expr)+');'); }catch(e){ return null; }
-  const out=[]; for(let f=Math.max(0,Math.floor(f0));f<=f1;f++){ let v; try{ v=fn(f/fps,value); }catch(e){ return null; } out.push([f,v]); }
+function bakeExpr(expr,f0,f1,fps,value,wins){
+  let body=String(expr).trim().replace(/;\s*$/,''); const i=body.lastIndexOf(';'); body=i>=0?body.slice(0,i+1)+'return ('+body.slice(i+1)+');':'return ('+body+');';
+  let fn; try{ fn=new Function('time','value',body); }catch(e){ return null; }
+  const a0=Math.max(0,Math.floor(f0)), fr=wins?bakeFrames(a0,f1,wins,0,fps):(()=>{const o=[];for(let f=a0;f<=f1;f++)o.push(f);return o;})(), out=[];
+  for(const f of fr){ let v; try{ v=fn(f/fps,value); }catch(e){ return null; } out.push([f,v]); }
   if(!out.length) return null;
   const same=(a,b)=>Array.isArray(a)?a.every((x,i)=>Math.abs(x-b[i])<1e-3):Math.abs(a-b)<1e-3;
   const k=[out[0]];
-  for(let i=1;i<out.length-1;i++){ const a=out[i-1][1], b=out[i][1], c=out[i+1][1];
-    const lin=Array.isArray(b)?b.every((x,j)=>Math.abs((x-a[j])-(c[j]-x))<1e-3):Math.abs((b-a)-(c-b))<1e-3; if(!lin) k.push(out[i]); }
+  for(let i=1;i<out.length-1;i++){ const A=out[i-1], B=out[i], C=out[i+1], dA=Math.max(1e-6,B[0]-A[0]), dC=Math.max(1e-6,C[0]-B[0]);
+    const lin=Array.isArray(B[1])?B[1].every((x,j)=>Math.abs((x-A[1][j])/dA-(C[1][j]-x)/dC)*Math.max(1,C[0]-A[0])<1e-3):Math.abs((B[1]-A[1])/dA-(C[1]-B[1])/dC)*Math.max(1,C[0]-A[0])<1e-3; if(!lin) k.push(B); }
   if(out.length>1) k.push(out[out.length-1]);
   if(k.every(q=>same(q[1],k[0][1]))) return [[k[0][0],Array.isArray(k[0][1])?k[0][1].map(r3):r3(k[0][1]),'l']];
   return k.map(q=>[q[0],Array.isArray(q[1])?q[1].map(r3):r3(q[1]),'l']);
@@ -3646,20 +3649,35 @@ function bakeExpr(expr,f0,f1,fps,value){
 function bakeLin(ov){   // [[f,v]...] → linear keys only where the slope changes
   if(!ov.length) return null; if(ov.every(p=>Math.abs(p[1]-100)<.05)) return null;
   const k=[ov[0]];
-  for(let i=1;i<ov.length-1;i++){ const a=ov[i-1], b=ov[i], c=ov[i+1]; if(Math.abs((b[1]-a[1])-(c[1]-b[1]))>.05) k.push(b); }
+  for(let i=1;i<ov.length-1;i++){ const a=ov[i-1], b=ov[i], c=ov[i+1], s1=(b[1]-a[1])/Math.max(1e-6,b[0]-a[0]), s2=(c[1]-b[1])/Math.max(1e-6,c[0]-b[0]); if(Math.abs(s1-s2)*Math.max(1,c[0]-a[0])>.05) k.push(b); }
   if(ov.length>1) k.push(ov[ov.length-1]);
   return k.map(p=>[p[0],r3(p[1]),'l']);
 }
+/* only the frames where something can change: the animate-on window, the animate-off window, and periodic
+   ticks (live effects, ellipsis, constant scramble) — everything else holds. Much faster than every frame. */
+function bakeFrames(a0,e,wins,rate,fps){
+  const S=new Set([a0,e]);
+  wins.forEach(w=>{ const x0=Math.max(a0,Math.floor(w[0])), x1=Math.min(e,Math.ceil(w[1])); for(let f=x0;f<=x1;f++) S.add(f); });
+  if(rate>0){ const st=fps/rate; for(let x=a0;x<=e;x+=st){ const f=Math.ceil(x); if(f>=a0&&f<=e){ S.add(f); if(f-1>=a0) S.add(f-1); } } }
+  return [...S].sort((x,y)=>x-y);
+}
 function bakeText(t,fps,endF){
-  const a0=Math.max(0,Math.floor(t.t0)), e=Math.min(endF,t.tEnd!=null&&isFinite(t.tEnd)?Math.ceil(t.tEnd)+1:endF), tk=[], ov=[]; let ls=null;
-  for(let f=a0;f<=e;f++){ const r=fillTextAt(t,f,fps), sx=r&&r.s?r.s.replace(/\n/g,'\r'):'', a=r&&r.s?Math.round(clamp(r.a,0,1)*1000)/10:0;
-    if(sx!==ls){ tk.push([r3(f/fps),sx]); ls=sx; } ov.push([f,a]); }
+  const A=t.A||D.fill.anim, a0=Math.max(0,Math.floor(t.t0)), e=Math.min(endF,t.tEnd!=null&&isFinite(t.tEnd)?Math.ceil(t.tEnd)+1:endF);
+  if(e<a0) return {tk:null,ok:null};
+  const TT=fillTiming(t,t.lines.join('\n').length,fps), onF=TT.on*fps;
+  const extra=Math.max(t.count&&A.count?(+A.countDur||36):0, t.scr&&A.scramble&&A.scrMode!=='always'?(+A.scrDur||30):0);
+  const wins=[[a0,t.t0+Math.max(onF,extra)+2]]; if(isFinite(TT.off)) wins.push([t.t0+TT.off*fps-1,t.t0+(TT.off+TT.outLen)*fps+2]);
+  let rate=0; if(t.ell&&A.ellipsis) rate=Math.max(rate,4); if(t.scr&&A.scramble&&A.scrMode==='always') rate=Math.max(rate,+A.scrRate||12);
+  if(A.live&&(A.liveGlitch||(A.liveTick&&t.count)||(A.liveHash&&t.scr))) rate=Math.max(rate,Math.max(.1,+A.liveRate||6));
+  const fr=bakeFrames(a0,e,wins,rate,fps), tk=[], ov=[]; let ls=null;
+  fr.forEach(f=>{ const r=fillTextAt(t,f,fps), sx=r&&r.s?r.s.replace(/\n/g,'\r'):'', a=r&&r.s?Math.round(clamp(r.a,0,1)*1000)/10:0;
+    if(sx!==ls){ tk.push([r3(f/fps),sx]); ls=sx; } ov.push([f,a]); });
   return {tk:tk.length>1||(tk.length===1&&tk[0][1]!==t.lines.join('\r'))?tk:null, ok:bakeLin(ov)};
 }
 function bakeAlpha(t,fps,endF){
-  const a0=Math.max(0,Math.floor(t.t0)), e=Math.min(endF,t.tEnd!=null&&isFinite(t.tEnd)?Math.ceil(t.tEnd)+1:endF), ov=[];
-  for(let f=a0;f<=e;f++) ov.push([f,Math.round(clamp(fillShapeAlpha(t,f,fps),0,1)*1000)/10]);
-  return bakeLin(ov);
+  const A=t.A||D.fill.anim, a0=Math.max(0,Math.floor(t.t0)), e=Math.min(endF,t.tEnd!=null&&isFinite(t.tEnd)?Math.ceil(t.tEnd)+1:endF); if(e<a0) return null;
+  const TT=fillTiming(t,0,fps), wins=[[a0,t.t0+TT.on*fps+2]]; if(isFinite(TT.off)) wins.push([t.t0+TT.off*fps-1,t.t0+(TT.off+TT.outLen)*fps+2]);
+  return bakeLin(bakeFrames(a0,e,wins,0,fps).map(f=>[f,Math.round(clamp(fillShapeAlpha(t,f,fps),0,1)*1000)/10]));
 }
 /* AE Source Text expression (ES3-safe; works in both expression engines) */
 function fillExpr(it,fps){
@@ -9159,7 +9177,8 @@ function orgPayload(P,animOn,G){
   return {headers:O.headers!==false, folder:!!O.folder, preGrid:!!O.preGrid, preBlocks:!!O.preBlocks, preTrans:!!O.preTrans, shy:!!O.shy, trim:!!O.trim, markers:mk.filter(m=>m[0]>=0)};
 }
 function renderBuildSummary(G){
-  const d=payload(), o=d.org||{}, cam3=d.rig==='camera', canPre=cam3||!d.anim;
+  const svB=D.out.bake; D.out.bake=false; let d; try{ d=payload(); } finally{ D.out.bake=svB; }
+  const o=d.org||{}, cam3=d.rig==='camera', canPre=cam3||!d.anim;
   const preG=o.preGrid&&canPre, preB=o.preBlocks&&canPre, compName=inAE&&U.compLive?U.aeName:d.comp.name;
   const cells=d.cells?d.cells.rects.length:0;
   const nFill=d.blocks.reduce((n,b)=>n+(b.fill?b.fill.length:0),0)+(d.echoes||[]).reduce((n,e)=>n+(e.fill?e.fill.length:0),0);
