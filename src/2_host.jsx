@@ -24,6 +24,19 @@ function GB_missingFonts(list){
   return miss;
 }
 /* read the active comp for timing: length, fps, markers; optionally the per-frame loudness of its first audio layer */
+/* audio layers in the active comp: file path + where the clip sits in time (for the panel to load and play) */
+function GB_compAudio(){
+  var c=app.project.activeItem; if(!(c&&c instanceof CompItem)) return "ERR|Open a comp first";
+  var out=[], i;
+  for(i=1;i<=c.numLayers;i++){ var L=c.layer(i);
+    try{ if(!L.hasAudio||(L.comment&&String(L.comment).indexOf("GridBlocks")===0)) continue;
+      var src=L.source, path="", kind="other";
+      try{ if(src instanceof FootageItem&&src.file){ path=src.file.fsName; kind=src.hasVideo?"video":"audio"; } else if(src instanceof CompItem) kind="comp"; }catch(eS){}
+      out.push('{"name":"'+GB_esc(L.name)+'","index":'+i+',"path":"'+GB_esc(path)+'","kind":"'+kind+'","start":'+L.startTime+',"in":'+L.inPoint+',"out":'+L.outPoint+',"stretch":'+L.stretch+',"on":'+(L.audioEnabled?'true':'false')+',"remap":'+(L.timeRemapEnabled?'true':'false')+'}');
+    }catch(e){}
+  }
+  return 'OK|{"name":"'+GB_esc(c.name)+'","fps":'+c.frameRate+',"dur":'+c.duration+',"layers":['+out.join(",")+']}';
+}
 function GB_readComp(analyse){
   var c=app.project.activeItem; if(!(c&&c instanceof CompItem)) return "ERR|Open a comp first";
   var i, mk=[], mp=c.markerProperty, s;
