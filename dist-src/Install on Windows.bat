@@ -4,7 +4,13 @@ title Grid Blocks installer
 rem Grid Blocks - installs the After Effects panel (Windows, After Effects 2022 / v22 and newer)
 set "SRC=%~dp0GridBlocks"
 set "DEST=%APPDATA%\Adobe\CEP\extensions\GridBlocks"
-echo Installing Grid Blocks...
+if not exist "%SRC%\CSXS\manifest.xml" (
+  echo The GridBlocks folder wasn't found next to this installer.
+  echo Right-click the zip, choose "Extract All...", then run the installer from the extracted folder.
+  pause
+  exit /b 1
+)
+echo Installing Grid Blocks for After Effects 2022 and newer...
 if exist "%DEST%" rmdir /s /q "%DEST%"
 robocopy "%SRC%" "%DEST%" /E /NFL /NDL /NJH /NJS /NP >nul
 if errorlevel 8 (

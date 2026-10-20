@@ -1,7 +1,7 @@
 GRID BLOCKS for After Effects
 Works with After Effects 2022 (v22) and newer, on Mac and Windows.
 
-INSTALL
+INSTALL  (unzip first — on Windows: right-click the zip > Extract All…)
   Mac:      double-click "Install on Mac.command"
             (if macOS says it can't be opened: right-click it > Open > Open)
   Windows:  double-click "Install on Windows.bat"
@@ -24,7 +24,8 @@ MANUAL INSTALL (if you'd rather not run the installer)
 
 SAMPLE WORKFLOW
   In the panel: Layouts > Sample workflows > Load.
-  "Sample workflow.json" is the same scene as a file (Layouts > Open from file…).
+  The two .json files are the same scenes as files (Layouts > Open from file…).
+  If the panel ever opens black, try Window > Extensions > Grid Blocks (safe mode).
 
 MEDIA IN BLOCKS
   The sample clip lives in GridBlocks/media. Your own videos/images are linked
