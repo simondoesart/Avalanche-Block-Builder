@@ -408,3 +408,8 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - Each block's group (block, media, text, number, content) is contiguous, parented to the block and shares one label colour, alternating red / orange block to block; echoes and gap content have their own colours.
 - Trimming: content layers start at their own first frame; transition tiles and solids are trimmed to when they're visible (plus blocks/text/media/content to reveal → exit as before).
 - Project panel: Grid Blocks › comp › Media (footage) and Helpers (divider nulls).
+
+### v3.54 — Content per block; drag-to-change fields in After Effects
+- Text HUD › **Which blocks get content**: All blocks / Only picked blocks, with **Pick on the canvas** and **▶ Preview the walk** (pause, click). Clicking a block flips its content; clicking between-blocks content removes that area (a dashed outline lets you click it back). **Reset picks** clears every choice.
+- Selecting a block shows **Content** and **Number** switches at the top of its card (multi-select too; works on the generated line without making it editable).
+- After Effects panel: when CEP drops pointer events (or stops sending moves mid-drag), mouse events are replayed as pointer events — fixes dragging number fields / labels to change values, and timeline drags.

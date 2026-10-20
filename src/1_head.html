@@ -928,6 +928,9 @@ body.nohelp .qm{display:none}
               <span></span>
             </div>
             <div data-show="fill.on=true" style="display:grid;gap:9px">
+              <div class="field stack"><span class="lbl">Which blocks get content</span><div class="seg" data-seg="fill.target"><button data-v="all" title="Every block, except ones you switch off">All blocks</button><button data-v="pick" title="Only the blocks you switch on">Only picked blocks</button></div></div>
+              <div class="row-btns"><button class="btn" id="cPick" title="Click blocks — and empty spaces with between-blocks content — to switch their content on or off">Pick on the canvas</button><button class="btn" id="cWalk" title="Play the walk — pause and click blocks to switch content on/off">▶ Preview the walk</button></div>
+              <div class="row-btns"><button class="btn ghost" id="cPickReset" title="Forget every per-block on/off choice">Reset picks</button><span class="note" id="cPickN"></span></div>
               <div class="row-btns"><button class="btn" id="btnFillShuffle" title="New random content in every block (same settings)">↻ Shuffle content</button></div>
               <details class="sub" data-sub="fill-what" open><summary>What appears <span class="note" id="lookName"></span></summary><div class="subbody">
               <div class="looks" id="lookRow"></div>
