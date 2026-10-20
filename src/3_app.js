@@ -1949,13 +1949,24 @@ function plan(G){
    Everything that has a time (reveals, exits, camera, grid changes, content start/end, lab) is re-timed. */
 let DENSE_CAM=false;
 const isLinearCurve=c=>{c=c||[0,0,1,1];return !isPts(c)&&Math.abs(+c[0]-+c[1])<1e-6&&Math.abs(+c[2]-+c[3])<1e-6;};
+/* cues are on the output clock (where the music is); the plan snaps on the blocks' own clock, so with a retime
+   the cues are first mapped back through the retime — then every reveal lands exactly on its beat */
+let CUE_XF=null;
+function planCues(){ const c=timingCues(); return CUE_XF?c.map(f=>CUE_XF(f)):c; }
+function remapFns(P,curve){
+  const tail=Math.max(0,Math.round(D.anim.tail)||0), c0=P.startF, cEnd=Math.max(c0+2,P.end-tail), C=cEnd-c0, R=+D.anim.remapLen>0?Math.max(2,Math.round(+D.anim.remapLen)):C;
+  const f=curveFn(curve);
+  return {toContent:t=>t<=c0?t:t>=c0+R?cEnd+(t-c0-R):c0+C*clamp(f((t-c0)/R),0,1)};
+}
 function remapActive(){return D.anim.mode!=='static'&&(!isLinearCurve(D.anim.sceneCurve)||+D.anim.remapLen>0);}
 function remappedPlan(G){
   const A=D.anim, ident=P=>{const tail=Math.max(0,Math.round(A.tail)||0);P.toReal=P.toContent=t=>t;P.C=P.R=Math.max(1,(P.end||0)-tail-(P.startF||0));P.cEnd=(P.startF||0)+P.C;P.c=P;return P;};
   if(!remapActive()) return ident(computePlan(G));
   const curve=A.sceneCurve; let P;
   A.sceneCurve=[0,0,1,1]; DENSE_CAM=true;
-  try{ P=computePlan(G); } finally { A.sceneCurve=curve; DENSE_CAM=false; }
+  try{ P=computePlan(G);
+    if(D.timing&&D.timing.sync&&timingCues().length&&P.seq.length){ for(let pass=0;pass<2;pass++){ CUE_XF=remapFns(P,curve).toContent; P=computePlan(G); } }
+  } finally { A.sceneCurve=curve; DENSE_CAM=false; CUE_XF=null; }
   if(!P.seq.length) return ident(P);
   // keep the blocks' own timing (for the timeline rows under the Scene layer), then re-time the plan
   P.c={startF:P.startF,L:P.L,T:P.T.slice(),T0:P.T0?P.T0.slice():null,done:P.done?P.done.slice():null,exitT:P.exitT?P.exitT.slice():null,
@@ -2007,7 +2018,7 @@ function computePlan(G){
   P.startF=startF; P.L=L;
   const baseMain=base.filter(b=>!b.echo&&!b.stack).length; P.baseMain=baseMain;
   // how many blocks: fill the length at the chosen pace, or an exact number
-  const cuesIn=(D.timing&&D.timing.sync)?timingCues().filter(c=>c>=startF&&c<=startF+L).length:0;
+  const cuesIn=(D.timing&&D.timing.sync)?planCues().filter(c=>c>=startF&&c<=startF+L).length:0;
   const want=A.countMode==='exact'?Math.round(A.total||0):cuesIn?cuesIn:Math.max(1,Math.round(L/Math.max(1,+A.pace||6)));   // synced to sound: one block per cue
   // walk-off: after the build holds, the line keeps walking — extra blocks continue the pattern
   const WO=!!(D.exit&&D.exit.on&&D.exit.mode==='walk'&&!manual&&A.mode!=='static');
@@ -2167,7 +2178,7 @@ function computePlan(G){
   P.landT=Math.round(Math.max(startF+1,...Tg.slice(0,usedB))+tr0); P.onEnd=P.landT+lead;   // end of the ON phase (content clock)
   P.walkEnd=WO?Tg[used-1]+tr0:null;
   // sync to sound: each reveal moves to the nearest cue (beat / marker), keeping the order
-  const CUES=timingCues();
+  const CUES=planCues();
   if(D.timing&&D.timing.sync&&CUES.length){
     let prev=-1e9;
     for(let g=0;g<usedB;g++){
@@ -2972,6 +2983,10 @@ function aiInit(){
 }
 
 /* ==================================================================== SOUND / MEDIA SYNC */
+/* editable cue list: the list the current "Cues" choice reads (markers when Markers, otherwise beats) */
+function cueList(){ const T=D.timing; return T.use==='markers'?'markers':'beats'; }
+function cueAdd(f){ const T=D.timing, k=cueList(), off=Math.round(+T.offset||0), v=Math.round(f)-off; T[k]=(T[k]||[]).slice(); if(T[k].indexOf(v)>=0) return false; pushHist(true); T[k].push(v); T[k].sort((a,b)=>a-b); planCache.k=''; return true; }
+function cueRowOn(){ const T=D.timing; return !!(U.media||(T&&((T.beats||[]).length||(T.markers||[]).length||T.sync||T.media))); }
 function timingCues(){
   const T=D.timing; if(!T) return [];
   const off=Math.round(+T.offset||0), src=(T.use==='markers'?T.markers:T.use==='both'?(T.beats||[]).concat(T.markers||[]):T.beats)||[];
@@ -3071,15 +3086,18 @@ function renderMedia(){
       <div class="field"><span class="lbl scrub" title="Higher = only the strongest hits count as beats">Beat strictness</span><div class="num"><input type="number" data-bind="timing.sens" min="0.3" max="4" step="0.1"></div></div></div>
     <div class="field"><span class="lbl scrub" title="Minimum frames between two beats">Min beat gap</span><div class="num"><input type="number" data-bind="timing.minGap" min="1" max="120" step="1"><span class="unit">fr</span></div></div>
     <div class="field stack"><span class="lbl">Cues</span><div class="seg" data-seg="timing.use"><button data-v="beats">Beats (${(T.beats||[]).length})</button><button data-v="markers">Markers (${(T.markers||[]).length})</button><button data-v="both">Both</button></div></div>
-    <label class="check"><input type="checkbox" data-bind="timing.sync"${cues.length?'':' disabled'}> Snap block reveals to the cues</label>
-    <div class="row-btns">${T.media?'<button class="btn" id="btnMediaLen" title="Scene runs for the length of the media">Scene = media length</button>':''}${cues.length?'<button class="btn" id="btnClearCues">Clear cues</button>':''}</div>
+    <label class="check"><input type="checkbox" data-bind="timing.sync"> Snap block reveals to the cues <span class="note">(one block per cue, landing on it)</span></label>
+    <div class="row-btns">${m&&m.env?'<button class="btn" id="btnFindBeats" title="Detect the beats in the sound again (uses Beat strictness + Min beat gap)">Find beats</button>':''}<button class="btn" id="btnAddCue" title="Add a cue at the playhead (or press B while the preview plays — tap along to the music)">+ Cue at playhead</button>${cues.length?'<button class="btn" id="btnClearCues">Clear cues</button>':''}</div>
+    <div class="row-btns">${T.media?'<button class="btn" id="btnMediaLen" title="Scene runs for the length of the media">Scene = media length</button>':''}</div>
     <div class="note">${cues.length?`${cues.length} cues (blue lines on the timeline)${T.sync?' — reveals snap to them':''}.`:'No cues yet.'} ${m&&m.kind==='video'?'':''}</div>`;
   bindIn(box);
   const bm=box.querySelector('#btnMedia'); if(bm) bm.onclick=()=>$('#mediaIn').click();
   const as=box.querySelector('#audSrc'); if(as) as.onclick=e=>{ const b=e.target.closest('[data-src]'); if(!b) return; if(b.dataset.src==='comp') useCompAudio(); else { pushHist(true); D.timing.src='file'; renderMedia(); $('#mediaIn').click(); } };
   const ba=box.querySelector('#btnReadAE'); if(ba) ba.onclick=()=>readAEComp(confirm('Also analyse the beat of the first audio layer? (Adds a temporary keyframe layer, then removes it.)'));
   const bl=box.querySelector('#btnMediaLen'); if(bl) bl.onclick=()=>{pushHist();D.anim.lenF=Math.max(2,Math.round(D.timing.media.dur*fps)-Math.max(0,D.anim.startF)+(+D.timing.offset||0));D.anim.toEnd=false;syncInputs(true);refresh();};
-  const bc=box.querySelector('#btnClearCues'); if(bc) bc.onclick=()=>{pushHist();D.timing.beats=[];D.timing.markers=[];D.timing.sync=false;renderMedia();refresh();};
+  const bc=box.querySelector('#btnClearCues'); if(bc) bc.onclick=()=>{pushHist();D.timing.beats=[];D.timing.markers=[];renderMedia();refresh();toast('Cues cleared','Find beats, tap B while playing, or double-click the Cues row to add new ones',true);};
+  const bf=box.querySelector('#btnFindBeats'); if(bf) bf.onclick=()=>{ reBeat(); toast(`${(D.timing.beats||[]).length} beats found`); };
+  const bad=box.querySelector('#btnAddCue'); if(bad) bad.onclick=()=>{ if(cueAdd(U.t==null?0:U.t)){ renderMedia(); refresh(); } };
   syncInputs(true);
 }
 
@@ -3156,6 +3174,7 @@ function drawDope(){
   let y=0; const row=(k,h,o)=>{const R=Object.assign({k,y0:y,y1:y+h,h},o||{});TL.rows.push(R);y+=h;return R;};
   row('ruler',ROWS.ruler);
   if(media) row('sound',ROWS.sound,{name:'Sound',ctx:'sound'});
+  if(cueRowOn()) row('cues',22,{name:'Cues',ctx:'sound'});
   row('scene',ROWS.scene,{name:'Scene · time remap',ctx:'scene'});
   row('trans',ROWS.trans,{name:'Transitions',ctx:'trans'});
   if(anim&&D.anim.zoomOn) row('zoom',40,{name:'Zoom',ctx:'zoom'});
@@ -3193,6 +3212,16 @@ function drawDope(){
   const H=(f,R,cur,apply,tip)=>item({type:'handle',x:X(f),y0:R.y0,y1:R.y1,cur,apply,tip,f});
   const label=(t,x,yy,col)=>{g.fillStyle=col||'#ececef';g.font='600 10px sans-serif';g.fillText(t,x,yy);};
   // ---- sound
+  const RCu=TL.rows.find(R=>R.k==='cues');
+  if(RCu){ const T=D.timing, off=Math.round(+T.offset||0), lists=T.use==='both'?['beats','markers']:[T.use==='markers'?'markers':'beats'], yc=RCu.y0+RCu.h/2;
+    const hitT=new Set((P.T||[]).map(t=>Math.round(t)));
+    lists.forEach(k=>(T[k]||[]).forEach((v,j)=>{ const f=Math.round(v+off), x=X(f); if(x<LW-4||x>r.width+4) return; const onBeat=T.sync&&(hitT.has(f)||hitT.has(f-1)||hitT.has(f+1));
+      g.fillStyle=k==='markers'?'#F5A524':(onBeat?'#7CF2C0':'#74A0E0'); g.beginPath(); g.moveTo(x,yc-5); g.lineTo(x+4,yc); g.lineTo(x,yc+5); g.lineTo(x-4,yc); g.closePath(); g.fill();
+      item({type:'point',x,y:yc,cur:'ew-resize',tip:`${k==='markers'?'marker':'beat'} cue · f${f}${onBeat?' · a block lands here':''} — drag to move · ⌥-click removes · double-click the row to add one`,
+        drag:(fx)=>{ const L=(D.timing[k]||[]).slice(); L[j]=Math.round(F(fx))-off; D.timing[k]=L; planCache.k=''; },
+        alt:()=>{ pushHist(true); const L=(D.timing[k]||[]).slice(); L.splice(j,1); D.timing[k]=L; planCache.k=''; renderMedia(); refresh(); } }); }));
+    if(!(T.beats||[]).length&&!(T.markers||[]).length){ g.fillStyle='#686871'; g.font='11px sans-serif'; g.fillText('no cues — double-click here (or press B while playing) to add one',LW+8,yc+4); }
+    item({type:'row',row:RCu,x0:LW,x1:r.width,y0:RCu.y0,y1:RCu.y1,cur:'copy',tip:'Cues — double-click to add a cue · click for sound settings'}); }
   const RS=TL.rows.find(R=>R.k==='sound');
   if(RS){const pk=U.media.peaks, d=U.media.dur*fps, off=+(D.timing.offset||0); g.fillStyle='rgba(162,175,178,.6)';
     for(let px=LW;px<r.width;px++){const f=F(px)-off; if(f<0||f>d) continue; const v=pk[Math.min(pk.length-1,Math.floor(f/d*pk.length))]||0; g.fillRect(px,RS.y0+RS.h/2-v*RS.h*.42,1,Math.max(1,v*RS.h*.84));}}
@@ -3533,6 +3562,7 @@ function initDope(){
   c.addEventListener('contextmenu',e=>{e.preventDefault(); const p=rect(e), h=tlHit(p.x,p.y); tlMenu(e,h);});
   c.addEventListener('dblclick',e=>{const p=rect(e), h=tlHit(p.x,p.y); const R=TL.rows.find(R=>R.k==='scene'); const cvv=TL.items.find(it=>it.type==='curve');
     if(R&&cvv&&p.y>=R.y0&&p.y<R.y1&&h.type!=='handle'&&h.type!=='point'&&p.x>=cvv.x0&&p.x<=cvv.x1) tlAddPoint(cvv.u(p.x));
+    { const RC2=TL.rows.find(R=>R.k==='cues'); if(RC2&&p.y>=RC2.y0&&p.y<RC2.y1&&h.type!=='point'&&p.x>TL.LW){ if(cueAdd(TL.F(p.x))){ renderMedia(); refresh(); } return; } }
     for(const [rk,tk] of [['zoom','zoom'],['rzone','rz'],['zdepth','zd']]){ const RZ2=TL.rows.find(R=>R.k===rk); if(RZ2&&p.y>=RZ2.y0&&p.y<RZ2.y1&&h.type!=='point'&&p.x>TL.LW){ const T=TRACKS[tk], fr=TL.F(p.x), f=T.real?fr:plan(geom()).toContent(fr);
       if(trkAddAt(T,f)!==false){ planCache.k=''; syncInputs(true); refresh(); } return; } }
     const SE=D.anim.sceneEase; if(R&&SE&&SE.on&&SE.mid==='smooth'&&D.exit.holdOn===false&&p.y>=R.y0&&p.y<R.y1&&h.type!=='point'){ const P=plan(geom()), V=tlView(), Wt=Math.max(40,c.getBoundingClientRect().width-TL.LW-8), f=V.f0+(p.x-TL.LW)/Wt*(V.f1-V.f0), u=(f-P.startF)/Math.max(1,P.R);
@@ -3747,6 +3777,10 @@ function viewBounds(){return{x:-V.ox/V.sc,y:-V.oy/V.sc,w:V.cw/V.sc,h:V.ch/V.sc};
 /* preview motion blur: average a few sub-frames across the shutter (matches the AE build's motion blur) */
 let mbOC=null, mbMax=12;
 function mbWanted(A){return U.mbPrev&&D.out.mb&&A&&A.live&&D.anim.mode!=='static'&&D.anim.motion!=='stop';}
+/* beat pulse: a dot in the corner flashes on every cue, so you can see (and feel) whether blocks land on the beat */
+function drawBeatPulse(G,A,sc){ const cs=timingCues(); if(!cs.length) return; let last=null; for(let i=cs.length-1;i>=0;i--){ if(cs[i]<=A.t+0.001){ last=cs[i]; break; } }
+  const age=last==null?99:A.t-last; if(age>=8) return; const a=Math.max(0,1-age/8), R=(10+8*a)/sc;
+  ctx.save(); ctx.globalAlpha=0.25+0.75*a; ctx.fillStyle=D.timing.sync?'#7CF2C0':'#74A0E0'; ctx.beginPath(); ctx.arc(G.W-28/sc,28/sc,R,0,7); ctx.fill(); ctx.globalAlpha=1; ctx.fillStyle='#121212'; ctx.font=`600 ${11/sc}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('♪',G.W-28/sc,28/sc); ctx.restore(); }
 function render(){
   const G0=geom(), A0=animState(G0);
   if(!mbWanted(A0)) return renderFrame(ctx,true);
@@ -3770,7 +3804,7 @@ function render(){
   // overlays (order numbers, outlines) drawn once, sharp, at the shown frame
   const G=geom(), A=animState(G); ctx.setTransform(V.dpr,0,0,V.dpr,0,0); ctx.save(); ctx.translate(V.ox,V.oy); ctx.scale(V.sc,V.sc);
   ctx.lineWidth=1/V.sc; ctx.strokeStyle='rgba(255,255,255,.45)'; ctx.strokeRect(0,0,G.W,G.H);
-  drawOverlays(G,A); ctx.restore(); updBackBtn(G);
+  drawOverlays(G,A); if(A&&A.live) drawBeatPulse(G,A,V.sc); ctx.restore(); updBackBtn(G);
   const ms=performance.now()-t1; if(ms>40&&mbMax>3) mbMax--; else if(ms<16&&mbMax<16) mbMax++;
 }
 function renderFrame(target,overlays){
@@ -3785,6 +3819,7 @@ function renderFrame(target,overlays){
   drawWorld(ctx,G,{alpha:1,sc,A,inside:true});
   ctx.restore();
   ctx.globalAlpha=1;
+  if(A&&A.live&&overlays!==false) drawBeatPulse(G,A,sc);
   // lab: ticker + momentum particles, in screen space
   if(A&&A.live&&labScreenOn()){ctx.save();ctx.beginPath();ctx.rect(0,0,G.W,G.H);ctx.clip();drawLabScreen(ctx,G,A.t);ctx.restore();}
   // transitions sit on top, in screen space (not affected by the camera)
@@ -5285,6 +5320,7 @@ document.addEventListener('keydown',e=>{
   if(typing){if(k==='Escape')t.blur();return;}
   if(!$('#libModal').hidden){if(k==='Escape')closeLib();return;}
   if(!$('#curveModal').hidden&&k==='Escape'){$('#curveModal').hidden=true;U.curveEd=null;refresh();return;}
+  if(kl==='b'&&U.playing&&!mod&&U.t!=null){ e.preventDefault(); if(cueAdd(U.t)){ try{renderMedia();}catch(x){} try{drawDope();}catch(x){} toast('Cue added at f'+Math.round(U.t)); } return; }   // tap along to the music
   if(k===' '){e.preventDefault();U.spaceT=Date.now();if(!U.space&&!e.repeat){U.space=true;U.spacePanned=false;cv.classList.add('panning');}return;}   // tap = play/pause, hold + drag = pan
   if(mod) return;
   const tsel=tlSelIds(), virtSel=tsel.some(id=>!byId(id));
