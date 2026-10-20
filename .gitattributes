@@ -1,4 +1,4 @@
 *.bat text eol=crlf
 *.command text eol=lf
 *.txt text eol=lf
-dist-src/Install instructions (Windows).txt text eol=crlf
+dist-src/*Windows*.txt text eol=crlf
