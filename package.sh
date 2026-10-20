@@ -13,6 +13,7 @@ mkpkg(){ # $1 = Mac|Windows, $2 = fonts|nofonts
   cp dist-src/README.txt "$OUT/"
   cp dist-src/sample-workflow.json "$OUT/Sample workflow.json"
   cp dist-src/sample-walkon-walkoff.json "$OUT/Sample walk on - walk off.json"
+  cp "dist-src/Install instructions ($1).txt" "$OUT/"
   if [ "$1" = Mac ]; then cp "dist-src/Install on Mac.command" "$OUT/"; chmod 755 "$OUT/Install on Mac.command"; else cp "dist-src/Install on Windows.bat" "$OUT/"; fi
   if [ "$2" = fonts ]; then cp fonts/desktop/*.otf fonts/desktop/*.ttf "$OUT/Fonts/" 2>/dev/null || true
   else echo "Put the Aeonik / Aeonik Fono .otf files from the Ava Labs brand drive in this folder, then run the installer again (or install them yourself)." > "$OUT/Fonts/Add brand fonts here.txt"; fi
