@@ -427,3 +427,9 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - A **Z depth** row on the timeline (and a "Depth over time" graph) with the same points + handles as Zoom: drag, double-click to add, ⌥-click linear/eased, ⇧⌥-click remove, linked handles / ⌥-drag split / ⇧ flat. Quick moves: Come forward, Push back, Lift on hold, Flat.
 - Preview: true perspective (matches After Effects' default 50 mm camera), including parallax against the grid as the camera moves.
 - After Effects: camera rig → a 3D "GB · Block Depth" null with Z position keyframes parents the blocks; 2D null rig → the same null scales the blocks about the centre (fake depth).
+
+### v3.58 — Cues you can edit; reveals really land on the beat
+- Fix: with a scene retime (the default), snapped reveals were pushed off the beat by the retime. Cues are now mapped back through the retime before snapping, so each reveal lands exactly on its cue on the output timeline.
+- New **Cues** row on the timeline: drag a cue to move it, ⌥-click to remove, double-click the row to add one. Cues a block lands on turn green.
+- **B** while the preview plays drops a cue at the playhead (tap along to the music). **+ Cue at playhead** and **Find beats** (re-detect after clearing) in Sync to sound; the Snap checkbox no longer greys out.
+- A **♪ beat pulse** flashes in the corner of the preview on every cue (green when reveals are snapped), so you can see whether blocks hit the beat.
