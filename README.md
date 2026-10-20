@@ -413,3 +413,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - Text HUD › **Which blocks get content**: All blocks / Only picked blocks, with **Pick on the canvas** and **▶ Preview the walk** (pause, click). Clicking a block flips its content; clicking between-blocks content removes that area (a dashed outline lets you click it back). **Reset picks** clears every choice.
 - Selecting a block shows **Content** and **Number** switches at the top of its card (multi-select too; works on the generated line without making it editable).
 - After Effects panel: when CEP drops pointer events (or stops sending moves mid-drag), mouse events are replayed as pointer events — fixes dragging number fields / labels to change values, and timeline drags.
+
+### v3.55 — Fast content in After Effects
+- **Bake content animation to keyframes** (Build › Organise, on by default): typing, counters, scrambles, live ticks / hashes / glitches, fades, graph build-ons and live graphs are written as keyframes instead of per-frame expressions (a typical scene went from ~450 expressions to 0). Turn it off to get the old live expressions.
+- Motion blur is no longer switched on for content, numbers, text and media layers (they ride on their blocks) — blurring hundreds of text layers was a big render cost.

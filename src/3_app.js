@@ -90,7 +90,7 @@ const DEF={
     assign:'same',pool:[],dir:{up:'',down:'',flat:''},seed:1,per:{},assets:[]},
   timing:{beats:[],markers:[],use:'beats',offset:0,sync:false,sens:1.3,minGap:4,media:null,video:true,videoOpacity:60,sound:true},
   exit:{on:false,holdOn:true,walkHold:24,walkPace:1,walkLen:48,walkFollow:60,trail:3,slide:1.5,mode:'hold',hold:36,at:24,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
-  out:{replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180,folder:true,preGrid:true,preBlocks:false,preTrans:true,shy:true,trim:true,markers:true,headers:true,orgV:2},
+  out:{replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180,folder:true,preGrid:true,preBlocks:false,preTrans:true,shy:true,trim:true,markers:true,headers:true,bake:true,orgV:2},
   blocks:[]
 };
 /* the Avalanche HUD example (what used to be the default): rules, starter walk, transitions, grid zoom */
@@ -705,6 +705,15 @@ function payShape(it,t0,tEnd,fps){
       grp.px='var gbD='+JSON.stringify(lv.vals.map(v=>r3(v)))+';var gbK=time<'+on+'?0:Math.floor((time-'+on+')*'+(+A.liveRate||6)+');var gbP=[];var gbN='+n+';'+
         'for(var i=0;i<gbN;i++){var v=gbD[(i+gbK)%gbD.length],x='+r3(lv.x)+'+i*'+r3(lv.w/Math.max(1,n-1))+',y='+r3(lv.y+lv.h)+'-v*'+r3(lv.h)+';'+(lv.step?'if(i>0)gbP.push([x,gbP[gbP.length-1][1]]);':'')+'gbP.push([x,y]);}'+
         (lv.area?'gbP.push(['+r3(lv.x+lv.w)+','+r3(lv.y+lv.h)+']);gbP.push(['+r3(lv.x)+','+r3(lv.y+lv.h)+']);':'')+'createPath(gbP,[],[],'+(lv.area?'true':'false')+');'; }
+    if(D.out.bake!==false&&BAKE_END>0){ const e1=Math.min(BAKE_END,tEnd!=null&&isFinite(tEnd)?Math.ceil(tEnd)+1:BAKE_END);
+      if(grp.tx){ const k=bakeExpr(grp.tx,t0,e1,fps,100); if(k){ grp.txk=k; delete grp.tx; } }
+      if(grp.gx){ const k=bakeExpr(grp.gx,t0,e1,fps,[100,100]); if(k){ grp.gxk=k; delete grp.gx; } }
+      if(grp.ox){ const k=bakeExpr(grp.ox,t0,e1,fps,grp.o==null?100:grp.o); if(k){ grp.oxk=k; delete grp.ox; } } }
+    if(grp.px&&D.out.bake!==false&&BAKE_END>0){ const lv=p.live, n=lv.n, onF=t0+T.on*fps, rate=+A.liveRate||6, keys=[]; let lastK=-1;
+      const pathAt=k=>{ const P=[]; for(let i=0;i<n;i++){ const v=lv.vals[(i+k)%lv.vals.length], x=r3(lv.x+i*lv.w/Math.max(1,n-1)), y=r3(lv.y+lv.h-v*lv.h); if(lv.step&&i>0) P.push([x,P[P.length-1][1]]); P.push([x,y]); } if(lv.area){ P.push([r3(lv.x+lv.w),r3(lv.y+lv.h)]); P.push([r3(lv.x),r3(lv.y+lv.h)]); } return P; };
+      const e1=Math.min(BAKE_END,tEnd!=null&&isFinite(tEnd)?Math.ceil(tEnd):BAKE_END);
+      for(let f=Math.max(0,Math.floor(t0));f<=e1;f++){ const k=f<onF?0:Math.floor((f-onF)/fps*rate); if(k!==lastK){ keys.push([r3(f/fps),pathAt(k)]); lastK=k; } }
+      if(keys.length>1){ grp.pk=keys; grp.pkc=!!lv.area; delete grp.px; } }
     groups.push(grp); if(!solo) byKey[key]=grp;
   });
   // layer opacity: fades, cut, blink
@@ -717,7 +726,16 @@ function payShape(it,t0,tEnd,fps){
     if(cutOut) e+='if(gbE>='+r3(T.off)+')gbA=0;\n';
     e+='value*gbA;';
   }
-  return {kind:'shape',name:it.name,groups,color:hexRgb(it.color),t0:ts,opx:e,op:it.o==null?100:Math.round(it.o*100)};
+  let ok=null;
+  if(e&&D.out.bake!==false&&BAKE_END>0){ const ov=[], e1=Math.min(BAKE_END,tEnd!=null&&isFinite(tEnd)?Math.ceil(tEnd)+1:BAKE_END), base=it.o==null?100:Math.round(it.o*100);
+    for(let f=Math.max(0,Math.floor(t0));f<=e1;f++){ const gE=(f-t0)/fps; let gA=gE<0?0:1;
+      if(fadeIn&&gE>=0) gA=Math.min(1,gE/Math.max(1e-3,T.on));
+      if(blink&&gE>=T.on&&(!isFinite(T.off)||gE<T.off)&&Math.floor((gE-T.on)*(+A.liveRate||6))%2==1) gA*=0.2;
+      if(fadeOut&&gE>=T.off) gA*=Math.max(0,1-(gE-T.off)/T.outLen);
+      if(cutOut&&gE>=T.off) gA=0;
+      ov.push([f,Math.round(base*gA*10)/10]); }
+    ok=ov.every(q=>Math.abs(q[1]-base)<.05)?null:bakeLin(ov.map(q=>[q[0],q[1]*100/Math.max(1,base)])); if(ok) ok=ok.map(k=>[k[0],r3(k[1]*base/100),'l']); e=null; }
+  return {kind:'shape',name:it.name,groups,color:hexRgb(it.color),t0:ts,opx:e,ok,op:it.o==null?100:Math.round(it.o*100)};
 }
 let fontCW={};
 function fillMetrics(){
@@ -927,6 +945,39 @@ function fillShapeAlpha(it,tf,fps){
   if(el>=T.off){if(T.mode==='cut')return 0;const u=(el-T.off)/T.outLen;if(u>=1)return 0;a*=1-u;}
   return a;
 }
+/* ---- baking content animation for After Effects: keyframes instead of per-frame expressions (much faster to play back) */
+let BAKE_END=0;
+/* evaluate a (simple, ES3) AE expression in JS at every frame and turn it into linear keyframes */
+function bakeExpr(expr,f0,f1,fps,value){
+  let fn; try{ fn=new Function('time','value','return eval('+JSON.stringify(expr)+');'); }catch(e){ return null; }
+  const out=[]; for(let f=Math.max(0,Math.floor(f0));f<=f1;f++){ let v; try{ v=fn(f/fps,value); }catch(e){ return null; } out.push([f,v]); }
+  if(!out.length) return null;
+  const same=(a,b)=>Array.isArray(a)?a.every((x,i)=>Math.abs(x-b[i])<1e-3):Math.abs(a-b)<1e-3;
+  const k=[out[0]];
+  for(let i=1;i<out.length-1;i++){ const a=out[i-1][1], b=out[i][1], c=out[i+1][1];
+    const lin=Array.isArray(b)?b.every((x,j)=>Math.abs((x-a[j])-(c[j]-x))<1e-3):Math.abs((b-a)-(c-b))<1e-3; if(!lin) k.push(out[i]); }
+  if(out.length>1) k.push(out[out.length-1]);
+  if(k.every(q=>same(q[1],k[0][1]))) return [[k[0][0],Array.isArray(k[0][1])?k[0][1].map(r3):r3(k[0][1]),'l']];
+  return k.map(q=>[q[0],Array.isArray(q[1])?q[1].map(r3):r3(q[1]),'l']);
+}
+function bakeLin(ov){   // [[f,v]...] → linear keys only where the slope changes
+  if(!ov.length) return null; if(ov.every(p=>Math.abs(p[1]-100)<.05)) return null;
+  const k=[ov[0]];
+  for(let i=1;i<ov.length-1;i++){ const a=ov[i-1], b=ov[i], c=ov[i+1]; if(Math.abs((b[1]-a[1])-(c[1]-b[1]))>.05) k.push(b); }
+  if(ov.length>1) k.push(ov[ov.length-1]);
+  return k.map(p=>[p[0],r3(p[1]),'l']);
+}
+function bakeText(t,fps,endF){
+  const a0=Math.max(0,Math.floor(t.t0)), e=Math.min(endF,t.tEnd!=null&&isFinite(t.tEnd)?Math.ceil(t.tEnd)+1:endF), tk=[], ov=[]; let ls=null;
+  for(let f=a0;f<=e;f++){ const r=fillTextAt(t,f,fps), sx=r&&r.s?r.s.replace(/\n/g,'\r'):'', a=r&&r.s?Math.round(clamp(r.a,0,1)*1000)/10:0;
+    if(sx!==ls){ tk.push([r3(f/fps),sx]); ls=sx; } ov.push([f,a]); }
+  return {tk:tk.length>1||(tk.length===1&&tk[0][1]!==t.lines.join('\r'))?tk:null, ok:bakeLin(ov)};
+}
+function bakeAlpha(t,fps,endF){
+  const a0=Math.max(0,Math.floor(t.t0)), e=Math.min(endF,t.tEnd!=null&&isFinite(t.tEnd)?Math.ceil(t.tEnd)+1:endF), ov=[];
+  for(let f=a0;f<=e;f++) ov.push([f,Math.round(clamp(fillShapeAlpha(t,f,fps),0,1)*1000)/10]);
+  return bakeLin(ov);
+}
 /* AE Source Text expression (ES3-safe; works in both expression engines) */
 function fillExpr(it,fps){
   const F=D.fill, A=it.A||F.anim, js=v=>JSON.stringify(v), t0=r3(it.t0/fps), T=fillTiming(it,it.lines.join('\r').length,fps);
@@ -1128,6 +1179,7 @@ const H={u:[],r:[]};
 const snap=()=>JSON.stringify(D);
 function pushHist(keepLive){H.u.push(snap());if(H.u.length>150)H.u.shift();H.r=[];if(!keepLive)U.live=false;updUndo();}
 function setDoc(obj){
+  if(obj&&obj.out&&obj.out.bake==null) obj.out.bake=true;
   if(obj&&obj.out&&!(obj.out.orgV>=2)){ obj.out.preBlocks=false; obj.out.headers=true; obj.out.orgV=2; }   // blocks are their own layers now (click one → just that block)
   U._mediaUI=0;
   if(obj&&obj.anim){ // older layouts
@@ -6107,8 +6159,15 @@ function payload(){
   });
   // ---- content: auto-fill items → AE-ready descriptions
   const F=D.fill, met=fillMetrics();
+  const BK=D.out.bake!==false, endFB=Math.ceil(Math.max(D.comp.dur||10,animOn?P.end/fps:0)*fps); BAKE_END=BK?endFB:0;
   const payItem=(it,t0,tEnd)=>{
     const t=Object.assign({},it,{t0}); if(tEnd!=null) t.tEnd=tEnd;
+    const r0=payItem0(it,t0,tEnd,t); if(!r0||!BK) return r0;
+    if(r0.kind==='text'&&(r0.expr||r0.opx)){ const b=bakeText(t,fps,endFB); r0.expr=null; r0.opx=null; if(b.tk) r0.tk=b.tk; if(b.ok) r0.ok=b.ok; }
+    else if(r0.opx&&(r0.kind==='icon'||r0.kind==='dots'||r0.kind==='ring'||r0.kind==='logo')){ const ok=bakeAlpha(t,fps,endFB); r0.opx=null; if(ok) r0.ok=ok; }
+    return r0;
+  };
+  const payItem0=(it,t0,tEnd,t)=>{
     if(it.kind==='shape') return payShape(it,t0,tEnd,fps);
     if(it.kind==='icon') return {kind:'icon',name:it.name,label:(ICONS[it.name]||{}).name||it.name,x:r3(it.x),y:r3(it.y),s:r3(it.s),prims:(ICONS[it.name]||{prims:[]}).prims,lw:r3(Math.max(1,it.s*.07)),color:hexRgb(it.color),t0:r3(Math.max(0,t0)/fps),opx:fillOpacityExpr(t,fps,false)};
     if(it.kind==='dots') return {kind:'dots',sq:!!it.sq,rects:it.rects.map(f=>({x:r3(f.x),y:r3(f.y),cols:f.cols,rows:f.rows})),sp:it.sp,d:r3(it.d),color:hexRgb(it.color),t0:r3(Math.max(0,t0)/fps),opx:fillOpacityExpr(t,fps,false)};
