@@ -433,3 +433,8 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - New **Cues** row on the timeline: drag a cue to move it, ⌥-click to remove, double-click the row to add one. Cues a block lands on turn green.
 - **B** while the preview plays drops a cue at the playhead (tap along to the music). **+ Cue at playhead** and **Find beats** (re-detect after clearing) in Sync to sound; the Snap checkbox no longer greys out.
 - A **♪ beat pulse** flashes in the corner of the preview on every cue (green when reveals are snapped), so you can see whether blocks hit the beat.
+
+### v3.58.1 — Black panel fixes
+- Removed the CEF command-line flags added in v3.56 (they can stop the panel rendering in some After Effects versions; reading the comp's audio doesn't need them).
+- The panel script now starts after the loading screen has painted, and the loading screen steps through what it's doing — so a stuck start shows where it stopped instead of a black panel. Safe mode shows a visible page (with the panel's Chrome version) for a moment before starting.
+- install.command no longer copies the download zips into the extension.

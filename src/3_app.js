@@ -1,4 +1,4 @@
-(function(){
+window.__gbMain=function(){
 'use strict';
 /* =====================================================================
    Grid Blocks — panel UI. Runs in a browser and as a CEP panel in AE.
@@ -6588,7 +6588,9 @@ $('#insp').addEventListener('input',e=>{ const t=e.target, k=t.dataset&&t.datase
   if(!U._bmEdit){ pushHist(true); U._bmEdit=true; } mPer(mSelIds(),p=>{p[k]=v;}); render(); });
 const SAFE=(()=>{try{return window.name==='gbsafe';}catch(e){return false;}})();
 async function init(){
-  if(window.__gbPhase) window.__gbPhase('building the interface');
+  /* in After Effects, let the loading screen repaint between steps so a stuck start shows which step it's on */
+  const phase=async t=>{ if(window.__gbPhase) window.__gbPhase(t); if(inAE) await new Promise(r=>setTimeout(r,20)); };
+  await phase('building the interface');
   D.blocks=D.blocks.map(b=>normBlock(b)); uid=D.blocks.reduce((m,b)=>Math.max(m,b.id),0)+1;   // starter layout
   buildStepper(); buildPicker(); buildCurves(); addHelp(); addResets(); addCollapse(); setHelp(true); renderFontUI();
   $$('.field').forEach(f=>{if(f.querySelector('.seg'))f.classList.add('stack');});
@@ -6597,7 +6599,7 @@ async function init(){
   if(!stepVisible(U.step)){ const j=nextVisible(-1,1); U.step=j>=0?j:0; }
   const paint=()=>{U.tool=STEPS[U.step].tool;syncPreset();syncInputs(true);syncPalettes();updUndo();resize();fitView('comp');refresh();};
   if(window.ResizeObserver) new ResizeObserver(resize).observe(wrap); else window.addEventListener('resize',resize);
-  if(window.__gbPhase) window.__gbPhase('drawing');
+  await phase('drawing the panel');
   try{paint();}catch(e){if(window.__gbShowErr)window.__gbShowErr('first draw: '+(e&&(e.stack||e.message)||e));}
   try{ const bt=document.getElementById('gbBoot'); if(bt) bt.parentNode.removeChild(bt); }catch(e){}
   const soon=(p,ms,fb)=>Promise.race([Promise.resolve(p).catch(()=>fb),new Promise(r=>setTimeout(()=>r(fb),ms))]);
@@ -6606,7 +6608,9 @@ async function init(){
     try{ $('#dlPanel').hidden=true; }catch(e){}
     $('#buildLabel').textContent='Build';
     registerKeys();
+    if(window.__gbPhase) window.__gbPhase('connecting to After Effects');
     await soon(evalHost(HOST),15000,'');
+    if(window.__gbPhase) window.__gbPhase('loading layouts');
     await soon(libLoad(),5000);
     try{const pr=JSON.parse(await soon(evalHost('GB_readText("prefs.json")'),5000,'')||'{}');if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.mb===false)U.mbPrev=false;if(pr.adv)setAdv(true);if(pr.subs){U.subs=pr.subs;applySubs();}if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
     try{
@@ -6644,4 +6648,8 @@ async function init(){
   if(SAFE) setTimeout(()=>toast('Safe mode: started fresh — your last scene was not loaded (it is still saved). Open the normal Grid Blocks panel next time.','ok'),800);
 }
 init().catch(e=>{if(window.__gbShowErr)window.__gbShowErr('startup: '+(e&&(e.stack||e.message)||e));});
-})();
+};
+/* start after the loading screen has painted, so a slow or stuck start shows where it is instead of a black panel */
+(function(){ let started=false; const go=function(){ if(started) return; started=true; try{ if(window.__gbPhase) window.__gbPhase('starting the panel script'); window.__gbMain(); }catch(e){ if(window.__gbShowErr) window.__gbShowErr('startup: '+(e&&(e.stack||e.message)||e)); } };
+  try{ if(typeof requestAnimationFrame==='function') requestAnimationFrame(function(){ setTimeout(go,0); }); }catch(e){}
+  setTimeout(go,40); })();   // whichever comes first (some hosts never fire animation frames for hidden panels)
