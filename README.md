@@ -448,3 +448,10 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - With **Snap block reveals to the cues** on, the panel switches to **beat mode**: the scene retime is switched off (the music sets the timing), and there is **one block per cue** by default — every cue gets a block.
 - **Walk on from** (frame; blank = first cue) and **Walk off at** (blank = ~¾ through the cues): the line starts walking on with the beat from the first, and walks off from the second. **Walk off at the end** toggles the walk-off; **The walk-off follows the beat** (on by default) puts each walk-off block on a cue too — off, it walks off at its own pace. Green ▶ walk on / orange ▶ walk off flags on the Cues row are draggable (⌥-click = automatic).
 - **Camera on the beat**: on every cue the camera has the new block exactly at the reveal line (your camera position; the last block still settles where "Last block ends up" says). Between beats: **Glide** (smooth through every block) or **Hit each beat** (eases into each one).
+
+### v3.60 — Beat mode: every cue gets a block, walk on / walk off with the music
+- Every cue gets a block (the walk-off now starts after the last cue by default) — no more ending early.
+- The end is smooth: with no walk-off, the camera eases the last block over to "Last block ends up" after its beat (no jump on the last cue); with a walk-off, the camera follows it for its length, then eases to a stop as the line runs off frame.
+- **Walk on before the beat** (off by default): the line walks in at an even pace (the song's beat spacing) from "Walk on from", then locks to the cues from "On the beat from".
+- **Walk off**: Walk off at (blank = one beat after the last cue), **Walk-off length** (how long the camera follows it), **Pace** (× the beat spacing) and **Follows the music** (0% = steady pace, 100% = every walk-off block on a beat — cues if there are any, otherwise the song's beat grid continued). Trail and exit style stay in Motion › Out.
+- Cues row flags: walk on, on the beat, walk off, and the walk-off's end — all draggable (⌥-click = automatic).
