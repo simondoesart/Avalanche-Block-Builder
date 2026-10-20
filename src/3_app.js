@@ -88,7 +88,7 @@ const DEF={
   bmedia:{on:false,kind:'video',asset:'sample',precomp:false,fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,
     loop:'loop',start:'reveal',delay:0,at:0,offset:0,audio:'mute',target:'all',pick:[],dirOn:{up:true,down:true,flat:true},
     assign:'same',pool:[],dir:{up:'',down:'',flat:''},seed:1,per:{},assets:[]},
-  timing:{src:'file',compLayer:'',inAt:null,outAt:null,syncOut:true,camMove:'glide',beats:[],markers:[],use:'beats',offset:0,sync:false,sens:1.3,minGap:4,media:null,video:true,videoOpacity:60,sound:true},
+  timing:{src:'file',compLayer:'',inAt:null,outAt:null,syncOut:true,camMove:'glide',walkOn:false,walkOnAt:null,outBeat:60,beats:[],markers:[],use:'beats',offset:0,sync:false,sens:1.3,minGap:4,media:null,video:true,videoOpacity:60,sound:true},
   exit:{on:false,holdOn:true,walkHold:24,walkPace:1,walkLen:48,walkFollow:60,trail:3,slide:1.5,mode:'hold',hold:36,at:24,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
   out:{replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180,folder:true,preGrid:true,preBlocks:false,preTrans:true,shy:true,trim:true,markers:true,headers:true,bake:true,orgV:2},
   blocks:[]
@@ -1955,13 +1955,26 @@ let CUE_XF=null;
 /* BEAT MODE (Sync to sound + Snap): the music sets the timing — no scene retime, one block per cue, the camera
    sits on each block (at the reveal line) exactly on its cue. Phases: walk on with the beat from inAt, walk off at outAt. */
 function beatMode(){ const T=D.timing; return !!(T&&T.sync&&D.anim.mode!=='static'&&D.anim.order!=='manual'&&timingCues().length); }
-function beatPhases(WO){
+function beatPhases(WO,extraOut){
   const T=D.timing, cs=timingCues(); if(!cs.length) return null;
+  const gaps=[]; for(let i=1;i<cs.length;i++) gaps.push(cs[i]-cs[i-1]); gaps.sort((x,y)=>x-y);
+  const gap=Math.max(1,gaps.length?gaps[Math.floor(gaps.length/2)]:Math.round(+D.anim.pace||6));   // the song's typical beat spacing
   const inAt=T.inAt!=null&&T.inAt!==''?+T.inAt:cs[0];
-  let outAt=Infinity;
-  if(WO){ outAt=T.outAt!=null&&T.outAt!==''?+T.outAt:cs[Math.min(cs.length-1,Math.max(1,Math.floor(cs.length*0.75)))]; }
-  const build=cs.filter(c=>c>=inAt&&c<outAt), out=WO&&T.syncOut!==false?cs.filter(c=>c>=outAt):[];
-  return {inAt,outAt,build:build.length?build:[inAt],out,cs};
+  const outAt=WO?(T.outAt!=null&&T.outAt!==''?+T.outAt:cs[cs.length-1]+gap):Infinity;   // default: the walk-off starts one beat after the last cue
+  const build=cs.filter(c=>c>=inAt&&c<outAt);
+  /* walk on (optional): before the beat kicks in the line walks on at an even pace */
+  let wAtOut=null; const won=[]; if(T.walkOn){ const wAt=T.walkOnAt!=null&&T.walkOnAt!==''?+T.walkOnAt:Math.max(Math.round(+D.anim.startF||0),inAt-gap*6), n=Math.max(0,Math.floor((inAt-wAt)/gap)); for(let k=n;k>=1;k--) won.push(Math.round(inAt-k*gap)); wAtOut=wAt; }
+  const buildT=won.concat(build.length?build:[inAt]);
+  /* walk off: its own length + pace (Motion › Out), pulled toward the music by "follows the music" (0 = steady pace, 100 = on the beat) */
+  const out=[]; let outEnd=null;
+  if(WO){ const E=D.exit, iv=Math.max(1,gap*Math.max(.1,+E.walkPace||1)), len=Math.max(1,Math.round(+E.walkLen||48)), inf=clamp((T.outBeat!=null?+T.outBeat:60)/100,0,1);
+    const n=Math.max(1,Math.round(len/iv))+(extraOut||0), grid=cs.filter(c=>c>=outAt); let last=grid.length?grid[grid.length-1]:outAt-gap;
+    const beatAt=k=>{ if(k<grid.length) return grid[k]; return last+(k-grid.length+1)*gap; };
+    let prev=buildT[buildT.length-1];
+    for(let k=0;k<n;k++){ const steady=outAt+k*iv; let bt=beatAt(0), bd=1e9; for(let j=0;j<n+grid.length+2;j++){ const c=beatAt(j); if(c<=prev) continue; const d=Math.abs(c-steady); if(d<bd){bd=d;bt=c;} if(c>steady+iv*2) break; }
+      let t=Math.round(steady+(bt-steady)*inf); if(t<=prev) t=prev+1; out.push(t); prev=t; }
+    outEnd=outAt+len; }
+  return {inAt,outAt,buildT,out,outEnd,gap,nWalkOn:won.length,walkOnAt:wAtOut,cs};
 }
 function planCues(){ const c=timingCues(); return CUE_XF?c.map(f=>CUE_XF(f)):c; }
 function remapFns(P,curve){
@@ -2027,20 +2040,20 @@ function computePlan(G){
   const tr0=Math.max(1,Math.round(+A.trans||1)), st=Math.max(1,Math.round(A.stepEvery)||1), stop=A.motion==='stop';
   const startF=Math.round(+A.startF||0), compF=Math.round((D.comp.dur||10)*fps);
   const WO0=!!(D.exit&&D.exit.on&&D.exit.mode==='walk'&&!manual&&A.mode!=='static');
-  const BEAT=beatMode()&&!manual, BP=BEAT?beatPhases(WO0):null;
+  const BEAT=beatMode()&&!manual, woOff0=Math.ceil(.45*G.W/Math.max(1,Math.max(1,D.block.w|0)*G.p))+Math.max(1,Math.round(+D.exit.trail||6))+2, BP=BEAT?beatPhases(WO0,(A.mode==='camera'||A.mode==='push')?woOff0:0):null;
   let L=Math.max(2,A.toEnd?compF-startF:Math.round(+A.lenF||180));
-  if(BP) L=Math.max(2,BP.build[BP.build.length-1]-startF+1);   // the build runs to its last cue
-  P.startF=startF; P.L=L; P.beat=BP?{inAt:BP.inAt,outAt:isFinite(BP.outAt)?BP.outAt:null,nIn:BP.build.length,nOut:BP.out.length}:null;
+  if(BP) L=Math.max(2,BP.buildT[BP.buildT.length-1]-startF+1);   // the build runs to its last cue
+  P.startF=startF; P.L=L; P.beat=BP?{inAt:BP.inAt,outAt:isFinite(BP.outAt)?BP.outAt:null,outEnd:BP.outEnd,nIn:BP.buildT.length-BP.nWalkOn,nWalkOn:BP.nWalkOn,walkOnAt:BP.walkOnAt,nOut:BP.out.length,gap:BP.gap}:null;
   const baseMain=base.filter(b=>!b.echo&&!b.stack).length; P.baseMain=baseMain;
   // how many blocks: fill the length at the chosen pace, or an exact number
   const cuesIn=(D.timing&&D.timing.sync)?planCues().filter(c=>c>=startF&&c<=startF+L).length:0;
-  const want=BP?BP.build.length:A.countMode==='exact'?Math.round(A.total||0):cuesIn?cuesIn:Math.max(1,Math.round(L/Math.max(1,+A.pace||6)));   // synced to sound: one block per cue
+  const want=BP?BP.buildT.length:A.countMode==='exact'?Math.round(A.total||0):cuesIn?cuesIn:Math.max(1,Math.round(L/Math.max(1,+A.pace||6)));   // synced to sound: one block per cue
   // walk-off: after the build holds, the line keeps walking — extra blocks continue the pattern
   const WO=!!(D.exit&&D.exit.on&&D.exit.mode==='walk'&&!manual&&A.mode!=='static');
   const pace2=Math.max(1,(+A.pace||6)*Math.max(.1,+D.exit.walkPace||1)), woLen=Math.max(0,Math.round(+D.exit.walkLen||48)), woK=Math.max(1,Math.round(+D.exit.trail||6));
   // blocks while the camera follows + enough for the head to run off frame with its whole trail after the camera lets go
   const woOff=Math.ceil(.45*G.W/Math.max(1,Math.max(1,D.block.w|0)*G.p))+woK+2;
-  const woN=WO?(BP&&BP.out.length?BP.out.length:Math.max(1,Math.round(woLen/pace2))+(A.mode==='camera'||A.mode==='push'?woOff:0)):0;
+  const woN=WO?(BP?BP.out.length:Math.max(1,Math.round(woLen/pace2))+(A.mode==='camera'||A.mode==='push'?woOff:0)):0;
   const woH=WO&&D.exit.holdOn!==false?Math.max(0,Math.round(+D.exit.walkHold||0)):0;
   // phases on the content clock: ON (the build, length L) · HOLD (woH) · OFF (the walk-off, at its own pace)
   const wantB=want;
@@ -2138,8 +2151,8 @@ function computePlan(G){
   }
   if(BP){   // beat mode: every build block lands on its cue; the walk-off starts at outAt (on its cues, or at its pace)
     for(let g=0;g<used;g++){ let t;
-      if(g<usedB) t=BP.build[g]!=null?BP.build[g]:(g?Tg[g-1]+1:BP.inAt);
-      else { const k=g-usedB; t=BP.out.length?(BP.out[k]!=null?BP.out[k]:Tg[g-1]+Math.max(1,Math.round(pace2))):Math.round((isFinite(BP.outAt)?BP.outAt:Tg[usedB-1]+tr0)+k*pace2); }
+      if(g<usedB) t=BP.buildT[g]!=null?BP.buildT[g]:(g?Tg[g-1]+1:BP.inAt);
+      else { const k=g-usedB; t=BP.out[k]!=null?BP.out[k]:Tg[g-1]+Math.max(1,Math.round(BP.gap)); }
       if(g&&t<=Tg[g-1]) t=Tg[g-1]+1; Tg[g]=Math.round(t); sg[g]=Tg[g]-startF; }
     if(WO&&used>usedB) sWalk=sg[usedB];
   }
@@ -2282,7 +2295,7 @@ function computePlan(G){
            symmetric blur; it doesn't move until the blocks reach the line, and holds once the last one lands. */
         const rzK=rzKeys(), line=G.W*(A.revealWhen==='arrive'?clamp(rzK.length?revealXAt(startF):(+A.revealX||75),50,120)/100:0.62), dirO=A.order==='rtl'?-1:1;
         const lineX=dirO>0?line:G.W-line;
-        let lastFrontX=null; for(let g=0;g<usedB;g++){ seq.forEach((b,i)=>{ if(gi[i]!==g||b.stack) return; const r=cellRect(G,b.c,b.r,b.w,b.h), cx2=r.x+r.w/2; if(lastFrontX==null||dirO*cx2>dirO*lastFrontX) lastFrontX=cx2; }); }
+        let frontLastB=null; let lastFrontX=null; for(let g=0;g<usedB;g++){ seq.forEach((b,i)=>{ if(gi[i]!==g||b.stack) return; const r=cellRect(G,b.c,b.r,b.w,b.h), cx2=r.x+r.w/2; if(lastFrontX==null||dirO*cx2>dirO*lastFrontX) lastFrontX=cx2; }); }
         const key=[]; let pvx=0,pvy=0, front=null;
         for(let g=0;g<used;g++){
           const mem=seq.filter((b,i)=>gi[i]===g), main=mem.filter(b=>!b.stack), use=main.length?main:mem;
@@ -2291,7 +2304,8 @@ function computePlan(G){
           ox=dirO>0?Math.min(pvx,ox):Math.max(pvx,ox);      // only ever moves forward, never before the blocks reach the line
           // the line finishes building: the camera carries on until the last block sits at the settle point (centre by
           // default), so the last block pops in on rhythm inside the frame instead of late at the right-hand edge
-          if(!fin&&g<usedB){ const sl=G.W*clamp(A.endX!=null?+A.endX:50,-200,300)/100, sx=dirO>0?sl:G.W-sl;
+          if(g===usedB-1) frontLastB=front.slice();
+          if(!fin&&g<usedB&&!BP){ const sl=G.W*clamp(A.endX!=null?+A.endX:50,-200,300)/100, sx=dirO>0?sl:G.W-sl;
             if(g===usedB-1){ const so=sx-front[0]; ox=dirO>0?Math.min(ox,so):Math.max(ox,so); }
             // past the reveal line (Right, Off right): the camera stops early so the end of the line runs on off the frame
             if(dirO>0?sx>lineX:sx<lineX){ const soF=sx-lastFrontX; ox=dirO>0?Math.max(ox,soF):Math.min(ox,soF); } }   // 'Last block ends up' (Off left … Right)
@@ -2333,7 +2347,12 @@ function computePlan(G){
         }
         /* beat mode: the camera is exactly on each block (at the reveal line) on its cue — between cues it glides
            (smooth, through every key) or hits (eases into each beat) */
-        if(BP&&keyAll.length>1){ const KK=[]; keyAll.forEach(k=>{ const l=KK[KK.length-1]; if(l&&k[0]<=l[0]){ l[1]=k[1]; l[2]=k[2]; } else KK.push([k[0],k[1],k[2]]); });
+        if(BP&&keyAll.length>1){ const KK=[], camEnd=WO&&used>usedB&&BP.outEnd!=null?BP.outEnd:Tg[usedB-1]; keyAll.forEach(k=>{ if(k[0]>camEnd+0.5) return; const l=KK[KK.length-1]; if(l&&k[0]<=l[0]){ l[1]=k[1]; l[2]=k[2]; } else KK.push([k[0],k[1],k[2]]); });
+          /* the end: with a walk-off the camera keeps its speed a moment and eases to a stop as the line runs off;
+             without one, it eases the last block over to "Last block ends up" — never a jump on the last beat */
+          { const L1=KK[KK.length-1], L0=KK[KK.length-2]||L1, set=Math.max(8,Math.round(BP.gap*2));
+            if(WO&&used>usedB){ const v=(L1[1]-L0[1])/Math.max(1,L1[0]-L0[0]); KK.push([L1[0]+set,L1[1]+v*set*0.5,L1[2]]); }
+            else if(frontLastB){ const sl=G.W*clamp(A.endX!=null?+A.endX:50,-200,300)/100, sx=dirO>0?sl:G.W-sl, so=sx-frontLastB[0]; if(Math.abs(so-L1[1])>1) KK.push([L1[0]+set,so,L1[2]]); } }
           const n=KK.length, hit=D.timing.camMove==='hit';
           const tan=d=>{ const m=[]; for(let i=0;i<n;i++){ if(i===0||i===n-1){ m.push(0); continue; } const a=(KK[i][d]-KK[i-1][d])/(KK[i][0]-KK[i-1][0]), b=(KK[i+1][d]-KK[i][d])/(KK[i+1][0]-KK[i][0]); m.push(a*b<=0?0:2/(1/a+1/b)); } return m; };
           const mx=tan(1), my=tan(2);
@@ -3120,17 +3139,29 @@ function renderMedia(){
     <div class="field"><span class="lbl scrub" title="Minimum frames between two beats">Min beat gap</span><div class="num"><input type="number" data-bind="timing.minGap" min="1" max="120" step="1"><span class="unit">fr</span></div></div>
     <div class="field stack"><span class="lbl">Cues</span><div class="seg" data-seg="timing.use"><button data-v="beats">Beats (${(T.beats||[]).length})</button><button data-v="markers">Markers (${(T.markers||[]).length})</button><button data-v="both">Both</button></div></div>
     <label class="check"><input type="checkbox" data-bind="timing.sync"> Snap block reveals to the cues <span class="note">(one block per cue, landing on it)</span></label>
-    ${T.sync&&cues.length?`<div class="beatbox" style="display:grid;gap:7px;padding:8px;border:1px solid rgba(124,242,192,.35);border-radius:8px">
-      <div class="note"><b style="color:#7CF2C0">Beat mode</b> — one block per cue (${(plan(geom()).beat||{}).nIn||0} on the walk-on${(plan(geom()).beat||{}).nOut?` + ${plan(geom()).beat.nOut} on the walk-off`:''}). The scene retime is off: the music sets the timing, and the camera sits on each block at the reveal line on its cue.</div>
+    ${T.sync&&cues.length?(()=>{ const B=(plan(geom()).beat||{}), wo=D.exit.on&&D.exit.mode==='walk'; return `<div class="beatbox" style="display:grid;gap:8px;padding:9px;border:1px solid rgba(124,242,192,.35);border-radius:8px">
+      <div class="note"><b style="color:#7CF2C0">Beat mode</b> — ${B.nIn||0} blocks on ${B.nIn||0} cues${B.nWalkOn?` · ${B.nWalkOn} walking on before the beat`:T.walkOn?` · <span style="color:#F5A524">no room to walk on before the first cue — drag “walk on” earlier or “on the beat” later</span>`:''}${B.nOut?` · ${B.nOut} walking off`:''}. The scene retime is off: the music sets the timing, and the camera sits on each block at the reveal line on its cue.</div>
+      <label class="check"><input type="checkbox" data-bind="timing.walkOn"> Walk on before the beat <span class="note">(the line walks in at an even pace, then locks to the cues)</span></label>
       <div class="field2">
-        <div class="field"><span class="lbl" title="The line starts walking on — on the beat — from this frame (blank = the first cue)">Walk on from</span><div class="num"><input type="number" id="bInAt" value="${T.inAt!=null&&T.inAt!==''?T.inAt:''}" placeholder="1st cue" step="1"><span class="unit">fr</span></div></div>
-        <div class="field"><span class="lbl" title="The line walks off from this frame (blank = about ¾ of the way through the cues)">Walk off at</span><div class="num"><input type="number" id="bOutAt" value="${T.outAt!=null&&T.outAt!==''?T.outAt:''}" placeholder="auto" step="1"${D.exit.on&&D.exit.mode==='walk'?'':' disabled'}><span class="unit">fr</span></div></div>
+        <div class="field" ${T.walkOn?'':'hidden'}><span class="lbl" title="Where the walk-on starts (blank = 6 beats before the first cue)">Walk on from</span><div class="num"><input type="number" id="bWOnAt" value="${T.walkOnAt!=null&&T.walkOnAt!==''?T.walkOnAt:''}" placeholder="auto" step="1"><span class="unit">fr</span></div></div>
+        <div class="field"><span class="lbl" title="Blocks start landing on the cues from here (blank = the first cue)">On the beat from</span><div class="num"><input type="number" id="bInAt" value="${T.inAt!=null&&T.inAt!==''?T.inAt:''}" placeholder="1st cue" step="1"><span class="unit">fr</span></div></div>
       </div>
-      <label class="check"><input type="checkbox" id="bWalkOff"${D.exit.on&&D.exit.mode==='walk'?' checked':''}> Walk off at the end</label>
-      <label class="check" ${D.exit.on&&D.exit.mode==='walk'?'':'hidden'}><input type="checkbox" data-bind="timing.syncOut"> The walk-off follows the beat <span class="note">(off = its own pace)</span></label>
+      <label class="check"><input type="checkbox" id="bWalkOff"${wo?' checked':''}> Walk off at the end</label>
+      <div style="display:grid;gap:8px" ${wo?'':'hidden'}>
+        <div class="field2">
+          <div class="field"><span class="lbl" title="When the line starts walking off (blank = one beat after the last cue)">Walk off at</span><div class="num"><input type="number" id="bOutAt" value="${T.outAt!=null&&T.outAt!==''?T.outAt:''}" placeholder="after last" step="1"><span class="unit">fr</span></div></div>
+          <div class="field"><span class="lbl scrub" title="How long the camera follows the line walking off before it lets go and the line runs off frame">Walk-off length</span><div class="num"><input type="number" data-bind="exit.walkLen" min="6" max="5000" step="1"><span class="unit">fr</span></div></div>
+        </div>
+        <div class="field2">
+          <div class="field"><span class="lbl scrub" title="Spacing of the walk-off blocks: 1 = one per beat, 0.5 = two per beat, 2 = every other beat">Pace</span><div class="num"><input type="number" data-bind="exit.walkPace" min="0.1" max="5" step="0.1"><span class="unit">× beat</span></div></div>
+          <div class="field"><span class="lbl scrub" title="How much the walk-off follows the music: 0 = steady pace, 100 = every block on a beat">Follows the music</span><div class="num"><input type="number" data-bind="timing.outBeat" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+        </div>
+        <input type="range" min="0" max="100" step="5" data-bind="timing.outBeat" style="width:100%">
+        <div class="note">How the blocks leave, the trail and the exit style: <a href="#" data-goto="animate" style="color:var(--accent2)">Motion › Blocks in &amp; out › Out</a>.</div>
+      </div>
       <div class="field stack"><span class="lbl">Camera between beats</span><div class="seg" data-seg="timing.camMove"><button data-v="glide" title="Smooth, constant-feeling motion through every block">Glide</button><button data-v="hit" title="Eases into each beat — the camera lands on the block as it appears">Hit each beat</button></div></div>
-      <div class="note">Drag the green ▶ (walk on) and orange ▶ (walk off) flags on the Cues row too.</div>
-    </div>`:''}
+      <div class="note">On the Cues row: drag the flags — walk on, on the beat, walk off, and the end of the walk-off. ⌥-click a flag = automatic.</div>
+    </div>`; })():''}
     <div class="row-btns">${m&&m.env?'<button class="btn" id="btnFindBeats" title="Detect the beats in the sound again (uses Beat strictness + Min beat gap)">Find beats</button>':''}<button class="btn" id="btnAddCue" title="Add a cue at the playhead (or press B while the preview plays — tap along to the music)">+ Cue at playhead</button>${cues.length?'<button class="btn" id="btnClearCues">Clear cues</button>':''}</div>
     <div class="row-btns">${T.media?'<button class="btn" id="btnMediaLen" title="Scene runs for the length of the media">Scene = media length</button>':''}</div>
     <div class="note">${cues.length?`${cues.length} cues (blue lines on the timeline)${T.sync?' — reveals snap to them':''}.`:'No cues yet.'} ${m&&m.kind==='video'?'':''}</div>`;
@@ -3140,7 +3171,8 @@ function renderMedia(){
   const ba=box.querySelector('#btnReadAE'); if(ba) ba.onclick=()=>readAEComp(confirm('Also analyse the beat of the first audio layer? (Adds a temporary keyframe layer, then removes it.)'));
   const bl=box.querySelector('#btnMediaLen'); if(bl) bl.onclick=()=>{pushHist();D.anim.lenF=Math.max(2,Math.round(D.timing.media.dur*fps)-Math.max(0,D.anim.startF)+(+D.timing.offset||0));D.anim.toEnd=false;syncInputs(true);refresh();};
   const bc=box.querySelector('#btnClearCues'); if(bc) bc.onclick=()=>{pushHist();D.timing.beats=[];D.timing.markers=[];renderMedia();refresh();toast('Cues cleared','Find beats, tap B while playing, or double-click the Cues row to add new ones',true);};
-  const bIn=box.querySelector('#bInAt'), bOut=box.querySelector('#bOutAt'), bWO=box.querySelector('#bWalkOff');
+  const bIn=box.querySelector('#bInAt'), bOut=box.querySelector('#bOutAt'), bWO=box.querySelector('#bWalkOff'), bWOn=box.querySelector('#bWOnAt');
+  if(bWOn) bWOn.onchange=()=>{ pushHist(true); D.timing.walkOnAt=bWOn.value===''?null:Math.round(+bWOn.value); planCache.k=''; refresh(); renderMedia(); };
   if(bIn) bIn.onchange=()=>{ pushHist(true); D.timing.inAt=bIn.value===''?null:Math.round(+bIn.value); planCache.k=''; refresh(); renderMedia(); };
   if(bOut) bOut.onchange=()=>{ pushHist(true); D.timing.outAt=bOut.value===''?null:Math.round(+bOut.value); planCache.k=''; refresh(); renderMedia(); };
   if(bWO) bWO.onchange=()=>{ pushHist(true); if(bWO.checked){ D.exit.on=true; D.exit.mode='walk'; } else D.exit.on=false; planCache.k=''; syncInputs(true); refresh(); renderMedia(); };
@@ -3270,7 +3302,11 @@ function drawDope(){
         alt:()=>{ pushHist(true); const L=(D.timing[k]||[]).slice(); L.splice(j,1); D.timing[k]=L; planCache.k=''; renderMedia(); refresh(); } }); }));
     if(P.beat){ const flag=(f,col,lab,key)=>{ if(f==null) return; const x=X(f); g.fillStyle=col; g.fillRect(x-1,RCu.y0+2,2,RCu.h-4); g.beginPath(); g.moveTo(x,RCu.y0+2); g.lineTo(x+9,RCu.y0+6); g.lineTo(x,RCu.y0+10); g.closePath(); g.fill(); g.font='600 9px sans-serif'; g.fillText(lab,x+11,RCu.y0+9);
         item({type:'point',x:x+4,y:RCu.y0+6,cur:'ew-resize',tip:`${lab} · f${f} — drag to move · ⌥-click = automatic`,drag:fx=>{ D.timing[key]=Math.round(F(fx)); planCache.k=''; },alt:()=>{ pushHist(true); D.timing[key]=null; planCache.k=''; renderMedia(); refresh(); }}); };
-      flag(P.beat.inAt,'#7CF2C0','walk on','inAt'); if(P.beat.outAt!=null) flag(P.beat.outAt,'#F5A524','walk off','outAt'); }
+      if(P.beat.walkOnAt!=null) flag(P.beat.walkOnAt,'#5AC8FA','walk on','walkOnAt');
+      flag(P.beat.inAt,'#7CF2C0','on the beat','inAt'); if(P.beat.outAt!=null) flag(P.beat.outAt,'#F5A524','walk off','outAt');
+      if(P.beat.outEnd!=null){ const x=X(P.beat.outEnd); g.fillStyle='#F5A524'; g.fillRect(x-1,RCu.y0+2,2,RCu.h-4); g.font='600 9px sans-serif'; g.fillText('end',x+4,RCu.y0+RCu.h-4);
+        if(P.beat.outAt!=null){ g.fillStyle='rgba(245,165,36,.18)'; g.fillRect(X(P.beat.outAt),RCu.y0+RCu.h-5,Math.max(1,x-X(P.beat.outAt)),3); }
+        item({type:'point',x,y:RCu.y0+RCu.h/2,cur:'ew-resize',tip:`end of the walk-off · ${D.exit.walkLen}f long — drag to change how long the camera follows the walk-off`,drag:fx=>{ D.exit.walkLen=Math.max(6,Math.round(F(fx)-P.beat.outAt)); planCache.k=''; },alt:()=>{}}); } }
     if(!(T.beats||[]).length&&!(T.markers||[]).length){ g.fillStyle='#686871'; g.font='11px sans-serif'; g.fillText('no cues — double-click here (or press B while playing) to add one',LW+8,yc+4); }
     item({type:'row',row:RCu,x0:LW,x1:r.width,y0:RCu.y0,y1:RCu.y1,cur:'copy',tip:'Cues — double-click to add a cue · click for sound settings'}); }
   const RS=TL.rows.find(R=>R.k==='sound');
@@ -4850,7 +4886,7 @@ function onChange(path){
   if(path==='bmedia.kind') D.bmedia.asset=mKindAsset(D.bmedia.kind,D.bmedia.asset);
   if(path.indexOf('bmedia.')===0) setTimeout(()=>{try{renderMediaUI();}catch(e){}},0);
   if(path==='timing.sens'||path==='timing.minGap') reBeat();
-  if(path==='timing.use'||path==='timing.offset'||path==='timing.sync'||path==='timing.syncOut'||path==='timing.camMove') {planCache.k='';setTimeout(()=>{try{renderMedia();}catch(e){}},0);}
+  if(path==='timing.use'||path==='timing.offset'||path==='timing.sync'||path==='timing.syncOut'||path==='timing.camMove'||path==='timing.walkOn') {planCache.k='';setTimeout(()=>{try{renderMedia();}catch(e){}},0);}
   if(path==='anim.zoomOn'){planCache.k='';$('#zoomList').innerHTML='';}
   if(path==='anim.mode'||path==='anim.order'){reorder();}
   if(path==='anim.order'&&D.anim.order==='manual'){U.t=null;stopPlay();U.tool='order';fitView('all');toast('Manual order: the whole grid is shown. Click blocks in the order they should appear.');}
