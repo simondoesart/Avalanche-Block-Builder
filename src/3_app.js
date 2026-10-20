@@ -100,7 +100,7 @@ let D=clone(DEF);
 let uid=1;
 /* UI state (not saved) */
 const U={step:0,ctx:null,ctab:'hud',dopeSel:[],mbPrev:true,tool:'select',sel:null,selIds:[],hover:null,t:null,playing:false,live:false,genBase:null,
-  compLive:false,aeName:'',moNext:1,showOrder:true,editing:null,space:false,drag:null,lib:[],help:true,loop:true,picking:false,fonts:null};
+  compLive:false,aeName:'',moNext:1,showOrder:true,showCues:true,editing:null,space:false,drag:null,lib:[],help:true,loop:true,picking:false,fonts:null};
 
 const SI=id=>STEPS.findIndex(s=>s.id===id);
 /* steps shown while we workshop the UX one step at a time — add ids to bring a step back.
@@ -3056,7 +3056,7 @@ function aiInit(){
 /* editable cue list: the list the current "Cues" choice reads (markers when Markers, otherwise beats) */
 function cueList(){ const T=D.timing; return T.use==='markers'?'markers':'beats'; }
 function cueAdd(f){ const T=D.timing, k=cueList(), off=Math.round(+T.offset||0), v=Math.round(f)-off; T[k]=(T[k]||[]).slice(); if(T[k].indexOf(v)>=0) return false; pushHist(true); T[k].push(v); T[k].sort((a,b)=>a-b); planCache.k=''; return true; }
-function cueRowOn(){ const T=D.timing; return !!(U.media||(T&&((T.beats||[]).length||(T.markers||[]).length||T.sync||T.media))); }
+function cueRowOn(){ const T=D.timing; if(U.showCues===false) return false; return !!(U.media||(T&&((T.beats||[]).length||(T.markers||[]).length||T.sync||T.media))); }
 function timingCues(){
   const T=D.timing; if(!T) return [];
   const off=Math.round(+T.offset||0), src=(T.use==='markers'?T.markers:T.use==='both'?(T.beats||[]).concat(T.markers||[]):T.beats)||[];
@@ -3589,7 +3589,7 @@ function drawDope(){
   g.fillStyle='#9a9aa3'; g.font='10px sans-serif'; g.textBaseline='middle'; for(let s=Math.ceil(V0.f0/fps/stepS)*stepS;s*fps<=V0.f1;s+=stepS){const x=X(s*fps); g.fillRect(x,ROWS.ruler-9,1,9); g.fillText((+s.toFixed(2))+'s',x+3,8);}
   if(anim&&P.seq.length){g.fillStyle='rgba(230,33,47,.8)'; g.fillRect(X(P.startF),ROWS.ruler-3,Math.max(1,X(P.startF+(P.R||P.L))-X(P.startF)),3);}
   g.fillStyle='rgba(255,255,255,.35)'; g.fillRect(X(compF),0,1,r.height);
-  const cues=timingCues(); g.fillStyle=D.timing&&D.timing.sync?'rgba(116,157,211,.7)':'rgba(116,157,211,.32)'; cues.forEach(f=>{g.fillRect(X(f),ROWS.ruler,1,r.height-ROWS.ruler);});
+  const cues=U.showCues===false?[]:timingCues(); g.fillStyle=D.timing&&D.timing.sync?'rgba(116,157,211,.7)':'rgba(116,157,211,.32)'; cues.forEach(f=>{g.fillRect(X(f),ROWS.ruler,1,r.height-ROWS.ruler);});
   if(U.t!=null&&anim&&P.remapped&&TL.contentY0!=null){ const x=X(U.t), xc=X(P.toContent(U.t)), yC=TL.contentY0;
     g.fillStyle='#E6212F'; g.fillRect(x-.5,0,1.5,yC-6); g.strokeStyle='#E6212F'; g.lineWidth=1.5; g.setLineDash([]); g.beginPath(); g.moveTo(x,yC-6); g.lineTo(xc,yC+2); g.stroke();
     g.setLineDash([4,3]); g.beginPath(); g.moveTo(xc,yC+2); g.lineTo(xc,r.height); g.stroke(); g.setLineDash([]);
@@ -3884,7 +3884,7 @@ function viewBounds(){return{x:-V.ox/V.sc,y:-V.oy/V.sc,w:V.cw/V.sc,h:V.ch/V.sc};
 let mbOC=null, mbMax=12;
 function mbWanted(A){return U.mbPrev&&D.out.mb&&A&&A.live&&D.anim.mode!=='static'&&D.anim.motion!=='stop';}
 /* beat pulse: a dot in the corner flashes on every cue, so you can see (and feel) whether blocks land on the beat */
-function drawBeatPulse(G,A,sc){ const cs=timingCues(); if(!cs.length) return; let last=null; for(let i=cs.length-1;i>=0;i--){ if(cs[i]<=A.t+0.001){ last=cs[i]; break; } }
+function drawBeatPulse(G,A,sc){ if(U.showCues===false) return; const cs=timingCues(); if(!cs.length) return; let last=null; for(let i=cs.length-1;i>=0;i--){ if(cs[i]<=A.t+0.001){ last=cs[i]; break; } }
   const age=last==null?99:A.t-last; if(age>=8) return; const a=Math.max(0,1-age/8), R=(10+8*a)/sc;
   ctx.save(); ctx.globalAlpha=0.25+0.75*a; ctx.fillStyle=D.timing.sync?'#7CF2C0':'#74A0E0'; ctx.beginPath(); ctx.arc(G.W-28/sc,28/sc,R,0,7); ctx.fill(); ctx.globalAlpha=1; ctx.fillStyle='#121212'; ctx.font=`600 ${11/sc}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('♪',G.W-28/sc,28/sc); ctx.restore(); }
 function render(){
@@ -5024,6 +5024,7 @@ function syncInputs(force){
   $('#countUnit').textContent=D.rand.count>0?'':'auto';
   $('#rowUnit').textContent=D.rand.startRow>0?'':'random';
   $('#chkOrder').checked=U.showOrder;
+  { const w=$('#chkCuesWrap'); if(w){ w.hidden=!timingCues().length; $('#chkCues').checked=U.showCues!==false; } }
 }
 function syncPreset(){const k=D.comp.w+'x'+D.comp.h;$('#preset').value=$$('#preset option').some(o=>o.value===k)?k:'custom';}
 $('#preset').addEventListener('change',e=>{const v=e.target.value;if(v==='custom')return;pushHist(true);const p=v.split('x').map(Number);D.comp.w=p[0];D.comp.h=p[1];syncInputs(true);if(V.fit)fitView(V.fit);refresh();});
@@ -5395,6 +5396,7 @@ $('#btnGenClear').onclick=()=>{if(!D.blocks.length)return toast('No blocks to cl
 $('#btnGen').onclick=()=>generate(false);
 $('#btnShuffle').onclick=shuffle;
 $('#chkOrder').onchange=e=>{U.showOrder=e.target.checked;render();};
+$('#chkCues').onchange=e=>{U.showCues=e.target.checked;savePrefs();render();drawDope();};
 
 /* ------------------------------------------------------------------ zoom buttons */
 $('#zIn').onclick=()=>zoomAt(1.25,V.cw/2,V.ch/2);
@@ -6069,7 +6071,7 @@ document.addEventListener('mousedown',()=>{clearTimeout(tipW);tipEl.className='t
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.qm')){e.preventDefault();e.stopPropagation();}},true);
 function setHelp(on){U.help=on;document.body.classList.toggle('nohelp',!on);$('#btnHelp').classList.toggle('on',on);$('#btnHelp').title=on?'Hide the ? help tips':'Show ? help tips next to each setting';}
 $('#btnHelp').onclick=()=>{setHelp(!U.help);toast(U.help?'Help tips on: hover any ?':'Help tips hidden');savePrefs();};
-function savePrefs(){const pr=JSON.stringify({help:U.help,loop:U.loop,mb:U.mbPrev!==false,adv:!!U.adv,subs:U.subs||{},collapsed:U.collapsed||{}});webSet('prefs',pr);if(inAE)evalHost('GB_writeText("prefs.json",'+jsStr(pr)+')');}
+function savePrefs(){const pr=JSON.stringify({cues:U.showCues!==false,help:U.help,loop:U.loop,mb:U.mbPrev!==false,adv:!!U.adv,subs:U.subs||{},collapsed:U.collapsed||{}});webSet('prefs',pr);if(inAE)evalHost('GB_writeText("prefs.json",'+jsStr(pr)+')');}
 
 /* ------------------------------------------------------------------ toast */
 let tt=0;
@@ -6735,7 +6737,7 @@ async function init(){
     await soon(evalHost(HOST),15000,'');
     if(window.__gbPhase) window.__gbPhase('loading layouts');
     await soon(libLoad(),5000); await soon(snapsLoad(),5000);
-    try{const pr=JSON.parse(await soon(evalHost('GB_readText("prefs.json")'),5000,'')||'{}');if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.mb===false)U.mbPrev=false;if(pr.adv)setAdv(true);if(pr.subs){U.subs=pr.subs;applySubs();}if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
+    try{const pr=JSON.parse(await soon(evalHost('GB_readText("prefs.json")'),5000,'')||'{}');if(pr.cues===false)U.showCues=false;if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.mb===false)U.mbPrev=false;if(pr.adv)setAdv(true);if(pr.subs){U.subs=pr.subs;applySubs();}if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
     try{
       const s=SAFE?'':await soon(evalHost('GB_readText("autosave.json")'),5000,'');
       if(s){const o=JSON.parse(s);if(o&&o.doc){setDoc(o.doc);U.step=savedStep(o);U.tool=STEPS[U.step].tool;}}
@@ -6758,7 +6760,7 @@ async function init(){
         webSet('autosave',''); setTimeout(()=>toast('The last session didn’t load properly, so this one started fresh. Your scene is saved in Layouts as “Recovered”.','err'),600); }
       else { webSet('booting',String(Date.now())); try{const o=JSON.parse(raw||'null');if(o&&o.doc){setDoc(o.doc);U.step=savedStep(o);}}catch(e){} }
       setTimeout(()=>{ try{localStorage.removeItem('gridblocks.booting');}catch(e){} },4000);
-      try{const pr=JSON.parse(webGet('prefs')||'{}');if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.mb===false)U.mbPrev=false;if(pr.adv)setAdv(true);if(pr.subs){U.subs=pr.subs;applySubs();}if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
+      try{const pr=JSON.parse(webGet('prefs')||'{}');if(pr.cues===false)U.showCues=false;if(pr.help===false)setHelp(false);if(pr.loop===false)U.loop=false;if(pr.mb===false)U.mbPrev=false;if(pr.adv)setAdv(true);if(pr.subs){U.subs=pr.subs;applySubs();}if(pr.collapsed){U.collapsed=pr.collapsed;$$('#left .group').forEach(g=>g.classList.toggle('collapsed',!!pr.collapsed[g.dataset.ckey]));}}catch(e){}
       const dl=$('#btnPanel'); if(dl) dl.hidden=false;
     }
     $('#compNote').textContent='In the browser, pick a size here. Inside After Effects the panel reads your comp automatically.';

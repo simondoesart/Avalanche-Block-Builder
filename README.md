@@ -459,3 +459,6 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.60.1 — No more freezing on long songs
 - The Build step's summary was baking every content animation on every redraw — with a 2-minute song (≈200 blocks) that was ~18 s of work each time, which froze the panel (black). The summary no longer bakes.
 - Baking itself is ~40× faster: it only samples the frames where something can change (animate-on / off windows and live-effect ticks) instead of every frame; graph expressions are compiled once. A 2-minute, 200-block scene now exports in about half a second.
+
+### v3.60.2 — Show cues
+- **Show cues** checkbox in the bottom bar (next to Show order numbers), only there once you have cues: hides/shows the cue lines on the timeline, the Cues row and the ♪ beat pulse. Remembered between sessions.
