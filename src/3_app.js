@@ -88,7 +88,7 @@ const DEF={
   bmedia:{on:false,kind:'video',asset:'sample',precomp:false,fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,
     loop:'loop',start:'reveal',delay:0,at:0,offset:0,audio:'mute',target:'all',pick:[],dirOn:{up:true,down:true,flat:true},
     assign:'same',pool:[],dir:{up:'',down:'',flat:''},seed:1,per:{},assets:[]},
-  timing:{src:'file',compLayer:'',beats:[],markers:[],use:'beats',offset:0,sync:false,sens:1.3,minGap:4,media:null,video:true,videoOpacity:60,sound:true},
+  timing:{src:'file',compLayer:'',inAt:null,outAt:null,syncOut:true,camMove:'glide',beats:[],markers:[],use:'beats',offset:0,sync:false,sens:1.3,minGap:4,media:null,video:true,videoOpacity:60,sound:true},
   exit:{on:false,holdOn:true,walkHold:24,walkPace:1,walkLen:48,walkFollow:60,trail:3,slide:1.5,mode:'hold',hold:36,at:24,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
   out:{replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180,folder:true,preGrid:true,preBlocks:false,preTrans:true,shy:true,trim:true,markers:true,headers:true,bake:true,orgV:2},
   blocks:[]
@@ -1952,15 +1952,27 @@ const isLinearCurve=c=>{c=c||[0,0,1,1];return !isPts(c)&&Math.abs(+c[0]-+c[1])<1
 /* cues are on the output clock (where the music is); the plan snaps on the blocks' own clock, so with a retime
    the cues are first mapped back through the retime — then every reveal lands exactly on its beat */
 let CUE_XF=null;
+/* BEAT MODE (Sync to sound + Snap): the music sets the timing — no scene retime, one block per cue, the camera
+   sits on each block (at the reveal line) exactly on its cue. Phases: walk on with the beat from inAt, walk off at outAt. */
+function beatMode(){ const T=D.timing; return !!(T&&T.sync&&D.anim.mode!=='static'&&D.anim.order!=='manual'&&timingCues().length); }
+function beatPhases(WO){
+  const T=D.timing, cs=timingCues(); if(!cs.length) return null;
+  const inAt=T.inAt!=null&&T.inAt!==''?+T.inAt:cs[0];
+  let outAt=Infinity;
+  if(WO){ outAt=T.outAt!=null&&T.outAt!==''?+T.outAt:cs[Math.min(cs.length-1,Math.max(1,Math.floor(cs.length*0.75)))]; }
+  const build=cs.filter(c=>c>=inAt&&c<outAt), out=WO&&T.syncOut!==false?cs.filter(c=>c>=outAt):[];
+  return {inAt,outAt,build:build.length?build:[inAt],out,cs};
+}
 function planCues(){ const c=timingCues(); return CUE_XF?c.map(f=>CUE_XF(f)):c; }
 function remapFns(P,curve){
   const tail=Math.max(0,Math.round(D.anim.tail)||0), c0=P.startF, cEnd=Math.max(c0+2,P.end-tail), C=cEnd-c0, R=+D.anim.remapLen>0?Math.max(2,Math.round(+D.anim.remapLen)):C;
   const f=curveFn(curve);
   return {toContent:t=>t<=c0?t:t>=c0+R?cEnd+(t-c0-R):c0+C*clamp(f((t-c0)/R),0,1)};
 }
-function remapActive(){return D.anim.mode!=='static'&&(!isLinearCurve(D.anim.sceneCurve)||+D.anim.remapLen>0);}
+function remapActive(){return !beatMode()&&D.anim.mode!=='static'&&(!isLinearCurve(D.anim.sceneCurve)||+D.anim.remapLen>0);}
 function remappedPlan(G){
   const A=D.anim, ident=P=>{const tail=Math.max(0,Math.round(A.tail)||0);P.toReal=P.toContent=t=>t;P.C=P.R=Math.max(1,(P.end||0)-tail-(P.startF||0));P.cEnd=(P.startF||0)+P.C;P.c=P;return P;};
+  if(beatMode()){ const c=A.sceneCurve, rl=A.remapLen; A.sceneCurve=[0,0,1,1]; A.remapLen=0; let P0; try{ P0=computePlan(G); } finally{ A.sceneCurve=c; A.remapLen=rl; } return ident(P0); }
   if(!remapActive()) return ident(computePlan(G));
   const curve=A.sceneCurve; let P;
   A.sceneCurve=[0,0,1,1]; DENSE_CAM=true;
@@ -2014,18 +2026,21 @@ function computePlan(G){
   if(!base.length) return P;
   const tr0=Math.max(1,Math.round(+A.trans||1)), st=Math.max(1,Math.round(A.stepEvery)||1), stop=A.motion==='stop';
   const startF=Math.round(+A.startF||0), compF=Math.round((D.comp.dur||10)*fps);
-  const L=Math.max(2,A.toEnd?compF-startF:Math.round(+A.lenF||180));
-  P.startF=startF; P.L=L;
+  const WO0=!!(D.exit&&D.exit.on&&D.exit.mode==='walk'&&!manual&&A.mode!=='static');
+  const BEAT=beatMode()&&!manual, BP=BEAT?beatPhases(WO0):null;
+  let L=Math.max(2,A.toEnd?compF-startF:Math.round(+A.lenF||180));
+  if(BP) L=Math.max(2,BP.build[BP.build.length-1]-startF+1);   // the build runs to its last cue
+  P.startF=startF; P.L=L; P.beat=BP?{inAt:BP.inAt,outAt:isFinite(BP.outAt)?BP.outAt:null,nIn:BP.build.length,nOut:BP.out.length}:null;
   const baseMain=base.filter(b=>!b.echo&&!b.stack).length; P.baseMain=baseMain;
   // how many blocks: fill the length at the chosen pace, or an exact number
   const cuesIn=(D.timing&&D.timing.sync)?planCues().filter(c=>c>=startF&&c<=startF+L).length:0;
-  const want=A.countMode==='exact'?Math.round(A.total||0):cuesIn?cuesIn:Math.max(1,Math.round(L/Math.max(1,+A.pace||6)));   // synced to sound: one block per cue
+  const want=BP?BP.build.length:A.countMode==='exact'?Math.round(A.total||0):cuesIn?cuesIn:Math.max(1,Math.round(L/Math.max(1,+A.pace||6)));   // synced to sound: one block per cue
   // walk-off: after the build holds, the line keeps walking — extra blocks continue the pattern
   const WO=!!(D.exit&&D.exit.on&&D.exit.mode==='walk'&&!manual&&A.mode!=='static');
   const pace2=Math.max(1,(+A.pace||6)*Math.max(.1,+D.exit.walkPace||1)), woLen=Math.max(0,Math.round(+D.exit.walkLen||48)), woK=Math.max(1,Math.round(+D.exit.trail||6));
   // blocks while the camera follows + enough for the head to run off frame with its whole trail after the camera lets go
   const woOff=Math.ceil(.45*G.W/Math.max(1,Math.max(1,D.block.w|0)*G.p))+woK+2;
-  const woN=WO?Math.max(1,Math.round(woLen/pace2))+(A.mode==='camera'||A.mode==='push'?woOff:0):0;
+  const woN=WO?(BP&&BP.out.length?BP.out.length:Math.max(1,Math.round(woLen/pace2))+(A.mode==='camera'||A.mode==='push'?woOff:0)):0;
   const woH=WO&&D.exit.holdOn!==false?Math.max(0,Math.round(+D.exit.walkHold||0)):0;
   // phases on the content clock: ON (the build, length L) · HOLD (woH) · OFF (the walk-off, at its own pace)
   const wantB=want;
@@ -2121,6 +2136,13 @@ function computePlan(G){
     const walkG=g>=usedB&&sWalk!=null, s=walkG?sWalk+(g-usedB)*pace2:Math.min(L,step*g); sg.push(s);
     let t=Math.round(W(s)); if(spread&&g>0&&t<=Tg[g-1]) t=Tg[g-1]+1; Tg.push(walkG?t:Math.min(t,startF+L));
   }
+  if(BP){   // beat mode: every build block lands on its cue; the walk-off starts at outAt (on its cues, or at its pace)
+    for(let g=0;g<used;g++){ let t;
+      if(g<usedB) t=BP.build[g]!=null?BP.build[g]:(g?Tg[g-1]+1:BP.inAt);
+      else { const k=g-usedB; t=BP.out.length?(BP.out[k]!=null?BP.out[k]:Tg[g-1]+Math.max(1,Math.round(pace2))):Math.round((isFinite(BP.outAt)?BP.outAt:Tg[usedB-1]+tr0)+k*pace2); }
+      if(g&&t<=Tg[g-1]) t=Tg[g-1]+1; Tg[g]=Math.round(t); sg[g]=Tg[g]-startF; }
+    if(WO&&used>usedB) sWalk=sg[usedB];
+  }
   // drop the late blocks: everything in the build landing after cutAt goes, the rest keep their timing exactly
   const cutAt=A.cutAt!=null&&A.cutAt!==''?+A.cutAt:null; P.cutAt=null;
   if(cutAt!=null&&isFinite(cutAt)){
@@ -2173,13 +2195,13 @@ function computePlan(G){
   // the build never ends on a pair: drop pair blocks in the last build block's column
   if(D.rand.endSingle&&!manual){ const nB=P.walkFrom!=null?P.walkFrom:seq.length, mains=seq.slice(0,nB).filter(b=>!b.stack), lb=mains[mains.length-1];
     if(lb){ const keep=seq.map((b,i)=>!(i<nB&&b.stack&&b.c<lb.c+lb.w&&b.c+b.w>lb.c)); if(keep.some(k=>!k)){ seq=seq.filter((b,i)=>keep[i]); gi=gi.filter((g,i)=>keep[i]); if(WO){ P.walkFrom=seq.findIndex((b,i)=>gi[i]>=usedB); if(P.walkFrom<0) P.walkFrom=seq.length; } } } }
-  P.walkT=WO?(sWalk!=null?Math.max(Tg[usedB-1]+1,Math.round(W(sWalk-olead))):Tg[usedB-1]+tr0+lead+woH):null;   // Out starts (hold ends)
+  P.walkT=WO?(BP&&used>usedB?Tg[usedB]:sWalk!=null?Math.max(Tg[usedB-1]+1,Math.round(W(sWalk-olead))):Tg[usedB-1]+tr0+lead+woH):null;   // Out starts (hold ends)
   P.holdT=WO?Tg[usedB-1]+tr0+lead:null;
   P.landT=Math.round(Math.max(startF+1,...Tg.slice(0,usedB))+tr0); P.onEnd=P.landT+lead;   // end of the ON phase (content clock)
   P.walkEnd=WO?Tg[used-1]+tr0:null;
   // sync to sound: each reveal moves to the nearest cue (beat / marker), keeping the order
   const CUES=planCues();
-  if(D.timing&&D.timing.sync&&CUES.length){
+  if(!BP&&D.timing&&D.timing.sync&&CUES.length){
     let prev=-1e9;
     for(let g=0;g<usedB;g++){
       const want=Tg[g], cand=CUES.filter(c=>c>prev&&c<=startF+L);
@@ -2309,12 +2331,23 @@ function computePlan(G){
           const atA=dd=>{if(pA.length<2||totA<=0)return pA[0];let k=1;while(k<cA.length-1&&cA[k]<dd)k++;const sgm=Math.max(1e-9,cA[k]-cA[k-1]),q=clamp((dd-cA[k-1])/sgm,0,1);return[pA[k-1][0]+(pA[k][0]-pA[k-1][0])*q,pA[k-1][1]+(pA[k][1]-pA[k-1][1])*q];};
           for(let i=0;i<N;i++){const o=atA(clamp(dAt(a+i),0,totA)); xs[i]=o[0]; ys[i]=o[1];}
         }
+        /* beat mode: the camera is exactly on each block (at the reveal line) on its cue — between cues it glides
+           (smooth, through every key) or hits (eases into each beat) */
+        if(BP&&keyAll.length>1){ const KK=[]; keyAll.forEach(k=>{ const l=KK[KK.length-1]; if(l&&k[0]<=l[0]){ l[1]=k[1]; l[2]=k[2]; } else KK.push([k[0],k[1],k[2]]); });
+          const n=KK.length, hit=D.timing.camMove==='hit';
+          const tan=d=>{ const m=[]; for(let i=0;i<n;i++){ if(i===0||i===n-1){ m.push(0); continue; } const a=(KK[i][d]-KK[i-1][d])/(KK[i][0]-KK[i-1][0]), b=(KK[i+1][d]-KK[i][d])/(KK[i+1][0]-KK[i][0]); m.push(a*b<=0?0:2/(1/a+1/b)); } return m; };
+          const mx=tan(1), my=tan(2);
+          for(let i=0;i<N;i++){ const t=a+i; if(t<=KK[0][0]){ xs[i]=KK[0][1]; ys[i]=KK[0][2]; continue; } if(t>=KK[n-1][0]){ xs[i]=KK[n-1][1]; ys[i]=KK[n-1][2]; continue; }
+            let k=0; while(k<n-2&&KK[k+1][0]<=t) k++; const t0=KK[k][0], t1=KK[k+1][0], h=t1-t0, u=(t-t0)/h;
+            if(hit){ const e=u*u*(3-2*u); xs[i]=KK[k][1]+(KK[k+1][1]-KK[k][1])*e; ys[i]=KK[k][2]+(KK[k+1][2]-KK[k][2])*e; }
+            else { const h00=2*u*u*u-3*u*u+1, h10=u*u*u-2*u*u+u, h01=-2*u*u*u+3*u*u, h11=u*u*u-u*u;
+              xs[i]=h00*KK[k][1]+h10*h*mx[k]+h01*KK[k+1][1]+h11*h*mx[k+1]; ys[i]=h00*KK[k][2]+h10*h*my[k]+h01*KK[k+1][2]+h11*h*my[k+1]; } } }
         // animated reveal zone: the frame shifts so the newest block sits on the line wherever it is at that moment
         if(rzK.length) for(let i=0;i<N;i++){ const ln=G.W*clamp(revealXAt(a+i),50,120)/100, lx=dirO>0?ln:G.W-ln; xs[i]+=lx-lineX; }
         P.curveLine=lineX;
         const gsg=A.axis==='xy'?Math.max(1,(+A.motionBlurF||4)*.5):0.8, R=Math.ceil(3*gsg), kk=[]; let ks=0; for(let j=-R;j<=R;j++){const v=Math.exp(-j*j/(2*gsg*gsg));kk.push(v);ks+=v;}
         const sm=arr=>{const o=new Float64Array(N);for(let i=0;i<N;i++){let acc=0;for(let j=-R;j<=R;j++)acc+=arr[clamp(i+j,0,N-1)]*kk[j+R];o[i]=acc/ks;}return o;};
-        const sx=sm(xs), sy=sm(ys); for(let i=0;i<N;i++){xs[i]=sx[i];ys[i]=sy[i];}
+        if(!BP){ const sx=sm(xs), sy=sm(ys); for(let i=0;i<N;i++){xs[i]=sx[i];ys[i]=sy[i];} }
       } else {
       // goal sampled at sub-frame resolution, smoothed causally, then blended to rest
       const tau=Math.max(0,+A.motionBlurF), sub=4, NS=(N-1)*sub+1, gx=new Float64Array(NS), gy=new Float64Array(NS);
@@ -3087,6 +3120,17 @@ function renderMedia(){
     <div class="field"><span class="lbl scrub" title="Minimum frames between two beats">Min beat gap</span><div class="num"><input type="number" data-bind="timing.minGap" min="1" max="120" step="1"><span class="unit">fr</span></div></div>
     <div class="field stack"><span class="lbl">Cues</span><div class="seg" data-seg="timing.use"><button data-v="beats">Beats (${(T.beats||[]).length})</button><button data-v="markers">Markers (${(T.markers||[]).length})</button><button data-v="both">Both</button></div></div>
     <label class="check"><input type="checkbox" data-bind="timing.sync"> Snap block reveals to the cues <span class="note">(one block per cue, landing on it)</span></label>
+    ${T.sync&&cues.length?`<div class="beatbox" style="display:grid;gap:7px;padding:8px;border:1px solid rgba(124,242,192,.35);border-radius:8px">
+      <div class="note"><b style="color:#7CF2C0">Beat mode</b> — one block per cue (${(plan(geom()).beat||{}).nIn||0} on the walk-on${(plan(geom()).beat||{}).nOut?` + ${plan(geom()).beat.nOut} on the walk-off`:''}). The scene retime is off: the music sets the timing, and the camera sits on each block at the reveal line on its cue.</div>
+      <div class="field2">
+        <div class="field"><span class="lbl" title="The line starts walking on — on the beat — from this frame (blank = the first cue)">Walk on from</span><div class="num"><input type="number" id="bInAt" value="${T.inAt!=null&&T.inAt!==''?T.inAt:''}" placeholder="1st cue" step="1"><span class="unit">fr</span></div></div>
+        <div class="field"><span class="lbl" title="The line walks off from this frame (blank = about ¾ of the way through the cues)">Walk off at</span><div class="num"><input type="number" id="bOutAt" value="${T.outAt!=null&&T.outAt!==''?T.outAt:''}" placeholder="auto" step="1"${D.exit.on&&D.exit.mode==='walk'?'':' disabled'}><span class="unit">fr</span></div></div>
+      </div>
+      <label class="check"><input type="checkbox" id="bWalkOff"${D.exit.on&&D.exit.mode==='walk'?' checked':''}> Walk off at the end</label>
+      <label class="check" ${D.exit.on&&D.exit.mode==='walk'?'':'hidden'}><input type="checkbox" data-bind="timing.syncOut"> The walk-off follows the beat <span class="note">(off = its own pace)</span></label>
+      <div class="field stack"><span class="lbl">Camera between beats</span><div class="seg" data-seg="timing.camMove"><button data-v="glide" title="Smooth, constant-feeling motion through every block">Glide</button><button data-v="hit" title="Eases into each beat — the camera lands on the block as it appears">Hit each beat</button></div></div>
+      <div class="note">Drag the green ▶ (walk on) and orange ▶ (walk off) flags on the Cues row too.</div>
+    </div>`:''}
     <div class="row-btns">${m&&m.env?'<button class="btn" id="btnFindBeats" title="Detect the beats in the sound again (uses Beat strictness + Min beat gap)">Find beats</button>':''}<button class="btn" id="btnAddCue" title="Add a cue at the playhead (or press B while the preview plays — tap along to the music)">+ Cue at playhead</button>${cues.length?'<button class="btn" id="btnClearCues">Clear cues</button>':''}</div>
     <div class="row-btns">${T.media?'<button class="btn" id="btnMediaLen" title="Scene runs for the length of the media">Scene = media length</button>':''}</div>
     <div class="note">${cues.length?`${cues.length} cues (blue lines on the timeline)${T.sync?' — reveals snap to them':''}.`:'No cues yet.'} ${m&&m.kind==='video'?'':''}</div>`;
@@ -3096,6 +3140,10 @@ function renderMedia(){
   const ba=box.querySelector('#btnReadAE'); if(ba) ba.onclick=()=>readAEComp(confirm('Also analyse the beat of the first audio layer? (Adds a temporary keyframe layer, then removes it.)'));
   const bl=box.querySelector('#btnMediaLen'); if(bl) bl.onclick=()=>{pushHist();D.anim.lenF=Math.max(2,Math.round(D.timing.media.dur*fps)-Math.max(0,D.anim.startF)+(+D.timing.offset||0));D.anim.toEnd=false;syncInputs(true);refresh();};
   const bc=box.querySelector('#btnClearCues'); if(bc) bc.onclick=()=>{pushHist();D.timing.beats=[];D.timing.markers=[];renderMedia();refresh();toast('Cues cleared','Find beats, tap B while playing, or double-click the Cues row to add new ones',true);};
+  const bIn=box.querySelector('#bInAt'), bOut=box.querySelector('#bOutAt'), bWO=box.querySelector('#bWalkOff');
+  if(bIn) bIn.onchange=()=>{ pushHist(true); D.timing.inAt=bIn.value===''?null:Math.round(+bIn.value); planCache.k=''; refresh(); renderMedia(); };
+  if(bOut) bOut.onchange=()=>{ pushHist(true); D.timing.outAt=bOut.value===''?null:Math.round(+bOut.value); planCache.k=''; refresh(); renderMedia(); };
+  if(bWO) bWO.onchange=()=>{ pushHist(true); if(bWO.checked){ D.exit.on=true; D.exit.mode='walk'; } else D.exit.on=false; planCache.k=''; syncInputs(true); refresh(); renderMedia(); };
   const bf=box.querySelector('#btnFindBeats'); if(bf) bf.onclick=()=>{ reBeat(); toast(`${(D.timing.beats||[]).length} beats found`); };
   const bad=box.querySelector('#btnAddCue'); if(bad) bad.onclick=()=>{ if(cueAdd(U.t==null?0:U.t)){ renderMedia(); refresh(); } };
   syncInputs(true);
@@ -3220,6 +3268,9 @@ function drawDope(){
       item({type:'point',x,y:yc,cur:'ew-resize',tip:`${k==='markers'?'marker':'beat'} cue · f${f}${onBeat?' · a block lands here':''} — drag to move · ⌥-click removes · double-click the row to add one`,
         drag:(fx)=>{ const L=(D.timing[k]||[]).slice(); L[j]=Math.round(F(fx))-off; D.timing[k]=L; planCache.k=''; },
         alt:()=>{ pushHist(true); const L=(D.timing[k]||[]).slice(); L.splice(j,1); D.timing[k]=L; planCache.k=''; renderMedia(); refresh(); } }); }));
+    if(P.beat){ const flag=(f,col,lab,key)=>{ if(f==null) return; const x=X(f); g.fillStyle=col; g.fillRect(x-1,RCu.y0+2,2,RCu.h-4); g.beginPath(); g.moveTo(x,RCu.y0+2); g.lineTo(x+9,RCu.y0+6); g.lineTo(x,RCu.y0+10); g.closePath(); g.fill(); g.font='600 9px sans-serif'; g.fillText(lab,x+11,RCu.y0+9);
+        item({type:'point',x:x+4,y:RCu.y0+6,cur:'ew-resize',tip:`${lab} · f${f} — drag to move · ⌥-click = automatic`,drag:fx=>{ D.timing[key]=Math.round(F(fx)); planCache.k=''; },alt:()=>{ pushHist(true); D.timing[key]=null; planCache.k=''; renderMedia(); refresh(); }}); };
+      flag(P.beat.inAt,'#7CF2C0','walk on','inAt'); if(P.beat.outAt!=null) flag(P.beat.outAt,'#F5A524','walk off','outAt'); }
     if(!(T.beats||[]).length&&!(T.markers||[]).length){ g.fillStyle='#686871'; g.font='11px sans-serif'; g.fillText('no cues — double-click here (or press B while playing) to add one',LW+8,yc+4); }
     item({type:'row',row:RCu,x0:LW,x1:r.width,y0:RCu.y0,y1:RCu.y1,cur:'copy',tip:'Cues — double-click to add a cue · click for sound settings'}); }
   const RS=TL.rows.find(R=>R.k==='sound');
@@ -3231,6 +3282,7 @@ function drawDope(){
     const s0=P.startF, s1=P.startF+P.R, yb=RSc.y0+6, hb=RSc.h-12, rem=!!P.remapped;
     g.fillStyle='rgba(230,33,47,.18)'; g.fillRect(X(s0),yb,X(s1)-X(s0),hb); g.strokeStyle='rgba(230,33,47,.8)'; g.lineWidth=1; g.strokeRect(X(s0)+.5,yb+.5,X(s1)-X(s0)-1,hb-1);
     const sp=P.C/Math.max(1,P.R);
+    if(beatMode()) label('Retime off — synced to the beat (Sync to sound)',X(s0)+6,yb+hb-6,'#7CF2C0');
     if(X(s1)-X(s0)>60) label(`Scene ${(P.R/fps).toFixed(2)}s${Math.abs(sp-1)>.02?` · plays the ${(P.C/fps).toFixed(1)}s of blocks at ×${sp.toFixed(2)}`:''}`,X(s0)+6,yb+10,'#ffd5d3');
     // curve: x = scene time, y = how far through the blocks' timeline
     const cy0=yb+hb-3, ch=hb-18, cxp=u=>X(s0+(s1-s0)*u), cyp=v=>cy0-ch*v;
@@ -4798,7 +4850,7 @@ function onChange(path){
   if(path==='bmedia.kind') D.bmedia.asset=mKindAsset(D.bmedia.kind,D.bmedia.asset);
   if(path.indexOf('bmedia.')===0) setTimeout(()=>{try{renderMediaUI();}catch(e){}},0);
   if(path==='timing.sens'||path==='timing.minGap') reBeat();
-  if(path==='timing.use'||path==='timing.offset') {planCache.k='';renderMedia();}
+  if(path==='timing.use'||path==='timing.offset'||path==='timing.sync'||path==='timing.syncOut'||path==='timing.camMove') {planCache.k='';setTimeout(()=>{try{renderMedia();}catch(e){}},0);}
   if(path==='anim.zoomOn'){planCache.k='';$('#zoomList').innerHTML='';}
   if(path==='anim.mode'||path==='anim.order'){reorder();}
   if(path==='anim.order'&&D.anim.order==='manual'){U.t=null;stopPlay();U.tool='order';fitView('all');toast('Manual order: the whole grid is shown. Click blocks in the order they should appear.');}

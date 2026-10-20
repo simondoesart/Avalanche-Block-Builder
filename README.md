@@ -443,3 +443,8 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - Fix: "Scene = media length" with lots of beats could crash the end-row re-route (a line too short to re-route) — repeated errors on every redraw.
 - The error box no longer grows forever: repeated errors are counted (×20), and it has **Undo last change**, **Snapshots…** and ✕ (or Esc) to close it.
 - **Snapshots**: a timestamped autosave of your scene every couple of minutes while you work, plus one every time you build in After Effects or export a .jsx (and one before restoring). Layouts › Snapshots lists the last 20 — click Restore (⌘Z undoes the restore). Stored with your layouts (AE: on this computer; web: this browser).
+
+### v3.59 — Beat mode (Sync to sound reworked)
+- With **Snap block reveals to the cues** on, the panel switches to **beat mode**: the scene retime is switched off (the music sets the timing), and there is **one block per cue** by default — every cue gets a block.
+- **Walk on from** (frame; blank = first cue) and **Walk off at** (blank = ~¾ through the cues): the line starts walking on with the beat from the first, and walks off from the second. **Walk off at the end** toggles the walk-off; **The walk-off follows the beat** (on by default) puts each walk-off block on a cue too — off, it walks off at its own pace. Green ▶ walk on / orange ▶ walk off flags on the Cues row are draggable (⌥-click = automatic).
+- **Camera on the beat**: on every cue the camera has the new block exactly at the reveal line (your camera position; the last block still settles where "Last block ends up" says). Between beats: **Glide** (smooth through every block) or **Hit each beat** (eases into each one).
