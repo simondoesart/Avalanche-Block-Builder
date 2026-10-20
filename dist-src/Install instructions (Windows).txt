@@ -1,0 +1,50 @@
+GRID BLOCKS - INSTALL ON WINDOWS
+After Effects 2022 (v22) or newer
+
+1. UNZIP
+   Right-click the zip > Extract All... > Extract.
+   (Don't run anything from inside the zip.)
+
+2. CLOSE AFTER EFFECTS
+   If it's open, quit it.
+
+3. RUN THE INSTALLER
+   In the extracted GridBlocks-AE-Windows folder, double-click
+   "Install on Windows.bat".
+   - If Windows SmartScreen warns you: More info > Run anyway.
+   - A black window opens, installs everything and ends with
+     "Installed to: ...". Press any key to close it.
+   - No admin rights needed.
+
+4. OPEN THE PANEL
+   Start After Effects > Window > Extensions > Grid Blocks.
+
+SAMPLE SCENES
+   In the panel: Layouts > Sample workflows > Load.
+   The .json files in this folder are the same scenes
+   (Layouts > Open from file...).
+
+TROUBLESHOOTING
+   - Grid Blocks isn't in the Extensions menu:
+     run the installer again, then fully restart After Effects.
+   - The panel opens black:
+     try Window > Extensions > Grid Blocks (safe mode).
+   - Text uses the wrong font:
+     check the fonts in the Fonts folder installed. If not, right-click
+     them > Install, then restart After Effects.
+   - Installer blocked by antivirus:
+     Settings > Privacy & security > Windows Security >
+     Virus & threat protection > Protection history > allow it.
+
+UPDATING
+   Extract the new zip and run the installer again - it replaces the
+   old version.
+
+MANUAL INSTALL (without the installer)
+   1. Copy the GridBlocks folder to:
+        %APPDATA%\Adobe\CEP\extensions\
+      (paste that path into the File Explorer address bar)
+   2. Open Command Prompt and run:
+        reg add "HKCU\Software\Adobe\CSXS.11" /v PlayerDebugMode /t REG_SZ /d 1 /f
+        reg add "HKCU\Software\Adobe\CSXS.12" /v PlayerDebugMode /t REG_SZ /d 1 /f
+   3. Restart After Effects.

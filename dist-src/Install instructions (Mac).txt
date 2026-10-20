@@ -1,0 +1,45 @@
+GRID BLOCKS - INSTALL ON MAC
+After Effects 2022 (v22) or newer
+
+1. UNZIP
+   Double-click the zip (Safari may have done this already).
+
+2. QUIT AFTER EFFECTS
+   If it's open, quit it (Cmd+Q).
+
+3. RUN THE INSTALLER
+   In the GridBlocks-AE-Mac folder, double-click "Install on Mac.command".
+   - If macOS says it can't be opened: right-click it > Open > Open.
+     (Or System Settings > Privacy & Security > "Open Anyway".)
+   - A Terminal window opens, installs everything and ends with
+     "Installed to: ...". You can close it.
+   - No admin password needed.
+
+4. OPEN THE PANEL
+   Start After Effects > Window > Extensions > Grid Blocks.
+
+SAMPLE SCENES
+   In the panel: Layouts > Sample workflows > Load.
+   The .json files in this folder are the same scenes
+   (Layouts > Open from file...).
+
+TROUBLESHOOTING
+   - Grid Blocks isn't in the Extensions menu:
+     run the installer again, then fully quit and reopen After Effects.
+   - The panel opens black:
+     try Window > Extensions > Grid Blocks (safe mode).
+   - Text uses the wrong font:
+     check the fonts in the Fonts folder installed (Font Book). If not,
+     double-click each > Install, then restart After Effects.
+
+UPDATING
+   Unzip the new version and run the installer again - it replaces the
+   old version.
+
+MANUAL INSTALL (without the installer)
+   1. Copy the GridBlocks folder to:
+        ~/Library/Application Support/Adobe/CEP/extensions/
+      (Finder > Go > Go to Folder..., paste that path)
+   2. In Terminal, run:
+        for v in 11 12 13; do defaults write com.adobe.CSXS.$v PlayerDebugMode 1; done
+   3. Restart After Effects.
