@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ExtensionManifest Version="7.0" ExtensionBundleId="com.avalabs.gridblocks" ExtensionBundleVersion="3.58.0" ExtensionBundleName="Grid Blocks" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<ExtensionManifest Version="7.0" ExtensionBundleId="com.avalabs.gridblocks" ExtensionBundleVersion="3.58.1" ExtensionBundleName="Grid Blocks" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <ExtensionList>
-    <Extension Id="com.avalabs.gridblocks.panel" Version="3.58.0"/>
-    <Extension Id="com.avalabs.gridblocks.safe" Version="3.58.0"/>
+    <Extension Id="com.avalabs.gridblocks.panel" Version="3.58.1"/>
+    <Extension Id="com.avalabs.gridblocks.safe" Version="3.58.1"/>
   </ExtensionList>
   <ExecutionEnvironment>
     <HostList>
@@ -16,7 +16,6 @@
       <DispatchInfo>
         <Resources>
           <MainPath>./index.html</MainPath>
-          <CEFCommandLine><Parameter>--allow-file-access-from-files</Parameter><Parameter>--allow-file-access</Parameter><Parameter>--autoplay-policy=no-user-gesture-required</Parameter></CEFCommandLine>
         </Resources>
         <Lifecycle><AutoVisible>true</AutoVisible></Lifecycle>
         <UI>
