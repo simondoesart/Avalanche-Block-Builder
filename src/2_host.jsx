@@ -416,6 +416,8 @@ function GB_fillText(comp,it){
   GB_xf(T).property("ADBE Anchor Point").setValue([it.align=="r"?r.left+r.width:r.left, r.top]);
   GB_xf(T).property("ADBE Position").setValue([it.x,it.y]);
   if(it.expr){try{p.expression=it.expr;}catch(eX){}}
+  if(it.tk&&it.tk.length){ try{ var tms=[], tds=[], q; for(q=0;q<it.tk.length;q++){ var d2=p.value; d2.text=it.tk[q][1]; tms.push(it.tk[q][0]); tds.push(d2); }
+      try{ p.setValuesAtTimes(tms,tds); }catch(eV){ for(q=0;q<tms.length;q++) p.setValueAtTime(tms[q],tds[q]); } }catch(eTk){} }
   T.name=(it.text.split("\r")[0]).substr(0,28);
   T.comment="GridBlocks:fill"; T.label=11;
   if(it.t0>0) T.inPoint=it.t0;
@@ -605,17 +607,25 @@ function GB_shape(comp,it){
       else{var sh=new Shape(), vv=[], tz=[]; for(k=0;k<q.pts.length;k++){vv.push([q.pts[k][0]-ox,q.pts[k][1]-oy]);tz.push([0,0]);}
         sh.vertices=vv; sh.inTangents=tz; sh.outTangents=tz; sh.closed=!!q.closed;
         var pg=C().addProperty("ADBE Vector Shape - Group"); pg.property("ADBE Vector Shape").setValue(sh);
-        if(gp.px&&j==0){try{C().property(C().numProperties).property("ADBE Vector Shape").expression=gp.px;}catch(eP){}}}
+        if(gp.px&&j==0){try{C().property(C().numProperties).property("ADBE Vector Shape").expression=gp.px;}catch(eP){}}
+        if(gp.pk&&j==0){try{ var pp=C().property(C().numProperties).property("ADBE Vector Shape"), tms=[], shs=[], m, n2;
+          for(m=0;m<gp.pk.length;m++){ var s2=new Shape(), v2=[], t2=[]; for(n2=0;n2<gp.pk[m][1].length;n2++){ v2.push([gp.pk[m][1][n2][0]-ox,gp.pk[m][1][n2][1]-oy]); t2.push([0,0]); }
+            s2.vertices=v2; s2.inTangents=t2; s2.outTangents=t2; s2.closed=!!gp.pkc; tms.push(gp.pk[m][0]); shs.push(s2); }
+          pp.setValuesAtTimes(tms,shs); for(m=1;m<=pp.numKeys;m++){ try{pp.setInterpolationTypeAtKey(m,KeyframeInterpolationType.HOLD,KeyframeInterpolationType.HOLD);}catch(eH){} }
+        }catch(eK){}}}
     }
     if(gp.f){var fl=C().addProperty("ADBE Vector Graphic - Fill"); fl.property("ADBE Vector Fill Color").setValue(it.color);}
     else{var st=C().addProperty("ADBE Vector Graphic - Stroke"); st.property("ADBE Vector Stroke Color").setValue(it.color); st.property("ADBE Vector Stroke Width").setValue(gp.sw);
       try{st.property("ADBE Vector Stroke Line Cap").setValue(1);st.property("ADBE Vector Stroke Line Join").setValue(1);}catch(eC){}}
     if(gp.tx){try{var tr=C().addProperty("ADBE Vector Filter - Trim"); tr.property("ADBE Vector Trim End").expression=gp.tx;}catch(eT){}}
+    if(gp.txk){try{var tr2=C().addProperty("ADBE Vector Filter - Trim"); GB_keys(tr2.property("ADBE Vector Trim End"),gp.txk,GB_FPS);}catch(eT2){}}
     var tf=G().property("ADBE Vector Transform Group");
     if(gp.grow){tf.property("ADBE Vector Position").setValue([ox,oy]);}
     if(gp.o<100) tf.property("ADBE Vector Group Opacity").setValue(gp.o);
     if(gp.ox){try{G().property("ADBE Vector Transform Group").property("ADBE Vector Group Opacity").expression=gp.ox;}catch(eO){}}
     if(gp.gx){try{G().property("ADBE Vector Transform Group").property("ADBE Vector Scale").expression=gp.gx;}catch(eS){}}
+    if(gp.oxk){try{GB_keys(G().property("ADBE Vector Transform Group").property("ADBE Vector Group Opacity"),gp.oxk,GB_FPS);}catch(eO2){}}
+    if(gp.gxk){try{GB_keys(G().property("ADBE Vector Transform Group").property("ADBE Vector Scale"),gp.gxk,GB_FPS);}catch(eS2){}}
   }
   GB_xf(L).property("ADBE Anchor Point").setValue([0,0]);
   GB_xf(L).property("ADBE Position").setValue([0,0]);
@@ -639,6 +649,7 @@ function GB_fillItems(comp,items,parent,list){
     if(L){
       if(GB_TRIM&&it.t0>0){ try{ if(it.t0<L.outPoint) L.inPoint=it.t0; }catch(eTi){} }
       if(it.opx){try{GB_xf(L).property("ADBE Opacity").expression=it.opx;}catch(eO){}}
+      if(it.ok&&it.ok.length){try{GB_keys(GB_xf(L).property("ADBE Opacity"),it.ok,GB_FPS);}catch(eOk){}}
       if(parent){ L.parent=parent; L.name=parent.name+" · "+L.name; }
       list.push(L);
     }
@@ -727,7 +738,7 @@ function GB_mediaMattes(list){
     try{ var dup=B.duplicate(); dup.name=B.name+" · Media Matte"; dup.moveBefore(L); L.trackMatteType=TrackMatteType.ALPHA; }catch(e){} }
 }
 /* ---------- timeline tidiness: section dividers (disabled, locked nulls) ---------- */
-var GB_TRIM=false;
+var GB_TRIM=false, GB_FPS=30;
 function GB_header(comp,title,folder){
   var h=comp.layers.addNull(); h.name="\u2501\u2501\u2501  "+title+"  \u2501\u2501\u2501"; h.comment="GridBlocks:header"; h.label=0;
   try{h.enabled=false;}catch(e1){} try{h.guideLayer=true;}catch(e2){}
@@ -842,7 +853,7 @@ function GB_build(d){
       blockPre.layer.name="GB · Blocks"; blockC=blockPre.comp; comps.push(blockC);
     }
     var camRefB=blockC===main?camRefMain:camRefPre;
-    var blocks=[], fillLayers=[], blockLayers=[], mediaL=[]; GB_mediaItems={}; GB_TRIM=!!org.trim;
+    var blocks=[], fillLayers=[], blockLayers=[], mediaL=[]; GB_mediaItems={}; GB_TRIM=!!org.trim; GB_FPS=fps;
 
     function trimTo(Lr,t){ if(org.trim&&t>0){try{Lr.inPoint=Math.min(main.duration-1/fps,t/fps);}catch(eT){}} }
     function trimOut(Lr,t){ if(org.trim&&t!=null&&t/fps<main.duration){try{if(t/fps>Lr.inPoint)Lr.outPoint=t/fps;}catch(eT2){}} }
@@ -1027,6 +1038,7 @@ function GB_build(d){
           var mL=comps[c].layer(k2);
           if(String(mL.comment).indexOf("GridBlocks")!==0) continue;
           if(String(mL.comment)=="GridBlocks:bg") continue;
+          if(/^GridBlocks:(fill|num|text|header|media)/.test(String(mL.comment))) continue;   // content rides on its block: blurring hundreds of text layers is very slow for little gain
           try{ if(!(mL instanceof CameraLayer) && !mL.nullLayer) mL.motionBlur=true; }catch(eMB2){}
         }
       }
