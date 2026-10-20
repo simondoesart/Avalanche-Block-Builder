@@ -421,3 +421,9 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.56 — Use the comp's audio (After Effects)
 - Timing › Sync to sound › **Sound: Loaded file / This comp's audio** (in the AE panel). "This comp's audio" reads the audio layer that's already in your active comp (its source file, read directly from disk), lines it up with where the layer starts, plays it with the preview and finds its beats. Several audio layers → you choose one. It re-loads automatically next time the panel opens. Audio that lives inside a precomp falls back to "Use the AE timeline" analysis (no playback).
 - Manifest: CEF file-access flags so the panel can read local media.
+
+### v3.57 — Z depth
+- Motion › **Z depth** (under Blocks in & out; off by default). When on, every block (and its echo, text, content and media) shares one depth along the camera axis — 0 = on the grid, negative = closer to the camera, positive = further away — while the grid stays put.
+- A **Z depth** row on the timeline (and a "Depth over time" graph) with the same points + handles as Zoom: drag, double-click to add, ⌥-click linear/eased, ⇧⌥-click remove, linked handles / ⌥-drag split / ⇧ flat. Quick moves: Come forward, Push back, Lift on hold, Flat.
+- Preview: true perspective (matches After Effects' default 50 mm camera), including parallax against the grid as the camera moves.
+- After Effects: camera rig → a 3D "GB · Block Depth" null with Z position keyframes parents the blocks; 2D null rig → the same null scales the blocks about the centre (fake depth).

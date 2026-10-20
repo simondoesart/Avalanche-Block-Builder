@@ -750,6 +750,30 @@ function GB_mediaMattes(list){
   for(var i=0;i<list.length;i++){ var L=list[i].L, B=list[i].B; if(!L||list[i].ok) continue;
     try{ var dup=B.duplicate(); dup.name=B.name+" · Media Matte"; dup.moveBefore(L); L.trackMatteType=TrackMatteType.ALPHA; }catch(e){} }
 }
+/* Z depth: one null moves every block (and echo) along the camera axis; the grid stays at 0 */
+function GB_depth3D(comp,layers,keys,fps){
+  if(!keys||!keys.length||!layers.length) return null;
+  var dn=GB_null(comp,"GB · Block Depth",true); dn.comment="GridBlocks:null"; dn.label=9;
+  var par=null, i; for(i=0;i<layers.length;i++){ if(layers[i].parent){ par=layers[i].parent; break; } }
+  if(par){ try{ dn.parent=par; }catch(e0){} }
+  for(i=0;i<layers.length;i++){ try{ layers[i].parent=dn; }catch(e1){} }
+  var zk=[]; for(i=0;i<keys.length;i++) zk.push([keys[i][0],[0,0,keys[i][1]],keys[i][2],keys[i][3]]);
+  GB_keys(GB_xf(dn).property("ADBE Position"),zk,fps);
+  return dn;
+}
+function GB_depth2D(main,layers,keys,fps,cam,zoom,zoomK){
+  if(!keys||!keys.length||!layers.length) return null;
+  var W=main.width, H=main.height, Zc=zoomK*W, i;
+  var dn=GB_null(main,"GB · Block Depth"); dn.comment="GridBlocks:null"; dn.label=9;
+  GB_xf(dn).property("ADBE Anchor Point").setValue([W/2,H/2]); GB_xf(dn).property("ADBE Position").setValue([W/2,H/2]);
+  if(zoom){ try{ dn.parent=zoom; }catch(e0){} }
+  var hold=null;
+  if(cam){ hold=cam.duplicate(); hold.name="GB · Camera (blocks)"; hold.comment="GridBlocks:null"; try{ hold.parent=dn; }catch(e1){} }
+  for(i=0;i<layers.length;i++){ try{ layers[i].parent=hold||dn; }catch(e2){} }
+  var sk=[]; for(i=0;i<keys.length;i++){ var k=100*Zc/Math.max(50,Zc+keys[i][1]); sk.push([keys[i][0],[k,k],keys[i][2],keys[i][3]]); }
+  GB_keys(GB_xf(dn).property("ADBE Scale"),sk,fps);
+  return dn;
+}
 /* ---------- timeline tidiness: section dividers (disabled, locked nulls) ---------- */
 var GB_TRIM=false, GB_FPS=30;
 function GB_header(comp,title,folder){
@@ -957,6 +981,8 @@ function GB_build(d){
           locks.push(wrap);
         }
         GB_blockKeys(blocks,fps);
+        if(d.depth&&d.depth.keys){ var dl3=[]; for(i=0;i<nEcho;i++) dl3.push(blocks[i].L); for(i=0;i<blockLayers.length;i++) dl3.push(blockLayers[i]);
+          var dn3=GB_depth3D(blockC,dl3,d.depth.keys,fps); if(dn3){ shy.push(dn3); out.push("block depth"); } }
         var hasX=A.camX&&A.camX.length, hasY=A.camY&&A.camY.length, hasZ=A.zoomPct&&A.zoomPct.length;
         if(hasX||hasY||hasZ){
           cp.dimensionsSeparated=true;
@@ -1023,6 +1049,8 @@ function GB_build(d){
       }
       GB_blockKeys(blocks,fps);
       if(cam) GB_keys(GB_xf(cam).property("ADBE Position"),A.cam,fps);
+      if(d.depth&&d.depth.keys){ var dl2=[]; for(i=0;i<nEcho;i++) dl2.push(blocks[i].L); for(i=0;i<blockLayers.length;i++) dl2.push(blockLayers[i]);
+        var dn2=GB_depth2D(main,dl2,d.depth.keys,fps,cam,zoom,d.depth.zoomK||1.3889); if(dn2){ shy.push(dn2); out.push("block depth (2D scale)"); } }
       if(zoom) GB_keys(GB_xf(zoom).property("ADBE Scale"),A.zoom.keys,fps);
       /* zoom keeps gaps and text the same size on screen: blocks grow into their gaps, text scales back down */
       if(zoom&&A.zoom.keep){
