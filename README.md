@@ -438,3 +438,8 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 - Removed the CEF command-line flags added in v3.56 (they can stop the panel rendering in some After Effects versions; reading the comp's audio doesn't need them).
 - The panel script now starts after the loading screen has painted, and the loading screen steps through what it's doing — so a stuck start shows where it stopped instead of a black panel. Safe mode shows a visible page (with the panel's Chrome version) for a moment before starting.
 - install.command no longer copies the download zips into the extension.
+
+### v3.58.2 — Error box you can close, undo, and timestamped snapshots
+- Fix: "Scene = media length" with lots of beats could crash the end-row re-route (a line too short to re-route) — repeated errors on every redraw.
+- The error box no longer grows forever: repeated errors are counted (×20), and it has **Undo last change**, **Snapshots…** and ✕ (or Esc) to close it.
+- **Snapshots**: a timestamped autosave of your scene every couple of minutes while you work, plus one every time you build in After Effects or export a .jsx (and one before restoring). Layouts › Snapshots lists the last 20 — click Restore (⌘Z undoes the restore). Stored with your layouts (AE: on this computer; web: this browser).

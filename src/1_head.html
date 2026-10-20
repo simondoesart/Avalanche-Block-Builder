@@ -7,13 +7,26 @@
 <script>
 /* startup reporter: if anything fails while loading, show it in the panel instead of a blank screen */
 (function(){
+  /* errors: one box, the same message counted instead of repeated; ✕ / Esc closes it; Undo and Snapshots to get back */
+  var seen={}, order=[];
   function show(msg){
+    msg=String(msg);
     var d=document.getElementById('gbBootErr');
-    if(!d){d=document.createElement('pre');d.id='gbBootErr';
-      d.style.cssText='position:fixed;left:10px;right:10px;bottom:10px;z-index:99999;max-height:45%;overflow:auto;margin:0;padding:10px 12px;background:#3D000A;color:#FEAFAC;border:1px solid #E6212F;border-radius:6px;font:12px/1.45 Menlo,monospace;white-space:pre-wrap;-webkit-user-select:text;user-select:text';
+    if(!d){d=document.createElement('div');d.id='gbBootErr';
+      d.style.cssText='position:fixed;left:10px;right:10px;bottom:10px;z-index:99999;max-height:40%;display:flex;flex-direction:column;background:#3D000A;color:#FEAFAC;border:1px solid #E6212F;border-radius:6px;font:12px/1.45 Menlo,monospace';
+      d.innerHTML='<div style="display:flex;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px solid rgba(230,33,47,.5);font-family:-apple-system,Segoe UI,sans-serif"><b style="flex:1">Grid Blocks hit an error</b>'+
+        '<button data-e="undo" style="background:#E6212F;color:#fff;border:0;border-radius:4px;padding:3px 8px;cursor:pointer">Undo last change</button>'+
+        '<button data-e="snap" style="background:#5a1020;color:#fff;border:0;border-radius:4px;padding:3px 8px;cursor:pointer">Snapshots…</button>'+
+        '<button data-e="close" title="Close (Esc)" style="background:transparent;color:#FEAFAC;border:0;font-size:16px;cursor:pointer">✕</button></div><pre style="margin:0;padding:8px 12px;overflow:auto;white-space:pre-wrap"></pre>';
+      d.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-e]'); if(!b) return; var k=b.getAttribute('data-e');
+        if(k==='close') hide(); else if(k==='undo'){ try{ window.__gbUndo&&window.__gbUndo(); }catch(x){} hide(); } else if(k==='snap'){ try{ window.__gbSnapshots&&window.__gbSnapshots(); }catch(x){} hide(); } });
       (document.body||document.documentElement).appendChild(d);}
-    d.textContent+=(d.textContent?'\n':'')+'Grid Blocks error: '+msg;
+    d.style.display='flex';
+    if(seen[msg]) seen[msg]++; else { seen[msg]=1; order.push(msg); if(order.length>12){ delete seen[order.shift()]; } }
+    d.querySelector('pre').textContent=order.map(function(m){ return (seen[m]>1?'×'+seen[m]+'  ':'')+m; }).join('\n');
   }
+  function hide(){ var d=document.getElementById('gbBootErr'); if(d) d.style.display='none'; seen={}; order=[]; }
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ var d=document.getElementById('gbBootErr'); if(d&&d.style.display!=='none'){ hide(); e.stopPropagation(); } } },true);
   window.__gbShowErr=show;
   window.__gbPhase=function(t){var e=document.getElementById('gbBootPhase');if(e)e.textContent=t;};
   setTimeout(function(){var b=document.getElementById('gbBoot');if(b&&b.parentNode)show('still loading after 12s — last step: '+((document.getElementById('gbBootPhase')||{}).textContent||'?')+'. Chrome '+((navigator.userAgent.match(/Chrome\/[\d.]+/)||['?'])[0]));},12000);
