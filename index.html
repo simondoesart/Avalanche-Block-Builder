@@ -1281,6 +1281,17 @@ body.nohelp .qm{display:none}
             </div>
             </div></details>
           </div>
+          <div class="group" data-ctx="zdepth" data-show="anim.mode=reveal|camera|push">
+            <div class="group-h">Z depth<label class="switch hswitch" title="Give the blocks depth: move them all closer to the camera or further away"><input type="checkbox" data-bind="anim.zd.on"><span></span></label></div>
+            <div class="note" data-show="anim.zd.on=false">Off. Turn it on to move every block closer to the camera or further away over time (the grid stays where it is). It shows as a Z depth row on the timeline.</div>
+            <div data-show="anim.zd.on=true" style="display:grid;gap:9px">
+              <div class="note">All blocks share one depth. Points on the <b>Z depth</b> row (or the graph): drag them, double-click to add one, ⌥-click to switch linear / eased, ⇧⌥-click to remove. Up = further away, down = closer.</div>
+              <div class="zgraph"><div class="zg-h"><span class="lbl">Depth over time</span><span class="zg-hint">0 = on the grid · − closer · + further</span></div><canvas id="zdGraph" class="tgraph" data-track="zd"></canvas><div class="cv-val"></div>
+                <div class="seg"><button data-trkall="zd:ease">All eased</button><button data-trkall="zd:lin">All linear</button></div></div>
+              <div class="field stack"><span class="lbl">Quick moves</span><div class="seg"><button data-zdpre="in" title="Blocks start further away and come forward to the grid">Come forward</button><button data-zdpre="out" title="Blocks drift back, away from the camera">Push back</button><button data-zdpre="pop" title="Blocks lift towards the camera during the hold, then settle">Lift on hold</button><button data-zdpre="flat" title="Back to the grid (0)">Flat</button></div></div>
+              <div class="note" data-show="out.rig=null">The 2D null rig fakes depth with scale. Use the After Effects camera rig (Build) for true 3D depth.</div>
+            </div>
+          </div>
           <div class="group" data-ctx="zoom" data-show="anim.mode=reveal|camera|push">
             <div class="group-h">Zoom<label class="switch hswitch" title="Zoom the view in or out"><input type="checkbox" data-bind="anim.zoomOn"><span></span></label></div>
             <div class="note" data-show="anim.zoomOn=false">Zoom the view in or out between two frames, with its own easing. It shows as a row on the timeline.</div>
@@ -2298,6 +2309,30 @@ function GB_mediaMattes(list){
   for(var i=0;i<list.length;i++){ var L=list[i].L, B=list[i].B; if(!L||list[i].ok) continue;
     try{ var dup=B.duplicate(); dup.name=B.name+" · Media Matte"; dup.moveBefore(L); L.trackMatteType=TrackMatteType.ALPHA; }catch(e){} }
 }
+/* Z depth: one null moves every block (and echo) along the camera axis; the grid stays at 0 */
+function GB_depth3D(comp,layers,keys,fps){
+  if(!keys||!keys.length||!layers.length) return null;
+  var dn=GB_null(comp,"GB · Block Depth",true); dn.comment="GridBlocks:null"; dn.label=9;
+  var par=null, i; for(i=0;i<layers.length;i++){ if(layers[i].parent){ par=layers[i].parent; break; } }
+  if(par){ try{ dn.parent=par; }catch(e0){} }
+  for(i=0;i<layers.length;i++){ try{ layers[i].parent=dn; }catch(e1){} }
+  var zk=[]; for(i=0;i<keys.length;i++) zk.push([keys[i][0],[0,0,keys[i][1]],keys[i][2],keys[i][3]]);
+  GB_keys(GB_xf(dn).property("ADBE Position"),zk,fps);
+  return dn;
+}
+function GB_depth2D(main,layers,keys,fps,cam,zoom,zoomK){
+  if(!keys||!keys.length||!layers.length) return null;
+  var W=main.width, H=main.height, Zc=zoomK*W, i;
+  var dn=GB_null(main,"GB · Block Depth"); dn.comment="GridBlocks:null"; dn.label=9;
+  GB_xf(dn).property("ADBE Anchor Point").setValue([W/2,H/2]); GB_xf(dn).property("ADBE Position").setValue([W/2,H/2]);
+  if(zoom){ try{ dn.parent=zoom; }catch(e0){} }
+  var hold=null;
+  if(cam){ hold=cam.duplicate(); hold.name="GB · Camera (blocks)"; hold.comment="GridBlocks:null"; try{ hold.parent=dn; }catch(e1){} }
+  for(i=0;i<layers.length;i++){ try{ layers[i].parent=hold||dn; }catch(e2){} }
+  var sk=[]; for(i=0;i<keys.length;i++){ var k=100*Zc/Math.max(50,Zc+keys[i][1]); sk.push([keys[i][0],[k,k],keys[i][2],keys[i][3]]); }
+  GB_keys(GB_xf(dn).property("ADBE Scale"),sk,fps);
+  return dn;
+}
 /* ---------- timeline tidiness: section dividers (disabled, locked nulls) ---------- */
 var GB_TRIM=false, GB_FPS=30;
 function GB_header(comp,title,folder){
@@ -2505,6 +2540,8 @@ function GB_build(d){
           locks.push(wrap);
         }
         GB_blockKeys(blocks,fps);
+        if(d.depth&&d.depth.keys){ var dl3=[]; for(i=0;i<nEcho;i++) dl3.push(blocks[i].L); for(i=0;i<blockLayers.length;i++) dl3.push(blockLayers[i]);
+          var dn3=GB_depth3D(blockC,dl3,d.depth.keys,fps); if(dn3){ shy.push(dn3); out.push("block depth"); } }
         var hasX=A.camX&&A.camX.length, hasY=A.camY&&A.camY.length, hasZ=A.zoomPct&&A.zoomPct.length;
         if(hasX||hasY||hasZ){
           cp.dimensionsSeparated=true;
@@ -2571,6 +2608,8 @@ function GB_build(d){
       }
       GB_blockKeys(blocks,fps);
       if(cam) GB_keys(GB_xf(cam).property("ADBE Position"),A.cam,fps);
+      if(d.depth&&d.depth.keys){ var dl2=[]; for(i=0;i<nEcho;i++) dl2.push(blocks[i].L); for(i=0;i<blockLayers.length;i++) dl2.push(blockLayers[i]);
+        var dn2=GB_depth2D(main,dl2,d.depth.keys,fps,cam,zoom,d.depth.zoomK||1.3889); if(dn2){ shy.push(dn2); out.push("block depth (2D scale)"); } }
       if(zoom) GB_keys(GB_xf(zoom).property("ADBE Scale"),A.zoom.keys,fps);
       /* zoom keeps gaps and text the same size on screen: blocks grow into their gaps, text scales back down */
       if(zoom&&A.zoom.keep){
@@ -2707,7 +2746,7 @@ const DEF={
   anim:{seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:true,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,rzOn:false,rzPts:null,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.42,0,0.58,1],curvePh:null,sceneEase:{on:true,hd:null,holdH:null,onAt:null,holdAt:null,start:40,land:75,landOut:50,leaveIn:50,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
-        zoomOn:false,zm:{pts:null,focus:'follow',ax:50,ay:50,in:24,out:96,from:100,to:140,curve:[0.65,0,0.35,1],scaleAll:false,followRemap:true,back:false,backIn:180,backOut:228,backCurve:[0.65,0,0.35,1]},extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
+        zd:{on:false,pts:null},zoomOn:false,zm:{pts:null,focus:'follow',ax:50,ay:50,in:24,out:96,from:100,to:140,curve:[0.65,0,0.35,1],scaleAll:false,followRemap:true,back:false,backIn:180,backOut:228,backCurve:[0.65,0,0.35,1]},extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
   lab:{flicker:{on:false,frames:8,seed:3},
        pulse:{on:false,scale:1.35,len:18,width:2,color:'#E6212F'},
        trail:{on:false,count:3,length:1.2,len:12,width:2,color:'#A2AFB2'},
@@ -2759,6 +2798,7 @@ const RAIL_ICON={
 /* contexts: what the properties panel shows when you click a timeline row */
 const CTX={
   scene:{t:'Scene · time remap',e:'Timeline · Scene',d:'A layer over the blocks: its length is the scene, and its curve speeds up or slows down the whole block timeline (In · Hold · Out) — like time remapping in AE.'},
+  zdepth:{t:'Z depth',e:'Timeline · Z depth',d:'Move every block closer to the camera or further away, over time. The grid stays put.'},
   zoom:{t:'Zoom',e:'Timeline · Zoom',d:'Zoom the view in or out between two frames, with its own easing.'},
   camera:{t:'Camera',e:'Timeline · Camera',d:'How the view travels with the line. The Camera row shows its speed.'},
   inout:{t:'Blocks · On, Hold, Off',e:'Timeline · Blocks',d:'The blocks run on their own steady clock: On (the build), Hold, Off. The Scene layer above then re-times all of it.'},
@@ -4386,9 +4426,20 @@ function trkKeys(pts,C,stop){ const K=[]; pts.forEach((p,j)=>{ let f=p.f; if(K.l
 const TRACKS={
   zoom:{name:'zoom',col:'#C9A7FF',min:5,max:2000,ref:100,minPts:2,get real(){return !zoomFollows();},
     read:()=>zoomPts(), get:()=>ensureZoomPts(), set:p=>{D.anim.zm.pts=p;}, C:()=>(D.anim.zm.curve||[0.65,0,0.35,1]).map(Number), keys:()=>zoomKeys()},
+  zd:{name:'z depth',col:'#FFB020',min:-4000,max:8000,ref:0,unit:'px',minPts:2,real:true,
+    read:()=>zdPts(), get:()=>ensureZdPts(), set:p=>{D.anim.zd.pts=p;}, C:()=>[0.33,0,0.67,1], keys:()=>zdKeys()},
   rz:{name:'reveal zone',col:'#2BD98F',min:50,max:120,ref:null,minPts:2,real:false,
     read:()=>rzPts(), get:()=>ensureRzPts(), set:p=>{D.anim.rzPts=p;}, C:()=>[0.33,0,0.67,1], keys:()=>rzKeys()}
 };
+/* Z depth of all blocks over time (output frames): px along the camera axis — negative = closer, positive = further away */
+function zdPts(){
+  const Z=D.anim.zd||{}; if(Array.isArray(Z.pts)&&Z.pts.length>=2) return Z.pts.map(p=>trkPt(p,{f:Math.round(+p.f||0),v:clamp(+p.v||0,-4000,8000)})).sort((a,b)=>a.f-b.f);
+  const fps=D.comp.fps||30, e=Math.max(24,Math.round((D.comp.dur||10)*fps)); return [{f:0,v:0},{f:e,v:0}];
+}
+function ensureZdPts(){ const Z=D.anim.zd; if(!Array.isArray(Z.pts)||Z.pts.length<2) Z.pts=zdPts(); return Z.pts; }
+function zdKeys(){ const Z=D.anim.zd; if(!Z||!Z.on||D.anim.mode==='static') return []; const K=trkKeys(zdPts(),[0.33,0,0.67,1],D.anim.motion==='stop'); return K.some(k=>k[1]!==0)?K:[]; }
+function zdAt(t){ const K=zdKeys(); return K.length?ev(K,t,0):0; }
+const CAM_ZOOM_K=1.3889;   // After Effects' default camera (50 mm): zoom ≈ comp width × 1.389
 /* reveal zone over time (content clock): points of anim.revealX */
 function rzPts(){
   const A=D.anim; if(Array.isArray(A.rzPts)&&A.rzPts.length>=2) return A.rzPts.map(p=>trkPt(p,{f:Math.round(+p.f||0),v:clamp(+p.v||75,50,120)})).sort((a,b)=>a.f-b.f);
@@ -4433,8 +4484,8 @@ function trkDraw(g,T,o){
     g.fillStyle=sel?'#fff':col; g.strokeStyle=sel?col:'#fff'; g.lineWidth=1.2; g.beginPath();
     if(p.lin){ g.moveTo(x,y-5.5); g.lineTo(x+5.5,y); g.lineTo(x,y+5.5); g.lineTo(x-5.5,y); g.closePath(); } else g.arc(x,y,4.6,0,7);
     g.fill(); g.stroke();
-    if(o.labels){ g.font='600 10px sans-serif'; g.fillStyle='#eee'; g.fillText(Math.round(p.v)+'%',x+7,y<o.yTop+12?y+12:y-7); }
-    out.push({x,y,kind:'point',i:j,tip:`${T.name} point · f${Math.round(T.real?p.f:(o.toReal?o.toReal(p.f):p.f))} · ${Math.round(p.v)}% — drag (left/right = time, up/down = value) · ⌥-click: linear ↔ eased · ⇧⌥-click removes`,
+    if(o.labels){ g.font='600 10px sans-serif'; g.fillStyle='#eee'; g.fillText(Math.round(p.v)+(T.unit||'%'),x+7,y<o.yTop+12?y+12:y-7); }
+    out.push({x,y,kind:'point',i:j,tip:`${T.name} point · f${Math.round(T.real?p.f:(o.toReal?o.toReal(p.f):p.f))} · ${Math.round(p.v)}${T.unit||'%'} — drag (left/right = time, up/down = value) · ⌥-click: linear ↔ eased · ⇧⌥-click removes`,
       drag:(fx,fy,sh)=>{ const P2=T.get().slice().sort((m,n)=>m.f-n.f), q=P2[j]; if(!q) return; const pv=P2[j-1], nx=P2[j+1];
         q.f=Math.round(clamp(F(fx),pv?pv.f+1:-99999,nx?nx.f-1:99999)); let v=clamp(V(fy),T.min,T.max); v=sh?Math.round(v/5)*5:Math.round(v); q.v=v; commit(P2); },
       alt:e=>{ const P2=T.get().slice().sort((m,n)=>m.f-n.f), q=P2[j]; if(!q) return; pushHist(true);
@@ -4483,14 +4534,14 @@ function drawTrackGraph(id){
   const g=c.getContext('2d'); g.scale(dpr,dpr); g.clearRect(0,0,r.width,r.height);
   const z=tgGeo(c,T), fps=D.comp.fps||30;
   g.font='9px Inter,Helvetica,Arial'; g.fillStyle='#686871'; g.strokeStyle='#2f2f35'; g.lineWidth=1;
-  if(T.ref!=null){ const yr=z.Y(T.ref); g.setLineDash([3,3]); g.beginPath(); g.moveTo(z.pl,yr+.5); g.lineTo(z.pl+z.W,yr+.5); g.stroke(); g.setLineDash([]); g.fillText(T.ref+'%',4,yr+3); }
-  [z.H,z.L].forEach(v=>{ if(T.ref!=null&&Math.abs(v-T.ref)<(z.H-z.L)*.12) return; g.fillText(Math.round(v)+'%',4,z.Y(v)+3); });
+  if(T.ref!=null){ const yr=z.Y(T.ref); g.setLineDash([3,3]); g.beginPath(); g.moveTo(z.pl,yr+.5); g.lineTo(z.pl+z.W,yr+.5); g.stroke(); g.setLineDash([]); g.fillText(T.ref+(T.unit||'%'),4,yr+3); }
+  [z.H,z.L].forEach(v=>{ if(T.ref!=null&&Math.abs(v-T.ref)<(z.H-z.L)*.12) return; g.fillText(Math.round(v)+(T.unit||'%'),4,z.Y(v)+3); });
   const xe=z.XR(sceneEnd(geom())); g.strokeStyle='rgba(255,255,255,.12)'; g.beginPath(); g.moveTo(xe+.5,z.pt); g.lineTo(xe+.5,z.pt+z.Hh); g.stroke();
   g.fillText('0s',z.XR(0)+2,r.height-4); g.fillText(fmtT(sceneEnd(geom()),fps),Math.min(xe-22,z.pl+z.W-22),r.height-4);
   if(U.t!=null){ const x=z.XR(U.t); g.strokeStyle='rgba(230,33,47,.55)'; g.beginPath(); g.moveTo(x+.5,z.pt); g.lineTo(x+.5,z.pt+z.Hh); g.stroke(); }
   st.hits=trkDraw(g,T,Object.assign({sel:st.sel,lw:2},z));
   const s=z.pts[st.sel], v=c.parentNode.querySelector('.cv-val');
-  if(v) v.textContent=s?`Point ${st.sel+1} · frame ${Math.round(z.toReal(s.f))} (${fmtT(z.toReal(s.f),fps)}) · ${Math.round(s.v)}% · ${s.lin?'linear':'eased'}`:`${z.pts.length} points · ${Math.round(Math.min(...z.pts.map(p=>p.v)))}–${Math.round(Math.max(...z.pts.map(p=>p.v)))}%`;
+  if(v) v.textContent=s?`Point ${st.sel+1} · frame ${Math.round(z.toReal(s.f))} (${fmtT(z.toReal(s.f),fps)}) · ${Math.round(s.v)}${T.unit||'%'} · ${s.lin?'linear':'eased'}`:`${z.pts.length} points · ${Math.round(Math.min(...z.pts.map(p=>p.v)))}–${Math.round(Math.max(...z.pts.map(p=>p.v)))}${T.unit||'%'}`;
 }
 function drawTrackGraphs(){ $$('canvas[data-track]').forEach(c=>drawTrackGraph(c.id)); }
 function drawZoomGraph(){ drawTrackGraphs(); }
@@ -5777,6 +5828,7 @@ function drawDope(){
   row('scene',ROWS.scene,{name:'Scene · time remap',ctx:'scene'});
   row('trans',ROWS.trans,{name:'Transitions',ctx:'trans'});
   if(anim&&D.anim.zoomOn) row('zoom',40,{name:'Zoom',ctx:'zoom'});
+  if(anim&&D.anim.zd&&D.anim.zd.on) row('zdepth',40,{name:'Z depth',ctx:'zdepth'});
   if(anim&&D.anim.rzOn&&D.anim.revealWhen==='arrive'&&(D.anim.mode==='camera'||D.anim.mode==='push')) row('rzone',40,{name:'Reveal zone',ctx:'camera'});
   TL.contentY0=y;
   if(anim) row('phases',ROWS.phases,{name:'Blocks · in hold out',ctx:'inout'});
@@ -5936,7 +5988,7 @@ function drawDope(){
     }
   } else {g.fillStyle='#686871';g.font='11px sans-serif';g.fillText(anim?'Generate a line to start — Blocks step, or press G':'Static — pick an animation style in Motion',LW+8,RSc.y0+RSc.h/2);}
   // ---- zoom: a bar from In to Out (and Back), with its easing drawn inside · drag the ends or the whole bar
-  [['zoom','zoom'],['rzone','rz']].forEach(([rk,tk])=>{ const RZ=TL.rows.find(R=>R.k===rk); if(!RZ) return; const T=TRACKS[tk], pts=T.read();
+  [['zoom','zoom'],['rzone','rz'],['zdepth','zd']].forEach(([rk,tk])=>{ const RZ=TL.rows.find(R=>R.k===rk); if(!RZ) return; const T=TRACKS[tk], pts=T.read();
     const vs=pts.map(p=>p.v).concat(T.ref!=null?[T.ref]:[]), lo0=Math.min(...vs), hi0=Math.max(...vs), pad=Math.max(T.ref!=null?10:5,(hi0-lo0)*.2), lo=lo0-pad, hi=hi0+pad, y0=RZ.y0+6, h=RZ.h-12;
     const Y=v=>y0+h-(v-lo)/(hi-lo)*h, Vv=y=>lo+(y0+h-y)/h*(hi-lo), toR=T.real?(f=>f):(f=>P.toReal(f)), toC=T.real?(f=>f):(f=>P.toContent(f));
     if(T.ref!=null){ g.strokeStyle='rgba(255,255,255,.12)'; g.setLineDash([2,3]); g.beginPath(); g.moveTo(LW,Y(T.ref)+.5); g.lineTo(r.width,Y(T.ref)+.5); g.stroke(); g.setLineDash([]); }
@@ -6150,7 +6202,7 @@ function initDope(){
   c.addEventListener('contextmenu',e=>{e.preventDefault(); const p=rect(e), h=tlHit(p.x,p.y); tlMenu(e,h);});
   c.addEventListener('dblclick',e=>{const p=rect(e), h=tlHit(p.x,p.y); const R=TL.rows.find(R=>R.k==='scene'); const cvv=TL.items.find(it=>it.type==='curve');
     if(R&&cvv&&p.y>=R.y0&&p.y<R.y1&&h.type!=='handle'&&h.type!=='point'&&p.x>=cvv.x0&&p.x<=cvv.x1) tlAddPoint(cvv.u(p.x));
-    for(const [rk,tk] of [['zoom','zoom'],['rzone','rz']]){ const RZ2=TL.rows.find(R=>R.k===rk); if(RZ2&&p.y>=RZ2.y0&&p.y<RZ2.y1&&h.type!=='point'&&p.x>TL.LW){ const T=TRACKS[tk], fr=TL.F(p.x), f=T.real?fr:plan(geom()).toContent(fr);
+    for(const [rk,tk] of [['zoom','zoom'],['rzone','rz'],['zdepth','zd']]){ const RZ2=TL.rows.find(R=>R.k===rk); if(RZ2&&p.y>=RZ2.y0&&p.y<RZ2.y1&&h.type!=='point'&&p.x>TL.LW){ const T=TRACKS[tk], fr=TL.F(p.x), f=T.real?fr:plan(geom()).toContent(fr);
       if(trkAddAt(T,f)!==false){ planCache.k=''; syncInputs(true); refresh(); } return; } }
     const SE=D.anim.sceneEase; if(R&&SE&&SE.on&&SE.mid==='smooth'&&D.exit.holdOn===false&&p.y>=R.y0&&p.y<R.y1&&h.type!=='point'){ const P=plan(geom()), V=tlView(), Wt=Math.max(40,c.getBoundingClientRect().width-TL.LW-8), f=V.f0+(p.x-TL.LW)/Wt*(V.f1-V.f0), u=(f-P.startF)/Math.max(1,P.R);
       if(u>.04&&u<.96){pushHist(true);SE.mid='point';SE.onAt=Math.round(u*100);syncInputs(true);refresh();} } });
@@ -6658,6 +6710,7 @@ function drawTransLayer(g,G,A,behind,base){
 }
 function drawTransBehind(){}
 function drawWorld(g,G,o){
+  let gbM0=null; try{ gbM0=g.getTransform&&g.getTransform(); if(gbM0&&typeof gbM0.inverse!=='function') gbM0=null; }catch(e){ gbM0=null; }
   const sc=o.sc, A=o.A, live=!!(A&&A.live), camMode=live&&D.anim.mode==='camera';
   const s=live?A.s:1, off=live?A.off:[0,0], gridOff=camMode?off:[0,0];
   ZK=(s!==1&&!(D.anim.zm&&D.anim.zm.scaleAll))?{s,dg:G.gut*(1-1/s)}:null;   // zoom keeps gaps, lines and text the same size on screen
@@ -6701,10 +6754,14 @@ function drawWorld(g,G,o){
   o.fillT=live?A.t:null; o.fillBase=A&&A.P?A.P.fillBase:null; o.fillEnd=live&&A.P?A.P.fillEnd:null; o.tracks=live&&A.P?A.P.tracks:null; o.media=(()=>{try{return mediaMap(A&&A.P?A.P:plan(G));}catch(e){return null;}})(); o.nums=D.num&&(D.num.on||D.blocks.some(b=>b.num))?blockNumbers(G):null;
   // echoes (behind everything else), then blocks
   if(live){
+    const zd=zdAt(A.t), zk=zd?(CAM_ZOOM_K*G.W)/Math.max(50,CAM_ZOOM_K*G.W+zd*s):1;   // blocks closer to / further from the camera than the grid
+    let zdOn=false; if(zk!==1&&gbM0&&typeof DOMMatrix!=='undefined'){ try{ const cur=g.getTransform(); g.save(); zdOn=true; g.setTransform(gbM0.translate(G.W/2,G.H/2).scale(zk,zk).translate(-G.W/2,-G.H/2).multiply(gbM0.inverse()).multiply(cur)); }catch(e){ if(zdOn){g.restore();zdOn=false;} } }
+    U._zdRestore=zdOn;
     A.P.echo.forEach(e=>{const st=blockState(e.K,A.t,e.rect);st.src=e.src;drawEcho(g,e.rect,st,o,off[0],off[1]);});
     A.P.statics.forEach(b=>drawBlock(g,G,b,o,off[0],off[1],null,false));
     A.P.seq.forEach(b=>{const q=cellRect(G,b.c,b.r,b.w,b.h);drawBlock(g,G,b,o,off[0],off[1],blockState(A.P.tracks[b.id],A.t,q),false);});
     drawLabWorld(g,A.P.lab,A.t,off[0],off[1],o.alpha);
+    if(U._zdRestore){ g.restore(); U._zdRestore=false; }
   } else {
     const realB=A&&(A.P.lineShift||isGenerated())?A.P.seq.filter(b=>!b.virtual):D.blocks.filter(b=>valid(b,G));   // the whole line slid to keep its end row
     if(D.echo.on) echoTargets(A?A.P.seq:realB).forEach(b=>{const r=echoRect(G,b);drawEcho(g,r,null,o,0,0,b.virtual);});
@@ -8178,6 +8235,16 @@ function renderZoomList(P){
     :'<div class="note">None yet. Add one to zoom the grid in or out as the blocks build. More rows means smaller squares and more of the grid on screen.</div>';
 }
 ($('#zoomPos')||{addEventListener(){}}).addEventListener('click',e=>{const b=e.target.closest('[data-zpos]');if(!b)return;pushHist(true);const v=b.dataset.zpos.split(',').map(Number);D.anim.zm.ax=v[0];D.anim.zm.ay=v[1];syncInputs(true);refresh();});
+function zdPreset(kind){
+  const P=plan(geom()), Pc=P.c||P, B=phaseBounds(Pc), R=c=>c==null?null:Math.round(P.toReal?P.toReal(c):c), f0=Math.round(P.startF||0), on=R(B.on)||Math.round(P.end*.5), ho=R(B.hold), end=Math.max(on+12,Math.round(P.end));
+  let pts;
+  if(kind==='in') pts=[{f:f0,v:1500},{f:on,v:0}];
+  else if(kind==='out') pts=[{f:f0,v:0},{f:end,v:1500}];
+  else if(kind==='pop') pts=[{f:f0,v:0},{f:on,v:-350},{f:ho!=null?ho:Math.round((on+end)/2),v:-350},{f:end,v:0}];
+  else pts=[{f:f0,v:0},{f:end,v:0}];
+  pushHist(true); D.anim.zd.pts=pts; D.anim.zd.on=true; planCache.k=''; syncInputs(true); refresh();
+}
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-zdpre]'); if(b) zdPreset(b.dataset.zdpre);});
 function zoomPreset(kind){
   const P=plan(geom()), Pc=P.c||P, B=phaseBounds(Pc), R=c=>c==null?null:Math.round(P.toReal?P.toReal(c):c), f0=Math.round(P.startF||0), on=R(B.on)||Math.round(P.end*.5), ho=R(B.hold), end=Math.min(Math.round(P.end),Math.round((D.comp.dur||10)*(D.comp.fps||30))), z=Math.max(110,+((zoomPts().reduce((m,p)=>Math.max(m,p.v),100)))||150), Z=z===100?150:z, ramp=n=>Math.max(6,Math.round(n));
   let pts;
@@ -8881,6 +8948,7 @@ function payload(){
   return{
     v:3, fps,
     comp:{w:G.W,h:G.H,name:'Grid Blocks '+G.W+'x'+G.H,dur:Math.max(D.comp.dur||10,D.out.fitDur?Math.ceil(Math.max(endSec,transOn()?transP(G).end/fps:0)*100)/100:0)},
+    depth:(()=>{ const K=zdKeys(); return K.length&&D.anim.mode!=='static'?{keys:K,zoomK:CAM_ZOOM_K}:null; })(),
     mediaRoot:inAE?(()=>{try{let p=decodeURI(location.pathname).replace(/\/[^\/]*$/,'');if(/^\/[A-Za-z]:/.test(p))p=p.slice(1);return p;}catch(e){return null;}})():null,
     replace:D.out.replace, lock:D.out.lock, fitDur:D.out.fitDur, rig, mb:D.out.mb?{angle:+D.out.mbAngle||180}:null,
     bg:D.look.bgOn?{color:hexRgb(D.look.bg)}:null,

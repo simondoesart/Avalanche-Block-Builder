@@ -1281,6 +1281,17 @@ body.nohelp .qm{display:none}
             </div>
             </div></details>
           </div>
+          <div class="group" data-ctx="zdepth" data-show="anim.mode=reveal|camera|push">
+            <div class="group-h">Z depth<label class="switch hswitch" title="Give the blocks depth: move them all closer to the camera or further away"><input type="checkbox" data-bind="anim.zd.on"><span></span></label></div>
+            <div class="note" data-show="anim.zd.on=false">Off. Turn it on to move every block closer to the camera or further away over time (the grid stays where it is). It shows as a Z depth row on the timeline.</div>
+            <div data-show="anim.zd.on=true" style="display:grid;gap:9px">
+              <div class="note">All blocks share one depth. Points on the <b>Z depth</b> row (or the graph): drag them, double-click to add one, ⌥-click to switch linear / eased, ⇧⌥-click to remove. Up = further away, down = closer.</div>
+              <div class="zgraph"><div class="zg-h"><span class="lbl">Depth over time</span><span class="zg-hint">0 = on the grid · − closer · + further</span></div><canvas id="zdGraph" class="tgraph" data-track="zd"></canvas><div class="cv-val"></div>
+                <div class="seg"><button data-trkall="zd:ease">All eased</button><button data-trkall="zd:lin">All linear</button></div></div>
+              <div class="field stack"><span class="lbl">Quick moves</span><div class="seg"><button data-zdpre="in" title="Blocks start further away and come forward to the grid">Come forward</button><button data-zdpre="out" title="Blocks drift back, away from the camera">Push back</button><button data-zdpre="pop" title="Blocks lift towards the camera during the hold, then settle">Lift on hold</button><button data-zdpre="flat" title="Back to the grid (0)">Flat</button></div></div>
+              <div class="note" data-show="out.rig=null">The 2D null rig fakes depth with scale. Use the After Effects camera rig (Build) for true 3D depth.</div>
+            </div>
+          </div>
           <div class="group" data-ctx="zoom" data-show="anim.mode=reveal|camera|push">
             <div class="group-h">Zoom<label class="switch hswitch" title="Zoom the view in or out"><input type="checkbox" data-bind="anim.zoomOn"><span></span></label></div>
             <div class="note" data-show="anim.zoomOn=false">Zoom the view in or out between two frames, with its own easing. It shows as a row on the timeline.</div>
