@@ -928,6 +928,9 @@ body.nohelp .qm{display:none}
               <span></span>
             </div>
             <div data-show="fill.on=true" style="display:grid;gap:9px">
+              <div class="field stack"><span class="lbl">Which blocks get content</span><div class="seg" data-seg="fill.target"><button data-v="all" title="Every block, except ones you switch off">All blocks</button><button data-v="pick" title="Only the blocks you switch on">Only picked blocks</button></div></div>
+              <div class="row-btns"><button class="btn" id="cPick" title="Click blocks — and empty spaces with between-blocks content — to switch their content on or off">Pick on the canvas</button><button class="btn" id="cWalk" title="Play the walk — pause and click blocks to switch content on/off">▶ Preview the walk</button></div>
+              <div class="row-btns"><button class="btn ghost" id="cPickReset" title="Forget every per-block on/off choice">Reset picks</button><span class="note" id="cPickN"></span></div>
               <div class="row-btns"><button class="btn" id="btnFillShuffle" title="New random content in every block (same settings)">↻ Shuffle content</button></div>
               <details class="sub" data-sub="fill-what" open><summary>What appears <span class="note" id="lookName"></span></summary><div class="subbody">
               <div class="looks" id="lookRow"></div>
@@ -2617,17 +2620,18 @@ const inWeb=!inAE&&typeof location!=='undefined'&&/^https?:$/.test(location.prot
 try{ const spc=Element.prototype.setPointerCapture, rpc=Element.prototype.releasePointerCapture;
   if(spc) Element.prototype.setPointerCapture=function(id){ try{ return spc.call(this,id); }catch(e){} };
   if(rpc) Element.prototype.releasePointerCapture=function(id){ try{ return rpc.call(this,id); }catch(e){} }; }catch(e){}
-let gbLastPD=0;
-document.addEventListener('pointerdown',()=>{gbLastPD=Date.now();},true);
-document.addEventListener('mousedown',e=>{
-  const tg=e.target; if(!tg||tg.tagName!=='CANVAS') return;
-  setTimeout(()=>{ if(Date.now()-gbLastPD<150||typeof PointerEvent==='undefined') return;
-    const mk=(type,ev)=>new PointerEvent(type,{bubbles:true,cancelable:true,clientX:ev.clientX,clientY:ev.clientY,screenX:ev.screenX,screenY:ev.screenY,button:type==='pointermove'?-1:ev.button,buttons:ev.buttons,shiftKey:ev.shiftKey,altKey:ev.altKey,metaKey:ev.metaKey,ctrlKey:ev.ctrlKey,pointerId:1,pointerType:'mouse',isPrimary:true});
-    tg.dispatchEvent(mk('pointerdown',e));
-    const mv=ev=>tg.dispatchEvent(mk('pointermove',ev)), up=ev=>{ window.removeEventListener('mousemove',mv,true); window.removeEventListener('mouseup',up,true); tg.dispatchEvent(mk('pointerup',ev)); };
-    window.addEventListener('mousemove',mv,true); window.addEventListener('mouseup',up,true);
-  },0);
-},true);
+/* bridge: whenever the browser gives us only mouse events (CEP sometimes drops pointer events, or stops sending
+   pointermove/pointerup mid-drag), replay them as pointer events on the element that was pressed */
+const gbT={pd:0,pm:0,pu:0,tg:null};
+document.addEventListener('pointerdown',e=>{ if(e.isTrusted){ gbT.pd=Date.now(); gbT.tg=e.target; } },true);
+document.addEventListener('pointermove',e=>{ if(e.isTrusted) gbT.pm=Date.now(); },true);
+document.addEventListener('pointerup',e=>{ if(e.isTrusted){ gbT.pu=Date.now(); setTimeout(()=>{gbT.tg=null;},0); } },true);
+const gbPE=(type,ev)=>{ try{ return new PointerEvent(type,{bubbles:true,cancelable:true,composed:true,clientX:ev.clientX,clientY:ev.clientY,screenX:ev.screenX,screenY:ev.screenY,button:type==='pointermove'?-1:ev.button,buttons:ev.buttons,shiftKey:ev.shiftKey,altKey:ev.altKey,metaKey:ev.metaKey,ctrlKey:ev.ctrlKey,pointerId:1,pointerType:'mouse',isPrimary:true}); }catch(x){ return null; } };
+document.addEventListener('mousedown',e=>{ if(e.button!==0||typeof PointerEvent==='undefined') return; const tg=e.target;
+  if(Date.now()-gbT.pd<120){ gbT.tg=tg; return; }               // the real pointerdown already ran
+  gbT.tg=tg; const pe=gbPE('pointerdown',e); if(pe) tg.dispatchEvent(pe); },true);
+window.addEventListener('mousemove',e=>{ if(!(e.buttons&1)||!gbT.tg||Date.now()-gbT.pm<60) return; const pe=gbPE('pointermove',e); if(pe) gbT.tg.dispatchEvent(pe); },true);
+window.addEventListener('mouseup',e=>{ const tg=gbT.tg; gbT.tg=null; if(!tg||Date.now()-gbT.pu<120) return; const pe=gbPE('pointerup',e); if(pe) tg.dispatchEvent(pe); },true);
 const webGet=k=>{if(!inWeb)return null;try{return localStorage.getItem('gridblocks.'+k);}catch(e){return null;}};
 const webSet=(k,v)=>{if(!inWeb)return;try{localStorage.setItem('gridblocks.'+k,v);}catch(e){}};
 const HOST=$('#host-src').textContent;
@@ -2660,7 +2664,7 @@ const DEF={
   palette:PALETTE.slice(),
   trans:{in:{on:false,mode:'clear',start:0,atEnd:false,dur:24,pattern:'walkon',withWalk:true,wEnd:null,blockColors:false,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:3,jitter:0,preset:'walkon',behind:false,world:true,solid:true,solidFade:8,solidAt:null},
          out:{on:false,mode:'build',start:72,atEnd:false,dur:24,pattern:'walkoff',withWalk:true,wEnd:null,blockColors:false,dir:'fwd',w:0,h:0,len:8,appear:'wipe',curve:[0.33,0,0.67,1],cover:false,color:'#E6212F',output:'blocks',seed:5,jitter:0,preset:'walkoff',behind:false,world:true,solid:true,solidFade:8,solidAt:null}},
-  fill:{on:true,seed:7,density:'medium',family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:8,leading:100,caps:'upper',
+  fill:{on:true,target:'all',per:{},seed:7,density:'medium',family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:8,leading:100,caps:'upper',
         textColor:'#121212',outlinePct:0,outlineW:2,skipText:true,textPct:60,patternPct:40,dotSpacing:8,iconPct:20,iconSize:24,iconLib:'pixel',buildDur:12,graphW:1.5,look:'custom',
         mix:{text:45,graph:30,combo:25},graphs:{line:true,step:false,area:true,bars:true,hist:false,candles:true,meter:true,heat:true,network:true,wave:false,depth:false},
         combos:{stat:true,badge:true,iconrow:true,labelgraph:true,frame:false},pats:{cross:true,hatch:false,scan:false},
@@ -2668,7 +2672,7 @@ const DEF={
         mods:{kv:true,status:true,hashes:true,block:true,log:false,counter:true,dev:true,barcode:true,phrase:true,term:true,mempool:true,validator:true,latency:true,rpc:false,progress:true,consensus:true,stream:false,dots:true,ring:false,logo:true,icons:true},
         iconSet:{node:true,cube:true,chain:true,check:true,chevrons:true,peak:true,lock:false,network:true,signal:true,target:false,snow:true,arrow:true,plus:false,bars:true},dotSize:2.2,dotShape:'circle',
         anim:{inMode:'type',inDur:8,outMode:'typeoff',hold:36,outDur:12,typeAll:true,cps:69,ellipsis:true,count:true,countDur:36,scramble:true,scrMode:'settle',scrDur:30,scrRate:12,stagger:4,delay:9,live:false,liveTick:true,liveHash:true,liveGlitch:false,liveRate:6,glitchAmt:15,liveGraph:true,liveBlink:true,anchor:'block'},win:{on:null,off:null},
-        gap:{on:true,amount:3,seed:0,color:'#E6212F',win:{on:null,off:null},anim:{own:true,anchor:'block',delay:12,jitter:10,leaveWith:true,inMode:'type',cps:60,inDur:8,buildDur:12,outMode:'fade',hold:48,outDur:12},mods:{log:true,phrase:true,barcode:true,hashes:false,dots:true,logo:true,icons:true,graph:true,stream:false,rpc:false}}},
+        gap:{off:{},on:true,amount:3,seed:0,color:'#E6212F',win:{on:null,off:null},anim:{own:true,anchor:'block',delay:12,jitter:10,leaveWith:true,inMode:'type',cps:60,inDur:8,buildDur:12,outMode:'fade',hold:48,outDur:12},mods:{log:true,phrase:true,barcode:true,hashes:false,dots:true,logo:true,icons:true,graph:true,stream:false,rpc:false}}},
   echo:{on:false,dx:0,dy:2,last:0,fill:true,color:'#A2AFB2',opacity:100,stroke:false,sw:4,scolor:'#A2AFB2',align:'center',dash:false,dashL:12,dashG:8,content:false,
         timing:'with',offset:6,appear:'fade',out:'stay',hold:12,outF:8},
   rand:{endSingle:true,pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
@@ -2684,7 +2688,7 @@ const DEF={
        bar:{on:false,height:3,len:24,color:'#121212'},
        ticker:{on:false,y:94,size:14,speed:160,color:'#A2AFB2',band:true,bandColor:'#121212'},
        snow:{on:false,count:90,speed:240,size:2,stretch:6,dir:'left',color:'#EBF0FA',opacity:55,seed:9}},
-  num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100},
+  num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100,per:{}},
   bmedia:{on:false,kind:'video',asset:'sample',precomp:false,fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,
     loop:'loop',start:'reveal',delay:0,at:0,offset:0,audio:'mute',target:'all',pick:[],dirOn:{up:true,down:true,flat:true},
     assign:'same',pool:[],dir:{up:'',down:'',flat:''},seed:1,per:{},assets:[]},
@@ -3334,7 +3338,7 @@ const fillCache=new Map();
 /* items for one block/echo rect: corners for text, the middle for a pattern */
 function fillItems(G,b,rect,isEcho){
   const F=D.fill; if(!F||!F.on) return [];
-  if(!isEcho&&(b.noFill||(F.skipText&&b.text))) return [];
+  if(!isEcho&&(!fillOnFor(b)||(F.skipText&&b.text&&(F.per||{})[b.id]!==true))) return [];
   const mods=FILL_MODULES.map(m=>m[0]).filter(m=>F.mods[m]);
   const gOn=GRAPHS.map(g=>g[0]).filter(k=>F.graphs&&F.graphs[k]), cOn=COMBOS.map(c=>c[0]).filter(k=>F.combos&&F.combos[k]);
   const pOn=(F.mods.dots?['dots']:[]).concat(PATTERNS.map(q=>q[0]).filter(k=>k!=='dots'&&F.pats&&F.pats[k]));
@@ -3450,12 +3454,15 @@ function gapItems(G,list){
   const c0=Math.min(...list.map(b=>b.c)), c1=Math.max(...list.map(b=>b.c+b.w-1));
   const rnd=rng(fillHash(4242,(F.seed|0)+(Gp.seed|0))), met=fillMetrics(), out=[];
   const n=Math.max(1,Math.round((c1-c0+1)/10*(+Gp.amount||3)));
+  let gA=null; const tagG=()=>{ for(let z=0;z<out.length;z++) if(!out[z].ga) out[z].ga=gA; };
   for(let k=0,tries=0;k<n&&tries<n*30;tries++){
+    tagG();
     const m=pickR(rnd,mods), wc=m==='dots'?2+Math.floor(rnd()*3):m==='log'?3+Math.floor(rnd()*2):2+Math.floor(rnd()*2), hc=m==='dots'?1+Math.floor(rnd()*2):1;
     const c=c0+Math.floor(rnd()*(c1-c0+1)), r=Math.floor(rnd()*Math.max(1,G.R-hc+1));
     let free=true; for(let x=c;x<c+wc&&free;x++)for(let y=r;y<r+hc;y++) if(occ.has(x+','+y)) {free=false;break;}
     if(!free) continue;
     for(let x=c;x<c+wc;x++)for(let y=r;y<r+hc;y++) occ.add(x+','+y);
+    const gk=c+','+r; gA=[c,r,wc,hc]; if((Gp.off||{})[gk]){ k++; continue; }   // switched off by hand (keeps the rest of the layout the same)
     const q=cellRect(G,c,r,wc,hc), pad=Math.max(8,G.s*.1), color=Gp.color||D.block.color;
     if(m==='icons'&&F.iconLib!=='line'){const on=pxOn(),isz=Math.min(pxSnap(F.iconSize),Math.max(12,Math.floor((q.h-pad*2)/12)*12));if(on.length){const it=pxIcon(pickR(rnd,on),q.x+pad,q.y+pad,isz,color,rnd);it.col=c;it.slot=0;out.push(it);k++;}continue;}
     if(m==='graph'){const gs=GRAPHS.map(g=>g[0]).filter(t=>F.graphs&&F.graphs[t]&&t!=='network'&&t!=='depth'),it=graphItem(gs.length?pickR(rnd,gs):'line',{x:q.x+pad,y:q.y+pad,w:q.w-2*pad,h:Math.max(6,q.h-2*pad)},rnd,color);it.col=c;it.slot=0;out.push(it);k++;continue;}
@@ -3465,6 +3472,7 @@ function gapItems(G,list){
     const its=buildModule(m==='hashes'?'hashes':m,{x:q.x+pad,y:q.y+pad,w:q.w-2*pad,h:q.h-2*pad,ax:'l',ay:'t'},rnd,met,color);
     its.forEach(it=>{it.col=c;it.slot=0;out.push(it);}); k++;
   }
+  tagG();   // each item remembers its area (so it can be switched off by clicking it)
   return out;
 }
 /* ---- animated text state (same maths as the AE expressions) */
@@ -3661,7 +3669,9 @@ function normBlock(b){
 }
 const bname=b=>b.name||('Block '+String(b.order).padStart(2,'0'));
 /* ---- block numbers (top-right corner) ---- */
-const numOn=b=>!!(D.num&&!b.echo&&(b.num===true||(b.num!==false&&D.num.on)));
+const numOn=b=>{ if(!D.num||b.echo) return false; const p=(D.num.per||{})[b.id]; if(p!==undefined) return !!p; return !!(b.num===true||(b.num!==false&&D.num.on)); };
+/* content on this block? per-block switch > legacy flag > "which blocks" rule */
+function fillOnFor(b){ const F=D.fill; if(!F||!F.on) return false; const p=(F.per||{})[b.id]; if(p!==undefined) return !!p; if(b.noFill) return false; return F.target!=='pick'; }
 function numStr(n){
   const N=D.num||{}, v=Math.max(0,Math.round((+N.start||1)-1+n)), p=k=>String(v).padStart(k,'0');
   switch(N.fmt){case '1':return String(v);case '001':return p(3);case '#01':return '#'+p(2);case 'BLK 001':return 'BLK '+p(3);case 'height':return '#'+v.toLocaleString('en-US');default:return p(2);}
@@ -6446,7 +6456,7 @@ function drawBlock(g,G,b,o,dx,dy,st,ghost){
   if(isOutline(b)){const lw=Math.max(1/o.sc,+D.fill.outlineW||2);g.strokeStyle=b.color;g.lineWidth=lw;g.strokeRect(x+lw/2,y+lw/2,w-lw,h-lw);}
   else {g.fillStyle=b.color; g.fillRect(x,y,w,h);}
   if(o.inside&&o.media&&o.media[b.id]) drawMedia(g,o.media[b.id],{x:q.x+dx,y:q.y+dy,w:q.w,h:q.h},{x,y,w,h},o.fillT,g.globalAlpha);
-  if(o.inside&&U.mediaPick&&STEPS[U.step].id==='content'){ const on=(D.bmedia.pick||[]).indexOf(b.id)>=0, r0=Math.max(6/o.sc,Math.min(q.h*.16,14/o.sc)), px=x+r0*1.6, py=y+h-r0*1.6;
+  if(o.inside&&(U.mediaPick||U.contentPick)&&STEPS[U.step].id==='content'&&!ghost){ const on=U.contentPick?fillOnFor(b):(D.bmedia.pick||[]).indexOf(b.id)>=0, r0=Math.max(6/o.sc,Math.min(q.h*.16,14/o.sc)), px=x+r0*1.6, py=y+h-r0*1.6;
     g.save(); g.globalAlpha=1; g.beginPath(); g.arc(px,py,r0,0,7); g.fillStyle=on?'#2BD98F':'rgba(0,0,0,.55)'; g.fill(); g.lineWidth=Math.max(1,r0*.18); g.strokeStyle='#fff'; g.stroke();
     if(on){ g.beginPath(); g.moveTo(px-r0*.45,py); g.lineTo(px-r0*.1,py+r0*.38); g.lineTo(px+r0*.5,py-r0*.38); g.stroke(); } g.restore(); }
   if(o.inside&&!ghost&&D.fill.on){
@@ -6603,6 +6613,8 @@ function drawWorld(g,G,o){
   // text in the gaps between blocks
   if(D.fill.on&&D.fill.gap.on&&o.inside){
     const gl=A&&A.P&&A.P.gaps?A.P.gaps:gapItems(G,D.blocks.filter(b=>valid(b,G)));
+    if(U.contentPick&&STEPS[U.step].id==='content'){ const offs=(D.fill.gap.off||{}); Object.keys(offs).forEach(k=>{ const a=offs[k], q=cellRect(G,a[0],a[1],a[2],a[3]), ox=live?off[0]:0, oy=live?off[1]:0;
+      g.save(); g.setLineDash([6/sc,4/sc]); g.lineWidth=1.2/sc; g.strokeStyle='rgba(230,33,47,.85)'; g.strokeRect(q.x+ox+2/sc,q.y+oy+2/sc,q.w-4/sc,q.h-4/sc); g.setLineDash([]); g.fillStyle='rgba(230,33,47,.85)'; g.font=`${11/sc}px sans-serif`; g.fillText('content off · click to restore',q.x+ox+6/sc,q.y+oy+14/sc); g.restore(); }); }
     gl.forEach(it=>drawFillItems(g,[it],live?off[0]:0,live?off[1]:0,live&&it.t0!=null?it.t0-(it.slot||0)*Math.max(0,+D.fill.anim.stagger||0):null,live?A.t:null,o.alpha,live?it.tEnd:undefined));
   }
   if(D.look.ruleLayer==='top') drawRules();
@@ -6751,6 +6763,7 @@ cv.addEventListener('pointerdown',e=>{
   if(b&&isGenerated()&&(plan(G).lineShift||0)) b=null;   // the line is drawn slid up/down: hit-test the drawn blocks instead
   const tool=U.tool;
   if(U.mediaPick&&STEPS[U.step].id==='content'&&tool==='select'&&!e.shiftKey){ if(mPickAt(G,cell)) return; }
+  if(U.contentPick&&STEPS[U.step].id==='content'&&tool==='select'&&!e.shiftKey){ if(cPickAt(G,cell)) return; }
   if(U.pickStart){ finishPickStart(cell); return; }
   if((tool==='stamp'||tool==='draw'||tool==='erase')&&isGenerated()&&e.button===0){ if(materialize()){ U.preview=false; b=inR?blockAt(cell.c,cell.r):null; } }
   if(tool==='select'&&!b&&inR&&!e.shiftKey){ const vb=virtualAt(G,cell);
@@ -7105,21 +7118,25 @@ function styleBlock(b,multi){
          :`<div class="readout">${globalStyleLine()} <a href="#" data-act="editglobal" style="color:var(--accent2)">Edit global</a></div>`}
     <div class="field stack"><span class="lbl">Text colour</span><div class="swatches">${swatchHTML(b.textColor||contrast(b.color),'sel.textColor')}</div></div>`;
 }
+function cToggles(list){
+  const allOn=f=>list.every(f), some=f=>list.some(f);
+  const cOn=allOn(fillOnFor), cMix=!cOn&&some(fillOnFor), nOn=allOn(numOn), nMix=!nOn&&some(numOn);
+  return `<div class="layer${cOn?' on':''}"><label class="switch"><input type="checkbox" data-bcon="1"${cOn?' checked':''}><span></span></label><div><div class="ln">Content${cMix?' <span class="note">(mixed)</span>':''}</div><div class="ls">${D.fill.on?'Text HUD, counters &amp; patterns in '+(list.length>1?'these blocks':'this block'):'Text HUD is off — switching this on turns it on'}</div></div>${D.fill.on&&list.length===1?'<button class="btn ghost" data-act="reroll" title="New random content for this block">↻</button>':'<span></span>'}</div>
+    <div class="layer${nOn?' on':''}"><label class="switch"><input type="checkbox" data-bnumt="1"${nOn?' checked':''}><span></span></label><div><div class="ln">Number${nMix?' <span class="note">(mixed)</span>':''}</div><div class="ls">Block number in the top-right corner</div></div><span></span></div>`;
+}
 function cardContent(b,virt){
   return `<div class="card"><div class="card-h">${esc(bname(b))}<span class="count">${b.w}×${b.h}</span></div>
+    ${cToggles([b])}
     <div class="field stack"><span class="lbl">Block colour</span><div class="swatches">${swatchHTML(b.color,'sel.color')}</div></div>
     <textarea data-f="text" placeholder="Type to add a text layer inside this block…">${esc(b.text||'')}</textarea>
     ${virt?'<div class="note">This block is part of the generated line. Typing or changing its text style makes the line editable (⌘Z undoes).</div>':''}
     ${styleBlock(b)}
-    <details class="sub" data-sub="blk-auto"><summary>Auto content <span class="note">${D.fill.on?(b.noFill?'off for this block':'on'):'off'}</span></summary><div class="subbody">
-      ${D.fill.on?`<div class="row-btns"><label class="check" style="flex:1"><input type="checkbox" data-bfill="1"${b.noFill?'':' checked'}> Auto-fill this block</label><button class="btn" data-act="reroll" title="New random content for this block">↻ Re-roll</button></div>`:'<div class="note">Auto-fill is off (Text HUD tab).</div>'}
-      <label class="check"><input type="checkbox" data-bnum="1"${numOn(b)?' checked':''}> Block number in the top-right${b.num!=null?' <a href="#" data-act="numreset" class="note">(use default)</a>':''}</label>
-    </div></details>
     ${cardMedia([b.id])}
   </div>`;
 }
 function cardContentMulti(sel,virt){
   return `<div class="card"><div class="card-h">${sel.length} blocks</div>
+    ${cToggles(sel)}
     <div class="field stack"><span class="lbl">Block colour</span><div class="swatches">${swatchHTML(sel[0].color,'sel.color')}</div></div>
     ${virt?'<div class="note">Changing text style here makes the generated line editable (⌘Z undoes).</div>':''}
     ${styleBlock(sel[0],sel)}
@@ -7308,7 +7325,7 @@ document.addEventListener('click',e=>{
 });
 /* click-and-drag on a number field: up/right = more, down/left = less (Shift ×10, Alt ×0.1). A click without dragging lets you type. */
 document.addEventListener('pointerdown',e=>{
-  const inp=e.target.closest&&e.target.closest('.num input[type=number]'); if(!inp||inp.disabled||e.button!==0) return;
+  const inp=e.target.closest&&e.target.closest('.num input[type=number]'); if(!inp||inp.disabled||e.button>0) return;
   if(document.activeElement===inp) return;            // already typing in it
   e.preventDefault();
   const x0=e.clientX, y0=e.clientY, v0=parseFloat(inp.value)||0, step=+(inp.step)||1; let drag=false;
@@ -7400,7 +7417,7 @@ function renderProps(){
   else if(U.ctx){ const C=CTX[U.ctx]||{t:U.ctx,e:'',d:''}; $('#stepEyebrow').textContent=C.e; $('#stepTitle').textContent=C.t; $('#stepDesc').textContent=C.d; back.hidden=false; back.title='Back to '+st.name; }
   else { $('#stepEyebrow').textContent=`${U.step+1} · ${st.name}`; $('#stepTitle').textContent=st.title; $('#stepDesc').textContent=st.id==='build'?(inAE?'Create the layers in your active comp.':'Export a script, then run it in After Effects.'):st.desc; back.hidden=true; }
   // content tabs
-  const cp=$('#left .pane[data-pane="content"]'); if(cp){ ['hud','gaps','numbers','echo','text','media'].forEach(t=>cp.classList.toggle('tab-'+t,U.ctab===t)); if(st.id!=='content') U.mediaPick=false; try{renderMediaUI();}catch(e){}
+  const cp=$('#left .pane[data-pane="content"]'); if(cp){ ['hud','gaps','numbers','echo','text','media'].forEach(t=>cp.classList.toggle('tab-'+t,U.ctab===t)); if(st.id!=='content'){ U.mediaPick=false; U.contentPick=false; } try{renderCPick();}catch(e){} try{renderMediaUI();}catch(e){}
     const on={hud:D.fill.on,gaps:D.fill.on&&D.fill.gap.on,numbers:D.num&&D.num.on,echo:D.echo&&D.echo.on,text:D.blocks.some(b=>b.text),media:D.bmedia.on||Object.values(D.bmedia.per||{}).some(p=>p.on)};
     $$('#ctabs [data-ctab-btn]').forEach(b=>{const k=b.dataset.ctabBtn; b.classList.toggle('on',U.ctab===k); if(!b._lab) b._lab=b.textContent; b.innerHTML=`<span class="d${on[k]?' on':''}"></span>${b._lab}`;}); }
 }
@@ -7649,6 +7666,7 @@ function materialize(){
     const n=newBlock(b.c,b.r,b.w,b.h,b.color); n.stack=!!b.stack; n.textColor=b.textColor; map[b.id]=n.id; D.blocks.push(n);
   });
   ['dt','dx'].forEach(k=>{const m=D.anim[k]||{};Object.keys(m).forEach(id=>{if(map[id]!=null){m[map[id]]=m[id];delete m[id];}});});
+  [D.fill.per,D.num.per].forEach(pm=>{ if(pm) Object.keys(pm).forEach(id=>{ if(map[id]!=null&&map[id]!=id){ pm[map[id]]=pm[id]; delete pm[id]; } }); });
   { const M=D.bmedia, per=M.per||{}; Object.keys(per).forEach(id=>{if(map[id]!=null&&map[id]!=id){per[map[id]]=per[id];delete per[id];}}); M.pick=(M.pick||[]).map(id=>map[id]!=null?map[id]:id); }
   if(D.blockColors) Object.keys(D.blockColors).forEach(id=>{ if(+id<0) delete D.blockColors[id]; });   // baked into the new blocks
   U.dopeSel=(U.dopeSel||[]).map(id=>map[id]!=null?map[id]:id);
@@ -8946,13 +8964,35 @@ function mAddFiles(files,relinkId){
   $('#mAssetList').addEventListener('click',e=>{ const d=e.target.closest('[data-mdel]'), r=e.target.closest('[data-mrelink]');
     if(d){ pushHist(true); const id=d.dataset.mdel, M=D.bmedia; M.assets=(M.assets||[]).filter(a=>a.id!==id); M.pool=(M.pool||[]).filter(x=>x!==id); if(M.asset===id) M.asset=mDefault(M.kind); Object.values(M.per||{}).forEach(p=>{if(p.asset===id) delete p.asset;}); refresh(); renderMediaUI(); }
     if(r){ relink=r.dataset.mrelink; fi.value=''; fi.click(); } });
-  $('#mPick').onclick=()=>{ U.mediaPick=!U.mediaPick; if(U.mediaPick){ U.tool='select'; if(D.bmedia.target!=='pick'){pushHist(true);D.bmedia.target='pick';syncInputs(true);} toast('Click blocks to pick them for media · click again to unpick'); } renderMediaUI(); render(); };
+  $('#mPick').onclick=()=>{ U.mediaPick=!U.mediaPick; if(U.mediaPick){ U.contentPick=false; U.tool='select'; if(D.bmedia.target!=='pick'){pushHist(true);D.bmedia.target='pick';syncInputs(true);} toast('Click blocks to pick them for media · click again to unpick'); } renderMediaUI(); render(); };
   $('#mWalk').onclick=()=>{ U.mediaPick=true; if(D.bmedia.target!=='pick'){pushHist(true);D.bmedia.target='pick';syncInputs(true);} renderMediaUI(); if(U.playing) stopPlay(); else { if(U.t==null) tlSetT(0); play(); } toast('Playing the walk — pause anytime and click blocks to pick them'); };
   $('#mPickAll').onclick=()=>{ pushHist(true); D.bmedia.pick=plan(geom()).seq.map(b=>b.id); D.bmedia.target='pick'; syncInputs(true); refresh(); renderMediaUI(); };
   $('#mPickNone').onclick=()=>{ pushHist(true); D.bmedia.pick=[]; refresh(); renderMediaUI(); };
   $('#mReseed').onclick=()=>{ pushHist(true); D.bmedia.seed=Math.floor(Math.random()*1e5); refresh(); };
 })();
 /* click a block on the canvas while picking (works on the generated line too, at any point in the walk) */
+/* ---- content (Text HUD) on/off per block, and per between-blocks area ---- */
+function cPerSet(id,on){ const F=D.fill; F.per=Object.assign({},F.per||{}); const def=F.target!=='pick'; if(on===def) delete F.per[id]; else F.per[id]=on; }
+function cPickAt(G,cell){
+  const P=plan(G), b=P.seq.find(x=>cell.c>=x.c&&cell.c<x.c+x.w&&cell.r>=x.r&&cell.r<x.r+x.h);
+  if(b){ pushHist(true); cPerSet(b.id,!fillOnFor(b)); fillCache.clear(); planCache.k=''; render(); renderCPick(); try{drawDope();}catch(e){} return true; }
+  const Gp=D.fill.gap; if(!(D.fill.on&&Gp&&Gp.on)) return false;
+  const off=Gp.off||{}, hitOff=Object.keys(off).find(k=>{const a=off[k];return cell.c>=a[0]&&cell.c<a[0]+a[2]&&cell.r>=a[1]&&cell.r<a[1]+a[3];});
+  if(hitOff){ pushHist(true); Gp.off=Object.assign({},off); delete Gp.off[hitOff]; planCache.k=''; render(); renderCPick(); return true; }
+  const gl=P.gaps||gapItems(G,P.seq), it=gl.find(x=>x.ga&&cell.c>=x.ga[0]&&cell.c<x.ga[0]+x.ga[2]&&cell.r>=x.ga[1]&&cell.r<x.ga[1]+x.ga[3]);
+  if(it){ pushHist(true); Gp.off=Object.assign({},off); Gp.off[it.ga[0]+','+it.ga[1]]=it.ga.slice(); planCache.k=''; render(); renderCPick(); return true; }
+  return false;
+}
+function renderCPick(){
+  const F=D.fill, n=Object.keys(F.per||{}).length, g=Object.keys((F.gap||{}).off||{}).length, el=$('#cPickN');
+  if(el) el.textContent=(n||g)?`${n} block${n===1?'':'s'} switched${g?` · ${g} between-blocks area${g===1?'':'s'} off`:''}`:(F.target==='pick'?'no blocks picked yet':'');
+  const b=$('#cPick'); if(b){ b.classList.toggle('on',!!U.contentPick); b.textContent=U.contentPick?'✓ Picking — click blocks / gaps':'Pick on the canvas'; }
+}
+(()=>{ if(!$('#cPick')) return;
+  $('#cPick').onclick=()=>{ U.contentPick=!U.contentPick; if(U.contentPick){ U.mediaPick=false; U.tool='select'; toast('Click blocks to switch their content on/off · click between-blocks content to remove it (click again to bring it back)'); } renderCPick(); try{renderMediaUI();}catch(e){} render(); };
+  $('#cWalk').onclick=()=>{ U.contentPick=true; U.mediaPick=false; renderCPick(); if(U.playing) stopPlay(); else { if(U.t==null) tlSetT(0); play(); } toast('Playing the walk — pause and click blocks to switch their content'); };
+  $('#cPickReset').onclick=()=>{ pushHist(true); D.fill.per={}; if(D.fill.gap) D.fill.gap.off={}; fillCache.clear(); planCache.k=''; refresh(); renderCPick(); };
+})();
 function mPickAt(G,cell){
   const P=plan(G), b=P.seq.find(x=>cell.c>=x.c&&cell.c<x.c+x.w&&cell.r>=x.r&&cell.r<x.r+x.h); if(!b) return false;
   pushHist(true); const L=(D.bmedia.pick||[]).slice(), i=L.indexOf(b.id); if(i>=0) L.splice(i,1); else L.push(b.id); D.bmedia.pick=L; if(D.bmedia.target!=='pick') D.bmedia.target='pick';
@@ -8989,6 +9029,10 @@ $('#insp').addEventListener('click',e=>{
   const sg=e.target.closest('[data-bmseg] button[data-v]'); if(sg){ const k=sg.parentNode.dataset.bmseg; pushHist(true); mPer(mSelIds(),p=>{p[k]=sg.dataset.v;}); renderInsp(); render(); return; }
 });
 $('#insp').addEventListener('change',e=>{ const t=e.target, ds=t.dataset||{};
+  if(ds.bcon||ds.bnumt){ pushHist(true); const ids=mSelIds(), P=plan(geom());
+    if(ds.bcon){ if(t.checked&&!D.fill.on){ D.fill.on=true; } ids.forEach(id=>cPerSet(id,t.checked)); fillCache.clear(); }
+    else { D.num.per=Object.assign({},D.num.per||{}); ids.forEach(id=>{ const b=P.seq.find(x=>x.id===id)||byId(id); const def=b?!!(b.num===true||(b.num!==false&&D.num.on)):D.num.on; if(t.checked===def) delete D.num.per[id]; else D.num.per[id]=t.checked; }); }
+    planCache.k=''; syncInputs(true); refresh(); renderCPick(); return; }
   if(ds.bmasset){ pushHist(true); mPer(mSelIds(),p=>{ if(t.value) p.asset=t.value; else delete p.asset; }); renderInsp(); render(); return; }
   if(ds.bmown){ pushHist(true); const own=!t.checked; mPer(mSelIds(),p=>{ if(own){ p.own=true; MSPEC.forEach(k=>{ if(p[k]===undefined) p[k]=D.bmedia[k]; }); } else { delete p.own; MSPEC.forEach(k=>delete p[k]); } }); renderInsp(); render(); return; }
   if(ds.bmchk){ pushHist(true); mPer(mSelIds(),p=>{p[ds.bmchk]=t.checked;}); render(); return; }
