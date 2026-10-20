@@ -1572,6 +1572,19 @@ function GB_missingFonts(list){
   return miss;
 }
 /* read the active comp for timing: length, fps, markers; optionally the per-frame loudness of its first audio layer */
+/* audio layers in the active comp: file path + where the clip sits in time (for the panel to load and play) */
+function GB_compAudio(){
+  var c=app.project.activeItem; if(!(c&&c instanceof CompItem)) return "ERR|Open a comp first";
+  var out=[], i;
+  for(i=1;i<=c.numLayers;i++){ var L=c.layer(i);
+    try{ if(!L.hasAudio||(L.comment&&String(L.comment).indexOf("GridBlocks")===0)) continue;
+      var src=L.source, path="", kind="other";
+      try{ if(src instanceof FootageItem&&src.file){ path=src.file.fsName; kind=src.hasVideo?"video":"audio"; } else if(src instanceof CompItem) kind="comp"; }catch(eS){}
+      out.push('{"name":"'+GB_esc(L.name)+'","index":'+i+',"path":"'+GB_esc(path)+'","kind":"'+kind+'","start":'+L.startTime+',"in":'+L.inPoint+',"out":'+L.outPoint+',"stretch":'+L.stretch+',"on":'+(L.audioEnabled?'true':'false')+',"remap":'+(L.timeRemapEnabled?'true':'false')+'}');
+    }catch(e){}
+  }
+  return 'OK|{"name":"'+GB_esc(c.name)+'","fps":'+c.frameRate+',"dur":'+c.duration+',"layers":['+out.join(",")+']}';
+}
 function GB_readComp(analyse){
   var c=app.project.activeItem; if(!(c&&c instanceof CompItem)) return "ERR|Open a comp first";
   var i, mk=[], mp=c.markerProperty, s;
@@ -2705,7 +2718,7 @@ const DEF={
   bmedia:{on:false,kind:'video',asset:'sample',precomp:false,fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,
     loop:'loop',start:'reveal',delay:0,at:0,offset:0,audio:'mute',target:'all',pick:[],dirOn:{up:true,down:true,flat:true},
     assign:'same',pool:[],dir:{up:'',down:'',flat:''},seed:1,per:{},assets:[]},
-  timing:{beats:[],markers:[],use:'beats',offset:0,sync:false,sens:1.3,minGap:4,media:null,video:true,videoOpacity:60,sound:true},
+  timing:{src:'file',compLayer:'',beats:[],markers:[],use:'beats',offset:0,sync:false,sens:1.3,minGap:4,media:null,video:true,videoOpacity:60,sound:true},
   exit:{on:false,holdOn:true,walkHold:24,walkPace:1,walkLen:48,walkFollow:60,trail:3,slide:1.5,mode:'hold',hold:36,at:24,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
   out:{replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180,folder:true,preGrid:true,preBlocks:false,preTrans:true,shy:true,trim:true,markers:true,headers:true,bake:true,orgV:2},
   blocks:[]
@@ -5597,7 +5610,8 @@ function detectBeats(env,sens,minGap){
   return out;
 }
 U.media=null;
-async function loadMediaFile(file){
+async function loadMediaFile(file,opt){
+  opt=opt||{};
   if(!file) return; const fps=D.comp.fps||30, url=URL.createObjectURL(file), isV=/^video\//.test(file.type);
   const el=document.createElement(isV?'video':'audio'); el.src=url; el.preload='auto'; el.muted=false; if(isV){el.playsInline=true;}
   await new Promise(res=>{el.onloadedmetadata=res;el.onerror=res;});
@@ -5609,9 +5623,32 @@ async function loadMediaFile(file){
     for(let f=0;f<nF;f++){let s=0;const a0=Math.floor(f*per),a1=Math.min(ch.length,Math.floor((f+1)*per));for(let k=a0;k<a1;k+=2)s+=ch[k]*ch[k];env[f]=Math.sqrt(s/Math.max(1,(a1-a0)/2));}
     const mx=Math.max(1e-6,...env); m.env=env.map(v=>v/mx); m.peaks=m.env; m.dur=ab.duration; try{ac.close();}catch(e){}
   }catch(e){ m.peaks=null; }
-  pushHist(true); D.timing.media={name:file.name,dur:r3(m.dur),kind:m.kind};
+  pushHist(true); D.timing.media={name:(opt.label||file.name),dur:r3(m.dur),kind:m.kind}; D.timing.src=opt.comp?'comp':'file'; if(opt.offset!=null) D.timing.offset=opt.offset;
   if(m.env){D.timing.beats=detectBeats(m.env,+D.timing.sens||1.3,+D.timing.minGap||4);}
-  renderMedia(); refresh(); toast(`Loaded ${file.name}`,m.env?`${D.timing.beats.length} beats found`:'no audio track to analyse',true);
+  renderMedia(); refresh(); if(!opt.silent) toast(`Loaded ${opt.label||file.name}`,m.env?`${D.timing.beats.length} beats found`:'no audio track to analyse',true);
+}
+/* After Effects: use the audio that's already in the comp — reads the layer's source file directly and lines it up with the layer */
+function cepReadB64(path){ try{ const r=window.cep&&window.cep.fs&&window.cep.fs.readFile(path,window.cep.encoding.Base64); if(r&&!r.err&&r.data) return r.data; }catch(e){} return null; }
+async function useCompAudio(opt){
+  opt=opt||{};
+  const r=String(await evalHost('GB_compAudio()'));
+  if(r.indexOf('OK|')!==0){ if(!opt.silent) toast(r.replace(/^ERR\|/,''),'','err'); return false; }
+  let o=null; try{ o=JSON.parse(r.slice(3)); }catch(e){ return false; }
+  const fps=D.comp.fps||o.fps||30, L=(o.layers||[]).filter(l=>l.on&&l.path);
+  if(!L.length){ if(!opt.silent){ if((o.layers||[]).length) { toast('The comp’s audio is inside a precomp — analysing it instead (no playback)','',''); readAEComp(true); } else toast(`No audio layers in “${o.name}”`,'','err'); } return false; }
+  let pick=(opt.silent&&D.timing.compLayer&&L.find(l=>l.name===D.timing.compLayer))||L[0];
+  if(L.length>1&&!opt.silent){ const names=L.map((l,i)=>`${i+1}. ${l.name}`).join('\n'); const a=prompt(`Which audio layer from “${o.name}”?\n${names}`,'1'); if(a==null) return false; pick=L[clamp((parseInt(a,10)||1)-1,0,L.length-1)]; }
+  let blob=null; const b64=inAE?cepReadB64(pick.path):null;
+  if(b64){ const bin=atob(b64), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); blob=new Blob([u]); }
+  else { try{ let p=String(pick.path).replace(/\\/g,'/'); if(/^[A-Za-z]:/.test(p)) p='/'+p; const res=await fetch('file://'+encodeURI(p)); blob=await res.blob(); }catch(e){ blob=null; } }
+  if(!blob){ if(!opt.silent) toast('Couldn’t read the audio file — analysing it in After Effects instead','',''); if(!opt.silent) readAEComp(true); return false; }
+  const nm=String(pick.path).split(/[\\/]/).pop(), ext=(nm.split('.').pop()||'').toLowerCase(), video=pick.kind==='video'||/^(mp4|mov|m4v|webm|avi|mxf)$/.test(ext);
+  const type=video?'video/'+(ext==='mov'?'quicktime':'mp4'):'audio/'+(ext==='mp3'?'mpeg':ext==='m4a'?'mp4':ext||'wav');
+  const file=new File([blob],nm,{type});
+  await loadMediaFile(file,{comp:true,offset:Math.round((+pick.start||0)*fps),label:`${pick.name} (from “${o.name}”)`,silent:opt.silent});
+  D.timing.compLayer=pick.name;
+  if(!opt.silent) toast(`Using the audio from “${o.name}”`,`${pick.name} · starts at ${(+pick.start||0).toFixed(2)}s${D.timing.beats.length?` · ${D.timing.beats.length} beats`:''}`,true);
+  return true;
 }
 function reBeat(){ if(U.media&&U.media.env){ pushHist(true); D.timing.beats=detectBeats(U.media.env,+D.timing.sens||1.3,+D.timing.minGap||4); planCache.k=''; renderMedia(); refresh(); } }
 /* preview playback: keep the media in step with the preview clock */
@@ -5644,6 +5681,7 @@ function renderMedia(){
   const box=$('#mediaBox'); if(!box) return; const T=D.timing, m=U.media, fps=D.comp.fps||30, cues=timingCues();
   box.innerHTML=`
     <div class="row-btns"><button class="btn" id="btnMedia">${m?'Replace':'Load'} audio / video…</button>${inAE?'<button class="btn" id="btnReadAE" title="Comp markers, length, and the beat of the first audio layer">Use the AE timeline</button>':''}</div>
+    ${inAE?`<div class="field stack"><span class="lbl">Sound</span><div class="seg" id="audSrc"><button data-src="file"${T.src!=='comp'?' class="on"':''} title="A file you load here">Loaded file</button><button data-src="comp"${T.src==='comp'?' class="on"':''} title="The audio layer already in your After Effects comp — plays with the preview, beats are found automatically, and it re-loads next time you open the panel">This comp’s audio</button></div></div>`:''}
     ${T.media?`<div class="note"><b style="color:var(--text)">${esc(T.media.name)}</b> · ${(+T.media.dur||0).toFixed(2)}s${m?'':' · reload the file to hear / see it again'}</div>`:'<div class="note">Load a music track, VO or reference cut. It plays with the preview and its beats can drive the reveals.'+(inAE?' In After Effects, “Use the AE timeline” reads your comp’s markers and the beat of its audio.':'')+'</div>'}
     ${m&&m.kind==='video'?`<label class="check"><input type="checkbox" data-bind="timing.video"> Show the video behind the grid</label><div class="field" data-show="timing.video=true"><span class="lbl scrub">Video</span><div class="num"><input type="number" data-bind="timing.videoOpacity" min="0" max="100" step="5"><span class="unit">%</span></div></div>`:''}
     ${m&&m.el?'<label class="check"><input type="checkbox" data-bind="timing.sound"> Play sound with the preview</label>':''}
@@ -5656,6 +5694,7 @@ function renderMedia(){
     <div class="note">${cues.length?`${cues.length} cues (blue lines on the timeline)${T.sync?' — reveals snap to them':''}.`:'No cues yet.'} ${m&&m.kind==='video'?'':''}</div>`;
   bindIn(box);
   const bm=box.querySelector('#btnMedia'); if(bm) bm.onclick=()=>$('#mediaIn').click();
+  const as=box.querySelector('#audSrc'); if(as) as.onclick=e=>{ const b=e.target.closest('[data-src]'); if(!b) return; if(b.dataset.src==='comp') useCompAudio(); else { pushHist(true); D.timing.src='file'; renderMedia(); $('#mediaIn').click(); } };
   const ba=box.querySelector('#btnReadAE'); if(ba) ba.onclick=()=>readAEComp(confirm('Also analyse the beat of the first audio layer? (Adds a temporary keyframe layer, then removes it.)'));
   const bl=box.querySelector('#btnMediaLen'); if(bl) bl.onclick=()=>{pushHist();D.anim.lenF=Math.max(2,Math.round(D.timing.media.dur*fps)-Math.max(0,D.anim.startF)+(+D.timing.offset||0));D.anim.toEnd=false;syncInputs(true);refresh();};
   const bc=box.querySelector('#btnClearCues'); if(bc) bc.onclick=()=>{pushHist();D.timing.beats=[];D.timing.markers=[];D.timing.sync=false;renderMedia();refresh();};
@@ -9140,6 +9179,7 @@ async function init(){
       if(s){const o=JSON.parse(s);if(o&&o.doc){setDoc(o.doc);U.step=savedStep(o);U.tool=STEPS[U.step].tool;}}
     }catch(e){}
     await soon(detect(),5000);
+    if(D.timing&&D.timing.src==='comp') setTimeout(()=>{ useCompAudio({silent:true}).catch(()=>{}); },300);
     try{loadFonts();}catch(e){}
     setInterval(()=>{if(D.comp.follow&&!document.hidden&&!U.playing)detect();},1500);
   } else {

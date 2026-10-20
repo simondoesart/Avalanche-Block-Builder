@@ -417,3 +417,7 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 ### v3.55 — Fast content in After Effects
 - **Bake content animation to keyframes** (Build › Organise, on by default): typing, counters, scrambles, live ticks / hashes / glitches, fades, graph build-ons and live graphs are written as keyframes instead of per-frame expressions (a typical scene went from ~450 expressions to 0). Turn it off to get the old live expressions.
 - Motion blur is no longer switched on for content, numbers, text and media layers (they ride on their blocks) — blurring hundreds of text layers was a big render cost.
+
+### v3.56 — Use the comp's audio (After Effects)
+- Timing › Sync to sound › **Sound: Loaded file / This comp's audio** (in the AE panel). "This comp's audio" reads the audio layer that's already in your active comp (its source file, read directly from disk), lines it up with where the layer starts, plays it with the preview and finds its beats. Several audio layers → you choose one. It re-loads automatically next time the panel opens. Audio that lives inside a precomp falls back to "Use the AE timeline" analysis (no playback).
+- Manifest: CEF file-access flags so the panel can read local media.
