@@ -71,7 +71,7 @@ const DEF={
         gap:{off:{},on:true,amount:3,seed:0,color:'#E6212F',win:{on:null,off:null},anim:{own:true,anchor:'block',delay:12,jitter:10,leaveWith:true,inMode:'type',cps:60,inDur:8,buildDur:12,outMode:'fade',hold:48,outDur:12},mods:{log:true,phrase:true,barcode:true,hashes:false,dots:true,logo:true,icons:true,graph:true,stream:false,rpc:false}}},
   echo:{on:false,dx:0,dy:2,last:0,fill:true,color:'#A2AFB2',opacity:100,stroke:false,sw:4,scolor:'#A2AFB2',align:'center',dash:false,dashL:12,dashG:8,content:false,
         timing:'with',offset:6,appear:'fade',out:'stay',hold:12,outF:8},
-  rand:{sizeVar:{on:false,min:1,max:3,aMin:0.5,aMax:3},endSingle:true,pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
+  rand:{sizeVar:{on:false,mode:'free',wMin:1,wMax:6,hMin:1,hMax:4,min:1,max:3,aMin:0.5,aMax:3,list:'1x1, 2x1, 3x1, 2x2, 4x2, 3x3, 6x3, 1x2',keep:0},endSingle:true,pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
         wander:1,climb:0,stackPct:20,stackGap:0,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,offX:0,offY:0,tracking:0,leading:0,kern:'metrics',caps:'none'},
   anim:{hide:[],show:[],hidePct:0,hideSeed:1,seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:true,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
@@ -85,13 +85,13 @@ const DEF={
        ticker:{on:false,y:94,size:14,speed:160,color:'#A2AFB2',band:true,bandColor:'#121212'},
        snow:{on:false,count:90,speed:240,size:2,stretch:6,dir:'left',color:'#EBF0FA',opacity:55,seed:9}},
   num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100,per:{}},
-  L2:{on:false,z:'front',active:'main',store:null,sound:'off',timing:null,cam:'main'},
+  L2:{on:false,z:'front',active:'main',store:null,sound:'off',timing:null,cam:'main',camSrc:'main',infX:100,infY:100,zoom:true,revealBy:'own'},
   bmedia:{on:false,selOn:false,selAsset:'',kind:'video',asset:'sample',precomp:false,fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,
     loop:'loop',start:'reveal',delay:0,at:0,offset:0,audio:'mute',inMode:'block',inLen:12,target:'all',pick:[],dirOn:{up:true,down:true,flat:true},
     assign:'same',pool:[],dir:{up:'',down:'',flat:''},seed:1,per:{},assets:[]},
   timing:{src:'file',compLayer:'',inAt:null,outAt:null,syncOut:true,camMove:'glide',walkOn:false,walkOnAt:null,outBeat:60,cut:[],beats:[],markers:[],use:'beats',offset:0,sync:false,sens:1.3,minGap:4,kind:'all',strongPct:30,every:1,media:null,video:true,videoOpacity:60,sound:true},
   exit:{on:false,holdOn:true,walkHold:24,walkPace:1,walkLen:48,walkFollow:60,trail:3,slide:1.5,mode:'hold',hold:36,at:24,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
-  out:{replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180,folder:true,preGrid:true,preBlocks:false,preTrans:true,shy:true,trim:true,markers:true,headers:true,bake:true,orgV:2},
+  out:{layers:'both',replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180,folder:true,preGrid:true,preBlocks:false,preTrans:true,shy:true,trim:true,markers:true,headers:true,bake:true,orgV:2},
   blocks:[]
 };
 /* the Avalanche HUD example (what used to be the default): rules, starter walk, transitions, grid zoom */
@@ -1208,6 +1208,7 @@ const snap=()=>JSON.stringify(D);
 function pushHist(keepLive){H.u.push(snap());if(H.u.length>150)H.u.shift();H.r=[];if(!keepLive)U.live=false;updUndo();}
 function setDoc(obj){
   if(obj&&obj.out&&obj.out.bake==null) obj.out.bake=true;
+  if(obj&&obj.L2&&obj.L2.cam&&obj.L2.infX==null){ const m={x:[100,0,'main'],fixed:[0,0,'main'],own:[0,0,'own']}[obj.L2.cam]; if(m){ obj.L2.infX=m[0]; obj.L2.infY=m[1]; obj.L2.camSrc=m[2]; } }
   if(obj&&obj.bmedia&&obj.bmedia.target==='pick'){ const m=obj.bmedia; m.target='all'; m.selOn=!!m.on; m.selAsset=m.selAsset||''; m.on=false; }   // old 'only picked blocks' → the Picked blocks layer
   if(obj&&obj.out&&!(obj.out.orgV>=2)){ obj.out.preBlocks=false; obj.out.headers=true; obj.out.orgV=2; }   // blocks are their own layers now (click one → just that block)
   U._mediaUI=0;
@@ -1534,10 +1535,18 @@ function extensionRaw(G,base,capOverride){
   /* random size + aspect (Blocks › Size mix): each new block gets its own width and height; the line steps by the
      real widths so nothing overlaps, and each block stays inside the rows */
   const SV=D.rand.sizeVar||{}, varOn=!!SV.on&&mode!=='continue';
-  const dims=()=>{ if(!varOn) return [last.w,last.h]; const k0=Math.max(1,Math.round(+SV.min||1)), k1=Math.max(k0,Math.round(+SV.max||k0)), k=k0+Math.floor(rnd()*(k1-k0+1));
-    const a0=Math.max(0.2,+SV.aMin||0.5), a1=Math.max(a0,+SV.aMax||2), a=Math.exp(Math.log(a0)+(Math.log(a1)-Math.log(a0))*rnd());
-    let w,h; if(a>=1){ h=k; w=Math.max(1,Math.round(k*a)); } else { w=k; h=Math.max(1,Math.round(k/a)); }
-    h=Math.min(h,Math.max(1,(G.R||7))); return [w,h]; };
+  const ri=(a,b)=>{ a=Math.max(1,Math.round(+a||1)); b=Math.max(a,Math.round(+b||a)); return a+Math.floor(rnd()*(b-a+1)); };
+  const LIST=String(SV.list||'').split(/[ ,;]+/).map(t=>t.match(/^(\d+)\s*[x×]\s*(\d+)$/i)).filter(Boolean).map(m=>[+m[1],+m[2]]);
+  let nGen=0;
+  const dims=()=>{ if(!varOn) return [last.w,last.h]; const mode=SV.mode||'free', idx=main.length+(nGen++); let w,h;
+    if(rnd()*100<(+SV.keep||0)) return [last.w,last.h];   // some keep the base size
+    if(mode==='free'){ w=ri(SV.wMin,SV.wMax); h=ri(SV.hMin,SV.hMax); }
+    else if(mode==='list'&&LIST.length){ const d=LIST[Math.floor(rnd()*LIST.length)]; w=d[0]; h=d[1]; }
+    else { const k=ri(SV.min,SV.max); let a;
+      if(mode==='media') a=mediaAspectFor(idx);
+      else { const a0=Math.max(0.1,+SV.aMin||0.5), a1=Math.max(a0,+SV.aMax||2); a=Math.exp(Math.log(a0)+(Math.log(a1)-Math.log(a0))*rnd()); }
+      if(a>=1){ h=k; w=Math.max(1,Math.round(k*a)); } else { w=k; h=Math.max(1,Math.round(k/a)); } }
+    h=Math.min(Math.max(1,h),Math.max(1,(G.R||7))); w=Math.max(1,w); return [w,h]; };
   let prevW=last.w;
   const place=(nb,w,h)=>{ nb.w=w; nb.h=h; const B=walkBounds(G,h); nb.r=clamp(nb.r,B.lo,B.hi); return nb; };
   let c=last.c, r=last.r, i=main.length;
@@ -1838,16 +1847,22 @@ function hiddenIds(P){ const A=D.anim, s=new Set((A.hide||[]).map(Number)), pct=
 function isHid(P,b){ return !!(P&&P.hidden&&b&&P.hidden.has(b.id)); }
 /* layer 2's own relation to the camera: 'main' moves with the main camera; 'x' only sideways (no up/down);
    'fixed' stays where it is on screen; 'own' uses layer 2's own Style (camera follow = its own camera, otherwise still) */
-function l2ShiftAt(t,PM,P2){ const m=(D.L2&&D.L2.cam)||'main'; if(m==='main'||!PM) return [0,0];
+const L2CAM={main:{camSrc:'main',infX:100,infY:100},x:{camSrc:'main',infX:100,infY:0},fixed:{camSrc:'main',infX:0,infY:0},own:{camSrc:'own',infX:0,infY:0}};
+function l2CamCfg(){ const L=D.L2||{}; return {src:L.camSrc||'main',ix:(L.infX!=null?+L.infX:100)/100,iy:(L.infY!=null?+L.infY:100)/100}; }
+/* layer 2's offset on top of the main camera: total = (its own camera, or where the main camera started) + influence × the main camera's travel */
+function l2ShiftAt(t,PM,P2){ const C=l2CamCfg(); if(!PM||(C.src==='main'&&C.ix===1&&C.iy===1)) return [0,0];
   const c=PM.cam&&PM.cam.length?PM.cam:null, mo=c?ev(c,t,[0,0]):[0,0], m0=c?c[0][1]:[0,0];
-  if(m==='x') return [0,-(mo[1]-m0[1])];
-  if(m==='fixed') return [-(mo[0]-m0[0]),-(mo[1]-m0[1])];
-  if(m==='own'){ const o2=P2&&P2.cam&&P2.cam.length?ev(P2.cam,t,[0,0]):[0,0]; return [o2[0]-mo[0],o2[1]-mo[1]]; }
-  return [0,0]; }
-function l2ShiftKeys(PM,P2){ const m=(D.L2&&D.L2.cam)||'main'; if(m==='main') return null; const end=Math.ceil(Math.max(PM.end||0,P2.end||0))+1, out=[];
-  for(let t=0;t<=end;t++){ const d=l2ShiftAt(t,PM,P2); out.push([t,[r3(d[0]),r3(d[1])],'l']); }
+  const base=C.src==='own'?(P2&&P2.cam&&P2.cam.length?ev(P2.cam,t,[0,0]):[0,0]):m0, tot=[base[0]+C.ix*(mo[0]-m0[0]),base[1]+C.iy*(mo[1]-m0[1])];
+  return [tot[0]-mo[0],tot[1]-mo[1]]; }
+function l2ShiftKeys(PM,P2,abs){ const C=l2CamCfg(); if(!abs&&C.src==='main'&&C.ix===1&&C.iy===1) return null; const end=Math.ceil(Math.max(PM.end||0,P2.end||0))+1, out=[];
+  for(let t=0;t<=end;t++){ const d=l2ShiftAt(t,PM,P2), m=abs&&PM.cam&&PM.cam.length?ev(PM.cam,t,[0,0]):[0,0]; out.push([t,[r3(d[0]+m[0]),r3(d[1]+m[1])],'l']); }
   const k=out.filter((p,i)=>{ if(i===0||i===out.length-1) return true; const a=out[i-1][1], b=out[i+1][1]; return Math.abs(p[1][0]-(a[0]+b[0])/2)>0.05||Math.abs(p[1][1]-(a[1]+b[1])/2)>0.05; });
-  return k.some(p=>p[1][0]||p[1][1])?k:null; }
+  return abs||k.some(p=>p[1][0]||p[1][1])?k:null; }
+/* the width ÷ height of the media a generated block will show (Size mix › Fit the media) */
+function mediaAspectFor(i){ const M=D.bmedia||{}; let id=M.asset; const pool=(M.pool||[]).filter(x=>mAsset(x));
+  if(M.assign==='cycle'&&pool.length) id=pool[i%pool.length]; else if(M.assign==='random'&&pool.length) id=pool[Math.floor(mHash(i*3.17+(+M.seed||1))*pool.length)%pool.length];
+  const fromPool=(M.assign==='cycle'||M.assign==='random')&&pool.length, A=fromPool?mAsset(id):(mAsset(mKindAsset(M.kind,id))||mAsset(id)); const R=A&&typeof MRT!=='undefined'?MRT[A.id]:null; const w=(A&&A.w)||(R&&R.w)||16, h=(A&&A.h)||(R&&R.h)||9; return Math.max(0.1,w/Math.max(1,h)); }
+let EXT_RC=null;   // layer 2 revealing by the main camera: the main plan's camera, used by the reveal timing
 function lockPt(){ const A=D.anim, L=A.lock; return (L&&L.on&&A.mode==='camera'&&A.axis==='xy')?{x:clamp(+L.x,0,100)/100,y:clamp(+L.y,0,100)/100}:null; }
 function rzKeys(){ const A=D.anim; if(!A.rzOn||A.revealWhen!=='arrive'||lockPt()) return []; return trkKeys(rzPts(),[0.33,0,0.67,1],false); }
 function revealXAt(t){ const K=rzKeys(); return K.length?ev(K,t,+D.anim.revealX||75):(+D.anim.revealX||75); }
@@ -2050,7 +2065,8 @@ function plan(G){
   const key=JSON.stringify(D)+'|'+G.W+'|'+G.H;
   if(planCache.k===key) return planCache.v;
   if(planCache.k==='') PLANS.clear(); else if(planCache.k&&planCache.v) PLANS.set(planCache.k,planCache.v);
-  let v=PLANS.get(key); if(!v){ v=remappedPlan(G); try{ lockSnap(v,G); }catch(e){} applyZoom(v); v.hidden=hiddenIds(v); } if(PLANS.size>6) PLANS.clear();
+  let v=PLANS.get(key); if(!v){ let rc=null; if(curLayer()==='l2'&&D.L2&&D.L2.revealBy==='main'&&D.L2.store){ try{ rc=withLayer('main',()=>{ const p=plan(G); return {cam:p.cam,zs:p.zs,pan:p.pan}; }); }catch(e){} }
+    EXT_RC=rc; try{ v=remappedPlan(G); } finally{ EXT_RC=null; } try{ lockSnap(v,G); }catch(e){} applyZoom(v); v.hidden=hiddenIds(v); } if(PLANS.size>6) PLANS.clear();
   planCache={k:key,v}; return v;
 }
 /* ---- TIME REMAP: the scene layer on top.
@@ -2546,12 +2562,12 @@ function computePlan(G){
     // reveal timing vs the camera: 'lead' = on schedule (blocks appear ahead, the camera follows them in);
     // 'arrive' = a block waits until the camera has brought it inside the reveal band of the frame, then appears
     if(lockPt()&&P.cam.length){ /* camera passes each block's spot exactly at its reveal: keep the schedule */ } else
-    if(cm==='curve'&&P.cam.length&&!(D.timing&&D.timing.sync)){
+    if(cm==='curve'&&P.cam.length&&!(D.timing&&D.timing.sync)&&!EXT_RC){
       /* curve camera: the camera leads, so each block appears while it's on screen — on its schedule if that's
          when it's visible, otherwise as soon as it enters (arrive: the reveal zone; ahead: the frame), before it leaves */
       const bandAt=t=>A.revealWhen==='arrive'?clamp(revealXAt(t),50,120)/100:1, bandY=A.axis==='xy'?(A.revealWhen==='arrive'?clamp(+A.revealY||100,50,120)/100:1):1e6;
       const yt=G.H*(1-bandY), yb=G.H*bandY;
-      const scrAt=(t,px,py)=>{const off=ev(P.cam,t,[0,0]),s=ev(P.zs,t,100)/100,pn=ev(P.pan,t,[0,0]);return [G.W/2+s*(px+off[0]-G.W/2)+pn[0],G.H/2+s*(py+off[1]-G.H/2)+pn[1]];};
+      const scrAt=(t,px,py)=>{const RC=EXT_RC||P,off=ev(RC.cam,t,[0,0]),s=ev(RC.zs,t,100)/100,pn=ev(RC.pan,t,[0,0]);return [G.W/2+s*(px+off[0]-G.W/2)+pn[0],G.H/2+s*(py+off[1]-G.H/2)+pn[1]];};
       const tBuild=Math.min(endF-1,Math.floor(W(L-Math.max(1,tr0))));   // build blocks are all in by the scene end
       let prev=-1e9;
       seq.forEach((b,i)=>{
@@ -2568,10 +2584,10 @@ function computePlan(G){
         t=Math.min(tMax,Math.max(t,prev)); P.T[i]=Math.round(t); prev=P.T[i];
       });
     } else
-    if(A.revealWhen==='arrive'&&P.cam.length){
+    if(A.revealWhen==='arrive'&&(P.cam.length||(EXT_RC&&EXT_RC.cam&&EXT_RC.cam.length))){
       const bandY=A.axis==='xy'?clamp(+A.revealY||100,50,120)/100:1e6;  // sideways-only camera: height doesn't matter
       let xl, xr; const yt=G.H*(1-bandY), yb=G.H*bandY; const LKb=lockPt(); const setB=t=>{ if(LKb){ xl=-1e9; xr=G.W*LKb.x+Math.max(3,G.p*0.08); return; } const band=clamp(revealXAt(t),50,120)/100; xl=G.W*(1-band); xr=G.W*band;}; setB(0);
-      const scrAt=(t,px,py)=>{const off=ev(P.cam,t,[0,0]),s=ev(P.zs,t,100)/100,pn=ev(P.pan,t,[0,0]);return [G.W/2+s*(px+off[0]-G.W/2)+pn[0],G.H/2+s*(py+off[1]-G.H/2)+pn[1]];};
+      const scrAt=(t,px,py)=>{const RC=EXT_RC||P,off=ev(RC.cam,t,[0,0]),s=ev(RC.zs,t,100)/100,pn=ev(RC.pan,t,[0,0]);return [G.W/2+s*(px+off[0]-G.W/2)+pn[0],G.H/2+s*(py+off[1]-G.H/2)+pn[1]];};
       const tMax=WO?endF-1:Math.min(endF-1,Math.floor(W(L-Math.max(1,tr0))));   // a delayed reveal still finishes by the scene end
       let prev=-1e9; const T0=P.T.slice();
       seq.forEach((b,i)=>{
@@ -2596,6 +2612,17 @@ function computePlan(G){
     }
   }
 
+  /* layer 2 revealing by the main camera (no camera of its own): each block waits until the main camera brings it into
+     the reveal zone (the frame when 'ahead of the camera'), then appears — the main camera times the reveals */
+  if(!camOn&&EXT_RC&&EXT_RC.cam&&EXT_RC.cam.length&&!BP){
+    const band=A.revealWhen==='arrive'?clamp(+A.revealX||75,50,120)/100:1, xl=G.W*(1-band), xr=G.W*band, tMax=Math.max(startF+L+240,(P.end||0)+240);
+    const scr=(t,px,py)=>{ const off=ev(EXT_RC.cam,t,[0,0]), s=ev(EXT_RC.zs||[],t,100)/100, pn=ev(EXT_RC.pan||[],t,[0,0]); return [G.W/2+s*(px+off[0]-G.W/2)+pn[0],G.H/2+s*(py+off[1]-G.H/2)+pn[1]]; };
+    let prev=-1e9;
+    seq.forEach((b,i)=>{ const r=cellRect(G,b.c,b.r,b.w,b.h), px=r.x+r.w/2, py=r.y+r.h/2; let t=Math.max(P.T[i],prev), q0=null;
+      for(;t<=tMax;t++){ const q=scr(t,px,py); if((q[0]>=xl&&q[0]<=xr)||(q0&&((q0[0]>xr&&q[0]<xl)||(q0[0]<xl&&q[0]>xr)))) break; q0=q; }
+      if(t>tMax) t=Math.max(P.T[i],prev); P.T[i]=Math.round(t); prev=P.T[i]; });
+    P.end=Math.max(P.end||0,(P.T[P.T.length-1]||0)+(+A.trans||1)+2);
+  }
   // per-block timing: hand offsets from the timeline (frames, keyed by block id) shift single reveals
   P.T0=P.T.slice();
   { const DT=A.dt||{}; if(Object.keys(DT).length) seq.forEach((b,i)=>{const d=+DT[b.id]||0; if(d) P.T[i]=Math.round(P.T[i]+d);}); }
@@ -4119,7 +4146,7 @@ function mediaSpecAt(seq,i,T){
   else if(M.assign==='cycle'&&pool.length) a=pool[i%pool.length];
   else if(M.assign==='random'&&pool.length) a=pool[Math.floor(mHash(b.id*3.17+(+M.seed||1))*pool.length)%pool.length];
   if(inSel&&M.selAsset&&mAsset(M.selAsset)) a=M.selAsset;
-  if(per&&per.own) MSPEC.forEach(k=>{ if(per[k]!==undefined) s[k]=per[k]; });
+  if(per) MSPEC.forEach(k=>{ if(per[k]!==undefined&&(per.own||['fit','scale','x','y','flipX','flipY','opacity'].indexOf(k)>=0)) s[k]=per[k]; });
   if(per&&per.asset&&mAsset(per.asset)) a=per.asset;
   s.layer=per&&(per.on===true||per.asset)?'block':inSel?'picked':'all';
   const A=mAsset(a)||MEDIA_SAMPLE; s.asset=A.id; s.kind=A.type; s.dir=dir; s.i=i; s.tRev=T&&T[i]!=null?T[i]:0;
@@ -4146,12 +4173,13 @@ function mSrcTime(s,t,fps,dur){
 const MRT={};
 function mUrl(A){ if(!A) return null; if(A.url) return A.url; if(A.path){ let p=String(A.path).replace(/\\/g,'/'); if(/^[A-Za-z]:/.test(p)) p='/'+p; return 'file://'+encodeURI(p); } return A.file||null; }
 let mRT=0; function mRedraw(){ if(mRT) return; mRT=setTimeout(()=>{ mRT=0; try{render();}catch(e){} try{renderMediaUI();}catch(e){} },80); }
+function mKeepDims(A,R){ if(A&&R&&R.w&&R.h&&(!A.w||!A.h)){ A.w=R.w; A.h=R.h; planCache.k=''; try{ refresh(); }catch(e){} } }
 function mRuntime(A){
   if(!A||typeof document==='undefined') return null; const url=mUrl(A); if(!url) return null;
   let R=MRT[A.id]; if(R&&R.url===url) return R;
-  R=MRT[A.id]={url,frames:[],got:0,cf:0,w:A.w||0,h:A.h||0,dur:A.dur||0,ready:false,err:false};
+  R=MRT[A.id]={aid:A.id,url,frames:[],got:0,cf:0,w:A.w||0,h:A.h||0,dur:A.dur||0,ready:false,err:false};
   try{
-    if(A.type==='image'){ const im=new Image(); im.onload=()=>{R.img=im;R.w=im.naturalWidth;R.h=im.naturalHeight;R.ready=true;mRedraw();}; im.onerror=()=>{R.err=true;mRedraw();}; im.src=url; }
+    if(A.type==='image'){ const im=new Image(); im.onload=()=>{R.img=im;R.w=im.naturalWidth;R.h=im.naturalHeight;R.ready=true;mKeepDims(A,R);mRedraw();}; im.onerror=()=>{R.err=true;mRedraw();}; im.src=url; }
     else mExtract(R);
   }catch(e){ R.err=true; }
   return R;
@@ -4162,7 +4190,7 @@ async function mExtract(R){
     const v=document.createElement('video'); v.muted=true; v.playsInline=true; v.preload='auto';
     const ok=await new Promise(res=>{ v.addEventListener('loadeddata',()=>res(true),{once:true}); v.addEventListener('error',()=>res(false),{once:true}); v.src=R.url; try{v.load();}catch(e){} setTimeout(()=>res(v.readyState>=2),15000); });
     if(!ok){ R.err=true; mRedraw(); return; }
-    R.w=v.videoWidth||R.w; R.h=v.videoHeight||R.h; R.dur=v.duration||R.dur||1;
+    R.w=v.videoWidth||R.w; R.h=v.videoHeight||R.h; R.dur=v.duration||R.dur||1; try{ mKeepDims(mAsset(R.aid),R); }catch(e){}
     const n=Math.max(1,Math.min(150,Math.round(R.dur*Math.min(25,150/Math.max(.1,R.dur)))));
     R.cf=n/R.dur; const W=Math.min(400,R.w||400), H=Math.max(1,Math.round(W*(R.h||225)/Math.max(1,R.w||400)));
     for(let i=0;i<n;i++){
@@ -4406,8 +4434,9 @@ function drawWorld(g,G,o){
         P2.seq.forEach(b=>{const q=cellRect(G,b.c,b.r,b.w,b.h);drawBlock(g,G,b,o2,off[0],off[1],blockState(P2.tracks[b.id],A.t,q),false);}); }
       else { g.save(); g.globalAlpha*=0.45; P2.seq.concat(P2.statics).forEach(b=>drawBlock(g,G,b,o2,0,0,null,false)); g.restore(); } }); };
   if(!l2On()) drawActive(null);
-  else if(curLayer()==='main'){ drawActive('mb'); drawOther('back'); drawActive('mid'); drawOther('front'); drawActive('mf'); }
-  else { drawOther('mb'); drawActive('back'); drawOther('mid'); drawActive('front'); drawOther('mf'); }
+  else { const L2z=fn=>{ if(live&&D.L2&&D.L2.zoom===false&&baseXf&&g.setTransform){ g.save(); g.setTransform(baseXf); const zk=ZK; ZK=null; try{ fn(); } finally{ ZK=zk; g.restore(); } } else fn(); };   // layer 2 not affected by the zoom
+    if(curLayer()==='main'){ drawActive('mb'); L2z(()=>drawOther('back')); drawActive('mid'); L2z(()=>drawOther('front')); drawActive('mf'); }
+    else { drawOther('mb'); L2z(()=>drawActive('back')); drawOther('mid'); L2z(()=>drawActive('front')); drawOther('mf'); } }
   // text in the gaps between blocks
   if(D.fill.on&&D.fill.gap.on&&o.inside){
     const gl=A&&A.P&&A.P.gaps?A.P.gaps:gapItems(G,D.blocks.filter(b=>valid(b,G)));
@@ -6043,7 +6072,12 @@ const HELP={
   'anim.appear':'How each block comes on: cut, fade, wipe from the left, or scale up.',
   'anim.axis':'Follow blocks sideways only, or up and down too.',
   'anim.lock.on':'The camera keeps the newest block exactly on this point of the frame (centre by default). Each block appears there and the camera carries the line through it — up and down as well as sideways.',
+  'rand.sizeVar.mode':'Free: width and height picked separately — any proportions. Shape range: a size and a width÷height range. From a list: only the sizes you type. Fit the media: each block takes the shape of the video or image it will show.',
   'rand.sizeVar.on':'Give every generated block its own size and shape. Size = the short side in cells; Shape = width ÷ height (1 = square, 2 = twice as wide, 0.5 = twice as tall).',
+  'L2.infX':'How much of the main camera\'s sideways travel layer 2 picks up. 100 = moves with it, 0 = ignores it, 50 = half (parallax), over 100 = faster. Camera movement only — reveals are set below.',
+  'L2.infY':'How much of the main camera\'s up/down travel layer 2 picks up. 0 = never shifts up or down.',
+  'L2.zoom':'Layer 2 zooms with the grid zoom. Off: it stays at its own size while the main walk zooms.',
+  'L2.revealBy':'Which camera decides when a layer-2 block appears (when it reaches the reveal zone): layer 2\'s own, or the main walk\'s.',
   'anim.hidePct':'Randomly hide this share of the blocks. Hidden blocks keep their place in the walk (the line and camera still go through them) — they just never appear. Select a block and switch off “Shown” to hide it by hand.',
   'anim.lock.move':'How the camera travels from one block to the next. Glide: one smooth continuous move through every block. Ease each: settles on each block, then eases to the next. Linear: constant speed between blocks.',
   'anim.lock.x':'Across the frame: 0 = left edge, 50 = centre, 100 = right edge.','anim.lock.y':'Down the frame: 0 = top, 50 = centre, 100 = bottom.',
@@ -6502,7 +6536,9 @@ function autosave(){
 /* the export always describes the main walk, with layer 2 (if on) alongside it */
 function payload(){
   return withLayer('main',()=>{ const d=payloadCore(); d.layer2=null;
-    if(l2On()){ const PM=plan(geom()); d.layer2=withLayer('l2',()=>{ const q=payloadCore(true); let shift=null; try{ shift=l2ShiftKeys(PM,plan(geom())); }catch(e){} return {z:D.L2.z,blocks:q.blocks,echoes:q.echoes,shift}; }); }
+    const OL=(D.out&&D.out.layers)||'both';
+    if(l2On()&&OL!=='main'){ const PM=plan(geom()); d.layer2=withLayer('l2',()=>{ const q=payloadCore(true); let shift=null, abs=null; try{ const P2=plan(geom()); shift=l2ShiftKeys(PM,P2); if(D.L2.zoom===false) abs=l2ShiftKeys(PM,P2,true); }catch(e){} return {z:D.L2.z,blocks:q.blocks,echoes:q.echoes,shift,abs,zoom:D.L2.zoom!==false}; }); }
+    if(OL==='l2'&&d.layer2){ d.blocks=[]; d.echoes=[]; d.gaps=null; }
     return d; });
 }
 function payloadCore(inner){
@@ -6827,7 +6863,7 @@ function mAddFiles(files,relinkId){
   $('#mWalk').onclick=()=>{ U.mediaPick=true; if(!D.bmedia.selOn){pushHist(true);D.bmedia.selOn=true;syncInputs(true);} renderMediaUI(); if(U.playing) stopPlay(); else { if(U.t==null) tlSetT(0); play(); } toast('Playing the walk — pause anytime and click blocks to pick them'); };
   $('#mPickAll').onclick=()=>{ pushHist(true); D.bmedia.pick=plan(geom()).seq.map(b=>b.id); D.bmedia.selOn=true; syncInputs(true); refresh(); renderMediaUI(); };
   $('#mPickNone').onclick=()=>{ pushHist(true); D.bmedia.pick=[]; refresh(); renderMediaUI(); };
-  if($('#sizePreset')) $('#sizePreset').addEventListener('click',e=>{ const b=e.target.closest('[data-sv]'); if(!b) return; const v=b.dataset.sv.split(',').map(Number); pushHist(true); D.rand.sizeVar={on:true,min:v[0],max:v[1],aMin:v[2],aMax:v[3]}; planCache.k=''; syncInputs(true); refresh(); });
+  if($('#sizePreset')) $('#sizePreset').addEventListener('click',e=>{ const b=e.target.closest('[data-sv]'); if(!b) return; pushHist(true); D.rand.sizeVar=Object.assign({},D.rand.sizeVar,JSON.parse(b.dataset.sv),{on:true}); planCache.k=''; syncInputs(true); refresh(); });
   if($('#hideShuffle')) $('#hideShuffle').onclick=()=>{ pushHist(true); D.anim.hideSeed=1+Math.floor(Math.random()*1e5); D.anim.show=[]; planCache.k=''; refresh(); };
   if($('#hideClear')) $('#hideClear').onclick=()=>{ pushHist(true); D.anim.hide=[]; D.anim.show=[]; D.anim.hidePct=0; planCache.k=''; syncInputs(true); refresh(); toast('Every block shown again'); };
   $('#mReseed').onclick=()=>{ pushHist(true); D.bmedia.seed=Math.floor(Math.random()*1e5); refresh(); };
@@ -6876,11 +6912,13 @@ function cardMedia(ids){
   return `<details class="sub" data-sub="blk-media" open><summary>Media <span class="note">${got?(asset?esc(asset.name):'on'):'none'}${ids.length>1?' · '+ids.length+' blocks':''}</span></summary><div class="subbody">
     <div class="seg" data-bmon="1"><button data-v="auto"${mode==='auto'?' class="on"':''} title="Follow All blocks / Picked blocks (${got?(got.layer==='picked'?'picked':'all blocks'):'none'})">Layer rule</button><button data-v="on"${mode==='on'?' class="on"':''}>On</button><button data-v="off"${mode==='off'?' class="on"':''}>Off</button></div>
     <div class="field stack"><span class="lbl">Media for ${ids.length>1?'these blocks':'this block'}</span><select class="msel" data-bmasset="1">${mOpts(mAssets(),per.asset||'','(global choice)')}</select></div>
-    <label class="check"><input type="checkbox" data-bmown="1"${own?'':' checked'}> Use the global media settings</label>
-    ${own?`<div class="note">Settings below change ${ids.length>1?'the selected blocks':'this block'} only.</div>
+    <div class="field stack"><span class="lbl">How it sits in ${ids.length>1?'these blocks':'this block'}</span>
       ${seg('fit',[['cover','Cover'],['contain','Contain'],['stretch','Stretch'],['tile','Tile'],['original','Original']])}
       <div class="field2">${num('scale','Scale','%',1,2000)}${num('opacity','Opacity','%',0,100)}${num('x','X','%',-500,500)}${num('y','Y','%',-500,500)}</div>
       <div class="row-btns"><label class="check"><input type="checkbox" data-bmchk="flipX"${v('flipX')?' checked':''}> Flip X</label><label class="check"><input type="checkbox" data-bmchk="flipY"${v('flipY')?' checked':''}> Flip Y</label></div>
+    <div class="note">Cover fills the whole block (cropping the overflow) — the default. <a href="#" data-act="editmedia" style="color:var(--accent2)">All media settings →</a></div></div>
+    <label class="check"><input type="checkbox" data-bmown="1"${own?'':' checked'}> Use the global playback settings</label>
+    ${own?`<div class="note">Playback below changes ${ids.length>1?'the selected blocks':'this block'} only.</div>
       ${seg('loop',[['loop','Loop'],['hold','Stop on last'],['ping','Ping-pong']])}
       ${seg('start',[['reveal','When it appears'],['frame','At a frame']])}
       <div class="field2">${v('start')==='frame'?num('at','At frame','fr',-9999,99999):num('delay','Delay','fr',-9999,9999)}${num('offset','Clip starts at','fr',0,99999)}</div>
@@ -6893,7 +6931,7 @@ function cardMedia(ids){
 }
 function mPer(ids,fn){ const M=D.bmedia; M.per=Object.assign({},M.per||{}); ids.forEach(id=>{ const p=Object.assign({},M.per[id]||{}); fn(p); if(!Object.keys(p).length) delete M.per[id]; else M.per[id]=p; }); }
 $('#insp').addEventListener('click',e=>{
-  const ed=e.target.closest('[data-act="editmedia"]'); if(ed){ e.preventDefault(); U.ctab='media'; select([]); refresh(); return; }
+  const ed=e.target.closest('[data-act="editmedia"]'); if(ed){ e.preventDefault(); U.ctab='media'; select([]); try{ const k=STEPS.findIndex(x=>x.id==='content'); if(k>=0&&U.step!==k) goStep(k); }catch(x){} refresh(); return; }
   const on=e.target.closest('[data-bmon] button[data-v]'); if(on){ pushHist(true); const v=on.dataset.v; mPer(mSelIds(),p=>{ if(v==='auto') delete p.on; else p.on=v==='on'; }); renderInsp(); render(); drawDope(); return; }
   const sg=e.target.closest('[data-bmseg] button[data-v]'); if(sg){ const k=sg.parentNode.dataset.bmseg; pushHist(true); mPer(mSelIds(),p=>{p[k]=sg.dataset.v;}); renderInsp(); render(); return; }
 });
@@ -6996,14 +7034,15 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
 function renderLayerBar(){
   const act=curLayer(), tb=$('#layerTabs'); if(!tb) return;
   $$('#layerTabs [data-ltab]').forEach(b=>{ b.classList.toggle('on',b.dataset.ltab===act); if(b.dataset.ltab==='l2') b.textContent=D.L2&&D.L2.on?'Layer 2':'+ Layer 2'; });
-  const bar=$('#layerBar'); if(bar){ bar.hidden=act!=='l2'; $('#l2On').checked=!!(D.L2&&D.L2.on); $$('#l2Z [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===(D.L2.z||'front'))); $$('#l2Snd [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===(D.L2.sound||'off'))); $$('#l2Cam [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===(D.L2.cam||'main'))); }
+  const bar=$('#layerBar'); if(bar){ bar.hidden=act!=='l2'; $('#l2On').checked=!!(D.L2&&D.L2.on); $$('#l2Z [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===(D.L2.z||'front'))); $$('#l2Snd [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===(D.L2.sound||'off'))); const cfg=l2CamCfg(), cur=Object.keys(L2CAM).find(k=>{ const p=L2CAM[k]; return p.camSrc===cfg.src&&p.infX/100===cfg.ix&&p.infY/100===cfg.iy; }); $$('#l2Cam [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===cur)); }
+  { const g=$('#l2CamGroup'); if(g) g.hidden=act!=='l2'||!(D.L2&&D.L2.on); }
 }
 (()=>{ const tb=$('#layerTabs'); if(!tb) return;
   tb.addEventListener('click',e=>{ const b=e.target.closest('[data-ltab]'); if(!b) return; const want=b.dataset.ltab;
     if(want==='l2'&&!(D.L2&&D.L2.on)){ pushHist(true); D.L2.on=true; l2Init(); setLayer('l2'); if(!D.blocks.length){ try{ generateLine(true); }catch(x){} } toast('Layer 2: a second walk — bigger blocks with content. It sits in front of the main walk; switch it behind in the bar above.','⌘Z to undo',true); renderLayerBar(); return; }
     setLayer(want); if(want==='l2'&&!D.blocks.length){ try{ generateLine(true,true); }catch(x){} } });
   $('#l2On').onchange=e=>{ pushHist(true); D.L2.on=e.target.checked; planCache.k=''; refresh(); renderLayerBar(); };
-  $('#l2Cam')&&$('#l2Cam').addEventListener('click',e=>{ const b=e.target.closest('[data-v]'); if(!b) return; pushHist(true); D.L2.cam=b.dataset.v; planCache.k=''; refresh(); renderLayerBar();
+  $('#l2Cam')&&$('#l2Cam').addEventListener('click',e=>{ const b=e.target.closest('[data-v]'); if(!b) return; pushHist(true); D.L2.cam=b.dataset.v; Object.assign(D.L2,L2CAM[b.dataset.v]||{}); planCache.k=''; syncInputs(true); refresh(); renderLayerBar();
     toast(({main:'Layer 2 moves with the main camera',x:'Layer 2 follows the camera sideways only — no up / down',fixed:'Layer 2 stays put on screen',own:'Layer 2 uses its own camera (its Style: Camera follow = its own camera)'})[D.L2.cam]); });
   $('#l2Snd')&&$('#l2Snd').addEventListener('click',e=>{ const b=e.target.closest('[data-v]'); if(!b) return; setL2Sound(b.dataset.v); });
   $('#l2Z').addEventListener('click',e=>{ const b=e.target.closest('[data-v]'); if(!b) return; pushHist(true); D.L2.z=b.dataset.v; planCache.k=''; refresh(); renderLayerBar(); });

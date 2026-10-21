@@ -173,6 +173,8 @@ function GB_strokes(comp,name,segs,color,lw,widthExpr){
   if(widthExpr) st.property("ADBE Vector Stroke Width").expression=widthExpr;
   return L;
 }
+/* parent without AE's compensation: the child keeps its own numbers (its layout in the parent's space) */
+function GB_jumpParent(L,P){ try{ if(L.setParentWithJump){ L.setParentWithJump(P); return; } }catch(e){} try{ L.parent=P; }catch(e2){} }
 function GB_null(comp,name,threeD){
   var L=comp.layers.addNull();
   L.name=name;
@@ -940,7 +942,7 @@ function GB_build(d){
     if(d.gaps){GB_fillItems(blockC,d.gaps,null,gapLayers); for(i=0;i<gapLayers.length;i++){gapLayers[i].name="Gap · "+gapLayers[i].name; gapLayers[i].label=2; blocks.push({L:gapLayers[i],T:null,b:{keys:null}});}
       if(org.headers!==false&&gapLayers.length) GB_header(blockC,"BETWEEN BLOCKS ("+gapLayers.length+")",hdrF);}
     /* ---- LAYER 2: a second walk, in front of or behind the main one (per block) ---- */
-    var l2groups=[];
+    var l2groups=[], l2Info=null;
     if(d.layer2&&d.layer2.blocks&&d.layer2.blocks.length){
       var L2=d.layer2, nFront=0;
       if(L2.echoes){ for(i=0;i<L2.echoes.length;i++){ var e2=L2.echoes[i], E2=GB_echoBox(blockC,e2); E2.label=4; E2.name="L2 · "+E2.name; blocks.push({L:E2,T:null,b:{keys:e2.keys}}); if(e2.tIn!=null) trimTo(E2,e2.tIn); if(e2.tOut!=null) trimOut(E2,e2.tOut); if(firstMainB&&L2.z=="behind"){ try{E2.moveAfter(firstMainB);}catch(eE2){} } } }
@@ -955,16 +957,9 @@ function GB_build(d){
         for(var mk2=0;mk2<mo2.length;mk2++){ var ly=mo2[mk2]; if(!ly) continue; try{ if(mz=="front") ly.moveToBeginning(); else if(lowL2) ly.moveAfter(lowL2); }catch(eMz){} } }
       if(org.headers!==false&&nFront) GB_header(blockC,"LAYER 2 · IN FRONT ("+nFront+")",hdrF);
       out.push(L2.blocks.length+" layer-2 blocks");
-      /* layer 2's own camera relation (sideways only / fixed / own): one null carries every layer-2 layer by the
-         difference between its motion and the main camera */
-      if(L2.shift&&L2.shift.length){ try{
-        var sh=GB_null(blockC,"GB · Layer 2 camera",false); sh.comment="GridBlocks:null"; sh.label=9;
-        var shP=GB_xf(sh).property("ADBE Position"), bx=blockC.width/2, by=blockC.height/2; shP.setValue([bx,by]);
-        var kids=[]; for(var q2=0;q2<l2groups.length;q2++){ var gq=l2groups[q2].grp; for(var q3=0;q3<gq.length;q3++) if(gq[q3]) kids.push(gq[q3]); }
-        for(var q4=0;q4<kids.length;q4++){ try{ if(!kids[q4].parent) kids[q4].parent=sh; }catch(eP){} }
-        var shk=[]; for(var q5=0;q5<L2.shift.length;q5++){ var kk=L2.shift[q5]; shk.push([kk[0],[bx+kk[1][0],by+kk[1][1]],kk[2]||"l"]); }
-        GB_keys(shP,shk,fps); shy.push(sh); locks.push(sh); out.push("layer 2 camera offset");
-      }catch(eSh){} }
+      /* layer 2's camera (influence / own camera / no zoom): handled once the rig exists, below */
+      l2Info={kids:[],shift:L2.shift,abs:L2.abs,zoom:L2.zoom!==false};
+      for(var q2=0;q2<l2groups.length;q2++){ var gq=l2groups[q2].grp; for(var q3=0;q3<gq.length;q3++) if(gq[q3]) l2Info.kids.push(gq[q3]); }
     }
     if(fillLayers.length||gapLayers.length) out.push((fillLayers.length+gapLayers.length)+" content layers");
     if(d.lab){var nl=GB_labWorld(blockC,d.lab,blocks,blockLayers,fps,org,main); if(nl) out.push(nl+" lab layers");}
@@ -1102,6 +1097,17 @@ function GB_build(d){
       if(zoom && A.zoom.anchor) GB_keys(GB_xf(zoom).property("ADBE Anchor Point"),A.zoom.anchor,fps);
       out.push(A.label);
     }
+    /* ---- layer 2 camera: one null carries layer 2 — by the difference from the main camera (moves with the rig),
+       or, when layer 2 ignores the zoom, by its whole offset (outside the rig, 2D) ---- */
+    if(l2Info&&l2Info.kids.length){ try{
+      var useAbs=!l2Info.zoom&&l2Info.abs&&l2Info.abs.length, keysL2=useAbs?l2Info.abs:l2Info.shift;
+      if(keysL2&&keysL2.length){
+        var sh=GB_null(blockC,"GB · Layer 2 camera",false); sh.comment="GridBlocks:null"; sh.label=9;
+        for(var q4=0;q4<l2Info.kids.length;q4++){ var kd=l2Info.kids[q4]; try{ if(!kd.parent||(cam&&kd.parent===cam)||(conv&&kd.parent===conv)){ if(useAbs&&cam3) kd.threeDLayer=false; GB_jumpParent(kd,sh); } else if(useAbs&&cam3) kd.threeDLayer=false; }catch(eP){} }
+        if(!useAbs&&cam&&!cam3) GB_jumpParent(sh,cam);
+        GB_keys(GB_xf(sh).property("ADBE Position"),keysL2,fps);
+        shy.push(sh); out.push(useAbs?"layer 2 outside the zoom":"layer 2 camera offset");
+      } }catch(eSh){} }
     if(d.lab){GB_labScreen(main,d.lab,fps);}
     if(d.trans){var belowL=blockPre?blockPre.layer:(blocks.length?blocks[0].L:null); var nt=GB_trans(main,d,fps,org,folder,comps,belowL,cam); if(nt) out.push(nt+" transition blocks");}
     // the camera (and its framing helper) on top, where animators look for it

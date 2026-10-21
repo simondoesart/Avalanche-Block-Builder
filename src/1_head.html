@@ -813,11 +813,21 @@ body.nohelp .qm{display:none}
               <details class="sub" data-sub="size-mix"><summary>Size mix <span class="note">random size &amp; shape</span></summary><div class="subbody">
                 <label class="check"><input type="checkbox" data-bind="rand.sizeVar.on"> Random size and shape for each block</label>
                 <div data-show="rand.sizeVar.on=true" style="display:grid;gap:8px">
-                  <div class="field2"><div class="field"><span class="lbl scrub" title="Smallest short side, in cells">Size from</span><div class="num"><input type="number" data-bind="rand.sizeVar.min" min="1" max="12" step="1"></div></div>
+                  <div class="seg" data-seg="rand.sizeVar.mode"><button data-v="free" title="Width and height picked separately — any proportions">Free</button><button data-v="shape" title="A size, and a range of shapes">Shape range</button><button data-v="list" title="Only the sizes you list">From a list</button><button data-v="media" title="Each block takes the shape of its video or image">Fit the media</button></div>
+                  <div data-show="rand.sizeVar.mode=free" style="display:grid;gap:8px">
+                    <div class="field2"><div class="field"><span class="lbl scrub" title="Narrowest, in cells">Width from</span><div class="num"><input type="number" data-bind="rand.sizeVar.wMin" min="1" max="24" step="1"></div></div>
+                      <div class="field"><span class="lbl scrub">to</span><div class="num"><input type="number" data-bind="rand.sizeVar.wMax" min="1" max="24" step="1"></div></div></div>
+                    <div class="field2"><div class="field"><span class="lbl scrub" title="Shortest, in rows">Height from</span><div class="num"><input type="number" data-bind="rand.sizeVar.hMin" min="1" max="12" step="1"></div></div>
+                      <div class="field"><span class="lbl scrub">to</span><div class="num"><input type="number" data-bind="rand.sizeVar.hMax" min="1" max="12" step="1"></div></div></div>
+                  </div>
+                  <div data-show="rand.sizeVar.mode=shape|media" class="field2"><div class="field"><span class="lbl scrub" title="Smallest short side, in cells">Size from</span><div class="num"><input type="number" data-bind="rand.sizeVar.min" min="1" max="12" step="1"></div></div>
                     <div class="field"><span class="lbl scrub" title="Largest short side, in cells">to</span><div class="num"><input type="number" data-bind="rand.sizeVar.max" min="1" max="12" step="1"></div></div></div>
-                  <div class="field2"><div class="field"><span class="lbl scrub" title="Narrowest shape (width ÷ height). 0.5 = twice as tall as wide">Shape from</span><div class="num"><input type="number" data-bind="rand.sizeVar.aMin" min="0.2" max="6" step="0.1"></div></div>
-                    <div class="field"><span class="lbl scrub" title="Widest shape (width ÷ height). 3 = three times as wide">to</span><div class="num"><input type="number" data-bind="rand.sizeVar.aMax" min="0.2" max="6" step="0.1"></div></div></div>
-                  <div class="seg" id="sizePreset"><button data-sv="1,2,1,1">Small squares</button><button data-sv="1,3,0.5,3">Mixed</button><button data-sv="2,4,1.5,4">Big wides</button><button data-sv="1,3,0.33,0.75">Talls</button></div>
+                  <div data-show="rand.sizeVar.mode=shape" class="field2"><div class="field"><span class="lbl scrub" title="Narrowest shape (width ÷ height). 0.5 = twice as tall as wide">Shape from</span><div class="num"><input type="number" data-bind="rand.sizeVar.aMin" min="0.1" max="8" step="0.1"></div></div>
+                    <div class="field"><span class="lbl scrub" title="Widest shape (width ÷ height). 3 = three times as wide">to</span><div class="num"><input type="number" data-bind="rand.sizeVar.aMax" min="0.1" max="8" step="0.1"></div></div></div>
+                  <div data-show="rand.sizeVar.mode=list" class="field stack"><span class="lbl">Sizes (W×H, comma-separated)</span><input type="text" data-bind="rand.sizeVar.list" placeholder="1x1, 2x1, 3x2, 4x4"></div>
+                  <div data-show="rand.sizeVar.mode=media" class="note">Each block gets the width ÷ height of the video or image it will show (Content › Media — a cycled list gives each block its own clip's shape).</div>
+                  <div class="field"><span class="lbl scrub" title="This share of blocks keeps the base block size">Keep base size</span><div class="num"><input type="number" data-bind="rand.sizeVar.keep" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+                  <div class="seg" id="sizePreset"><button data-sv='{"mode":"free","wMin":1,"wMax":6,"hMin":1,"hMax":4}'>Anything</button><button data-sv='{"mode":"free","wMin":1,"wMax":2,"hMin":1,"hMax":2}'>Small bits</button><button data-sv='{"mode":"free","wMin":3,"wMax":8,"hMin":2,"hMax":5}'>Big panels</button><button data-sv='{"mode":"list","list":"1x1, 2x2, 4x2, 6x3, 2x4"}'>Editorial</button><button data-sv='{"mode":"shape","min":1,"max":3,"aMin":1.7,"aMax":1.8}'>All 16:9</button></div>
                 </div></div></details>
               <details class="sub" data-sub="hide-blocks"><summary>Hide blocks <span class="note">gaps in the line</span></summary><div class="subbody">
                 <div class="field"><span class="lbl scrub">Randomly hide</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.hidePct" min="0" max="95" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
@@ -1269,6 +1279,16 @@ body.nohelp .qm{display:none}
               <button class="modecard" data-v="push"><svg width="34" height="20" viewBox="0 0 34 20" fill="none" stroke="currentColor"><rect x=".5" y=".5" width="33" height="19" rx="2"/><path d="M9 3H3m2-2L3 3l2 2"/><rect x="2" y="9" width="7" height="4" fill="currentColor" stroke="none" opacity=".45"/><rect x="13" y="9" width="8" height="4" fill="currentColor" stroke="none"/></svg><div class="t">Conveyor</div><div class="d">Grid stays still. New blocks land in the centre and push the rest out.</div></button>
             </div>
           </div>
+          <div class="group" id="l2CamGroup" hidden>
+            <div class="group-h">Layer 2 · camera</div>
+            <div class="note">How layer 2 moves with the main walk's camera, whether it zooms, and which camera times its reveals.</div>
+            <div class="field stack"><span class="lbl">Moves with</span><div class="seg" data-seg="L2.camSrc"><button data-v="main" title="The main camera (by the amounts below)">Main camera</button><button data-v="own" title="Its own camera (Style: Camera follow), plus the amounts of the main camera below">Its own camera</button></div></div>
+            <div class="field2"><div class="field"><span class="lbl scrub" title="Share of the main camera's sideways travel">Main · sideways</span><div class="num"><input type="number" data-bind="L2.infX" min="-200" max="300" step="5"><span class="unit">%</span></div></div>
+              <div class="field"><span class="lbl scrub" title="Share of the main camera's up/down travel">Main · up/down</span><div class="num"><input type="number" data-bind="L2.infY" min="-200" max="300" step="5"><span class="unit">%</span></div></div></div>
+            <label class="check"><input type="checkbox" data-bind="L2.zoom"> Affected by the zoom</label>
+            <div class="field stack"><span class="lbl">Reveals follow</span><div class="seg" data-seg="L2.revealBy"><button data-v="own" title="Layer 2's own camera / view">Layer 2 camera</button><button data-v="main" title="Blocks appear when the main camera brings them into the reveal zone">Main camera</button></div></div>
+            <div class="note">The amounts change camera movement only — they never change when blocks appear.</div>
+          </div>
           <div class="group" data-ctx="camera" data-show="anim.mode=camera|push">
             <div class="group-h">Camera<span id="camHead" class="note" style="margin-left:6px;text-transform:none;letter-spacing:0"></span></div>
             <details class="sub" data-sub="cam-move" open><summary>How it moves <span class="note">movement, feel</span></summary><div class="subbody">
@@ -1524,6 +1544,7 @@ body.nohelp .qm{display:none}
             <label class="check"><input type="checkbox" data-bind="out.preTrans"> Precomp each transition</label>
             <label class="check"><input type="checkbox" data-bind="out.folder"> Project folder <span class="note">Grid Blocks › comp name</span></label>
             <label data-adv class="check"><input type="checkbox" data-bind="out.shy"> Hide helper nulls (shy)</label>
+            <div class="field stack" id="outLayers"><span class="lbl">Layers to build</span><div class="seg" data-seg="out.layers"><button data-v="both">Main + layer 2</button><button data-v="main">Main walk only</button><button data-v="l2">Layer 2 only</button></div></div>
             <label data-adv class="check"><input type="checkbox" data-bind="out.trim"> Trim layers to when they appear</label>
             <label data-adv class="check"><input type="checkbox" data-bind="out.markers"> Markers for scene &amp; transitions</label>
             <div class="note" data-show="out.rig=null">Grid and block precomps need the After Effects camera rig (the 2D null rig links everything to shared nulls).</div>
