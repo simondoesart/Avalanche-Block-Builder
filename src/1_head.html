@@ -582,6 +582,8 @@ body.nohelp .qm{display:none}
       <span class="note" style="white-space:nowrap">Layer 2</span>
       <div class="seg mini" id="l2Z"><button data-v="behind">Behind</button><button data-v="front">In front</button></div>
       <span class="note" style="white-space:nowrap" title="Select a layer-2 block for its own depth order, position, rotation and scale">the main walk</span>
+      <span class="note" style="white-space:nowrap;margin-left:10px">Camera</span>
+      <div class="seg mini" id="l2Cam" title="How layer 2 moves with the camera"><button data-v="main" title="Moves with the main camera">Main</button><button data-v="x" title="Follows the main camera sideways only — never shifts up or down">Sideways only</button><button data-v="fixed" title="Stays put on screen">Fixed</button><button data-v="own" title="Its own camera — set by layer 2's Style (Camera follow)">Own</button></div>
       <span class="note" style="white-space:nowrap;margin-left:10px">Sound</span>
       <div class="seg mini" id="l2Snd" title="How layer 2 follows the song"><button data-v="off" title="Not synced — layer 2 keeps its own pace">Not synced</button><button data-v="same" title="Lands on the same cues as the main walk">Same as main</button><button data-v="own" title="Its own cues, sync and walk on / off — edit them in Sound while on this tab">Its own</button></div>
     </div>
@@ -808,6 +810,20 @@ body.nohelp .qm{display:none}
               <label class="check" title="Blocks in the same column (pairs) appear together instead of one after another"><input type="checkbox" data-bind="anim.groupCol"> Pairs in a column reveal together</label>
               <label class="check" title="The last block of the build is always a single block — no pair in the final column"><input type="checkbox" data-bind="rand.endSingle"> Last block is never a pair</label>
               </div></details>
+              <details class="sub" data-sub="size-mix"><summary>Size mix <span class="note">random size &amp; shape</span></summary><div class="subbody">
+                <label class="check"><input type="checkbox" data-bind="rand.sizeVar.on"> Random size and shape for each block</label>
+                <div data-show="rand.sizeVar.on=true" style="display:grid;gap:8px">
+                  <div class="field2"><div class="field"><span class="lbl scrub" title="Smallest short side, in cells">Size from</span><div class="num"><input type="number" data-bind="rand.sizeVar.min" min="1" max="12" step="1"></div></div>
+                    <div class="field"><span class="lbl scrub" title="Largest short side, in cells">to</span><div class="num"><input type="number" data-bind="rand.sizeVar.max" min="1" max="12" step="1"></div></div></div>
+                  <div class="field2"><div class="field"><span class="lbl scrub" title="Narrowest shape (width ÷ height). 0.5 = twice as tall as wide">Shape from</span><div class="num"><input type="number" data-bind="rand.sizeVar.aMin" min="0.2" max="6" step="0.1"></div></div>
+                    <div class="field"><span class="lbl scrub" title="Widest shape (width ÷ height). 3 = three times as wide">to</span><div class="num"><input type="number" data-bind="rand.sizeVar.aMax" min="0.2" max="6" step="0.1"></div></div></div>
+                  <div class="seg" id="sizePreset"><button data-sv="1,2,1,1">Small squares</button><button data-sv="1,3,0.5,3">Mixed</button><button data-sv="2,4,1.5,4">Big wides</button><button data-sv="1,3,0.33,0.75">Talls</button></div>
+                </div></div></details>
+              <details class="sub" data-sub="hide-blocks"><summary>Hide blocks <span class="note">gaps in the line</span></summary><div class="subbody">
+                <div class="field"><span class="lbl scrub">Randomly hide</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.hidePct" min="0" max="95" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
+                <div class="row-btns"><button class="btn ghost" id="hideShuffle">Shuffle which</button><button class="btn ghost" id="hideClear">Show all</button></div>
+                <div class="note">Hidden blocks keep their place in the walk — the line and camera still pass through them. To hide one by hand, select it and switch off <b>Shown</b>.</div>
+              </div></details>
             
             <div class="field"><span class="lbl scrub" title="0 = random">Start row</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.startRow" min="0" max="60" step="1"><span class="unit" id="rowUnit">random</span><button data-d="1">+</button></div></div>
               <div class="field stack"><span class="lbl">Ending</span><div class="seg" data-seg="anim.ending"><button data-v="count">Wherever it lands</button><button data-v="spot">On a chosen row</button></div></div>
@@ -968,7 +984,7 @@ body.nohelp .qm{display:none}
             </div>
             <div data-show="fill.on=true" style="display:grid;gap:9px">
               <div class="field stack"><span class="lbl">Which blocks get content</span><div class="seg" data-seg="fill.target"><button data-v="all" title="Every block, except ones you switch off">All blocks</button><button data-v="pick" title="Only the blocks you switch on">Only picked blocks</button></div></div>
-              <div class="row-btns"><button class="btn" id="cPick" title="Click blocks — and empty spaces with between-blocks content — to switch their content on or off">Pick on the canvas</button><button class="btn" id="cWalk" title="Play the walk — pause and click blocks to switch content on/off">▶ Preview the walk</button></div>
+              <div class="row-btns"><button class="btn" id="cPick" title="Click blocks (generated ones too) to switch their content, click an empty cell to add content there, click between-blocks content to remove it">Pick on the canvas</button><button class="btn" id="cWalk" title="Play the walk — pause and click blocks to switch content on/off">▶ Preview the walk</button></div>
               <div class="row-btns"><button class="btn ghost" id="cPickReset" title="Forget every per-block on/off choice">Reset picks</button><span class="note" id="cPickN"></span></div>
               <div class="row-btns"><button class="btn" id="btnFillShuffle" title="New random content in every block (same settings)">↻ Shuffle content</button></div>
               <details class="sub" data-sub="fill-what" open><summary>What appears <span class="note" id="lookName"></span></summary><div class="subbody">
