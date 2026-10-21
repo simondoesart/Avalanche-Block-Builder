@@ -576,16 +576,15 @@ body.nohelp .qm{display:none}
       <div class="mark"><svg width="12" height="12" viewBox="0 0 12 12" fill="#fff"><rect width="5" height="5"/><rect x="7" width="5" height="5" opacity=".55"/><rect y="7" width="12" height="5"/></svg></div>
       <span>Grid Blocks</span>
     </div>
-    <div class="ltabs" id="layerTabs"><button data-ltab="main" title="The main walk">Main walk</button><button data-ltab="l2" title="A second, art-directed walk — in front of or behind the main one">Layer 2</button></div>
+    <div class="ltabs" id="layerTabs"><button data-ltab="main" title="The layer 1">Layer 1</button><button data-ltab="l2" title="A second, art-directed walk — in front of or behind the main one">Layer 2</button></div>
     <div class="lbar" id="layerBar" hidden>
       <label class="switch" title="Show and export layer 2"><input type="checkbox" id="l2On"><span></span></label>
       <span class="note" style="white-space:nowrap">Layer 2</span>
       <div class="seg mini" id="l2Z"><button data-v="behind">Behind</button><button data-v="front">In front</button></div>
-      <span class="note" style="white-space:nowrap" title="Select a layer-2 block for its own depth order, position, rotation and scale">the main walk</span>
-      <span class="note" style="white-space:nowrap;margin-left:10px">Camera</span>
-      <div class="seg mini" id="l2Cam" title="How layer 2 moves with the camera"><button data-v="main" title="Moves with the main camera">Main</button><button data-v="x" title="Follows the main camera sideways only — never shifts up or down">Sideways only</button><button data-v="fixed" title="Stays put on screen">Fixed</button><button data-v="own" title="Its own camera — set by layer 2's Style (Camera follow)">Own</button></div>
+      <span class="note" style="white-space:nowrap" title="Select a layer-2 block for its own depth order, position, rotation and scale">layer 1</span>
+
       <span class="note" style="white-space:nowrap;margin-left:10px">Sound</span>
-      <div class="seg mini" id="l2Snd" title="How layer 2 follows the song"><button data-v="off" title="Not synced — layer 2 keeps its own pace">Not synced</button><button data-v="same" title="Lands on the same cues as the main walk">Same as main</button><button data-v="own" title="Its own cues, sync and walk on / off — edit them in Sound while on this tab">Its own</button></div>
+      <div class="seg mini" id="l2Snd" title="How layer 2 follows the song"><button data-v="off" title="Not synced — layer 2 keeps its own pace">Not synced</button><button data-v="same" title="Lands on the same cues as the layer 1">Same as main</button><button data-v="own" title="Its own cues, sync and walk on / off — edit them in Sound while on this tab">Its own</button></div>
     </div>
     <div class="spacer"></div>
     <div class="chip" id="compChip" title="Composition"><span class="dot" id="liveDot"></span><b id="compName">Preview</b><span id="compMeta">1920×1080</span></div>
@@ -1280,14 +1279,40 @@ body.nohelp .qm{display:none}
             </div>
           </div>
           <div class="group" id="l2CamGroup" hidden>
-            <div class="group-h">Layer 2 · camera</div>
-            <div class="note">How layer 2 moves with the main walk's camera, whether it zooms, and which camera times its reveals.</div>
-            <div class="field stack"><span class="lbl">Moves with</span><div class="seg" data-seg="L2.camSrc"><button data-v="main" title="The main camera (by the amounts below)">Main camera</button><button data-v="own" title="Its own camera (Style: Camera follow), plus the amounts of the main camera below">Its own camera</button></div></div>
-            <div class="field2"><div class="field"><span class="lbl scrub" title="Share of the main camera's sideways travel">Main · sideways</span><div class="num"><input type="number" data-bind="L2.infX" min="-200" max="300" step="5"><span class="unit">%</span></div></div>
-              <div class="field"><span class="lbl scrub" title="Share of the main camera's up/down travel">Main · up/down</span><div class="num"><input type="number" data-bind="L2.infY" min="-200" max="300" step="5"><span class="unit">%</span></div></div></div>
-            <label class="check"><input type="checkbox" data-bind="L2.zoom"> Affected by the zoom</label>
-            <div class="field stack"><span class="lbl">Reveals follow</span><div class="seg" data-seg="L2.revealBy"><button data-v="own" title="Layer 2's own camera / view">Layer 2 camera</button><button data-v="main" title="Blocks appear when the main camera brings them into the reveal zone">Main camera</button></div></div>
-            <div class="note">The amounts change camera movement only — they never change when blocks appear.</div>
+            <div class="group-h">Layer 2 · camera &amp; timing</div>
+            <div class="note">Start from a setup, then fine-tune. Layer 2 can land on the beats, hold its blocks at a point on screen and move its own camera — separately from layer 1.</div>
+            <div class="wpgrid" id="l2Setups">
+              <button class="wpcard" data-l2set="beatHold"><b>On the beat · held in place</b><span>Each block lands on a beat at the reveal point. Layer 2's own camera, no zoom, no up/down.</span></button>
+              <button class="wpcard" data-l2set="beatDrift"><b>On the beat · drift with layer 1</b><span>Lands on the beats, and drifts a little with layer 1's camera (parallax).</span></button>
+              <button class="wpcard" data-l2set="ride"><b>Ride with layer 1</b><span>Moves exactly with layer 1's camera and zoom — one world.</span></button>
+              <button class="wpcard" data-l2set="still"><b>Still overlay</b><span>Stays put on screen; blocks appear on their own timing.</span></button>
+            </div>
+            <details class="sub" data-sub="l2-beat" open><summary>Timing <span class="note">when blocks appear</span></summary><div class="subbody">
+              <label class="check"><input type="checkbox" id="l2Beat"> Land each block on a beat <span class="note" id="l2BeatN"></span></label>
+              <div class="field stack"><span class="lbl">Otherwise appear when</span><div class="seg" data-seg="L2.revealBy"><button data-v="own" title="Layer 2's camera brings them to the reveal point">Layer 2 camera arrives</button><button data-v="main" title="Layer 1's camera brings them into the reveal zone">Layer 1 camera arrives</button></div></div>
+              <div class="note">With beats on, every block lands on its beat and the camera is timed to it. Pick which beats in <b>Sound</b> (Big hits, Steady pulse, every Nth).</div>
+            </div></details>
+            <details class="sub" data-sub="l2-point" open><summary>Reveal point <span class="note">where each block appears</span></summary><div class="subbody">
+              <label class="check"><input type="checkbox" data-bind="anim.lock.on"> Hold the newest block on a point</label>
+              <div data-show="anim.lock.on=true" style="display:grid;gap:8px">
+                <div class="seg" id="l2LockPreset"><button data-lk="50,50">Centre</button><button data-lk="35,50">Left</button><button data-lk="65,50">Right</button><button data-lk="50,35">Upper</button><button data-lk="50,65">Lower</button></div>
+                <div class="field2"><div class="field"><span class="lbl scrub" title="0 = left edge, 50 = centre, 100 = right edge">Across</span><div class="num"><input type="number" data-bind="anim.lock.x" min="0" max="100" step="1"><span class="unit">%</span></div></div>
+                  <div class="field"><span class="lbl scrub" title="0 = top, 50 = centre, 100 = bottom (only when the camera follows up/down)">Down</span><div class="num"><input type="number" data-bind="anim.lock.y" min="0" max="100" step="1"><span class="unit">%</span></div></div></div>
+                <div class="field stack"><span class="lbl">Camera up / down</span><div class="seg" data-seg="anim.axis"><button data-v="x" title="Only sideways — the camera never moves up or down">Never</button><button data-v="xy" title="Keeps the block on the point vertically too">Follows the blocks</button></div></div>
+              </div>
+            </div></details>
+            <details class="sub" data-sub="l2-move" open><summary>Camera speed <span class="note">how it travels between blocks</span></summary><div class="subbody">
+              <div class="seg" data-seg="anim.lock.move"><button data-v="glide" title="One smooth continuous move">Glide</button><button data-v="ease" title="Settle on each block, ease to the next">Ease each</button><button data-v="linear" title="Constant speed">Linear</button></div>
+              <div class="field"><span class="lbl scrub" title="0 = use all the time between blocks (slowest, smoothest). More than 0 = hold on each block, then travel to the next in this many frames (faster, punchier).">Move time</span><div class="num"><input type="number" data-bind="anim.lock.moveLen" min="0" max="240" step="1"><span class="unit">fr</span></div></div>
+              <div class="seg" id="l2MovePreset"><button data-mv="0">Continuous</button><button data-mv="12">Half second</button><button data-mv="6">Snappy</button><button data-mv="2">Cut</button></div>
+            </div></details>
+            <details class="sub" data-sub="l2-l1"><summary>With layer 1 <span class="note">drift &amp; zoom</span></summary><div class="subbody">
+              <div class="field stack"><span class="lbl">Moves with</span><div class="seg" data-seg="L2.camSrc"><button data-v="own" title="Its own camera (set by Reveal point / Camera speed above)">Layer 2 camera</button><button data-v="main" title="Layer 1's camera, by the amounts below">Layer 1 camera</button></div></div>
+              <div class="field2"><div class="field"><span class="lbl scrub" title="Share of layer 1's on-screen sideways motion added to layer 2. 0 = none, 100 = the same">Layer 1 · sideways</span><div class="num"><input type="number" data-bind="L2.infX" min="-200" max="300" step="5"><span class="unit">%</span></div></div>
+                <div class="field"><span class="lbl scrub" title="Share of layer 1's on-screen up/down motion">Layer 1 · up/down</span><div class="num"><input type="number" data-bind="L2.infY" min="-200" max="300" step="5"><span class="unit">%</span></div></div></div>
+              <label class="check"><input type="checkbox" data-bind="L2.zoom"> Zooms with layer 1</label>
+              <div class="note">These change how layer 2 moves on screen, never when its blocks appear. With "Layer 2 camera", any layer 1 share slides blocks away from the reveal point — keep it small for a parallax drift.</div>
+            </div></details>
           </div>
           <div class="group" data-ctx="camera" data-show="anim.mode=camera|push">
             <div class="group-h">Camera<span id="camHead" class="note" style="margin-left:6px;text-transform:none;letter-spacing:0"></span></div>
@@ -1544,7 +1569,7 @@ body.nohelp .qm{display:none}
             <label class="check"><input type="checkbox" data-bind="out.preTrans"> Precomp each transition</label>
             <label class="check"><input type="checkbox" data-bind="out.folder"> Project folder <span class="note">Grid Blocks › comp name</span></label>
             <label data-adv class="check"><input type="checkbox" data-bind="out.shy"> Hide helper nulls (shy)</label>
-            <div class="field stack" id="outLayers"><span class="lbl">Layers to build</span><div class="seg" data-seg="out.layers"><button data-v="both">Main + layer 2</button><button data-v="main">Main walk only</button><button data-v="l2">Layer 2 only</button></div></div>
+            <div class="field stack" id="outLayers"><span class="lbl">Layers to build</span><div class="seg" data-seg="out.layers"><button data-v="both">Layer 1 + layer 2</button><button data-v="main">Layer 1 only</button><button data-v="l2">Layer 2 only</button></div></div>
             <label data-adv class="check"><input type="checkbox" data-bind="out.trim"> Trim layers to when they appear</label>
             <label data-adv class="check"><input type="checkbox" data-bind="out.markers"> Markers for scene &amp; transitions</label>
             <div class="note" data-show="out.rig=null">Grid and block precomps need the After Effects camera rig (the 2D null rig links everything to shared nulls).</div>
