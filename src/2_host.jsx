@@ -1168,8 +1168,9 @@ function GB_build(d){
     var xfGroups=mainGroups.concat(l2groups);
     for(i=0;i<xfGroups.length;i++){ var xb=xfGroups[i].b, XF=xb.xf, BL=xfGroups[i].B; if(!XF) continue;
       try{ var td=BL.threeDLayer, Zc=1.3889*main.width, kz=td?1:Zc/Math.max(50,Zc+(+XF.z||0)), ps=GB_xf(BL).property("ADBE Position"), pv=ps.value;
-        if(ps.numKeys===0){ if(td) ps.setValue([pv[0]+(+XF.x||0),pv[1]+(+XF.y||0),(pv[2]||0)+(+XF.z||0)]); else ps.setValue([pv[0]+(+XF.x||0),pv[1]+(+XF.y||0)]); }
-        else ps.expression='value+['+(+XF.x||0)+','+(+XF.y||0)+(td?','+(+XF.z||0):'')+']';
+        var pvx=0, pvy=0; if((+XF.px||+XF.py)&&(+XF.rz||+XF.rx||+XF.ry||(XF.s!=null&&+XF.s!==100))){ pvx=+XF.px||0; pvy=+XF.py||0; try{ var ap=GB_xf(BL).property("ADBE Anchor Point"), av=ap.value; if(ap.numKeys===0) ap.setValue(td?[av[0]+pvx,av[1]+pvy,av[2]||0]:[av[0]+pvx,av[1]+pvy]); else { pvx=0; pvy=0; } }catch(eAp){ pvx=0; pvy=0; } }   /* pivot on the block anchor */
+        if(ps.numKeys===0){ if(td) ps.setValue([pv[0]+(+XF.x||0)+pvx,pv[1]+(+XF.y||0)+pvy,(pv[2]||0)+(+XF.z||0)]); else ps.setValue([pv[0]+(+XF.x||0)+pvx,pv[1]+(+XF.y||0)+pvy]); }
+        else ps.expression='value+['+((+XF.x||0)+pvx)+','+((+XF.y||0)+pvy)+(td?','+(+XF.z||0):'')+']';
         if(+XF.rz) GB_xf(BL).property("ADBE Rotate Z").setValue(+XF.rz);
         if(td){ if(+XF.rx) GB_xf(BL).property("ADBE Rotate X").setValue(+XF.rx); if(+XF.ry) GB_xf(BL).property("ADBE Rotate Y").setValue(+XF.ry); }
         var f=(XF.s!=null?+XF.s:100)/100*kz;
