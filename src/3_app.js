@@ -75,7 +75,7 @@ const DEF={
         wander:1,climb:0,stackPct:20,stackGap:0,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,offX:0,offY:0,tracking:0,leading:0,kern:'metrics',caps:'none'},
   anim:{hide:[],show:[],hidePct:0,hideSeed:1,seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:true,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
-        axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,lock:{on:false,x:50,y:50,move:'glide'},rzOn:false,rzPts:null,relOn:false,relAt:85,relSlow:36,tail:24,
+        axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,lock:{on:false,x:50,y:50,move:'glide',moveLen:0},rzOn:false,rzPts:null,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.42,0,0.58,1],curvePh:null,sceneEase:{on:true,hd:null,holdH:null,onAt:null,holdAt:null,start:40,land:75,landOut:50,leaveIn:50,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zd:{on:false,pts:null},zoomOn:false,zm:{pts:null,focus:'follow',ax:50,ay:50,in:24,out:96,from:100,to:140,curve:[0.65,0,0.35,1],scaleAll:false,followRemap:true,back:false,backIn:180,backOut:228,backCurve:[0.65,0,0.35,1]},extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
   lab:{flicker:{on:false,frames:8,seed:3},
@@ -1831,8 +1831,8 @@ function ensureRzPts(){ const A=D.anim; if(!Array.isArray(A.rzPts)||A.rzPts.leng
 function lockSnap(P,G){
   const LK=lockPt(); if(!LK||!P.cam||P.cam.length<2||!P.seq.length) return;
   const tgt=[G.W*LK.x,G.H*LK.y], end=P.relT!=null?P.relT:Infinity, pts=[];
-  P.seq.forEach((b,i)=>{ if(b.stack) return; const t=P.T[i]; if(t==null||t>end) return; const q=cellRect(G,b.c,b.r,b.w,b.h), o=ev(P.cam,t,[0,0]), d=[tgt[0]-(q.x+q.w/2)-o[0],tgt[1]-(q.y+q.h/2)-o[1]];
-    const l=pts[pts.length-1]; if(l&&t-l[0]<=2) pts[pts.length-1]=[t,d]; else pts.push([t,d]); });   // two blocks a frame or two apart: the camera aims at the later one (no jolt)
+  P.seq.forEach((b,i)=>{ if(b.stack) return; const t=P.T[i]; if(t==null||t>end) return; const q=cellRect(G,b.c,b.r,b.w,b.h), o=ev(P.cam,t,[0,0]), dr=EXT_TR?EXT_TR(t):[0,0], d=[tgt[0]-(q.x+q.w/2)-o[0]-dr[0],LK.ly?tgt[1]-(q.y+q.h/2)-o[1]-dr[1]:-dr[1]];
+    const l=pts[pts.length-1]; if(l&&t-l[0]<1) pts[pts.length-1]=[t,d]; else pts.push([t,d]); });   // two blocks a frame or two apart: the camera aims at the later one (no jolt)
   if(!pts.length) return;
   const dAt=t=>{ if(t<=pts[0][0]) return pts[0][1]; for(let k=1;k<pts.length;k++) if(t<=pts[k][0]){ const a=pts[k-1],b=pts[k],u=(t-a[0])/Math.max(1e-6,b[0]-a[0]); return [a[1][0]+(b[1][0]-a[1][0])*u,a[1][1]+(b[1][1]-a[1][1])*u]; } return pts[pts.length-1][1]; };
   const ts=new Set(P.cam.map(k=>k[0])); const add=pts.filter(p=>!ts.has(p[0])).map(p=>[p[0],ev(P.cam,p[0],[0,0]).slice(),'l']);
@@ -1845,14 +1845,22 @@ function hiddenIds(P){ const A=D.anim, s=new Set((A.hide||[]).map(Number)), pct=
   if(pct>0) (P.seq||[]).forEach((b,i)=>{ if(i===0||keep.has(b.id)) return; if(mHash(b.id*7.31+(+A.hideSeed||1)*1.913)*100<pct) s.add(b.id); });
   return s; }
 function isHid(P,b){ return !!(P&&P.hidden&&b&&P.hidden.has(b.id)); }
-/* layer 2's own relation to the camera: 'main' moves with the main camera; 'x' only sideways (no up/down);
+/* layer 2's own relation to the camera: 'main' moves with the layer 1 camera; 'x' only sideways (no up/down);
    'fixed' stays where it is on screen; 'own' uses layer 2's own Style (camera follow = its own camera, otherwise still) */
+/* layer 1 camera travel since its start; 'screen' = what you see on screen (each step scaled by the zoom at that moment),
+   so following x% of layer 1 means x% of its on-screen motion, not of its world distance (which grows when zoomed out) */
+function l1Travel(PM,t,screen){ const c=PM&&PM.cam&&PM.cam.length?PM.cam:null; if(!c) return [0,0]; const m0=c[0][1];
+  if(!screen||!PM.zs||!PM.zs.length){ const mo=ev(c,t,[0,0]); return [mo[0]-m0[0],mo[1]-m0[1]]; }
+  if(!PM.__trav){ const end=Math.ceil(Math.max(PM.end||0,c[c.length-1][0]))+2, K=[[0,[0,0]]]; let ax=0,ay=0,p=ev(c,0,[0,0]);
+    for(let f=1;f<=end;f++){ const o=ev(c,f,[0,0]), s=(ev(PM.zs,f-0.5,100))/100; ax+=s*(o[0]-p[0]); ay+=s*(o[1]-p[1]); p=o; K.push([f,[ax,ay]]); } PM.__trav=K; }
+  return ev(PM.__trav,Math.max(0,t),[0,0]); }
 const L2CAM={main:{camSrc:'main',infX:100,infY:100},x:{camSrc:'main',infX:100,infY:0},fixed:{camSrc:'main',infX:0,infY:0},own:{camSrc:'own',infX:0,infY:0}};
 function l2CamCfg(){ const L=D.L2||{}; return {src:L.camSrc||'main',ix:(L.infX!=null?+L.infX:100)/100,iy:(L.infY!=null?+L.infY:100)/100}; }
-/* layer 2's offset on top of the main camera: total = (its own camera, or where the main camera started) + influence × the main camera's travel */
+/* layer 2's offset on top of the layer 1 camera: total = (its own camera, or where the layer 1 camera started) + influence × the layer 1 camera's travel */
 function l2ShiftAt(t,PM,P2){ const C=l2CamCfg(); if(!PM||(C.src==='main'&&C.ix===1&&C.iy===1)) return [0,0];
   const c=PM.cam&&PM.cam.length?PM.cam:null, mo=c?ev(c,t,[0,0]):[0,0], m0=c?c[0][1]:[0,0];
-  const base=C.src==='own'?(P2&&P2.cam&&P2.cam.length?ev(P2.cam,t,[0,0]):[0,0]):m0, tot=[base[0]+C.ix*(mo[0]-m0[0]),base[1]+C.iy*(mo[1]-m0[1])];
+  const tr=l1Travel(PM,t,D.L2&&D.L2.zoom===false);   // how far layer 1's camera has travelled — as seen on screen when layer 2 ignores the zoom
+  const base=C.src==='own'?(P2&&P2.cam&&P2.cam.length?ev(P2.cam,t,[0,0]):[0,0]):m0, tot=[base[0]+C.ix*tr[0],base[1]+C.iy*tr[1]];
   return [tot[0]-mo[0],tot[1]-mo[1]]; }
 function l2ShiftKeys(PM,P2,abs){ const C=l2CamCfg(); if(!abs&&C.src==='main'&&C.ix===1&&C.iy===1) return null; const end=Math.ceil(Math.max(PM.end||0,P2.end||0))+1, out=[];
   for(let t=0;t<=end;t++){ const d=l2ShiftAt(t,PM,P2), m=abs&&PM.cam&&PM.cam.length?ev(PM.cam,t,[0,0]):[0,0]; out.push([t,[r3(d[0]+m[0]),r3(d[1]+m[1])],'l']); }
@@ -1862,8 +1870,9 @@ function l2ShiftKeys(PM,P2,abs){ const C=l2CamCfg(); if(!abs&&C.src==='main'&&C.
 function mediaAspectFor(i){ const M=D.bmedia||{}; let id=M.asset; const pool=(M.pool||[]).filter(x=>mAsset(x));
   if(M.assign==='cycle'&&pool.length) id=pool[i%pool.length]; else if(M.assign==='random'&&pool.length) id=pool[Math.floor(mHash(i*3.17+(+M.seed||1))*pool.length)%pool.length];
   const fromPool=(M.assign==='cycle'||M.assign==='random')&&pool.length, A=fromPool?mAsset(id):(mAsset(mKindAsset(M.kind,id))||mAsset(id)); const R=A&&typeof MRT!=='undefined'?MRT[A.id]:null; const w=(A&&A.w)||(R&&R.w)||16, h=(A&&A.h)||(R&&R.h)||9; return Math.max(0.1,w/Math.max(1,h)); }
-let EXT_RC=null;   // layer 2 revealing by the main camera: the main plan's camera, used by the reveal timing
-function lockPt(){ const A=D.anim, L=A.lock; return (L&&L.on&&A.mode==='camera'&&A.axis==='xy')?{x:clamp(+L.x,0,100)/100,y:clamp(+L.y,0,100)/100}:null; }
+let EXT_RC=null, EXT_TR=null;   // EXT_TR: layer 1 drift added to layer 2 — the lock compensates so blocks still land on the point
+   // layer 2 revealing by the layer 1 camera: the main plan's camera, used by the reveal timing
+function lockPt(){ const A=D.anim, L=A.lock; return (L&&L.on&&A.mode==='camera')?{x:clamp(+L.x,0,100)/100,y:clamp(+L.y,0,100)/100,ly:A.axis==='xy'}:null; }   // ly: the point holds vertically too (camera follows up/down)
 function rzKeys(){ const A=D.anim; if(!A.rzOn||A.revealWhen!=='arrive'||lockPt()) return []; return trkKeys(rzPts(),[0.33,0,0.67,1],false); }
 function revealXAt(t){ const K=rzKeys(); return K.length?ev(K,t,+D.anim.revealX||75):(+D.anim.revealX||75); }
 /* draw a track's curve, points and handles; returns interactive bits [{x,y,kind,i,drag(fx,fy,sh),alt(e)}]
@@ -2025,7 +2034,7 @@ function applyZoom(P){
     P.zc.push([t,[r3(p[0]),r3(p[1])],'l']); P.pan.push([t,[r3((T[0]-p[0])*k),r3((T[1]-p[1])*k)],'l']);
   }
 }
-/* ==================================================================== LAYERS: the main walk + LAYER 2
+/* ==================================================================== LAYERS: the layer 1 + LAYER 2
    Layer 2 is a second, art-directed walk with the same controls. The active layer's settings live in D as usual;
    the other layer's are parked in D.L2.store and swapped in whenever it's drawn, planned or exported. */
 const LAYER_KEYS=['block','rand','anim','fill','bmedia','exit','echo','num','blocks','blockColors'];
@@ -2034,7 +2043,7 @@ function l2Init(){ if(D.L2.store) return; const o={};
   o.block.w=4; o.block.h=2; o.rand.seed=1+Math.floor(Math.random()*1e5); o.anim.mode='reveal'; o.anim.zoomOn=false; o.anim.zd={on:false,pts:null};
   o.anim.xf={}; o.anim.zord={}; o.fill.on=true; if(o.fill.gap) o.fill.gap.on=false; o.bmedia.on=true; o.exit.on=false; o.echo.on=false; o.num.on=false;
   D.L2.store=o; }
-/* sound for layer 2: 'same' = follows the main walk's cues and sync; 'own' = its own cues / sync / walk-on & off (same song);
+/* sound for layer 2: 'same' = follows the layer 1's cues and sync; 'own' = its own cues / sync / walk-on & off (same song);
    'off' = not synced to the sound at all. While layer 2 is active (or its plan is computed), D.timing is layer 2's. */
 function l2TimingIn(){ const L=D.L2, st=L.store, mode=L.sound||'off'; st.timingMain=D.timing;
   if(mode==='own'){ if(!L.timing) L.timing=Object.assign(clone(D.timing),{inAt:null,outAt:null,walkOnAt:null}); D.timing=L.timing; }
@@ -2048,8 +2057,20 @@ function swapLayer(){ l2Init(); const st=D.L2.store, toL2=D.L2.active!=='l2';
   if(!toL2) l2TimingOut();
   LAYER_KEYS.forEach(k=>{ const t=D[k]; D[k]=st[k]; st[k]=t; }); D.L2.active=toL2?'l2':'main';
   if(toL2) l2TimingIn(); }
-function setL2Sound(v){ pushHist(true); const on=curLayer()==='l2'; if(on) swapLayer(); D.L2.sound=v; if(on) swapLayer(); planCache.k=''; syncInputs(true); try{renderMedia();}catch(e){} refresh(); renderLayerBar();
-  toast(v==='own'?'Layer 2 has its own sound timing — cues, sync, walk on / off':v==='same'?'Layer 2 follows the main walk’s sound timing':'Layer 2 ignores the sound — it keeps its own pace'); }
+function l2BeatOn(){ return curLayer()==='l2'&&(D.L2.sound==='own'||D.L2.sound==='same')&&!!(D.timing&&D.timing.sync); }
+/* layer 2 on the beats: its own sound timing (a copy of layer 1's cues the first time) with sync on */
+function l2SetBeat(on){ if(curLayer()!=='l2') return;
+  if(on){ if(D.L2.sound!=='own') setL2Sound('own',true); pushHist(true); D.timing.sync=true; if(!timingCues().length) toast('No cues yet — find beats in Sound (or press B while playing)'); }
+  else { pushHist(true); if(D.L2.sound==='own') D.timing.sync=false; else setL2Sound('off',true); }
+  planCache.k=''; syncInputs(true); try{renderMedia();}catch(e){} refresh(); renderLayerBar(); }
+const L2SETUPS={
+  beatHold:{name:'On the beat · held in place',apply(){ Object.assign(D.anim,{mode:'camera',camMove:'curve',axis:'x',zoomOn:false}); D.anim.lock=Object.assign({x:60,y:50,move:'glide',moveLen:0},D.anim.lock||{},{on:true}); Object.assign(D.L2,{camSrc:'own',infX:0,infY:0,zoom:false,revealBy:'own'}); return 'beat'; }},
+  beatDrift:{name:'On the beat · drift with layer 1',apply(){ Object.assign(D.anim,{mode:'camera',camMove:'curve',axis:'x',zoomOn:false}); D.anim.lock=Object.assign({x:60,y:50,move:'glide',moveLen:0},D.anim.lock||{},{on:true}); Object.assign(D.L2,{camSrc:'own',infX:15,infY:0,zoom:false,revealBy:'own'}); return 'beat'; }},
+  ride:{name:'Ride with layer 1',apply(){ D.anim.lock=Object.assign({},D.anim.lock||{},{on:false}); Object.assign(D.L2,{camSrc:'main',infX:100,infY:100,zoom:true,revealBy:'main'}); if(D.anim.mode==='camera') D.anim.mode='reveal'; }},
+  still:{name:'Still overlay',apply(){ D.anim.lock=Object.assign({},D.anim.lock||{},{on:false}); D.anim.mode='reveal'; Object.assign(D.L2,{camSrc:'main',infX:0,infY:0,zoom:false,revealBy:'own'}); }},
+};
+function setL2Sound(v,quiet){ if(!quiet) pushHist(true); const on=curLayer()==='l2'; if(on) swapLayer(); D.L2.sound=v; if(on) swapLayer(); planCache.k=''; syncInputs(true); try{renderMedia();}catch(e){} refresh(); renderLayerBar();
+  if(!quiet) toast(v==='own'?'Layer 2 has its own sound timing — cues, sync, walk on / off':v==='same'?'Layer 2 follows layer 1’s sound timing':'Layer 2 ignores the sound — it keeps its own pace'); }
 function curLayer(){ return (D.L2&&D.L2.active)||'main'; }
 function l2On(){ return !!(D.L2&&D.L2.on&&(D.L2.store||curLayer()==='l2')); }
 function withLayer(name,fn){ if(!D.L2||curLayer()===name) return fn(); if(!D.L2.store) return null; swapLayer(); try{ return fn(); } finally{ swapLayer(); } }
@@ -2065,8 +2086,10 @@ function plan(G){
   const key=JSON.stringify(D)+'|'+G.W+'|'+G.H;
   if(planCache.k===key) return planCache.v;
   if(planCache.k==='') PLANS.clear(); else if(planCache.k&&planCache.v) PLANS.set(planCache.k,planCache.v);
-  let v=PLANS.get(key); if(!v){ let rc=null; if(curLayer()==='l2'&&D.L2&&D.L2.revealBy==='main'&&D.L2.store){ try{ rc=withLayer('main',()=>{ const p=plan(G); return {cam:p.cam,zs:p.zs,pan:p.pan}; }); }catch(e){} }
-    EXT_RC=rc; try{ v=remappedPlan(G); } finally{ EXT_RC=null; } try{ lockSnap(v,G); }catch(e){} applyZoom(v); v.hidden=hiddenIds(v); } if(PLANS.size>6) PLANS.clear();
+  let v=PLANS.get(key); if(!v){ let rc=null, tr=null; if(curLayer()==='l2'&&D.L2&&D.L2.store){ const C=l2CamCfg();
+      if(D.L2.revealBy==='main'||(C.src==='own'&&(C.ix||C.iy)&&lockPt())){ try{ const pm=withLayer('main',()=>plan(G)); if(D.L2.revealBy==='main') rc={cam:pm.cam,zs:pm.zs,pan:pm.pan};
+        if(C.src==='own'&&(C.ix||C.iy)){ const scr=D.L2.zoom===false; tr=t=>{ const d=l1Travel(pm,t,scr); return [C.ix*d[0],C.iy*d[1]]; }; } }catch(e){} } }
+    EXT_RC=rc; try{ v=remappedPlan(G); } finally{ EXT_RC=null; } EXT_TR=tr; try{ lockSnap(v,G); }catch(e){} finally{ EXT_TR=null; } applyZoom(v); v.hidden=hiddenIds(v); } if(PLANS.size>6) PLANS.clear();
   planCache={k:key,v}; return v;
 }
 /* ---- TIME REMAP: the scene layer on top.
@@ -2235,14 +2258,14 @@ function computePlan(G){
     let pv=[0,0]; const LK=lockPt();
     ctr.forEach(c=>{
       let ox=qd(cx-c[0],dirX), oy=A.axis==='xy'?qd(cy-c[1],dirY):0;
-      if(LK){ ox=G.W*LK.x-c[0]; oy=G.H*LK.y-c[1]; }
+      if(LK){ ox=G.W*LK.x-c[0]; if(LK.ly) oy=G.H*LK.y-c[1]; }
       else if(A.mode==='camera'&&A.lazy){ox=dirX>0?Math.min(pv[0],ox):Math.max(pv[0],ox);if(A.axis==='xy')oy=dirY>0?Math.min(pv[1],oy):Math.max(pv[1],oy);}
       P.offs.push([ox,oy]); pv=[ox,oy];
     });
     tg=P.offs.slice();
     if(A.extendOn&&A.ending==='spot'&&!manual&&A.camMove!=='curve'){   // 'With the blocks' handles the landing itself ('Last block ends up'), end row only shapes the walk
       const mains=seq.filter(b=>!b.stack), lb=mains.length?mains[mains.length-1]:seq[seq.length-1], r=cellRect(G,lb.c,lb.r,lb.w,lb.h);
-      const LKf=lockPt(); fin=LKf?[r3(G.W*LKf.x-(r.x+r.w/2)),r3(G.H*LKf.y-(r.y+r.h/2))]:[r3(G.W*clamp(+A.endX||0,-200,300)/100-(r.x+r.w/2)),A.axis==='xy'?r3(G.H*clamp(+A.endY||0,-200,300)/100-(r.y+r.h/2)):0];
+      const LKf=lockPt(); fin=LKf?[r3(G.W*LKf.x-(r.x+r.w/2)),LKf.ly?r3(G.H*LKf.y-(r.y+r.h/2)):0]:[r3(G.W*clamp(+A.endX||0,-200,300)/100-(r.x+r.w/2)),A.axis==='xy'?r3(G.H*clamp(+A.endY||0,-200,300)/100-(r.y+r.h/2)):0];
       P.fin=fin; tg.push(fin);
     }
   }
@@ -2487,7 +2510,9 @@ function computePlan(G){
             else if(WO&&used>usedB){ const v=(L1[1]-L0[1])/Math.max(1,L1[0]-L0[0]); KK.push([L1[0]+set,L1[1]+v*set*0.5,L1[2]]); }
             else if(frontLastB){ const sl=G.W*clamp(A.endX!=null?+A.endX:50,-200,300)/100, sx=dirO>0?sl:G.W-sl, so=sx-frontLastB[0]; if(Math.abs(so-L1[1])>1) KK.push([L1[0]+set,so,L1[2]]); } }
           if(BP){ for(let k=KK.length-2;k>=0;k--){ const t0=KK[k][0], t1=KK[k+1][0], hb=Math.max(2,Math.round(BP.gap)); if(t1-t0>hb+1&&cutCuesIn(t0,t1)) KK.splice(k+1,0,[t1-hb,KK[k][1],KK[k][2]]); } }   // a removed beat: hold on the block before, then move in one beat
-          const lkMove=LK&&!BP?((A.lock&&A.lock.move)||'glide'):null, n=KK.length, hit=BP?D.timing.camMove==='hit':(lkMove?lkMove==='ease':A.camMove==='step'), lin=lkMove==='linear';
+          const lkMove=LK?((A.lock&&A.lock.move)||'glide'):null, mvLen=LK?Math.max(0,Math.round(+(A.lock&&A.lock.moveLen)||0)):0;
+          if(mvLen>0){ for(let k=KK.length-2;k>=0;k--){ const t0=KK[k][0], t1=KK[k+1][0]; if(t1-t0>mvLen+1&&(Math.abs(KK[k+1][1]-KK[k][1])>0.5||Math.abs(KK[k+1][2]-KK[k][2])>0.5)) KK.splice(k+1,0,[t1-mvLen,KK[k][1],KK[k][2]]); } }   // move time: hold on the block, then travel to the next one in exactly this many frames
+          const n=KK.length, hit=lkMove?lkMove==='ease':(BP?D.timing.camMove==='hit':A.camMove==='step'), lin=lkMove==='linear';
           const tan=d=>{ const m=[]; for(let i=0;i<n;i++){ if(i===0||i===n-1){ m.push(0); continue; } const a=(KK[i][d]-KK[i-1][d])/(KK[i][0]-KK[i-1][0]), b=(KK[i+1][d]-KK[i][d])/(KK[i+1][0]-KK[i][0]); m.push(a*b<=0?0:2/(1/a+1/b)); } return m; };
           const mx=tan(1), my=tan(2);
           for(let i=0;i<N;i++){ const t=a+i; if(t<=KK[0][0]){ xs[i]=KK[0][1]; ys[i]=KK[0][2]; continue; } if(t>=KK[n-1][0]){ xs[i]=KK[n-1][1]; ys[i]=KK[n-1][2]; continue; }
@@ -2576,7 +2601,7 @@ function computePlan(G){
         const r=cellRect(G,b.c,b.r,b.w,b.h), px=r.x+r.w/2, py=r.y+r.h/2;
         // the camera carries each block onto the reveal line: it appears the frame it gets there
         // on its schedule if it's in the reveal zone then; otherwise the first frame the camera has it in the zone
-        const LKr=lockPt(), inZ=LKr?(t=>{const q=scrAt(t,px,py), dirO=A.order==='rtl'?-1:1, lx=G.W*LKr.x, tol=Math.max(3,G.p*0.08); return (dirO>0?q[0]<=lx+tol:q[0]>=lx-tol)&&Math.abs(q[1]-G.H*LKr.y)<=Math.max(tol,r.h*0.5);})
+        const LKr=lockPt(), inZ=LKr?(t=>{const q=scrAt(t,px,py), dirO=A.order==='rtl'?-1:1, lx=G.W*LKr.x, tol=Math.max(3,G.p*0.08); return (dirO>0?q[0]<=lx+tol:q[0]>=lx-tol)&&(!LKr.ly||Math.abs(q[1]-G.H*LKr.y)<=Math.max(tol,r.h*0.5));})
           :(t=>{const q=scrAt(t,px,py), band=bandAt(t), xl=G.W*(1-band), xr=G.W*band;return q[0]>=xl&&q[0]<=xr*1.015+2&&q[1]>=yt&&q[1]<=yb;});
         const lo=Math.max(startF,Math.round(prev)), sched=Math.max(lo,P.T[i]);
         let t=Math.max(lo,Math.min(sched,tMax));   // on its schedule (the build's last one right at the end), if it's in the zone then
@@ -2612,8 +2637,8 @@ function computePlan(G){
     }
   }
 
-  /* layer 2 revealing by the main camera (no camera of its own): each block waits until the main camera brings it into
-     the reveal zone (the frame when 'ahead of the camera'), then appears — the main camera times the reveals */
+  /* layer 2 revealing by the layer 1 camera (no camera of its own): each block waits until the layer 1 camera brings it into
+     the reveal zone (the frame when 'ahead of the camera'), then appears — the layer 1 camera times the reveals */
   if(!camOn&&EXT_RC&&EXT_RC.cam&&EXT_RC.cam.length&&!BP){
     const band=A.revealWhen==='arrive'?clamp(+A.revealX||75,50,120)/100:1, xl=G.W*(1-band), xr=G.W*band, tMax=Math.max(startF+L+240,(P.end||0)+240);
     const scr=(t,px,py)=>{ const off=ev(EXT_RC.cam,t,[0,0]), s=ev(EXT_RC.zs||[],t,100)/100, pn=ev(EXT_RC.pan||[],t,[0,0]); return [G.W/2+s*(px+off[0]-G.W/2)+pn[0],G.H/2+s*(py+off[1]-G.H/2)+pn[1]]; };
@@ -4005,7 +4030,7 @@ function animState(G){
   const P=plan(G);
   if(STEPS[U.step].id==='layout'&&!U.playing&&!U.preview) return {P,live:false,t:0,off:[0,0],s:1,pan:[0,0]};   // Blocks step: see every block, wherever the playhead is
   if(U.t===null) return {P,live:false,t:0,off:[0,0],s:1,pan:[0,0]};
-  const M=curLayer()==='l2'?(withLayer('main',()=>animOn()?plan(G):null)||P):P;   // the camera (and zoom) always come from the main walk
+  const M=curLayer()==='l2'?(withLayer('main',()=>animOn()?plan(G):null)||P):P;   // the camera (and zoom) always come from the layer 1
   return {P,M,live:true,t:U.t,off:ev(M.cam,U.t,[0,0]),s:ev(M.zs,U.t,100)/100,pan:ev(M.pan,U.t,[0,0]),zc:M.zc&&M.zc.length?ev(M.zc,U.t,null):null};
 }
 
@@ -4401,7 +4426,7 @@ function drawWorld(g,G,o){
   if(o.inside) drawTransLayer(g,G,A,true,baseXf);
   // content timing for the preview
   o.fillT=live?A.t:null; o.fillBase=A&&A.P?A.P.fillBase:null; o.fillEnd=live&&A.P?A.P.fillEnd:null; o.tracks=live&&A.P?A.P.tracks:null; o.media=(()=>{try{return mediaMap(A&&A.P?A.P:plan(G));}catch(e){return null;}})(); o.nums=D.num&&(D.num.on||D.blocks.some(b=>b.num))?blockNumbers(G):null;
-  // echoes (behind everything else), then blocks — layer 2 goes behind or in front of the main walk (per block)
+  // echoes (behind everything else), then blocks — layer 2 goes behind or in front of the layer 1 (per block)
   const PMain=A?(A.M||A.P):null, shL2=t=>l2On()?l2ShiftAt(t,PMain,curLayer()==='l2'?A.P:withLayer('l2',()=>plan(G))):[0,0];
   const firstPass=p=>p==null||p==='back'||p==='mb';
   const drawActive=pass=>{ o.zPass=pass; o.noEcho=!firstPass(pass); o.hidden=A&&A.P?A.P.hidden:null;
@@ -4461,7 +4486,7 @@ function drawOverlays(G,A){
   // reveal zone (camera modes, 'when the camera arrives')
   const LKo=STEPS[U.step].id==='animate'?lockPt():null;
   if(LKo){ const x=G.W*LKo.x, y=G.H*LKo.y, k=22/sc; ctx.save(); ctx.lineWidth=1.5/sc; ctx.strokeStyle='rgba(43,217,143,.9)'; ctx.setLineDash([5/sc,4/sc]);
-    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,G.H); ctx.moveTo(0,y); ctx.lineTo(G.W,y); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,G.H); if(LKo.ly){ ctx.moveTo(0,y); ctx.lineTo(G.W,y); } ctx.stroke(); ctx.setLineDash([]);
     ctx.beginPath(); ctx.arc(x,y,k*0.45,0,Math.PI*2); ctx.stroke(); ctx.fillStyle='rgba(43,217,143,.95)'; ctx.font=`${11/sc}px sans-serif`; ctx.fillText('newest block here',x+k*0.6,y-k*0.6); ctx.restore(); }
   else if(STEPS[U.step].id==='animate'&&(D.anim.mode==='camera'||D.anim.mode==='push')&&D.anim.revealWhen==='arrive'){
     const tc=live&&D.anim.rzOn?plan(G).toContent(A.t):null, bx=clamp(tc!=null?revealXAt(tc):(+D.anim.revealX||70),50,120)/100, by=D.anim.axis==='xy'?clamp(+D.anim.revealY||100,50,120)/100:1;
@@ -6074,10 +6099,10 @@ const HELP={
   'anim.lock.on':'The camera keeps the newest block exactly on this point of the frame (centre by default). Each block appears there and the camera carries the line through it — up and down as well as sideways.',
   'rand.sizeVar.mode':'Free: width and height picked separately — any proportions. Shape range: a size and a width÷height range. From a list: only the sizes you type. Fit the media: each block takes the shape of the video or image it will show.',
   'rand.sizeVar.on':'Give every generated block its own size and shape. Size = the short side in cells; Shape = width ÷ height (1 = square, 2 = twice as wide, 0.5 = twice as tall).',
-  'L2.infX':'How much of the main camera\'s sideways travel layer 2 picks up. 100 = moves with it, 0 = ignores it, 50 = half (parallax), over 100 = faster. Camera movement only — reveals are set below.',
-  'L2.infY':'How much of the main camera\'s up/down travel layer 2 picks up. 0 = never shifts up or down.',
-  'L2.zoom':'Layer 2 zooms with the grid zoom. Off: it stays at its own size while the main walk zooms.',
-  'L2.revealBy':'Which camera decides when a layer-2 block appears (when it reaches the reveal zone): layer 2\'s own, or the main walk\'s.',
+  'L2.infX':'How much of the layer 1 camera\'s sideways travel layer 2 picks up. 100 = moves with it, 0 = ignores it, 50 = half (parallax), over 100 = faster. Camera movement only — reveals are set below.',
+  'L2.infY':'How much of the layer 1 camera\'s up/down travel layer 2 picks up. 0 = never shifts up or down.',
+  'L2.zoom':'Layer 2 zooms with the grid zoom. Off: it stays at its own size while the layer 1 zooms.',
+  'L2.revealBy':'Which camera decides when a layer-2 block appears (when it reaches the reveal zone): layer 2\'s own, or the layer 1\'s.',
   'anim.hidePct':'Randomly hide this share of the blocks. Hidden blocks keep their place in the walk (the line and camera still go through them) — they just never appear. Select a block and switch off “Shown” to hide it by hand.',
   'anim.lock.move':'How the camera travels from one block to the next. Glide: one smooth continuous move through every block. Ease each: settles on each block, then eases to the next. Linear: constant speed between blocks.',
   'anim.lock.x':'Across the frame: 0 = left edge, 50 = centre, 100 = right edge.','anim.lock.y':'Down the frame: 0 = top, 50 = centre, 100 = bottom.',
@@ -6131,7 +6156,7 @@ const HELP={
   'out.replace':'Delete the layers from your last build before building again.',
   'out.lock':'Lock the background, lines and tiles so you don’t move them by accident.',
   'out.fitDur':'If the animation is longer than the comp, make the comp longer.',
-  'out.preGrid':'Puts the tiles, grid lines and column rules (and their wrap helper) in one “GB · Grid” precomp. With the AE camera it is collapsed + 3D, so the main camera still moves it.',
+  'out.preGrid':'Puts the tiles, grid lines and column rules (and their wrap helper) in one “GB · Grid” precomp. With the AE camera it is collapsed + 3D, so the layer 1 camera still moves it.',
   'out.preBlocks':'Off (default): every block is its own layer in your comp — click it in the viewer to select just that block. On: blocks, echoes and gap content go into one “GB · Blocks” precomp (clicking selects the whole precomp).',
   'out.headers':'Locked, disabled divider layers (━ BLOCKS ━, ━ ECHOES ━ …) so the timeline reads in sections. Each block and its text, media and content share one label colour, alternating block to block.',
   'out.preTrans':'Each transition (in / out) becomes its own precomp instead of dozens of tiles in your comp. Matte transitions are always precomps.',
@@ -6533,7 +6558,7 @@ function autosave(){
 }
 
 /* ------------------------------------------------------------------ build payload */
-/* the export always describes the main walk, with layer 2 (if on) alongside it */
+/* the export always describes the layer 1, with layer 2 (if on) alongside it */
 function payload(){
   return withLayer('main',()=>{ const d=payloadCore(); d.layer2=null;
     const OL=(D.out&&D.out.layers)||'both';
@@ -6966,18 +6991,18 @@ const MAIN_PRESETS=[
   {id:'trail',name:'Trail (each block leaves)',desc:'No hold — each block leaves a moment after it lands, a moving snake.',bar:[4,0,4],apply(){ Object.assign(D.anim,{lenF:96,pace:5}); Object.assign(D.exit,{on:true,mode:'hold',hold:30,style:'wipe',len:8,holdOn:true}); }},
   {id:'step',name:'Step & settle · hold · off',desc:'The camera steps with the build and settles; hold, then walk off.',bar:[3,2,3],apply(){ Object.assign(D.anim,{lenF:80,pace:6,camMove:'step'}); Object.assign(D.exit,EXIT_WALK({walkHold:30})); }},
 ];
-/* layer 2 presets read the main walk's timing so they line up with it ("pinned": the blocks live in the same
-   world as the main line and move with it) */
+/* layer 2 presets read the layer 1's timing so they line up with it ("pinned": the blocks live in the same
+   world as the layer 1 line and move with it) */
 const mainInfo=()=>withLayer('main',()=>{ const G=geom(), P=plan(G), b0=P.seq[0]; return {startF:+D.anim.startF||0,lenF:+D.anim.lenF||72,pace:+D.anim.pace||5,exit:clone(D.exit),holdT:P.holdT!=null?P.holdT:P.landT,walkT:P.walkT,end:P.end,c:b0?b0.c:null,r:b0?b0.r:null}; });
 const L2_PRESETS=[
-  {id:'pin-stay',pin:'stay',name:'Walk on with the line · stay',desc:'Bigger blocks walk on over the same path as the main line, then stay pinned to it.',bar:[3,6,0],apply(M){ Object.assign(D.anim,{startF:M.startF+4,lenF:M.lenF,pace:Math.max(6,Math.round(M.pace*2)),countMode:'fill'}); D.rand.gap=0; D.exit.on=false; return true; }},
-  {id:'pin-both',pin:'both',name:'Walk on & off with the line',desc:'Follows the main walk in and out — same timing, its own bigger blocks.',bar:[3,2,3],apply(M){ Object.assign(D.anim,{startF:M.startF+4,lenF:M.lenF,pace:Math.max(6,Math.round(M.pace*2)),countMode:'fill'}); D.rand.gap=0; D.exit=Object.assign(clone(M.exit),{trail:2}); return true; }},
-  {id:'hold-feature',at:'hold',name:'Feature blocks on the hold',desc:'3 big 4×3 blocks land in frame once the main line is built and stay through the hold.',bar:[0,4,1],apply(M){ const st=Math.max(0,Math.round((M.holdT!=null?M.holdT:M.startF+M.lenF)-6)); Object.assign(D.anim,{startF:st,lenF:24,countMode:'exact',total:3,appear:'scale',trans:8}); Object.assign(D.block,{w:4,h:3}); D.rand.gap=0; D.exit=M.walkT!=null?{...D.exit,on:true,mode:'end',at:Math.max(12,Math.round(M.walkT-st-24)),stagger:3,style:'fade',len:10}:{...D.exit,on:false}; D.L2.z='front'; return 'regen'; }},
-  {id:'behind-big',pin:'stay',name:'Big panels behind',desc:'Large 6×3 panels walk on slowly behind the main line and stay.',bar:[5,4,0],apply(M){ Object.assign(D.anim,{startF:M.startF,lenF:Math.round(M.lenF*1.3),pace:16,countMode:'fill',appear:'fade',trans:10}); Object.assign(D.block,{w:6,h:3}); D.rand.gap=0; D.exit.on=false; D.L2.z='behind'; return 'regen'; }},
+  {id:'pin-stay',pin:'stay',name:'Walk on with the line · stay',desc:'Bigger blocks walk on over the same path as the layer 1 line, then stay pinned to it.',bar:[3,6,0],apply(M){ Object.assign(D.anim,{startF:M.startF+4,lenF:M.lenF,pace:Math.max(6,Math.round(M.pace*2)),countMode:'fill'}); D.rand.gap=0; D.exit.on=false; return true; }},
+  {id:'pin-both',pin:'both',name:'Walk on & off with the line',desc:'Follows the layer 1 in and out — same timing, its own bigger blocks.',bar:[3,2,3],apply(M){ Object.assign(D.anim,{startF:M.startF+4,lenF:M.lenF,pace:Math.max(6,Math.round(M.pace*2)),countMode:'fill'}); D.rand.gap=0; D.exit=Object.assign(clone(M.exit),{trail:2}); return true; }},
+  {id:'hold-feature',at:'hold',name:'Feature blocks on the hold',desc:'3 big 4×3 blocks land in frame once the layer 1 line is built and stay through the hold.',bar:[0,4,1],apply(M){ const st=Math.max(0,Math.round((M.holdT!=null?M.holdT:M.startF+M.lenF)-6)); Object.assign(D.anim,{startF:st,lenF:24,countMode:'exact',total:3,appear:'scale',trans:8}); Object.assign(D.block,{w:4,h:3}); D.rand.gap=0; D.exit=M.walkT!=null?{...D.exit,on:true,mode:'end',at:Math.max(12,Math.round(M.walkT-st-24)),stagger:3,style:'fade',len:10}:{...D.exit,on:false}; D.L2.z='front'; return 'regen'; }},
+  {id:'behind-big',pin:'stay',name:'Big panels behind',desc:'Large 6×3 panels walk on slowly behind the layer 1 line and stay.',bar:[5,4,0],apply(M){ Object.assign(D.anim,{startF:M.startF,lenF:Math.round(M.lenF*1.3),pace:16,countMode:'fill',appear:'fade',trans:10}); Object.assign(D.block,{w:6,h:3}); D.rand.gap=0; D.exit.on=false; D.L2.z='behind'; return 'regen'; }},
   {id:'accent',pin:'stay',name:'Accent hits in front',desc:'A few 2×2 blocks pop on in front, one every few beats of the main build.',bar:[3,3,0],apply(M){ Object.assign(D.anim,{startF:M.startF+8,lenF:M.lenF,pace:Math.max(10,Math.round(M.pace*3)),countMode:'fill',appear:'scale',trans:6}); Object.assign(D.block,{w:2,h:2}); D.rand.gap=5; D.exit.on=false; D.L2.z='front'; return 'regen'; }},
 ];
-/* pin layer 2 to the main line: stretch its walk over the same stretch of world, then time each block to land
-   when the main line reaches it (and, for walk on & off, leave when the main line leaves there) */
+/* pin layer 2 to the layer 1 line: stretch its walk over the same stretch of world, then time each block to land
+   when the layer 1 line reaches it (and, for walk on & off, leave when the layer 1 line leaves there) */
 function pinToMain(exitToo){
   const G=geom();
   const MP=withLayer('main',()=>{ const P=plan(G), wf=P.walkFrom!=null?P.walkFrom:P.seq.length; return P.seq.slice(0,wf).map((b,i)=>{ const q=cellRect(G,b.c,b.r,b.w,b.h); return {x:q.x+q.w/2,xr:q.x+q.w,t:P.T[i],e:(P.exitT||[])[i]}; }); });
@@ -6989,13 +7014,13 @@ function pinToMain(exitToo){
   const built=()=>{ const P=plan(G), wf=P.walkFrom!=null?P.walkFrom:P.seq.length; return {P,wf,rects:P.seq.slice(0,wf).map(b=>cellRect(G,b.c,b.r,b.w,b.h))}; };
   D.anim.dt={}; D.anim.dx={}; D.anim.countMode='exact';
   if(exitToo) D.exit=Object.assign({},D.exit,{on:true,mode:'hold',holdOn:true,hold:36,len:+D.exit.len||8,style:D.exit.style||'wipe'});
-  // 1. as many blocks as it takes to cover the main line
+  // 1. as many blocks as it takes to cover the layer 1 line
   const reach=n=>{ D.anim.total=n; planCache.k=''; const B=built(); return B.rects.length?Math.max(...B.rects.map(q=>q.x+q.w)):-1e9; };
   let lo=2, hi=4; while(hi<160&&reach(hi)<mainMax-G.p*0.5) hi=Math.min(160,hi*2);
   while(lo<hi){ const mid=(lo+hi)>>1; if(reach(mid)>=mainMax-G.p*0.5) hi=mid; else lo=mid+1; }
   reach(lo);
-  { const B=built(), sk=[]; B.rects.forEach((q,i)=>{ if(i>0&&q.x>mainMax+G.p) sk.push(B.P.seq[i].id); }); D.anim.skip=sk; planCache.k=''; }   // nothing past the end of the main line
-  // 2. land (and leave) where the main line does
+  { const B=built(), sk=[]; B.rects.forEach((q,i)=>{ if(i>0&&q.x>mainMax+G.p) sk.push(B.P.seq[i].id); }); D.anim.skip=sk; planCache.k=''; }   // nothing past the end of the layer 1 line
+  // 2. land (and leave) where the layer 1 line does
   for(let it=0;it<4;it++){ planCache.k=''; const B=built(); let prev=-1e9, prevE=-1e9;
     B.rects.forEach((q,i)=>{ const id=B.P.seq[i].id, x=q.x+Math.min(q.w/2,G.p*0.75);
       let t=Math.round(interp(byX.map(m=>m.x),tx,x)); t=Math.max(t,prev+1); prev=t;
@@ -7004,7 +7029,7 @@ function pinToMain(exitToo){
     Object.keys(D.anim.dt).forEach(k=>{ if(!D.anim.dt[k]) delete D.anim.dt[k]; }); Object.keys(D.anim.dx).forEach(k=>{ if(!D.anim.dx[k]) delete D.anim.dx[k]; }); }
   planCache.k=''; return true;
 }
-/* put layer 2's blocks inside the frame the main camera holds on */
+/* put layer 2's blocks inside the frame the layer 1 camera holds on */
 function placeInView(M){
   const G=geom(), t=M.holdT!=null?M.holdT:M.startF+M.lenF, off=withLayer('main',()=>{ const P=plan(G); return ev(P.cam,t,[0,0]); })||[0,0];
   const wx=-off[0]+G.W*0.03, col=Math.ceil((wx-G.x0)/G.p);
@@ -7015,7 +7040,7 @@ function applyWalkPreset(id){
   pushHist(true); const M=L2?mainInfo():null; TRIMS_CLEAR();
   if(D.anim.mode==='static') D.anim.mode=L2?'reveal':'camera';
   const r=p.apply(M);
-  if(L2&&M&&M.c!=null){ D.rand.startCol=M.c; D.rand.startR=M.r; }   // walk the same path as the main line
+  if(L2&&M&&M.c!=null){ D.rand.startCol=M.c; D.rand.startR=M.r; }   // walk the same path as the layer 1 line
   if(L2&&(r==='regen'||r===true)){ try{ generateLine(false,true); }catch(e){} }
   if(L2&&p.pin){ try{ pinToMain(p.pin==='both'); }catch(e){ console.warn('pin',e); } }
   if(L2&&p.at==='hold'&&M){ try{ placeInView(M); }catch(e){} }
@@ -7024,8 +7049,8 @@ function applyWalkPreset(id){
 }
 function renderWalkPresets(on){
   const g=$('#wpGrid'); if(!g) return; const L2=curLayer()==='l2', list=L2?L2_PRESETS:MAIN_PRESETS;
-  $('#wpTag').textContent=L2?'layer 2':'main walk';
-  $('#wpNote').textContent=L2?'Line layer 2 up with the main walk. Its blocks live in the same world, so they move with the main line (pinned).':'Pick a starting point — then fine-tune below or drag on the timeline.';
+  $('#wpTag').textContent=L2?'layer 2':'layer 1';
+  $('#wpNote').textContent=L2?'Line layer 2 up with the layer 1. Its blocks live in the same world, so they move with the layer 1 line (pinned).':'Pick a starting point — then fine-tune below or drag on the timeline.';
   const col=['#E6212F','#5a5a63','#74A0E0'];
   g.innerHTML=list.map(p=>`<button class="wpcard${on===p.id?' on':''}" data-wp="${p.id}" title="${esc(p.desc)}"><div class="wpbar">${p.bar.map((w,i)=>w?`<i style="flex:${w};background:${col[i]}"></i>`:'').join('')}</div><b>${esc(p.name)}</b><span>${esc(p.desc)}</span></button>`).join('');
 }
@@ -7035,15 +7060,22 @@ function renderLayerBar(){
   const act=curLayer(), tb=$('#layerTabs'); if(!tb) return;
   $$('#layerTabs [data-ltab]').forEach(b=>{ b.classList.toggle('on',b.dataset.ltab===act); if(b.dataset.ltab==='l2') b.textContent=D.L2&&D.L2.on?'Layer 2':'+ Layer 2'; });
   const bar=$('#layerBar'); if(bar){ bar.hidden=act!=='l2'; $('#l2On').checked=!!(D.L2&&D.L2.on); $$('#l2Z [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===(D.L2.z||'front'))); $$('#l2Snd [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===(D.L2.sound||'off'))); const cfg=l2CamCfg(), cur=Object.keys(L2CAM).find(k=>{ const p=L2CAM[k]; return p.camSrc===cfg.src&&p.infX/100===cfg.ix&&p.infY/100===cfg.iy; }); $$('#l2Cam [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===cur)); }
-  { const g=$('#l2CamGroup'); if(g) g.hidden=act!=='l2'||!(D.L2&&D.L2.on); }
+  { const g=$('#l2CamGroup'); if(g) g.hidden=act!=='l2'||!(D.L2&&D.L2.on);
+    const cb=$('#l2Beat'); if(cb&&act==='l2'){ cb.checked=l2BeatOn(); const n=$('#l2BeatN'); if(n) n.textContent=cb.checked?`(${timingCues().length} cues)`:''; }
+    $$('#l2MovePreset [data-mv]').forEach(b=>b.classList.toggle('on',act==='l2'&&+b.dataset.mv===+((D.anim.lock||{}).moveLen||0))); }
 }
 (()=>{ const tb=$('#layerTabs'); if(!tb) return;
   tb.addEventListener('click',e=>{ const b=e.target.closest('[data-ltab]'); if(!b) return; const want=b.dataset.ltab;
-    if(want==='l2'&&!(D.L2&&D.L2.on)){ pushHist(true); D.L2.on=true; l2Init(); setLayer('l2'); if(!D.blocks.length){ try{ generateLine(true); }catch(x){} } toast('Layer 2: a second walk — bigger blocks with content. It sits in front of the main walk; switch it behind in the bar above.','⌘Z to undo',true); renderLayerBar(); return; }
+    if(want==='l2'&&!(D.L2&&D.L2.on)){ pushHist(true); D.L2.on=true; l2Init(); setLayer('l2'); if(!D.blocks.length){ try{ generateLine(true); }catch(x){} } toast('Layer 2: a second walk — bigger blocks with content. It sits in front of the layer 1; switch it behind in the bar above.','⌘Z to undo',true); renderLayerBar(); return; }
     setLayer(want); if(want==='l2'&&!D.blocks.length){ try{ generateLine(true,true); }catch(x){} } });
   $('#l2On').onchange=e=>{ pushHist(true); D.L2.on=e.target.checked; planCache.k=''; refresh(); renderLayerBar(); };
   $('#l2Cam')&&$('#l2Cam').addEventListener('click',e=>{ const b=e.target.closest('[data-v]'); if(!b) return; pushHist(true); D.L2.cam=b.dataset.v; Object.assign(D.L2,L2CAM[b.dataset.v]||{}); planCache.k=''; syncInputs(true); refresh(); renderLayerBar();
-    toast(({main:'Layer 2 moves with the main camera',x:'Layer 2 follows the camera sideways only — no up / down',fixed:'Layer 2 stays put on screen',own:'Layer 2 uses its own camera (its Style: Camera follow = its own camera)'})[D.L2.cam]); });
+    toast(({main:'Layer 2 moves with the layer 1 camera',x:'Layer 2 follows the camera sideways only — no up / down',fixed:'Layer 2 stays put on screen',own:'Layer 2 uses its own camera (its Style: Camera follow = its own camera)'})[D.L2.cam]); });
+  $('#l2Setups')&&$('#l2Setups').addEventListener('click',e=>{ const b=e.target.closest('[data-l2set]'); if(!b||curLayer()!=='l2') return; const S=L2SETUPS[b.dataset.l2set]; if(!S) return;
+    pushHist(true); const r=S.apply(); if(r==='beat') l2SetBeat(true); planCache.k=''; syncInputs(true); refresh(); renderLayerBar(); toast('Layer 2: '+S.name,'⌘Z to undo',true); });
+  $('#l2Beat')&&$('#l2Beat').addEventListener('change',e=>l2SetBeat(e.target.checked));
+  $('#l2LockPreset')&&$('#l2LockPreset').addEventListener('click',e=>{ const b=e.target.closest('[data-lk]'); if(!b) return; const v=b.dataset.lk.split(',').map(Number); pushHist(true); D.anim.lock=Object.assign({},D.anim.lock,{on:true,x:v[0],y:v[1]}); planCache.k=''; syncInputs(true); refresh(); });
+  $('#l2MovePreset')&&$('#l2MovePreset').addEventListener('click',e=>{ const b=e.target.closest('[data-mv]'); if(!b) return; pushHist(true); D.anim.lock=Object.assign({},D.anim.lock,{moveLen:+b.dataset.mv}); planCache.k=''; syncInputs(true); refresh(); renderLayerBar(); });
   $('#l2Snd')&&$('#l2Snd').addEventListener('click',e=>{ const b=e.target.closest('[data-v]'); if(!b) return; setL2Sound(b.dataset.v); });
   $('#l2Z').addEventListener('click',e=>{ const b=e.target.closest('[data-v]'); if(!b) return; pushHist(true); D.L2.z=b.dataset.v; planCache.k=''; refresh(); renderLayerBar(); });
 })();
@@ -7056,7 +7088,7 @@ function cardL2(ids){
   const xf=(D.anim.xf||{})[ids[0]]||{}, zo=(D.anim.zord||{})[ids[0]]||'', v=k=>xf[k]!=null?xf[k]:(k==='s'?100:0);
   const num=(k,lab,unit,step)=>`<div class="field"><span class="lbl scrub">${lab}</span><div class="num"><input type="number" data-l2x="${k}" value="${v(k)}" step="${step||1}"><span class="unit">${unit}</span></div></div>`;
   return `<div class="card"><div class="card-h">Layer 2 block${ids.length>1?`<span class="count">${ids.length}</span>`:''}<span class="r"><a href="#" data-l2reset="1" class="note">reset</a></span></div>
-    <div class="field stack"><span class="lbl">Depth order</span><div class="seg" data-l2z="1"><button data-v="behind"${zo==='behind'?' class="on"':''}>Behind main</button><button data-v=""${!zo?' class="on"':''}>Layer default</button><button data-v="front"${zo==='front'?' class="on"':''}>In front</button></div></div>
+    <div class="field stack"><span class="lbl">Depth order</span><div class="seg" data-l2z="1"><button data-v="behind"${zo==='behind'?' class="on"':''}>Behind layer 1</button><button data-v=""${!zo?' class="on"':''}>Layer default</button><button data-v="front"${zo==='front'?' class="on"':''}>In front</button></div></div>
     <div class="field stack"><span class="lbl">Position</span><div class="field3">${num('x','X','px')}${num('y','Y','px')}${num('z','Z','px',10)}</div></div>
     <div class="field stack"><span class="lbl">Rotation</span><div class="field3">${num('rx','X','°')}${num('ry','Y','°')}${num('rz','Z','°')}</div></div>
     <div class="field2">${num('s','Scale','%')}<div class="note">Z: − closer to the camera, + further away. X/Y rotation turn in 3D in After Effects (camera rig).</div></div>
