@@ -590,7 +590,7 @@ body.nohelp .qm{display:none}
     <div class="spacer"></div>
     <div class="chip" id="compChip" title="Composition"><span class="dot" id="liveDot"></span><b id="compName">Preview</b><span id="compMeta">1920×1080</span></div>
     <button class="btn icon ghost" id="btnUndo" title="Undo (⌘Z)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3 2 6l3 3"/><path d="M2 6h7.5a4.5 4.5 0 0 1 0 9H6"/></svg></button>
-    <button class="btn icon ghost" id="btnRedo" title="Redo (⇧⌘Z)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m11 3 3 3-3 3"/><path d="M14 6H6.5a4.5 4.5 0 0 0 0 9H10"/></svg></button>
+    <button class="btn icon ghost" id="btnRedo" title="Redo (⇧⌘Z or ⌘Y)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m11 3 3 3-3 3"/><path d="M14 6H6.5a4.5 4.5 0 0 0 0 9H10"/></svg></button>
     <button class="btn icon ghost" id="btnHelp" title="Show or hide the ? help tips"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M6.2 6.2a1.9 1.9 0 1 1 2.6 1.8c-.5.2-.8.6-.8 1.1v.4"/><circle cx="8" cy="11.6" r=".4" fill="currentColor"/></svg></button>
     <button class="btn ghost ai-btn" id="btnAI" title="Ask the assistant to build or fix something"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1l1.6 4.4L14 7l-4.4 1.6L8 13l-1.6-4.4L2 7l4.4-1.6z"/></svg><span class="hide-sm">Assistant</span></button>
     <button class="btn ghost" id="btnDefaults" title="Back to a blank canvas: #1F1F1F background, 7 rows, bleed, Avalanche brand colours. ⌘Z to undo"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8a5.5 5.5 0 1 0 1.7-4"/><path d="M2.5 2.5v3h3"/></svg><span class="hide-sm">Defaults</span></button>
@@ -4076,7 +4076,12 @@ function splitBlock(b,how){
 /* ------------------------------------------------------------------ history */
 const H={u:[],r:[]};
 const snap=()=>JSON.stringify(D);
-function pushHist(keepLive){H.u.push(snap());if(H.u.length>150)H.u.shift();H.r=[];if(!keepLive)U.live=false;updUndo();}
+/* history: a step is only kept if something actually changed (a click that didn't edit anything doesn't eat the
+   redo list or leave a dead undo step) */
+function histDrop(){ if(H.pendS!=null){ H.u.pop(); H.r=H.rSave||H.r; H.pendS=null; H.rSave=null; } else H.u.pop(); }   // a step that turned out to change nothing
+function histSettle(){ if(H.pendS==null) return; if(snap()===H.pendS){ H.u.pop(); H.r=H.rSave||[]; } H.pendS=null; H.rSave=null; }
+function pushHist(keepLive){ histSettle(); const s=snap(); if(H.u.length&&H.u[H.u.length-1]===s){ if(!keepLive)U.live=false; return; }
+  H.u.push(s); if(H.u.length>200)H.u.shift(); H.rSave=H.r; H.r=[]; H.pendS=s; if(!keepLive)U.live=false; updUndo(); }
 function setDoc(obj){
   if(obj&&obj.out&&obj.out.bake==null) obj.out.bake=true;
   if(obj&&obj.L2&&obj.L2.cam&&obj.L2.infX==null){ const m={x:[100,0,'main'],fixed:[0,0,'main'],own:[0,0,'own']}[obj.L2.cam]; if(m){ obj.L2.infX=m[0]; obj.L2.infY=m[1]; obj.L2.camSrc=m[2]; } }
@@ -4123,9 +4128,12 @@ function setDoc(obj){
   U.sel=null;U.selIds=U.selIds.filter(id=>byId(id));
   U.moNext=D.blocks.reduce((m,b)=>Math.max(m,b.mo||0),0)+1;
 }
-function undo(){U._mediaUI=0;if(!H.u.length)return;H.r.push(snap());setDoc(JSON.parse(H.u.pop()));U.live=false;afterDocChange();}
-function redo(){if(!H.r.length)return;H.u.push(snap());setDoc(JSON.parse(H.r.pop()));U.live=false;afterDocChange();}
-function updUndo(){$('#btnUndo').disabled=!H.u.length;$('#btnRedo').disabled=!H.r.length;}
+/* undo / redo stay on the layer you're looking at: if the step was on the other layer it's applied there quietly */
+function histApply(json){ const lay=curLayer(); setDoc(JSON.parse(json)); let other=false; if(D.L2&&D.L2.store&&curLayer()!==lay){ swapLayer(); other=true; } return other; }
+function undo(){ U._mediaUI=0; histSettle(); const cur=snap(); while(H.u.length&&H.u[H.u.length-1]===cur) H.u.pop(); if(!H.u.length){ updUndo(); return; }
+  H.r.push(cur); const other=histApply(H.u.pop()); U.live=false; afterDocChange(); if(other) toast(`Undid a change on ${curLayer()==='l2'?'layer 1':'layer 2'}`,'',true); }
+function redo(){ histSettle(); if(!H.r.length){ updUndo(); return; } const cur=snap(); H.u.push(cur); const other=histApply(H.r.pop()); U.live=false; afterDocChange(); if(other) toast(`Redid a change on ${curLayer()==='l2'?'layer 1':'layer 2'}`,'',true); }
+function updUndo(){$('#btnUndo').disabled=!H.u.length;$('#btnRedo').disabled=!(H.r.length||(H.rSave&&H.rSave.length));}
 function afterDocChange(){syncInputs(true);syncPalettes();refresh();updUndo();}
 
 /* ------------------------------------------------------------------ edit actions */
@@ -6893,8 +6901,8 @@ function initDope(){
   const up=()=>{const d=TL.drag; TL.drag=null; TL.frozen=null; if(!d) return;
     if(d.pan){ c.style.cursor=U.space?'grab':''; return; }
     if(d.marquee){ const m=d.marquee; if(Math.abs(m.x1-m.x0)<3&&Math.abs(m.y1-m.y0)<3&&!d.keep.length){U.dopeSel=[];U.selIds=[];} TL.anchor=(U.dopeSel||[])[0]; refresh(); return; }
-    if(d.clip&&!d.moved){ H.u.pop(); updUndo(); setCtx(d.clip.ctx); return; }
-    if(d.blocks&&!d.moved){ H.u.pop(); updUndo(); drawDope(); return; }
+    if(d.clip&&!d.moved){ histDrop(); updUndo(); setCtx(d.clip.ctx); return; }
+    if(d.blocks&&!d.moved){ histDrop(); updUndo(); drawDope(); return; }
     if(!d.scrub) refresh(); else drawDope(); };
   c.addEventListener('pointerup',up); c.addEventListener('pointercancel',up);
   c.addEventListener('wheel',e=>{
@@ -7674,7 +7682,7 @@ cv.addEventListener('pointerdown',e=>{
   if(!inR) return;
   if(tool==='stamp'){
     const before=snap(); const ok=tryStamp(cell);
-    if(ok){H.u.push(before);H.r=[];U.live=false;updUndo();}
+    if(ok){histSettle();H.u.push(before);H.r=[];U.live=false;updUndo();}
     else if(b) select([b.id]); else toast(`A ${D.block.w} × ${D.block.h} block doesn’t fit there`);
     U.drag={type:'stamp',last:cell,any:ok,before}; refresh(); return;
   }
@@ -7690,7 +7698,7 @@ cv.addEventListener('pointermove',e=>{
     if(d.type==='sel'||d.type==='draw'||d.type==='erase'){U.sel.c1=cell.c;U.sel.r1=cell.r;render();updPos(raw);updCtx();return;}
     if(d.type==='paint'){const pb=inRange(G,raw.c,raw.r)?blockAt(raw.c,raw.r):null;if(pb)paintBlock(pb,d);return;}
     if(d.type==='stamp'){
-      if(cell.c!==d.last.c||cell.r!==d.last.r){d.last=cell;if(tryStamp(cell)){if(!d.any){H.u.push(d.before);H.r=[];U.live=false;updUndo();}d.any=true;render();}}
+      if(cell.c!==d.last.c||cell.r!==d.last.r){d.last=cell;if(tryStamp(cell)){if(!d.any){histSettle();H.u.push(d.before);H.r=[];U.live=false;updUndo();}d.any=true;render();}}
       return;
     }
     if(d.type==='vmove'){   // dragging a generated block: make the line editable, then it's a normal move
@@ -7738,7 +7746,7 @@ cv.addEventListener('pointermove',e=>{
 });
 function paintBlock(b,d){
   if(d.seen[b.id]||b.color===D.block.color) return;
-  if(!d.any){H.u.push(d.before);H.r=[];U.live=false;updUndo();d.any=true;}
+  if(!d.any){histSettle();H.u.push(d.before);H.r=[];U.live=false;updUndo();d.any=true;}
   d.seen[b.id]=1; const auto=b.textColor===contrast(b.color); b.color=D.block.color; if(auto)b.textColor=contrast(b.color);
   render();
 }
@@ -7766,7 +7774,7 @@ function endDrag(e){
     const G=geom(); finishPick(cellAt(G,localPt(G,toWorld(e)))); return;
   }
   if(d.type==='move'){
-    if(d.bad){d.ids.forEach((id,i)=>{const b=byId(id);b.c=d.orig[i][0];b.r=d.orig[i][1];});H.u.pop();updUndo();toast('That spot overlaps another block');}
+    if(d.bad){d.ids.forEach((id,i)=>{const b=byId(id);b.c=d.orig[i][0];b.r=d.orig[i][1];});histDrop();updUndo();toast('That spot overlaps another block');}
     refresh();
   } else if(d.type==='sel'&&U.sel&&U.sel.c0===U.sel.c1&&U.sel.r0===U.sel.r1){ U.sel=null; refresh(); }
   else if(d.type==='draw'){ const s=normSel(); U.sel=null; mergeRect(s); }
@@ -8660,6 +8668,7 @@ document.addEventListener('keydown',e=>{
   if(mod&&kl==='z'&&U.curveEd&&!$('#curveModal').hidden){e.preventDefault();U.curveEd.step(e.shiftKey?1:-1);return;}
   const textTyping=t.matches&&t.matches('input[type=text],input:not([type]),input[type=search],textarea');   // number fields / selects: ⌘Z is the app's undo
   if(mod&&kl==='z'){if(textTyping)return;e.preventDefault();if(typing&&t.blur)t.blur();e.shiftKey?redo():undo();return;}
+  if(mod&&kl==='y'){if(textTyping)return;e.preventDefault();if(typing&&t.blur)t.blur();redo();return;}   // ⌘Y / Ctrl+Y: redo too
   if(mod&&kl==='y'){if(textTyping)return;e.preventDefault();redo();return;}
   if(mod&&kl==='s'){e.preventDefault();openLib(true);return;}
   if(typing){if(k==='Escape')t.blur();return;}
