@@ -3,7 +3,7 @@
 SRC="$(cd "$(dirname "$0")" && pwd)"
 DEST="$HOME/Library/Application Support/Adobe/CEP/extensions/GridBlocks"
 mkdir -p "$DEST"
-rsync -a --delete --exclude .git --exclude fonts/desktop --exclude install.command --exclude ship.command --exclude package.sh --exclude README.md --exclude src --exclude build.sh --exclude dist --exclude dist-src --exclude downloads --exclude v2 --exclude api --exclude "*.zip" "$SRC/" "$DEST/"
+rsync -a --delete --exclude .git --exclude fonts/desktop --exclude install.command --exclude ship.command --exclude package.sh --exclude README.md --exclude src --exclude build.sh --exclude dist --exclude dist-src --exclude downloads --exclude v2 --exclude v3.60 --exclude api --exclude "*.zip" "$SRC/" "$DEST/"
 # brand fonts: copy any .otf/.ttf in fonts/ into the user font folder so After Effects can use them
 n=0
 for f in "$SRC"/fonts/desktop/*.otf "$SRC"/fonts/desktop/*.ttf "$SRC"/fonts/*.otf "$SRC"/fonts/*.ttf; do
