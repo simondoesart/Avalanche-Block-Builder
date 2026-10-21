@@ -442,6 +442,7 @@ body.simple [data-adv]{display:none!important}
 .ltabs{display:flex;gap:2px;margin-left:14px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:2px}
 .ltabs button{white-space:nowrap;height:24px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:var(--mut,#a2a2ab);font:inherit;font-size:12px;cursor:pointer}
 .ltabs button.on{background:#2a2a30;color:var(--text)}.ltabs button[data-ltab="l2"].on{background:#3a2a10;color:#FFB020}
+.songmode [data-nosong]{display:none!important}body:not(.songmode) [data-songonly]{display:none!important}.songnote{color:#7CF2C0}#songCount{white-space:nowrap;font-size:11px;margin:0 6px}
 .iobtns{display:inline-flex;gap:2px;margin-left:6px}.iobtns .btn.mini{height:22px;padding:0 8px;font-size:11px}
 .lbar{display:flex;align-items:center;gap:6px;margin-left:10px;font-size:11.5px;flex:none}.lbar .lbl2{color:var(--mut,#8a8a93);white-space:nowrap}.lbar .lsep{width:1px;height:16px;background:var(--line);margin:0 4px}.lbar .lchk{display:flex;align-items:center;gap:5px;white-space:nowrap;cursor:pointer}.lbar .lmore{height:22px;padding:0 9px;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--text);font:inherit;font-size:11px;cursor:pointer;white-space:nowrap}.lbar .lmore:hover{border-color:#FFB020}.lbar .seg.mini{display:flex;flex-wrap:nowrap}.lbar .seg.mini button{white-space:nowrap}.lbar .seg.mini button{height:22px;padding:0 8px;font-size:11px}
 .libsamp{width:96px;height:54px;border-radius:6px;background:linear-gradient(135deg,#E6212F 0 30%,#1F1F1F 30% 100%);display:grid;place-items:center;color:#fff;font-size:18px;cursor:pointer;flex:none}
@@ -629,10 +630,10 @@ body.nohelp .qm{display:none}
           <span class="tc" id="tc">0f</span>
           <input type="range" id="scrub" min="0" max="100" step="1" value="0" hidden>
           <div class="vsep"></div>
-          <div class="field tlf" title="Scene length — the time-remap layer. Empty = play the blocks at their own speed"><span class="lbl scrub">Scene</span><div class="num"><input type="number" data-bind="anim.remapLen" data-zero="auto" min="0" max="99999" step="1"><span class="unit">fr</span></div></div>
-          <div class="field tlf" title="Frame the scene starts on. Negative = already running at frame 0"><span class="lbl scrub">Starts</span><div class="num"><input type="number" data-bind="anim.startF" min="-9999" max="99999" step="1"><span class="unit">fr</span></div></div>
-          <button class="btn ghost" id="btnEase" title="Edit the scene easing in the big editor (or drag the dots on the Scene row)">Easing…</button>
-          <button class="btn ghost" id="btnRetimeMenu" title="Stretch or squeeze everything">Retime ▾</button>
+          <div class="field tlf" data-nosong title="Scene length — the time-remap layer. Empty = play the blocks at their own speed"><span class="lbl scrub">Scene</span><div class="num"><input type="number" data-bind="anim.remapLen" data-zero="auto" min="0" max="99999" step="1"><span class="unit">fr</span></div></div>
+          <div class="field tlf" data-nosong title="Frame the scene starts on. Negative = already running at frame 0"><span class="lbl scrub">Starts</span><div class="num"><input type="number" data-bind="anim.startF" min="-9999" max="99999" step="1"><span class="unit">fr</span></div></div>
+          <button class="btn ghost" data-nosong id="btnEase" title="Edit the scene easing in the big editor (or drag the dots on the Scene row)">Easing…</button>
+          <span class="songnote" data-songonly id="songCount"></span><button class="btn ghost" data-nosong id="btnRetimeMenu" title="Stretch or squeeze everything">Retime ▾</button>
           <button class="btn ghost" id="btnSound" title="Sync to a sound or video, or AE markers">♪ Sound</button>
           <span class="spacer"></span>
           <label class="check" title="Play the preview over and over"><input type="checkbox" id="chkLoop" checked> Loop</label>
@@ -769,7 +770,8 @@ body.nohelp .qm{display:none}
             <div class="chips" id="sizeChips"></div>
             
             </div></details>
-            <details class="sub" data-sub="gen-count" open><summary>How many <span class="note">count &amp; ending</span></summary><div class="subbody">
+            <div class="note songnote" data-songonly>♪ Song on — one block per beat (set the beats in <b>Song</b>).</div>
+            <details class="sub" data-sub="gen-count" data-nosong open><summary>How many <span class="note">count &amp; ending</span></summary><div class="subbody">
               
               <div class="field"><span class="lbl scrub" title="How long the On phase (the build) takes on the blocks' own clock">On (build)</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.lenF" min="2" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
               <div class="field stack"><span class="lbl">Number of blocks</span><div class="seg" data-seg="anim.countMode"><button data-v="fill">Fill the length</button><button data-v="exact">Exact number</button></div></div>
@@ -1268,8 +1270,15 @@ body.nohelp .qm{display:none}
         </div>
 
         <!-- 5 ANIMATE -->
+        <div class="pane" data-pane="song">
+          <div class="group" data-ctx="sound">
+            <div class="group-h">Song</div>
+            <div class="note">Load the track first. With <b>Snap block reveals to the cues</b> on, every block lands on a beat — the scene length, pace and easing controls step aside, and the song drives the timing. Pick which beats below (every beat, big hits, a steady pulse, every Nth), how the line walks on and off, and whether it follows the melody.</div>
+            <div id="mediaBox"></div>
+          </div>
+        </div>
         <div class="pane" data-pane="animate">
-          <div class="group" id="walkPresets">
+          <div class="group" data-nosong id="walkPresets">
             <div class="group-h">Walk presets <span class="tag" id="wpTag"></span></div>
             <div class="note" id="wpNote"></div>
             <div class="wpgrid" id="wpGrid"></div>
@@ -1282,6 +1291,25 @@ body.nohelp .qm{display:none}
               <button class="modecard" data-v="camera"><svg width="34" height="20" viewBox="0 0 34 20" fill="none" stroke="currentColor"><rect x=".5" y=".5" width="22" height="19" rx="2"/><path d="M26 10h7m-2.5-2.5L33 10l-2.5 2.5"/><rect x="4" y="12" width="7" height="4" fill="currentColor" stroke="none"/><rect x="12" y="7" width="7" height="4" fill="currentColor" stroke="none"/></svg><div class="t">Camera follow</div><div class="d">Blocks keep building and the view glides along with them.</div></button>
               <button class="modecard" data-v="push"><svg width="34" height="20" viewBox="0 0 34 20" fill="none" stroke="currentColor"><rect x=".5" y=".5" width="33" height="19" rx="2"/><path d="M9 3H3m2-2L3 3l2 2"/><rect x="2" y="9" width="7" height="4" fill="currentColor" stroke="none" opacity=".45"/><rect x="13" y="9" width="8" height="4" fill="currentColor" stroke="none"/></svg><div class="t">Conveyor</div><div class="d">Grid stays still. New blocks land in the centre and push the rest out.</div></button>
             </div>
+          </div>
+          <div class="group" id="l2BBGroup" hidden>
+            <div class="group-h">Layer 2 · beat blocks</div>
+            <label class="check" title="One block per beat, placed where the camera will see it — always on screen, always on the beat"><input type="checkbox" id="l2BBOn"> <b>Beat blocks</b> — one block on each beat, always on screen</label>
+            <div class="note" id="l2BBState"></div>
+            <div class="field stack"><span class="lbl">Which beats</span><div class="seg"><button data-bbset="beats:1">Every beat</button><button data-bbset="beats:2">Every 2nd</button><button data-bbset="beats:4">Every 4th</button><button data-bbset="beats:big">Big hits</button></div></div>
+            <div class="field stack"><span class="lbl">Speed <span class="note">how fast layer 2 travels with layer 1</span></span><div class="seg"><button data-bbset="speed:100">Full</button><button data-bbset="speed:75">75%</button><button data-bbset="speed:50">Half</button><button data-bbset="speed:25">Slow</button><button data-bbset="speed:0">Still</button></div>
+              <div class="field"><span class="lbl scrub">Exact</span><div class="num"><input type="number" data-bind="L2.bb.speed" min="0" max="300" step="5"><span class="unit">%</span></div></div></div>
+            <div class="field stack"><span class="lbl">Blocks appear</span><div class="seg"><button data-bbset="rx:30">Left</button><button data-bbset="rx:50">Centre</button><button data-bbset="rx:65">Right of centre</button><button data-bbset="rx:80">Right</button></div>
+              <div class="seg"><button data-bbset="band:any">Any row</button><button data-bbset="band:top">Top</button><button data-bbset="band:mid">Middle</button><button data-bbset="band:bottom">Bottom</button></div></div>
+            <div class="field stack"><span class="lbl">Path</span><div class="seg"><button data-bbset="path:walk" title="Steps up or down a row now and then">Walk</button><button data-bbset="path:melody" title="Higher notes higher (Song › melody)">Melody</button><button data-bbset="path:level">Level</button><button data-bbset="path:random">Random</button></div></div>
+            <div class="field stack"><span class="lbl">Connected</span><div class="seg"><button data-bbset="touch:1" title="Each block touches the last one (it may land a little off the point, never off screen)">Touching</button><button data-bbset="touch:0" title="Each block lands exactly on the point — gaps and stacks as the camera moves">Free</button></div>
+              <div class="field" data-show="L2.bb.touch=true"><span class="lbl scrub" title="How far (% of the frame) a block may slide from the point to stay touching">Slide up to</span><div class="num"><input type="number" data-bind="L2.bb.slack" min="0" max="60" step="5"><span class="unit">%</span></div></div></div>
+            <div class="field stack"><span class="lbl">Each block</span><div class="seg"><button data-bbset="stay:stay">Stays</button><button data-bbset="stay:beats">Leaves after</button></div>
+              <div class="field2"><div class="field"><span class="lbl scrub">Beats on screen</span><div class="num"><input type="number" data-bind="L2.bb.stayN" min="1" max="64" step="1"></div></div>
+                <div class="field"><span class="lbl scrub">Randomly hide</span><div class="num"><input type="number" data-bind="anim.hidePct" min="0" max="95" step="5"><span class="unit">%</span></div></div></div></div>
+            <div class="field2"><div class="field"><span class="lbl scrub">Block W</span><div class="num"><input type="number" data-bind="block.w" min="1" max="40" step="1"></div></div>
+              <div class="field"><span class="lbl scrub">Block H</span><div class="num"><input type="number" data-bind="block.h" min="1" max="20" step="1"></div></div></div>
+            <div class="note">Fine-tune single blocks: select one to hide it, drag it on the timeline to retime it (nothing else moves), or ⌥-drag it on the canvas to nudge it. Sizes can vary in <b>Blocks › Size mix</b>.</div>
           </div>
           <div class="group" id="l2CamGroup" hidden>
             <div class="group-h">Layer 2 · camera &amp; timing</div>
@@ -1361,7 +1389,7 @@ body.nohelp .qm{display:none}
                   <div class="field"><span class="lbl scrub" title="Down the frame: 0 = top, 50 = centre, 100 = bottom">Down</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.lock.y" min="0" max="100" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div></div>
                 </div></div>
               
-              <div data-show="anim.motion=smooth&amp;anim.camMove=curve" style="display:grid;gap:9px">
+              <div data-show="anim.motion=smooth&amp;anim.camMove=curve" data-nosong style="display:grid;gap:9px">
                 <div class="note">The camera moves <b>with the blocks</b>: steady while the line builds or walks, still while it holds. Its speed across the scene comes from the <b>Scene</b> curve — shape that to speed up, slow down or hold the camera.</div>
                 <div class="field"><span class="lbl scrub" title="Frames to ease into and out of each move (on the blocks' clock). 0 = hard starts and stops">Smooth starts</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.camEase" min="0" max="120" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
               </div>
@@ -1378,8 +1406,8 @@ body.nohelp .qm{display:none}
             <div class="field stack"><span class="lbl">Blocks appear</span>
               <div class="seg" data-seg="anim.appear"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe →</button><button data-v="scale">Scale</button></div></div>
             <div data-show="anim.mode=camera|push" style="display:grid;gap:9px">
-              <div class="field stack"><span class="lbl">When blocks appear</span><div class="seg" data-seg="anim.revealWhen"><button data-v="lead" title="Blocks appear on their schedule, ahead of the camera, and the camera follows them in">Ahead of the camera</button><button data-v="arrive" title="Each block waits until the camera brings it into the reveal zone">When the camera arrives</button></div></div>
-              <div data-show="anim.revealWhen=arrive" style="display:grid;gap:9px">
+              <div class="field stack" data-nosong><span class="lbl">When blocks appear</span><div class="seg" data-seg="anim.revealWhen"><button data-v="lead" title="Blocks appear on their schedule, ahead of the camera, and the camera follows them in">Ahead of the camera</button><button data-v="arrive" title="Each block waits until the camera brings it into the reveal zone">When the camera arrives</button></div></div>
+              <div data-show="anim.revealWhen=arrive" data-nosong style="display:grid;gap:9px">
                 <div class="field"><span class="lbl scrub" title="How far across the frame a block's centre must be before it appears. 50 = only at the centre, 100 = as soon as it's on screen">Reveal zone</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.revealX" min="50" max="120" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
                 <div data-adv class="field" data-show="anim.axis=xy"><span class="lbl scrub" title="Same, for up/down">Zone height</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.revealY" min="50" max="120" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
                 <label class="check" title="Key the reveal zone over time: a Reveal zone row appears on the timeline with points and easing handles. The camera keeps the newest block on the zone's edge wherever it is at that moment."><input type="checkbox" data-bind="anim.rzOn"> Animate on the timeline</label>
@@ -1464,7 +1492,7 @@ body.nohelp .qm{display:none}
         <!-- 5b TRANSITIONS -->
         <!-- 5b TIMING -->
         <div class="pane" data-pane="timing">
-          <div class="group" data-ctx="scene" data-show="anim.mode=reveal|camera|push">
+          <div class="group" data-ctx="scene" data-nosong data-show="anim.mode=reveal|camera|push">
             <div class="group-h">Scene</div>
             <div class="field"><span class="lbl scrub" title="Scene length. Empty = the blocks play at their own speed; set a length to squeeze or stretch everything into it">Scene length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.remapLen" data-zero="auto" min="0" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
             <div class="row-btns"><button class="btn" id="btnRetimeComp" title="Make the scene end when the comp ends">Fit to the comp length</button><button class="btn" id="btnSceneAuto" title="Play the blocks at their own speed">Blocks' own speed</button></div>
@@ -1486,10 +1514,6 @@ body.nohelp .qm{display:none}
             <div class="group-h">Camera timing</div>
             <div class="note" data-show="exit.mode=walk">With Walk off, the camera follows the walking line for <b>Camera follows for</b>, then lets it run off.</div>
             
-          </div>
-          <div class="group" data-ctx="sound">
-            <div class="group-h">Sync to sound</div>
-            <div id="mediaBox"></div>
           </div>
         </div>
 
@@ -2983,7 +3007,7 @@ const DEF={
        snow:{on:false,count:90,speed:240,size:2,stretch:6,dir:'left',color:'#EBF0FA',opacity:55,seed:9}},
   num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100,per:{}},
   io:{in:null,out:null},
-  L2:{on:false,z:'front',active:'main',store:null,sound:'off',timing:null,cam:'main',camSrc:'main',infX:100,infY:100,zoom:true,revealBy:'own',ctrl:{x:0,y:0,r:0,s:100,o:100}},
+  L2:{on:false,z:'front',active:'main',store:null,sound:'off',timing:null,cam:'main',camSrc:'main',infX:100,infY:100,zoom:true,revealBy:'own',ctrl:{x:0,y:0,r:0,s:100,o:100},bb:{on:false,speed:100,rx:65,band:'any',path:'walk',touch:true,slack:25,stay:'stay',stayN:8}},
   bmedia:{on:false,selOn:false,selAsset:'',kind:'video',asset:'sample',precomp:false,fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,
     loop:'loop',start:'reveal',delay:0,at:0,offset:0,audio:'mute',inMode:'block',inLen:12,target:'all',pick:[],dirOn:{up:true,down:true,flat:true},
     assign:'same',pool:[],dir:{up:'',down:'',flat:''},seed:1,per:{},assets:[]},
@@ -3004,12 +3028,13 @@ const U={step:0,ctx:null,ctab:'hud',dopeSel:[],mbPrev:true,tool:'select',sel:nul
 const SI=id=>STEPS.findIndex(s=>s.id===id);
 /* steps shown while we workshop the UX one step at a time — add ids to bring a step back.
    ?steps=all in the URL (or localStorage gridblocks.steps='all') shows everything */
-const VISIBLE_STEPS=['grid','layout','animate','content','transitions'];
+const VISIBLE_STEPS=['grid','layout','song','animate','content','transitions'];
 const stepVisible=i=>{try{if(/[?&]steps=all/.test(location.search||'')||localStorage.getItem('gridblocks.steps')==='all')return true;}catch(e){} return !!STEPS[i]&&VISIBLE_STEPS.indexOf(STEPS[i].id)>=0;};
 const nextVisible=(i,d)=>{for(let j=i+d;j>=0&&j<STEPS.length;j+=d) if(stepVisible(j)) return j; return -1;};
 const STEPS=[
   {id:'grid',name:'Setup',title:'Comp, grid & look',desc:'Rows always fit the comp height. Squares can run off the sides.',tools:['hand'],tool:'hand',insp:false},
   {id:'layout',name:'Blocks',title:'Generate the line',desc:'Pick a block size and generate a walking line from a seed. Then drag any block on the canvas, or retime it on the timeline.',tools:['select','stamp','draw','hand'],tool:'select',insp:true},
+  {id:'song',name:'Song',title:'Song & beats',desc:'Load a track and the blocks land on its beats — one block per beat. Everything about timing comes from the song while it\'s on.',tools:['select','hand'],tool:'select',insp:false},
   {id:'animate',name:'Motion',title:'Camera, reveal & exit',desc:'How the view moves and how blocks appear and leave. When things happen lives on the timeline.',tools:['select','hand'],tool:'select',insp:true},
   {id:'content',name:'Content',title:'Content overlays',desc:'Each overlay has its own tab. They show up as rows on the timeline.',tools:['select','hand'],tool:'select',insp:true},
   {id:'transitions',name:'Transitions',title:'Transition in & out',desc:'Blocks that fill the frame to bring the scene in and take it out. “Walk” transitions grow out of the line itself.',tools:['hand'],tool:'hand',insp:false},
@@ -3017,6 +3042,7 @@ const STEPS=[
   {id:'build',name:'Output',title:'Build it',desc:'',tools:['select','hand'],tool:'select',insp:true}
 ];
 const RAIL_ICON={
+  song:'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 15V5l9-2v10"/><circle cx="5.5" cy="15" r="2"/><circle cx="14.5" cy="13" r="2"/></svg>',
   grid:'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2.5" y="3.5" width="15" height="13" rx="2"/><path d="M2.5 8h15M2.5 12h15M7.5 3.5v13M12.5 3.5v13"/></svg>',
   layout:'<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><rect x="1.5" y="11" width="6" height="4" rx="1"/><rect x="7.5" y="7" width="6" height="4" rx="1" opacity=".7"/><rect x="13.5" y="3" width="5" height="4" rx="1" opacity=".45"/></svg>',
   animate:'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2.5" y="5" width="10" height="10" rx="2"/><path d="M15 10h3.5m-1.5-2 2 2-2 2"/></svg>',
@@ -4796,8 +4822,50 @@ function l1Travel(PM,t,screen){ const c=PM&&PM.cam&&PM.cam.length?PM.cam:null; i
   if(!PM.__trav){ const end=Math.ceil(Math.max(PM.end||0,c[c.length-1][0]))+2, K=[[0,[0,0]]]; let ax=0,ay=0,p=ev(c,0,[0,0]);
     for(let f=1;f<=end;f++){ const o=ev(c,f,[0,0]), s=(ev(PM.zs,f-0.5,100))/100; ax+=s*(o[0]-p[0]); ay+=s*(o[1]-p[1]); p=o; K.push([f,[ax,ay]]); } PM.__trav=K; }
   return ev(PM.__trav,Math.max(0,t),[0,0]); }
+/* ================= LAYER 2 · BEAT BLOCKS =================
+   The simple, robust way to run layer 2 with a song: the camera comes first. Layer 2 moves with layer 1's on-screen
+   motion at a chosen speed (100% = with it, 50% = half as fast, 0 = still), and each block is placed where the reveal
+   point is on screen at the moment of its beat — so it always appears on its beat, at the reveal point, on screen.
+   Blocks can stay touching the previous one (they slide a little off the point) or sit exactly on the point. */
+function l2Timing(){ const L=D.L2||{}; if(curLayer()==='l2') return D.timing; return L.sound==='own'?L.timing:L.sound==='same'?D.timing:null; }
+/* beat blocks: 'leave after N beats' is an exit after N × the typical beat gap */
+function l2BBExit(){ const B=D.L2.bb||{}; if(B.stay==='beats'){ const cs=timingCues(), g=[]; for(let i=1;i<cs.length;i++) g.push(cs[i]-cs[i-1]); g.sort((a,b)=>a-b); const gap=g.length?g[Math.floor(g.length/2)]:12;
+    D.exit=Object.assign({},D.exit,{on:true,mode:'hold',holdOn:true,hold:Math.max(2,Math.round(gap*Math.max(1,+B.stayN||8))),len:+D.exit.len||8}); } else D.exit=Object.assign({},D.exit,{on:false}); planCache.k=''; }
+function l2BB(){ const L=D.L2||{}, B=L.bb; if(!B||!B.on) return null; const T=l2Timing(); return T&&T.sync&&(T.beats||[]).length?B:null; }
+let EXT_PLACE=null;   // set while layer 2's plan is computed in beat-block mode: {tot(t) → layer-2 camera offset}
+function beatPlace(G,base0,times,prevSeed){
+  const B=EXT_PLACE.bb, rnd=rng((D.rand.seed|0)+4242+(D.anim.seed|0)*31), W=G.W, rx=clamp(+B.rx||65,5,95)/100, out=[];
+  const SV=D.rand.sizeVar||{}, bw=Math.max(1,D.block.w|0), bh=Math.max(1,D.block.h|0);
+  const dims=()=>{ if(!SV.on) return [bw,bh]; if((SV.mode||'free')==='free'){ const ri=(a,b)=>{a=Math.max(1,Math.round(+a||1));b=Math.max(a,Math.round(+b||a));return a+Math.floor(rnd()*(b-a+1));}; return [ri(SV.wMin,SV.wMax),Math.min(G.R,ri(SV.hMin,SV.hMax))]; }
+    const k0=Math.max(1,Math.round(+SV.min||1)),k1=Math.max(k0,Math.round(+SV.max||k0)),k=k0+Math.floor(rnd()*(k1-k0+1)), a0=Math.max(0.1,+SV.aMin||0.5),a1=Math.max(a0,+SV.aMax||2),a=Math.exp(Math.log(a0)+(Math.log(a1)-Math.log(a0))*rnd()); return a>=1?[Math.max(1,Math.round(k*a)),Math.min(G.R,k)]:[k,Math.min(G.R,Math.max(1,Math.round(k/a)))]; };
+  const band=h=>{ const R=G.R, hi=Math.max(0,R-h); const t=B.band||'any'; if(t==='top') return [0,Math.max(0,Math.min(hi,Math.floor(R/3)-h+1))]; if(t==='bottom') return [Math.min(hi,Math.max(0,Math.ceil(2*R/3)-1)),hi]; if(t==='mid'){ const a=Math.max(0,Math.floor(R/3)), b=Math.min(hi,Math.max(a,Math.ceil(2*R/3)-h)); return [Math.min(a,hi),b]; } return [0,hi]; };
+  const PP=B.path==='melody'?cuePitches():[]; const pv=PP.filter(x=>x!=null).sort((a,b)=>a-b), pr=pv.length?[pv[Math.floor(pv.length*.05)],pv[Math.floor(pv.length*.95)]||pv[pv.length-1]]:null;
+  const lagMax=Math.max(1,Math.round(0.22*W/G.p)), leadMax=Math.max(1,Math.round(0.22*W/G.p));
+  let prev=prevSeed||null;
+  times.forEach((t,i)=>{ const o=EXT_PLACE.tot(t), DM=dims(), w=DM[0], h=DM[1], bd=band(h);
+    // the column whose block lands on the reveal point — kept fully inside the frame when it fits
+    const fits=cc=>{ const x0=G.x0+cc*G.p+o[0], x1=x0+w*G.p-G.gut; return x0>=-1&&x1<=W+1; };
+    let want=Math.round((W*rx-o[0]-G.x0)/G.p-w/2); if(!fits(want)){ const lo=Math.ceil((-o[0]-G.x0)/G.p), hi=Math.floor((W-o[0]-G.x0+G.gut)/G.p)-w; if(hi>=lo) want=clamp(want,lo,hi); }
+    let c=want, joined=false;
+    const slack=Math.max(1,Math.round(clamp(+B.slack||25,0,60)/100*W/G.p)); if(B.touch!==false&&prev){ const pe=prev.c+prev.w; if(fits(pe)&&Math.abs(pe-want)<=slack){ c=pe; joined=true; } }   // touching the last block, as long as it's still fully on screen
+    // the row
+    let r; const mid=Math.round((bd[0]+bd[1])/2);
+    if(B.path==='level') r=prev?clamp(prev.r,bd[0],bd[1]):mid;
+    else if(B.path==='random') r=bd[0]+Math.floor(rnd()*(bd[1]-bd[0]+1));
+    else if(B.path==='melody'&&pr&&PP[i]!=null){ const u=clamp((PP[i]-pr[0])/Math.max(1e-6,pr[1]-pr[0]),0,1); r=Math.round(bd[1]-u*(bd[1]-bd[0])); }
+    else { const p0=prev?prev.r:mid, st=rnd(); r=clamp(p0+(st<0.35?-1:st>0.65?1:0)*Math.max(1,Math.min(h,prev?prev.h:h)),bd[0],bd[1]); }
+    if(joined&&prev) r=clamp(r,Math.max(bd[0],prev.r-h),Math.min(bd[1],prev.r+prev.h));   // touching: at least corner to corner
+    // don't sit on top of a block that's still showing: try the other rows in the band (nearest first)
+    const clash=(cc,rr)=>out.some(x=>cc<x.c+x.w&&x.c<cc+w&&rr<x.r+x.h&&x.r<rr+h&&(x.__gone==null||x.__gone>t));
+    if(clash(c,r)){ let best=null; for(let k=1;k<=G.R&&best==null;k++){ for(const s2 of [-1,1]){ const rr=r+s2*k; if(rr<bd[0]||rr>bd[1]) continue; if(!clash(c,rr)){ best=rr; break; } } } if(best!=null) r=best; }
+    const src=i===0?base0:base0;
+    const b=i===0?Object.assign({},base0,{c,r,w,h}):{id:-1-i,c,r,w,h,color:mixColor(i,rnd),text:'',fontSize:src.fontSize,textColor:contrast(mixColor(i,rnd)),align:src.align,pad:src.pad,virtual:true,name:'',mo:0,order:0};
+    if(i>0){ TEXT_KEYS.forEach(k=>b[k]=src[k]); b.textColor=contrast(b.color); }
+    if(B.stay==='beats'){ const n=Math.max(1,Math.round(+B.stayN||8)); b.__gone=times[Math.min(times.length-1,i+n)]+(i+n>=times.length?n*6:0); }
+    out.push(b); prev=b; });
+  return out; }
 const L2CAM={main:{camSrc:'main',infX:100,infY:100},x:{camSrc:'main',infX:100,infY:0},fixed:{camSrc:'main',infX:0,infY:0},own:{camSrc:'own',infX:0,infY:0}};
-function l2CamCfg(){ const L=D.L2||{}; return {src:L.camSrc||'main',ix:(L.infX!=null?+L.infX:100)/100,iy:(L.infY!=null?+L.infY:100)/100}; }
+function l2CamCfg(){ const L=D.L2||{}; { const B=l2BB(); if(B) return {src:'main',ix:clamp(+B.speed||0,0,300)/100,iy:0}; } return {src:L.camSrc||'main',ix:(L.infX!=null?+L.infX:100)/100,iy:(L.infY!=null?+L.infY:100)/100}; }
 /* layer 2's offset on top of the layer 1 camera: total = (its own camera, or where the layer 1 camera started) + influence × the layer 1 camera's travel */
 function l2ShiftAt(t,PM,P2){ const C=l2CamCfg(); if(!PM||(C.src==='main'&&C.ix===1&&C.iy===1)) return [0,0];
   const c=PM.cam&&PM.cam.length?PM.cam:null, mo=c?ev(c,t,[0,0]):[0,0], m0=c?c[0][1]:[0,0];
@@ -5059,7 +5127,10 @@ function plan(G){
   let v=PLANS.get(key); if(!v){ let rc=null, tr=null; if(curLayer()==='l2'&&D.L2&&D.L2.store){ const C=l2CamCfg();
       if(D.L2.revealBy==='main'||(C.src==='own'&&(C.ix||C.iy)&&lockPt())){ try{ const pm=withLayer('main',()=>plan(geom())); if(D.L2.revealBy==='main') rc={cam:pm.cam,zs:pm.zs,pan:pm.pan};
         if(C.src==='own'&&(C.ix||C.iy)){ const scr=D.L2.zoom===false; tr=t=>{ const d=l1Travel(pm,t,scr); return [C.ix*d[0],C.iy*d[1]]; }; } }catch(e){} } }
-    EXT_RC=rc; try{ v=remappedPlan(G); } finally{ EXT_RC=null; } EXT_TR=tr; try{ lockSnap(v,G); }catch(e){} finally{ EXT_TR=null; } try{ paceCam(v,G); }catch(e){} try{ vDamp(v); }catch(e){} try{ chopCam(v,G); }catch(e){} applyZoom(v); v.hidden=hiddenIds(v); } if(PLANS.size>6) PLANS.clear();
+    let pl=null; if(curLayer()==='l2'&&D.L2&&D.L2.store){ const B=l2BB(); if(B){ try{ const pm=withLayer('main',()=>plan(geom())), C=l2CamCfg(), scr=D.L2.zoom===false, c0=pm.cam&&pm.cam.length?pm.cam[0][1]:[0,0];
+        pl={bb:B,tot:t=>{ const d=l1Travel(pm,t,scr); return [c0[0]+C.ix*d[0],c0[1]]; }}; }catch(e){ pl=null; } } }
+    const svMode=D.anim.mode; if(pl){ rc=null; if(svMode==='camera'||svMode==='push') D.anim.mode='reveal'; }   // beat blocks: layer 2 has no camera of its own — the placement does the work
+    EXT_RC=rc; EXT_PLACE=pl; try{ v=remappedPlan(G); } finally{ EXT_RC=null; EXT_PLACE=null; D.anim.mode=svMode; } EXT_TR=tr; try{ lockSnap(v,G); }catch(e){} finally{ EXT_TR=null; } try{ paceCam(v,G); }catch(e){} try{ vDamp(v); }catch(e){} try{ chopCam(v,G); }catch(e){} applyZoom(v); v.hidden=hiddenIds(v); } if(PLANS.size>6) PLANS.clear();
   planCache={k:key,v}; return v;
 }
 /* ---- TIME REMAP: the scene layer on top.
@@ -5162,7 +5233,7 @@ function computePlan(G){
   if(!base.length) return P;
   const tr0=Math.max(1,Math.round(+A.trans||1)), st=Math.max(1,Math.round(A.stepEvery)||1), stop=A.motion==='stop';
   const startF=Math.round(+A.startF||0), compF=Math.round((D.comp.dur||10)*fps);
-  const WO0=!!(D.exit&&D.exit.on&&D.exit.mode==='walk'&&!manual&&A.mode!=='static');
+  const WO0=!!(D.exit&&D.exit.on&&D.exit.mode==='walk'&&!manual&&A.mode!=='static'&&!EXT_PLACE);
   const BEAT=beatMode()&&!manual, woOff0=Math.ceil(.45*G.W/Math.max(1,Math.max(1,D.block.w|0)*G.p))+Math.max(1,Math.round(+D.exit.trail||6))+2, BP=BEAT?beatPhases(WO0,(A.mode==='camera'||A.mode==='push')?woOff0:0):null;
   let L=Math.max(2,A.toEnd?compF-startF:Math.round(+A.lenF||180));
   if(BP) L=Math.max(2,BP.buildT[BP.buildT.length-1]-startF+1);   // the build runs to its last cue
@@ -5172,7 +5243,7 @@ function computePlan(G){
   const cuesIn=(D.timing&&D.timing.sync)?planCues().filter(c=>c>=startF&&c<=startF+L).length:0;
   const want=BP?BP.buildT.length:A.countMode==='exact'?Math.round(A.total||0):cuesIn?cuesIn:Math.max(1,Math.round(L/Math.max(1,+A.pace||6)));   // synced to sound: one block per cue
   // walk-off: after the build holds, the line keeps walking — extra blocks continue the pattern
-  const WO=!!(D.exit&&D.exit.on&&D.exit.mode==='walk'&&!manual&&A.mode!=='static');
+  const WO=!!(D.exit&&D.exit.on&&D.exit.mode==='walk'&&!manual&&A.mode!=='static'&&!EXT_PLACE);
   const pace2=Math.max(1,(+A.pace||6)*Math.max(.1,+D.exit.walkPace||1)), woLen=Math.max(0,Math.round(+D.exit.walkLen||48)), woK=Math.max(1,Math.round(+D.exit.trail||6));
   // blocks while the camera follows + enough for the head to run off frame with its whole trail after the camera lets go
   const woOff=Math.ceil(.45*G.W/Math.max(1,Math.max(1,D.block.w|0)*G.p))+woK+2;
@@ -5189,11 +5260,12 @@ function computePlan(G){
   }
   const skip=new Set((A.skip||[]).map(Number));
   let seq=base.concat(exts.filter(b=>!skip.has(b.id)));
+  if(EXT_PLACE&&BP&&base.length){ seq=beatPlace(G,base[0],BP.buildT).filter(b=>!skip.has(b.id)); P.beatPlaced=true; }   // layer 2 beat blocks: placed by the camera at each beat
   { const BC=D.blockColors||{}; seq.forEach(b=>{ if(b.virtual&&BC[b.id]){ b.color=BC[b.id]; b.textColor=contrast(b.color); } }); }   // colours picked for single generated blocks
   if(skip.size&&WO&&P._woMore!=null) P._woMore=exts.filter(b=>b.id<=-100000&&!skip.has(b.id)).length;
   seq.forEach((b,i)=>{if(b.virtual)b.order=i+1;});
   let gi=[], ng=0;
-  if(A.groupCol&&!(D.rand.pace&&D.rand.pace.on)&&!(D.rand.pitch&&D.rand.pitch.on)){const m={};seq.forEach(b=>{if(!(b.c in m))m[b.c]=ng++;gi.push(m[b.c]);});}
+  if(A.groupCol&&!P.beatPlaced&&!(D.rand.pace&&D.rand.pace.on)&&!(D.rand.pitch&&D.rand.pitch.on)){const m={};seq.forEach(b=>{if(!(b.c in m))m[b.c]=ng++;gi.push(m[b.c]);});}
   else seq.forEach(()=>gi.push(ng++));
   let used=ng;
   // which groups belong to the walk-off (the last woN blocks)
@@ -6338,6 +6410,7 @@ function renderMedia(){
     ${m&&m.el?'<label class="check"><input type="checkbox" data-bind="timing.sound"> Play sound with the preview</label>':''}
     <div class="field2"><div class="field"><span class="lbl scrub" title="Shift the media (and its cues) in frames">Offset</span><div class="num"><input type="number" data-bind="timing.offset" min="-99999" max="99999" step="1"><span class="unit">fr</span></div></div>
       <div class="field"><span class="lbl scrub" title="Higher = only the strongest hits count as beats">Beat strictness</span><div class="num"><input type="number" data-bind="timing.sens" min="0.3" max="4" step="0.1"></div></div></div>
+    <label class="check" style="padding:7px 9px;border:1px solid rgba(124,242,192,.4);border-radius:8px"><input type="checkbox" data-bind="timing.sync"> <b>Blocks land on the beats</b> <span class="note">(one block per beat — the song sets the timing)</span></label>
     <div class="field stack"><span class="lbl">Find</span><div class="seg" data-seg="timing.kind"><button data-v="all" title="Every onset the detector hears">Every beat</button><button data-v="strong" title="Only the biggest hits">Big hits</button><button data-v="regular" title="An even pulse at the song's tempo">Steady pulse</button></div></div>
     <div class="field2">${T.kind==='strong'?`<div class="field"><span class="lbl scrub" title="Keep this share of the strongest hits">Biggest</span><div class="num"><input type="number" data-bind="timing.strongPct" min="1" max="100" step="5"><span class="unit">%</span></div></div>`:''}
       <div class="field"><span class="lbl scrub" title="Use every Nth cue (2 = every other beat, 4 = once a bar)">Every</span><div class="num"><input type="number" data-bind="timing.every" min="1" max="16" step="1"><span class="unit">th</span></div></div></div>
@@ -6353,7 +6426,6 @@ function renderMedia(){
       <div class="field"><span class="lbl scrub" title="How many blocks follow the melody; the rest walk as usual">Follow</span><div class="num"><input type="number" data-bind="rand.pitch.amount" min="0" max="100" step="5"><span class="unit">%</span></div></div>
       <div class="note">${got?`${got} of ${cues.length} cues have a clear note${got<cues.length?' — the rest borrow their neighbour':''}. ${D.timing.sync?'':'Turn on <b>Snap block reveals to the cues</b> so each block lands on its note.'}`:(m&&m.pcm?'No clear notes found at these cues yet.':'Load the song (audio file) to read its notes.')}</div>`:''}
     </div>`; })()}
-    <label class="check"><input type="checkbox" data-bind="timing.sync"> Snap block reveals to the cues <span class="note">(one block per cue, landing on it)</span></label>
     ${T.sync&&cues.length?(()=>{ const B=(plan(geom()).beat||{}), wo=D.exit.on&&D.exit.mode==='walk'; return `<div class="beatbox" style="display:grid;gap:8px;padding:9px;border:1px solid rgba(124,242,192,.35);border-radius:8px">
       <div class="note"><b style="color:#7CF2C0">Beat mode</b> — ${B.nIn||0} blocks on ${B.nIn||0} cues${B.nWalkOn?` · ${B.nWalkOn} walking on before the beat`:T.walkOn?` · <span style="color:#F5A524">no room to walk on before the first cue — drag “walk on” earlier or “on the beat” later</span>`:''}${B.nOut?` · ${B.nOut} walking off`:''}. The scene retime is off: the music sets the timing, and the camera sits on each block at the reveal line on its cue.</div>
       <label class="check"><input type="checkbox" data-bind="timing.walkOn"> Walk on before the beat <span class="note">(the line walks in at an even pace, then locks to the cues)</span></label>
@@ -7520,7 +7592,7 @@ function drawOverlays(G,A){
   if(LKo){ const x=G.W*LKo.x, y=G.H*LKo.y, k=22/sc; ctx.save(); ctx.lineWidth=1.5/sc; ctx.strokeStyle='rgba(43,217,143,.9)'; ctx.setLineDash([5/sc,4/sc]);
     ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,G.H); if(LKo.ly){ ctx.moveTo(0,y); ctx.lineTo(G.W,y); } ctx.stroke(); ctx.setLineDash([]);
     ctx.beginPath(); ctx.arc(x,y,k*0.45,0,Math.PI*2); ctx.stroke(); ctx.fillStyle='rgba(43,217,143,.95)'; ctx.font=`${11/sc}px sans-serif`; ctx.fillText('newest block here',x+k*0.6,y-k*0.6); ctx.restore(); }
-  else if(STEPS[U.step].id==='animate'&&(D.anim.mode==='camera'||D.anim.mode==='push')&&D.anim.revealWhen==='arrive'){
+  else if(STEPS[U.step].id==='animate'&&(D.anim.mode==='camera'||D.anim.mode==='push')&&D.anim.revealWhen==='arrive'&&!beatMode()){
     const tc=live&&D.anim.rzOn?plan(G).toContent(A.t):null, bx=clamp(tc!=null?revealXAt(tc):(+D.anim.revealX||70),50,120)/100, by=D.anim.axis==='xy'?clamp(+D.anim.revealY||100,50,120)/100:1;
     ctx.save(); ctx.setLineDash([6/sc,5/sc]); ctx.lineWidth=1.25/sc; ctx.strokeStyle='rgba(43,217,143,.75)';
     ctx.strokeRect(G.W*(1-bx),G.H*(1-by),G.W*(2*bx-1),G.H*(2*by-1));
@@ -8325,7 +8397,7 @@ function buildStepper(){
   $('#rail').addEventListener('click',e=>{const b=e.target.closest('[data-step]');if(!b)return;U.ctx=null;U.dopeSel=[];U.selIds=[];U.sel=null;goStep(+b.dataset.step);refresh();});
 }
 /* contexts: a timeline row's settings in the properties panel */
-function setCtx(c){ if(c==='after'||c==='reveal') c='inout'; U.ctx=c||null; if(c){U.dopeSel=[];U.selIds=[];U.sel=null;} const sb=$('#left .step-body'); if(sb) sb.scrollTop=0; refresh(); }
+function setCtx(c){ if(c==='sound'){ const k=SI('song'); if(k>=0){ U.ctx=null; if(U.step!==k) goStep(k); else refresh(); return; } } if(c==='after'||c==='reveal') c='inout'; U.ctx=c||null; if(c){U.dopeSel=[];U.selIds=[];U.sel=null;} const sb=$('#left .step-body'); if(sb) sb.scrollTop=0; refresh(); }
 function renderProps(){
   const left=$('#left'), st=STEPS[U.step], sel=tlSelIds(), blk=(sel.length>0||!!U.sel)&&!U.ctx;
   left.classList.toggle('ctxmode',!!U.ctx&&!blk); left.classList.toggle('blockmode',blk);
@@ -8349,7 +8421,7 @@ $('#ctxBack').onclick=()=>{U.ctx=null;U.dopeSel=[];U.selIds=[];U.sel=null;refres
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-ctab-btn]'); if(!b) return; U.ctab=b.dataset.ctabBtn; refresh(); drawDope();});
 /* saved step → index (older saves had a separate Block size step at index 1) */
 function savedStep(o){if(o.stepId&&SI(o.stepId)>=0)return SI(o.stepId);const i=o.step|0;return clamp(i>=2?i-1:i,0,STEPS.length-1);}
-function goStep(i){
+function goStep(i){ U._mediaUI=0;
   i=clamp(i,0,STEPS.length-1);
   if(!stepVisible(i)){ const j=nextVisible(i,i>U.step?1:-1); i=j>=0?j:U.step; }
   if(i===U.step){refresh();return;}
@@ -8374,6 +8446,7 @@ function renderStepUI(){
   const st=STEPS[U.step];
   $$('.railbtn').forEach((b,i)=>{b.classList.toggle('on',i===U.step);});
   $$('.pane').forEach(p=>p.classList.toggle('on',p.dataset.pane===st.id));
+  { const sm=beatMode(); document.body.classList.toggle('songmode',sm); const n=$('#songCount'); if(n) n.textContent=sm?`${timingCues().length} beats → ${timingCues().length} blocks`:''; }   // song on: the scene / pace / easing controls step aside
   renderProps();
   $('#btnBack').disabled=nextVisible(U.step,-1)<0;
   const nxI=nextVisible(U.step,1), nx=nxI>=0?STEPS[nxI]:null; $('#btnNext').hidden=!nx&&!(STEPS[U.step].id==='build');
@@ -8384,7 +8457,7 @@ function renderStepUI(){
   cv.className='t-'+U.tool+(U.space?' panning':'')+(U.drag&&(U.drag.type==='move'||U.drag.type==='pan')?' grabbing':'');
   setHTML($('#toolcards'),['select','stamp','draw'].map(t=>`<button class="toolcard${U.tool===t?' on':''}" data-tool="${t}"><span class="ic">${ICON[t]}</span><span><div class="t">${TOOLS[t].name}</div><div class="d">${TOOLS[t].desc}</div></span><kbd>${TOOLS[t].key}</kbd></button>`).join(''));
 
-  if(U.ctx==='sound'&&!U._mediaUI){U._mediaUI=1;renderMedia();}
+  if((U.ctx==='sound'||st.id==='song')&&!U._mediaUI){U._mediaUI=1;renderMedia();}
   $('#hint').textContent=st.id==='grid'?'Scroll to pan · ⌘/Ctrl + scroll or pinch to zoom':TOOLS[U.tool].desc;
 }
 /* the little badge under the canvas: which frame you're looking at */
@@ -9961,6 +10034,19 @@ function mAddFiles(files,relinkId){
   $('#mWalk').onclick=()=>{ U.mediaPick=true; if(!D.bmedia.selOn){pushHist(true);D.bmedia.selOn=true;syncInputs(true);} renderMediaUI(); if(U.playing) stopPlay(); else { if(U.t==null) tlSetT(0); play(); } toast('Playing the walk — pause anytime and click blocks to pick them'); };
   $('#mPickAll').onclick=()=>{ pushHist(true); D.bmedia.pick=plan(geom()).seq.map(b=>b.id); D.bmedia.selOn=true; syncInputs(true); refresh(); renderMediaUI(); };
   $('#mPickNone').onclick=()=>{ pushHist(true); D.bmedia.pick=[]; refresh(); renderMediaUI(); };
+  const bbGroup=$('#l2BBGroup'); if(bbGroup){
+    bbGroup.addEventListener('click',e=>{ const b=e.target.closest('[data-bbset]'); if(!b||curLayer()!=='l2') return; const [k,v]=b.dataset.bbset.split(':'); pushHist(true); D.L2.bb=Object.assign({},D.L2.bb);
+      if(k==='beats'){ if(D.L2.sound!=='own') setL2Sound('own',true); const T=D.timing; T.sync=true; if(v==='big'){ T.kind='strong'; T.every=1; } else { T.kind=T.kind==='strong'?'all':T.kind; T.every=+v; } try{ reBeat(); }catch(x){} }
+      else if(k==='speed') D.L2.bb.speed=+v;
+      else if(k==='rx') D.L2.bb.rx=+v;
+      else if(k==='band') D.L2.bb.band=v;
+      else if(k==='path') D.L2.bb.path=v;
+      else if(k==='touch') D.L2.bb.touch=v==='1';
+      else if(k==='stay'){ D.L2.bb.stay=v; l2BBExit(); }
+      planCache.k=''; syncInputs(true); refresh(); renderLayerBar(); });
+    const on=$('#l2BBOn'); if(on) on.addEventListener('change',()=>{ if(curLayer()!=='l2') return; pushHist(true); D.L2.bb=Object.assign({},D.L2.bb,{on:on.checked});
+      if(on.checked){ if(D.L2.sound!=='own') setL2Sound('own',true); D.timing.sync=true; D.anim.mode='reveal'; D.anim.lock=Object.assign({},D.anim.lock||{},{on:false}); if(D.rand.pace) D.rand.pace.on=false; D.L2.zoom=false; if(!timingCues().length) toast('Layer 2 needs beats — load the song in Song (or press B while playing)'); }
+      planCache.k=''; syncInputs(true); refresh(); renderLayerBar(); }); }
   if($('#l2CtrlReset')) $('#l2CtrlReset').onclick=()=>{ pushHist(true); D.L2.ctrl={x:0,y:0,r:0,s:100,o:100}; planCache.k=''; syncInputs(true); refresh(); };
   if($('#btnIn')) $('#btnIn').onclick=e=>{ if(e.altKey) return ioSet('in',null); ioSet('in',U.t!=null?U.t:0); };
   if($('#btnOut')) $('#btnOut').onclick=e=>{ if(e.altKey) return ioSet('out',null); ioSet('out',U.t!=null?U.t:Math.round((D.comp.dur||10)*(D.comp.fps||30))); };
@@ -10140,20 +10226,23 @@ function renderLayerBar(){
   const bar=$('#layerBar'); if(bar){ bar.hidden=act!=='l2'; $('#l2On').checked=!!(D.L2&&D.L2.on); $$('#l2Z [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===(D.L2.z||'front'))); $$('#l2Snd [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===(D.L2.sound||'off'))); const cfg=l2CamCfg(), cur=Object.keys(L2CAM).find(k=>{ const p=L2CAM[k]; return p.camSrc===cfg.src&&p.infX/100===cfg.ix&&p.infY/100===cfg.iy; }); $$('#l2Cam [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===cur)); }
   { const gn=$('#gridLayerNote'); if(gn) gn.hidden=act!=='l2';
     const g=$('#l2CamGroup'); if(g) g.hidden=act!=='l2'||!(D.L2&&D.L2.on);
+    { const bg=$('#l2BBGroup'), cg=$('#l2CamGroup'), B=D.L2&&D.L2.bb||{}; if(bg){ bg.hidden=act!=='l2'||!(D.L2&&D.L2.on); const live=act==='l2'&&!!l2BB(); if(cg&&act==='l2'&&D.L2&&D.L2.on) cg.hidden=live; const ob=$('#l2BBOn'); if(ob) ob.checked=!!B.on;
+      $$('#l2BBGroup [data-bbset]').forEach(b=>{ const [k,v]=b.dataset.bbset.split(':'); let on=false; const T=act==='l2'?D.timing:{}; if(k==='beats') on=v==='big'?T.kind==='strong':(T.kind!=='strong'&&+(T.every||1)===+v); else if(k==='speed') on=+B.speed===+v; else if(k==='rx') on=+B.rx===+v; else if(k==='band') on=(B.band||'any')===v; else if(k==='path') on=(B.path||'walk')===v; else if(k==='touch') on=(B.touch!==false)===(v==='1'); else if(k==='stay') on=(B.stay||'stay')===v; b.classList.toggle('on',on); });
+      const st=$('#l2BBState'); if(st&&act==='l2'){ const n=timingCues().length; st.innerHTML=B.on?(n?(D.timing.sync?`<b>${n}</b> beats → one block each, placed by the camera.`:'Turn on beats (choose which above).'):'<span style="color:#F5A524">No beats yet — load the song in <b>Song</b>.</span>'):'Off — layer 2 uses the classic walk below.'; } } }
     const cb=$('#l2Beat'); if(cb&&act==='l2'){ cb.checked=l2BeatOn(); const n=$('#l2BeatN'); if(n) n.textContent=cb.checked?`(${timingCues().length} cues)`:''; }
     { const pn=$('#l2PaceNote'); if(pn){ let t=''; try{ if(act==='l2'&&D.rand.pace&&D.rand.pace.on){ const P=plan(geom()), eff=P.paceEff||0, want=+D.rand.pace.speed||0; const skip=D.rand.pace.fit!=='push'?(()=>{ const T0=D.timing, off=Math.round(+T0.offset||0), allN=new Set(((T0.beats||[]).concat(T0.use!=='beats'?(T0.markers||[]):[])).map(f=>Math.round(f+off))).size, used=timingCues().length; return D.timing.sync&&used<allN?`<br><span style="color:#F5A524">Using ${used} of ${allN} beats</span> to hold this speed — raise the speed, use smaller blocks or more rows (Layer 2 rows) to fit more, or switch to “Every beat, go faster”.`:''; })():''; if(eff) t=(eff>want*1.15?`<span style="color:#F5A524">Actually moving ${eff.toFixed(1)} cells/s</span> — the blocks are too big to fit slower at this many beats. Use smaller blocks, more rows (Layer 2 rows), fewer beats (Sound › Big hits / every Nth), or turn on Size mix.`:`Moving ${eff.toFixed(1)} cells/s.`)+skip; } }catch(e){} pn.innerHTML=t; } }
     $$('#l2MovePreset [data-mv]').forEach(b=>b.classList.toggle('on',act==='l2'&&+b.dataset.mv===+((D.anim.lock||{}).moveLen||0))); }
 }
 (()=>{ const tb=$('#layerTabs'); if(!tb) return;
   tb.addEventListener('click',e=>{ const b=e.target.closest('[data-ltab]'); if(!b) return; const want=b.dataset.ltab;
-    if(want==='l2'&&!(D.L2&&D.L2.on)){ pushHist(true); D.L2.on=true; l2Init(); setLayer('l2'); if(!D.blocks.length){ try{ generateLine(true); }catch(x){} } toast('Layer 2: a second walk — bigger blocks with content, over layer 1. Use the bar above for stacking and music, More… for its camera.','⌘Z to undo',true); renderLayerBar(); return; }
+    if(want==='l2'&&!(D.L2&&D.L2.on)){ pushHist(true); D.L2.on=true; l2Init(); setLayer('l2'); if(!D.blocks.length){ try{ generateLine(true); }catch(x){} } if(withLayer('main',()=>beatMode())&&!D.L2.bbSet){ D.L2.bbSet=true; setL2Sound('own',true); D.timing.sync=true; D.L2.bb=Object.assign({},D.L2.bb,{on:true}); D.anim.mode='reveal'; D.L2.zoom=false; planCache.k=''; refresh(); renderLayerBar(); } /* a song is loaded: layer 2 starts as beat blocks */ toast('Layer 2: a second walk — bigger blocks with content, over layer 1. Use the bar above for stacking and music, More… for its camera.','⌘Z to undo',true); renderLayerBar(); return; }
     setLayer(want); if(want==='l2'&&!D.blocks.length){ try{ generateLine(true,true); }catch(x){} } });
   $('#l2On').onchange=e=>{ pushHist(true); D.L2.on=e.target.checked; planCache.k=''; refresh(); renderLayerBar(); };
   $('#l2Cam')&&$('#l2Cam').addEventListener('click',e=>{ const b=e.target.closest('[data-v]'); if(!b) return; pushHist(true); D.L2.cam=b.dataset.v; Object.assign(D.L2,L2CAM[b.dataset.v]||{}); planCache.k=''; syncInputs(true); refresh(); renderLayerBar();
     toast(({main:'Layer 2 moves with the layer 1 camera',x:'Layer 2 follows the camera sideways only — no up / down',fixed:'Layer 2 stays put on screen',own:'Layer 2 uses its own camera (its Style: Camera follow = its own camera)'})[D.L2.cam]); });
   $('#l2More')&&($('#l2More').onclick=()=>{ try{ const k=STEPS.findIndex(x=>x.id==='animate'); if(k>=0&&U.step!==k) goStep(k); }catch(e){} setTimeout(()=>{ const g=$('#l2CamGroup'); if(g){ g.hidden=false; g.scrollIntoView({block:'start',behavior:'smooth'}); } },60); });
   $('#l2Setups')&&$('#l2Setups').addEventListener('click',e=>{ const b=e.target.closest('[data-l2set]'); if(!b||curLayer()!=='l2') return; const S=L2SETUPS[b.dataset.l2set]; if(!S) return;
-    pushHist(true); const r=S.apply(); if(r==='beat') l2SetBeat(true); planCache.k=''; syncInputs(true); refresh(); renderLayerBar(); toast('Layer 2: '+S.name,'⌘Z to undo',true); });
+    pushHist(true); D.L2.bb=Object.assign({},D.L2.bb,{on:false}); const r=S.apply(); if(r==="beat") l2SetBeat(true); /* a classic setup: beat blocks off */ planCache.k=''; syncInputs(true); refresh(); renderLayerBar(); toast('Layer 2: '+S.name,'⌘Z to undo',true); });
   $('#l2Beat')&&$('#l2Beat').addEventListener('change',e=>l2SetBeat(e.target.checked));
   $('#l2LockPreset')&&$('#l2LockPreset').addEventListener('click',e=>{ const b=e.target.closest('[data-lk]'); if(!b) return; const v=b.dataset.lk.split(',').map(Number); pushHist(true); D.anim.lock=Object.assign({},D.anim.lock,{on:true,x:v[0],y:v[1]}); planCache.k=''; syncInputs(true); refresh(); });
   $('#l2MovePreset')&&$('#l2MovePreset').addEventListener('click',e=>{ const b=e.target.closest('[data-mv]'); if(!b) return; pushHist(true); D.anim.lock=Object.assign({},D.anim.lock,{moveLen:+b.dataset.mv}); planCache.k=''; syncInputs(true); refresh(); renderLayerBar(); });

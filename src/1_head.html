@@ -442,6 +442,7 @@ body.simple [data-adv]{display:none!important}
 .ltabs{display:flex;gap:2px;margin-left:14px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:2px}
 .ltabs button{white-space:nowrap;height:24px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:var(--mut,#a2a2ab);font:inherit;font-size:12px;cursor:pointer}
 .ltabs button.on{background:#2a2a30;color:var(--text)}.ltabs button[data-ltab="l2"].on{background:#3a2a10;color:#FFB020}
+.songmode [data-nosong]{display:none!important}body:not(.songmode) [data-songonly]{display:none!important}.songnote{color:#7CF2C0}#songCount{white-space:nowrap;font-size:11px;margin:0 6px}
 .iobtns{display:inline-flex;gap:2px;margin-left:6px}.iobtns .btn.mini{height:22px;padding:0 8px;font-size:11px}
 .lbar{display:flex;align-items:center;gap:6px;margin-left:10px;font-size:11.5px;flex:none}.lbar .lbl2{color:var(--mut,#8a8a93);white-space:nowrap}.lbar .lsep{width:1px;height:16px;background:var(--line);margin:0 4px}.lbar .lchk{display:flex;align-items:center;gap:5px;white-space:nowrap;cursor:pointer}.lbar .lmore{height:22px;padding:0 9px;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--text);font:inherit;font-size:11px;cursor:pointer;white-space:nowrap}.lbar .lmore:hover{border-color:#FFB020}.lbar .seg.mini{display:flex;flex-wrap:nowrap}.lbar .seg.mini button{white-space:nowrap}.lbar .seg.mini button{height:22px;padding:0 8px;font-size:11px}
 .libsamp{width:96px;height:54px;border-radius:6px;background:linear-gradient(135deg,#E6212F 0 30%,#1F1F1F 30% 100%);display:grid;place-items:center;color:#fff;font-size:18px;cursor:pointer;flex:none}
@@ -629,10 +630,10 @@ body.nohelp .qm{display:none}
           <span class="tc" id="tc">0f</span>
           <input type="range" id="scrub" min="0" max="100" step="1" value="0" hidden>
           <div class="vsep"></div>
-          <div class="field tlf" title="Scene length — the time-remap layer. Empty = play the blocks at their own speed"><span class="lbl scrub">Scene</span><div class="num"><input type="number" data-bind="anim.remapLen" data-zero="auto" min="0" max="99999" step="1"><span class="unit">fr</span></div></div>
-          <div class="field tlf" title="Frame the scene starts on. Negative = already running at frame 0"><span class="lbl scrub">Starts</span><div class="num"><input type="number" data-bind="anim.startF" min="-9999" max="99999" step="1"><span class="unit">fr</span></div></div>
-          <button class="btn ghost" id="btnEase" title="Edit the scene easing in the big editor (or drag the dots on the Scene row)">Easing…</button>
-          <button class="btn ghost" id="btnRetimeMenu" title="Stretch or squeeze everything">Retime ▾</button>
+          <div class="field tlf" data-nosong title="Scene length — the time-remap layer. Empty = play the blocks at their own speed"><span class="lbl scrub">Scene</span><div class="num"><input type="number" data-bind="anim.remapLen" data-zero="auto" min="0" max="99999" step="1"><span class="unit">fr</span></div></div>
+          <div class="field tlf" data-nosong title="Frame the scene starts on. Negative = already running at frame 0"><span class="lbl scrub">Starts</span><div class="num"><input type="number" data-bind="anim.startF" min="-9999" max="99999" step="1"><span class="unit">fr</span></div></div>
+          <button class="btn ghost" data-nosong id="btnEase" title="Edit the scene easing in the big editor (or drag the dots on the Scene row)">Easing…</button>
+          <span class="songnote" data-songonly id="songCount"></span><button class="btn ghost" data-nosong id="btnRetimeMenu" title="Stretch or squeeze everything">Retime ▾</button>
           <button class="btn ghost" id="btnSound" title="Sync to a sound or video, or AE markers">♪ Sound</button>
           <span class="spacer"></span>
           <label class="check" title="Play the preview over and over"><input type="checkbox" id="chkLoop" checked> Loop</label>
@@ -769,7 +770,8 @@ body.nohelp .qm{display:none}
             <div class="chips" id="sizeChips"></div>
             
             </div></details>
-            <details class="sub" data-sub="gen-count" open><summary>How many <span class="note">count &amp; ending</span></summary><div class="subbody">
+            <div class="note songnote" data-songonly>♪ Song on — one block per beat (set the beats in <b>Song</b>).</div>
+            <details class="sub" data-sub="gen-count" data-nosong open><summary>How many <span class="note">count &amp; ending</span></summary><div class="subbody">
               
               <div class="field"><span class="lbl scrub" title="How long the On phase (the build) takes on the blocks' own clock">On (build)</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.lenF" min="2" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
               <div class="field stack"><span class="lbl">Number of blocks</span><div class="seg" data-seg="anim.countMode"><button data-v="fill">Fill the length</button><button data-v="exact">Exact number</button></div></div>
@@ -1268,8 +1270,15 @@ body.nohelp .qm{display:none}
         </div>
 
         <!-- 5 ANIMATE -->
+        <div class="pane" data-pane="song">
+          <div class="group" data-ctx="sound">
+            <div class="group-h">Song</div>
+            <div class="note">Load the track first. With <b>Snap block reveals to the cues</b> on, every block lands on a beat — the scene length, pace and easing controls step aside, and the song drives the timing. Pick which beats below (every beat, big hits, a steady pulse, every Nth), how the line walks on and off, and whether it follows the melody.</div>
+            <div id="mediaBox"></div>
+          </div>
+        </div>
         <div class="pane" data-pane="animate">
-          <div class="group" id="walkPresets">
+          <div class="group" data-nosong id="walkPresets">
             <div class="group-h">Walk presets <span class="tag" id="wpTag"></span></div>
             <div class="note" id="wpNote"></div>
             <div class="wpgrid" id="wpGrid"></div>
@@ -1282,6 +1291,25 @@ body.nohelp .qm{display:none}
               <button class="modecard" data-v="camera"><svg width="34" height="20" viewBox="0 0 34 20" fill="none" stroke="currentColor"><rect x=".5" y=".5" width="22" height="19" rx="2"/><path d="M26 10h7m-2.5-2.5L33 10l-2.5 2.5"/><rect x="4" y="12" width="7" height="4" fill="currentColor" stroke="none"/><rect x="12" y="7" width="7" height="4" fill="currentColor" stroke="none"/></svg><div class="t">Camera follow</div><div class="d">Blocks keep building and the view glides along with them.</div></button>
               <button class="modecard" data-v="push"><svg width="34" height="20" viewBox="0 0 34 20" fill="none" stroke="currentColor"><rect x=".5" y=".5" width="33" height="19" rx="2"/><path d="M9 3H3m2-2L3 3l2 2"/><rect x="2" y="9" width="7" height="4" fill="currentColor" stroke="none" opacity=".45"/><rect x="13" y="9" width="8" height="4" fill="currentColor" stroke="none"/></svg><div class="t">Conveyor</div><div class="d">Grid stays still. New blocks land in the centre and push the rest out.</div></button>
             </div>
+          </div>
+          <div class="group" id="l2BBGroup" hidden>
+            <div class="group-h">Layer 2 · beat blocks</div>
+            <label class="check" title="One block per beat, placed where the camera will see it — always on screen, always on the beat"><input type="checkbox" id="l2BBOn"> <b>Beat blocks</b> — one block on each beat, always on screen</label>
+            <div class="note" id="l2BBState"></div>
+            <div class="field stack"><span class="lbl">Which beats</span><div class="seg"><button data-bbset="beats:1">Every beat</button><button data-bbset="beats:2">Every 2nd</button><button data-bbset="beats:4">Every 4th</button><button data-bbset="beats:big">Big hits</button></div></div>
+            <div class="field stack"><span class="lbl">Speed <span class="note">how fast layer 2 travels with layer 1</span></span><div class="seg"><button data-bbset="speed:100">Full</button><button data-bbset="speed:75">75%</button><button data-bbset="speed:50">Half</button><button data-bbset="speed:25">Slow</button><button data-bbset="speed:0">Still</button></div>
+              <div class="field"><span class="lbl scrub">Exact</span><div class="num"><input type="number" data-bind="L2.bb.speed" min="0" max="300" step="5"><span class="unit">%</span></div></div></div>
+            <div class="field stack"><span class="lbl">Blocks appear</span><div class="seg"><button data-bbset="rx:30">Left</button><button data-bbset="rx:50">Centre</button><button data-bbset="rx:65">Right of centre</button><button data-bbset="rx:80">Right</button></div>
+              <div class="seg"><button data-bbset="band:any">Any row</button><button data-bbset="band:top">Top</button><button data-bbset="band:mid">Middle</button><button data-bbset="band:bottom">Bottom</button></div></div>
+            <div class="field stack"><span class="lbl">Path</span><div class="seg"><button data-bbset="path:walk" title="Steps up or down a row now and then">Walk</button><button data-bbset="path:melody" title="Higher notes higher (Song › melody)">Melody</button><button data-bbset="path:level">Level</button><button data-bbset="path:random">Random</button></div></div>
+            <div class="field stack"><span class="lbl">Connected</span><div class="seg"><button data-bbset="touch:1" title="Each block touches the last one (it may land a little off the point, never off screen)">Touching</button><button data-bbset="touch:0" title="Each block lands exactly on the point — gaps and stacks as the camera moves">Free</button></div>
+              <div class="field" data-show="L2.bb.touch=true"><span class="lbl scrub" title="How far (% of the frame) a block may slide from the point to stay touching">Slide up to</span><div class="num"><input type="number" data-bind="L2.bb.slack" min="0" max="60" step="5"><span class="unit">%</span></div></div></div>
+            <div class="field stack"><span class="lbl">Each block</span><div class="seg"><button data-bbset="stay:stay">Stays</button><button data-bbset="stay:beats">Leaves after</button></div>
+              <div class="field2"><div class="field"><span class="lbl scrub">Beats on screen</span><div class="num"><input type="number" data-bind="L2.bb.stayN" min="1" max="64" step="1"></div></div>
+                <div class="field"><span class="lbl scrub">Randomly hide</span><div class="num"><input type="number" data-bind="anim.hidePct" min="0" max="95" step="5"><span class="unit">%</span></div></div></div></div>
+            <div class="field2"><div class="field"><span class="lbl scrub">Block W</span><div class="num"><input type="number" data-bind="block.w" min="1" max="40" step="1"></div></div>
+              <div class="field"><span class="lbl scrub">Block H</span><div class="num"><input type="number" data-bind="block.h" min="1" max="20" step="1"></div></div></div>
+            <div class="note">Fine-tune single blocks: select one to hide it, drag it on the timeline to retime it (nothing else moves), or ⌥-drag it on the canvas to nudge it. Sizes can vary in <b>Blocks › Size mix</b>.</div>
           </div>
           <div class="group" id="l2CamGroup" hidden>
             <div class="group-h">Layer 2 · camera &amp; timing</div>
@@ -1361,7 +1389,7 @@ body.nohelp .qm{display:none}
                   <div class="field"><span class="lbl scrub" title="Down the frame: 0 = top, 50 = centre, 100 = bottom">Down</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.lock.y" min="0" max="100" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div></div>
                 </div></div>
               
-              <div data-show="anim.motion=smooth&amp;anim.camMove=curve" style="display:grid;gap:9px">
+              <div data-show="anim.motion=smooth&amp;anim.camMove=curve" data-nosong style="display:grid;gap:9px">
                 <div class="note">The camera moves <b>with the blocks</b>: steady while the line builds or walks, still while it holds. Its speed across the scene comes from the <b>Scene</b> curve — shape that to speed up, slow down or hold the camera.</div>
                 <div class="field"><span class="lbl scrub" title="Frames to ease into and out of each move (on the blocks' clock). 0 = hard starts and stops">Smooth starts</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.camEase" min="0" max="120" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
               </div>
@@ -1378,8 +1406,8 @@ body.nohelp .qm{display:none}
             <div class="field stack"><span class="lbl">Blocks appear</span>
               <div class="seg" data-seg="anim.appear"><button data-v="cut">Cut</button><button data-v="fade">Fade</button><button data-v="wipe">Wipe →</button><button data-v="scale">Scale</button></div></div>
             <div data-show="anim.mode=camera|push" style="display:grid;gap:9px">
-              <div class="field stack"><span class="lbl">When blocks appear</span><div class="seg" data-seg="anim.revealWhen"><button data-v="lead" title="Blocks appear on their schedule, ahead of the camera, and the camera follows them in">Ahead of the camera</button><button data-v="arrive" title="Each block waits until the camera brings it into the reveal zone">When the camera arrives</button></div></div>
-              <div data-show="anim.revealWhen=arrive" style="display:grid;gap:9px">
+              <div class="field stack" data-nosong><span class="lbl">When blocks appear</span><div class="seg" data-seg="anim.revealWhen"><button data-v="lead" title="Blocks appear on their schedule, ahead of the camera, and the camera follows them in">Ahead of the camera</button><button data-v="arrive" title="Each block waits until the camera brings it into the reveal zone">When the camera arrives</button></div></div>
+              <div data-show="anim.revealWhen=arrive" data-nosong style="display:grid;gap:9px">
                 <div class="field"><span class="lbl scrub" title="How far across the frame a block's centre must be before it appears. 50 = only at the centre, 100 = as soon as it's on screen">Reveal zone</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.revealX" min="50" max="120" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
                 <div data-adv class="field" data-show="anim.axis=xy"><span class="lbl scrub" title="Same, for up/down">Zone height</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.revealY" min="50" max="120" step="1"><span class="unit">%</span><button data-d="1">+</button></div></div>
                 <label class="check" title="Key the reveal zone over time: a Reveal zone row appears on the timeline with points and easing handles. The camera keeps the newest block on the zone's edge wherever it is at that moment."><input type="checkbox" data-bind="anim.rzOn"> Animate on the timeline</label>
@@ -1464,7 +1492,7 @@ body.nohelp .qm{display:none}
         <!-- 5b TRANSITIONS -->
         <!-- 5b TIMING -->
         <div class="pane" data-pane="timing">
-          <div class="group" data-ctx="scene" data-show="anim.mode=reveal|camera|push">
+          <div class="group" data-ctx="scene" data-nosong data-show="anim.mode=reveal|camera|push">
             <div class="group-h">Scene</div>
             <div class="field"><span class="lbl scrub" title="Scene length. Empty = the blocks play at their own speed; set a length to squeeze or stretch everything into it">Scene length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.remapLen" data-zero="auto" min="0" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
             <div class="row-btns"><button class="btn" id="btnRetimeComp" title="Make the scene end when the comp ends">Fit to the comp length</button><button class="btn" id="btnSceneAuto" title="Play the blocks at their own speed">Blocks' own speed</button></div>
@@ -1486,10 +1514,6 @@ body.nohelp .qm{display:none}
             <div class="group-h">Camera timing</div>
             <div class="note" data-show="exit.mode=walk">With Walk off, the camera follows the walking line for <b>Camera follows for</b>, then lets it run off.</div>
             
-          </div>
-          <div class="group" data-ctx="sound">
-            <div class="group-h">Sync to sound</div>
-            <div id="mediaBox"></div>
           </div>
         </div>
 
