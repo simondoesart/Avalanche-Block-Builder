@@ -71,10 +71,10 @@ const DEF={
         gap:{off:{},on:true,amount:3,seed:0,color:'#E6212F',win:{on:null,off:null},anim:{own:true,anchor:'block',delay:12,jitter:10,leaveWith:true,inMode:'type',cps:60,inDur:8,buildDur:12,outMode:'fade',hold:48,outDur:12},mods:{log:true,phrase:true,barcode:true,hashes:false,dots:true,logo:true,icons:true,graph:true,stream:false,rpc:false}}},
   echo:{on:false,dx:0,dy:2,last:0,fill:true,color:'#A2AFB2',opacity:100,stroke:false,sw:4,scolor:'#A2AFB2',align:'center',dash:false,dashL:12,dashG:8,content:false,
         timing:'with',offset:6,appear:'fade',out:'stay',hold:12,outF:8},
-  rand:{connect:true,pitch:{on:false,mode:'contour',semis:2,maxStep:2,amount:100},sizeVar:{on:false,mode:'free',wMin:1,wMax:6,hMin:1,hMax:4,min:1,max:3,aMin:0.5,aMax:3,list:'1x1, 2x1, 3x1, 2x2, 4x2, 3x3, 6x3, 1x2',keep:0},endSingle:true,pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
+  rand:{pace:{on:false,speed:2},connect:true,pitch:{on:false,mode:'contour',semis:2,maxStep:2,amount:100},sizeVar:{on:false,mode:'free',wMin:1,wMax:6,hMin:1,hMax:4,min:1,max:3,aMin:0.5,aMax:3,list:'1x1, 2x1, 3x1, 2x2, 4x2, 3x3, 6x3, 1x2',keep:0},endSingle:true,pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
         wander:1,climb:0,stackPct:20,stackGap:0,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,offX:0,offY:0,tracking:0,leading:0,kern:'metrics',caps:'none'},
-  anim:{hide:[],show:[],hidePct:0,hideSeed:1,seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,vDamp:0,stepZone:0,stepLead:0,chopEvery:4,chopMin:0,chopSnap:false,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:true,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
+  anim:{hide:[],show:[],hidePct:0,hideSeed:1,seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,vDamp:0,stepZone:0,stepLead:0,chopEvery:4,chopMin:0,chopSnap:false,chopRules:true,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:true,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,lock:{on:false,x:50,y:50,move:'glide',moveLen:0},rzOn:false,rzPts:null,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.42,0,0.58,1],curvePh:null,sceneEase:{on:true,hd:null,holdH:null,onAt:null,holdAt:null,start:40,land:75,landOut:50,leaveIn:50,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zd:{on:false,pts:null},zoomOn:false,zm:{pts:null,focus:'follow',ax:50,ay:50,in:24,out:96,from:100,to:140,curve:[0.65,0,0.35,1],scaleAll:false,followRemap:true,back:false,backIn:180,backOut:228,backCurve:[0.65,0,0.35,1]},extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
@@ -1564,6 +1564,17 @@ function extensionRaw(G,base,capOverride){
   /* keep the line joined: each block at least touches the previous one at a corner (melody / random sizes can jump further) */
   const joinOn=(pitchOn||varOn)&&D.rand.connect!==false;
   const join=(r,h)=>joinOn?clamp(r,pR-h,pR+pH):r;
+  /* travel speed: lay the blocks out by when they appear, so a camera that follows them moves at a steady N cells per
+     second — slower than one block per beat means blocks share columns (they go up or down a row instead) */
+  const PC=D.rand.pace||{}, paceOn=!!PC.on&&mode!=='continue'&&(+PC.speed>0);
+  const paceT=(()=>{ if(!paceOn) return null; const cs=D.timing&&D.timing.sync?timingCues():null; if(cs&&cs.length) return idx=>idx<cs.length?cs[idx]:cs[cs.length-1]+(idx-cs.length+1)*Math.max(1,+A.pace||6);
+    return idx=>(+A.startF||0)+idx*Math.max(1,+A.pace||6); })();
+  const fpsG=D.comp.fps||30, cBase=last.c, tBase=paceOn?paceT(main.length-1):0;
+  const pacePlace=(nb,idx)=>{ if(!paceOn) return nb; const want=cBase+dir*Math.round((+PC.speed)*(paceT(idx)-tBase)/fpsG);
+    nb.c=dir>0?Math.max(want,cBase+1):Math.min(want,cBase-1); const B=walkBounds(G,nb.h), r0=nb.r, tries=[0];
+    for(let k=1;k<=12;k++){ tries.push(-k*nb.h,k*nb.h); }
+    for(let push=0;push<60;push++){ for(const dr of tries){ const rr=r0+dr; if(rr<B.lo||rr>B.hi) continue; nb.r=rr; if(!all.some(x=>hits(x,nb))) return nb; } nb.c+=dir; nb.r=r0; }
+    return nb; };
   const place=(nb,w,h)=>{ nb.w=w; nb.h=h; const B=walkBounds(G,h); nb.r=clamp(nb.r,B.lo,B.hi); return nb; };
   let c=last.c, r=last.r, i=main.length;
   const walker=makeWalker(rnd,rMax,last.h,rMin);
@@ -1580,8 +1591,8 @@ function extensionRaw(G,base,capOverride){
       r=clamp(clamp(nr,pr-wmax,pr+wmax),rMin,rMax);   // never more than one block height from the last one
       if(pitchOn){ r=pitchRow(main.length+j-1,r,pR,DM[1]); }
       r=join(r,varOn?DM[1]:last.h);
-      const nb=mk(last,c,r,mixColor(i++,rnd)); if(varOn) place(nb,DM[0],DM[1]); pR=nb.r; pH=nb.h; r=nb.r;
-      if(add(nb)&&j<cap&&!varOn&&!pitchOn){const sr=stackRow(r,last.h,rMax,rnd,rMin);if(sr!==null){const p2=mk(last,c,sr,mixColor(i++,rnd));p2.stack=true;add(p2);}}
+      const nb=mk(last,c,r,mixColor(i++,rnd)); if(varOn) place(nb,DM[0],DM[1]); if(paceOn){ pacePlace(nb,main.length+j-1); c=nb.c; prevW=nb.w; } pR=nb.r; pH=nb.h; r=nb.r;
+      if(add(nb)&&j<cap&&!varOn&&!pitchOn&&!paceOn){const sr=stackRow(r,last.h,rMax,rnd,rMin);if(sr!==null){const p2=mk(last,c,sr,mixColor(i++,rnd));p2.stack=true;add(p2);}}
     }
     out.__endCol=c;
     return out;
@@ -1589,11 +1600,11 @@ function extensionRaw(G,base,capOverride){
   for(let n=0;n<cap;n++){
     if(mode==='continue'){c+=dc;r+=dr;if(A.wrap&&A.axis==='x'){if(r<0)r=rMax;else if(r>rMax)r=0;}}
     const DM=dims();
-    if(mode!=='continue'){const w=walker(r), ex=joinOn?0:w.extra; if(varOn){ c+=dir>0?prevW+gapC+ex:-(DM[0]+gapC+ex); prevW=DM[0]; } else c+=step+ex*dir; r=w.r;}
+    if(mode!=='continue'){const w=walker(r), ex=joinOn||paceOn?0:w.extra; if(varOn){ c+=dir>0?prevW+gapC+ex:-(DM[0]+gapC+ex); prevW=DM[0]; } else c+=step+ex*dir; r=w.r;}
     if(pitchOn&&mode!=='continue'){ r=pitchRow(main.length+n,r,pR,DM[1]); }
-    if(mode!=='continue') r=join(r,varOn?DM[1]:last.h);
-    const nb=mk(last,c,r,mixColor(i++,rnd)); if(varOn){ place(nb,DM[0],DM[1]); r=nb.r; } pR=r; pH=nb.h;
-    if(add(nb)&&mode!=='continue'&&!varOn&&!pitchOn){const sr=stackRow(r,last.h,rMax,rnd,rMin);if(sr!==null){const p=mk(last,c,sr,mixColor(i++,rnd));p.stack=true;add(p);}}
+    if(mode!=='continue'&&!paceOn) r=join(r,varOn?DM[1]:last.h);
+    const nb=mk(last,c,r,mixColor(i++,rnd)); if(varOn){ place(nb,DM[0],DM[1]); r=nb.r; } if(paceOn){ pacePlace(nb,main.length+n); c=nb.c; r=nb.r; prevW=nb.w; } pR=r; pH=nb.h;
+    if(add(nb)&&mode!=='continue'&&!varOn&&!pitchOn&&!paceOn){const sr=stackRow(r,last.h,rMax,rnd,rMin);if(sr!==null){const p=mk(last,c,sr,mixColor(i++,rnd));p.stack=true;add(p);}}
   }
   return out;
 }
@@ -1897,13 +1908,28 @@ function vDamp(P){ const A=D.anim, d=clamp(+A.vDamp||0,0,100)/100; if(!d||A.axis
   P.cam=P.cam.map(k=>{ const n=k.slice(); n[1]=[k[1][0],r3(y0+(k[1][1]-y0)*(1-d))]; return n; }); }
 /* choppy camera: the smooth path, but the camera only moves in jumps — every N frames, and/or once it has drifted a
    set distance (in cells) from where it last stopped; optionally snapped to whole cells */
-function chopCam(P,G){ const A=D.anim; if(A.camMove!=='chop'||A.mode!=='camera'||!P.cam||P.cam.length<2) return;
+function chopCam(P,G){ const A=D.anim; if(A.camMove!=='chop'||A.mode!=='camera'||!P.cam||P.cam.length<2) return; P.camSmooth=P.cam.slice();   // the smooth path, for rules that glide while the camera steps
   const every=Math.max(0,Math.round(+A.chopEvery||0)), minD=Math.max(0,+A.chopMin||0)*G.p, snap=!!A.chopSnap, ev0=every||(!minD?4:0);
   const t0=Math.floor(P.cam[0][0]), t1=Math.ceil(P.cam[P.cam.length-1][0]), base=P.cam[0][1];
   const q=p=>snap?[base[0]+Math.round((p[0]-base[0])/G.p)*G.p,base[1]+Math.round((p[1]-base[1])/G.p)*G.p]:p;
   let held=q(ev(P.cam,t0,[0,0])), last=t0; const K=[[t0,held.slice(),'h']];
   for(let t=t0+1;t<=t1;t++){ const p=ev(P.cam,t,[0,0]); const due=ev0?(t-last>=ev0):true, far=minD?Math.hypot(p[0]-held[0],p[1]-held[1])>=minD:true;
     if((due&&far)||t===t1){ const n=t===t1?p:q(p); if(Math.abs(n[0]-held[0])>0.01||Math.abs(n[1]-held[1])>0.01){ held=n; K.push([t,[r3(n[0]),r3(n[1])],'h']); } last=t; } }
+  P.cam=K; }
+/* travel speed: the camera glides at one steady speed along the line the blocks were laid on (a straight fit through
+   each block's position at its reveal), easing in at the first block and out at the last — no stalls where blocks stack */
+function paceCam(P,G){ const PC=D.rand.pace||{}, A=D.anim; if(!PC.on||A.mode!=='camera'||!P.cam||!P.cam.length||P.seq.length<3) return;
+  const pts=[]; P.seq.forEach((b,i)=>{ const q=cellRect(G,b.c,b.r,b.w,b.h); if(P.T[i]!=null) pts.push([P.T[i],q.x+q.w/2]); }); if(pts.length<3) return;
+  const n=pts.length, mt=pts.reduce((a,p)=>a+p[0],0)/n, mx=pts.reduce((a,p)=>a+p[1],0)/n; let sxy=0,sxx=0; pts.forEach(p=>{ sxy+=(p[0]-mt)*(p[1]-mx); sxx+=(p[0]-mt)*(p[0]-mt); });
+  const k=sxx>0?sxy/sxx:0, fps=D.comp.fps||30; P.paceEff=Math.abs(k)*fps/G.p;   // px per frame along the line → cells per second actually travelled
+  const tA=pts[0][0], tB=pts[n-1][0], LK=lockPt(), anchorX=LK?G.W*LK.x:null;
+  const lineX=t=>mx+k*(t-mt);
+  const easeL=Math.max(6,Math.round(fps*0.5)), end=Math.ceil(Math.max(P.end||0,P.cam[P.cam.length-1][0])), K=[];
+  const u=t=>{ // time along the line, eased in after tA and out before tB (so the camera starts and stops gently)
+    if(t<=tA) return tA; if(t>=tB) return tB; const a=Math.min(easeL,(tB-tA)/3); if(t<tA+a){ const s=(t-tA)/a; return tA+a*s*s/2; } if(t>tB-a){ const s=(tB-t)/a; return tB-a*s*s/2; }
+    return tA+a/2+(t-tA-a); };
+  const camA=ev(P.cam,tA,[0,0])[0];
+  for(let t=0;t<=end;t++){ const tt=u(t), y=ev(P.cam,t,[0,0])[1], ox=anchorX!=null?anchorX-lineX(tt):camA-(lineX(tt)-lineX(tA)); K.push([t,[r3(ox),r3(y)],'l']); }
   P.cam=K; }
 function lockPt(){ const A=D.anim, L=A.lock; return (L&&L.on&&A.mode==='camera')?{x:clamp(+L.x,0,100)/100,y:clamp(+L.y,0,100)/100,ly:A.axis==='xy'}:null; }   // ly: the point holds vertically too (camera follows up/down)
 function rzKeys(){ const A=D.anim; if(!A.rzOn||A.revealWhen!=='arrive'||lockPt()) return []; return trkKeys(rzPts(),[0.33,0,0.67,1],false); }
@@ -2070,9 +2096,9 @@ function applyZoom(P){
 /* ==================================================================== LAYERS: the layer 1 + LAYER 2
    Layer 2 is a second, art-directed walk with the same controls. The active layer's settings live in D as usual;
    the other layer's are parked in D.L2.store and swapped in whenever it's drawn, planned or exported. */
-const LAYER_KEYS=['block','rand','anim','fill','bmedia','exit','echo','num','blocks','blockColors'];
+const LAYER_KEYS=['block','rand','anim','fill','bmedia','exit','echo','num','blocks','blockColors','grid'];   // grid: each layer has its own rows / columns
 function l2Init(){ if(D.L2.store) return; const o={};
-  LAYER_KEYS.forEach(k=>{ o[k]=k==='blocks'?[]:k==='blockColors'?{}:clone(DEF[k]); });
+  LAYER_KEYS.forEach(k=>{ o[k]=k==='blocks'?[]:k==='blockColors'?{}:k==='grid'?clone(D.grid):clone(DEF[k]); });
   o.block.w=4; o.block.h=2; o.rand.seed=1+Math.floor(Math.random()*1e5); o.anim.mode='reveal'; o.anim.zoomOn=false; o.anim.zd={on:false,pts:null};
   o.anim.xf={}; o.anim.zord={}; o.fill.on=true; if(o.fill.gap) o.fill.gap.on=false; o.bmedia.on=true; o.exit.on=false; o.echo.on=false; o.num.on=false;
   D.L2.store=o; }
@@ -2086,7 +2112,7 @@ function l2TimingOut(){ const L=D.L2, st=L.store, mode=L.sound||'off', main=st.t
   if(mode==='own') L.timing=D.timing;
   if(mode==='same'){ /* keep edits made on the layer-2 tab */ } else if(main) D.timing=main;
   delete st.timingMain; }
-function swapLayer(){ l2Init(); const st=D.L2.store, toL2=D.L2.active!=='l2';
+function swapLayer(){ l2Init(); const st=D.L2.store, toL2=D.L2.active!=='l2'; LAYER_KEYS.forEach(k=>{ if(st[k]===undefined) st[k]=clone(D[k]); });   // older layouts: the new per-layer settings start as a copy
   if(!toL2) l2TimingOut();
   LAYER_KEYS.forEach(k=>{ const t=D[k]; D[k]=st[k]; st[k]=t; }); D.L2.active=toL2?'l2':'main';
   if(toL2) l2TimingIn(); }
@@ -2120,9 +2146,9 @@ function plan(G){
   if(planCache.k===key) return planCache.v;
   if(planCache.k==='') PLANS.clear(); else if(planCache.k&&planCache.v) PLANS.set(planCache.k,planCache.v);
   let v=PLANS.get(key); if(!v){ let rc=null, tr=null; if(curLayer()==='l2'&&D.L2&&D.L2.store){ const C=l2CamCfg();
-      if(D.L2.revealBy==='main'||(C.src==='own'&&(C.ix||C.iy)&&lockPt())){ try{ const pm=withLayer('main',()=>plan(G)); if(D.L2.revealBy==='main') rc={cam:pm.cam,zs:pm.zs,pan:pm.pan};
+      if(D.L2.revealBy==='main'||(C.src==='own'&&(C.ix||C.iy)&&lockPt())){ try{ const pm=withLayer('main',()=>plan(geom())); if(D.L2.revealBy==='main') rc={cam:pm.cam,zs:pm.zs,pan:pm.pan};
         if(C.src==='own'&&(C.ix||C.iy)){ const scr=D.L2.zoom===false; tr=t=>{ const d=l1Travel(pm,t,scr); return [C.ix*d[0],C.iy*d[1]]; }; } }catch(e){} } }
-    EXT_RC=rc; try{ v=remappedPlan(G); } finally{ EXT_RC=null; } EXT_TR=tr; try{ lockSnap(v,G); }catch(e){} finally{ EXT_TR=null; } try{ vDamp(v); }catch(e){} try{ chopCam(v,G); }catch(e){} applyZoom(v); v.hidden=hiddenIds(v); } if(PLANS.size>6) PLANS.clear();
+    EXT_RC=rc; try{ v=remappedPlan(G); } finally{ EXT_RC=null; } EXT_TR=tr; try{ lockSnap(v,G); }catch(e){} finally{ EXT_TR=null; } try{ paceCam(v,G); }catch(e){} try{ vDamp(v); }catch(e){} try{ chopCam(v,G); }catch(e){} applyZoom(v); v.hidden=hiddenIds(v); } if(PLANS.size>6) PLANS.clear();
   planCache={k:key,v}; return v;
 }
 /* ---- TIME REMAP: the scene layer on top.
@@ -2256,7 +2282,7 @@ function computePlan(G){
   if(skip.size&&WO&&P._woMore!=null) P._woMore=exts.filter(b=>b.id<=-100000&&!skip.has(b.id)).length;
   seq.forEach((b,i)=>{if(b.virtual)b.order=i+1;});
   let gi=[], ng=0;
-  if(A.groupCol){const m={};seq.forEach(b=>{if(!(b.c in m))m[b.c]=ng++;gi.push(m[b.c]);});}
+  if(A.groupCol&&!(D.rand.pace&&D.rand.pace.on)&&!(D.rand.pitch&&D.rand.pitch.on)){const m={};seq.forEach(b=>{if(!(b.c in m))m[b.c]=ng++;gi.push(m[b.c]);});}
   else seq.forEach(()=>gi.push(ng++));
   let used=ng;
   // which groups belong to the walk-off (the last woN blocks)
@@ -4100,7 +4126,7 @@ function animState(G){
   const P=plan(G);
   if(STEPS[U.step].id==='layout'&&!U.playing&&!U.preview) return {P,live:false,t:0,off:[0,0],s:1,pan:[0,0]};   // Blocks step: see every block, wherever the playhead is
   if(U.t===null) return {P,live:false,t:0,off:[0,0],s:1,pan:[0,0]};
-  const M=curLayer()==='l2'?(withLayer('main',()=>animOn()?plan(G):null)||P):P;   // the camera (and zoom) always come from the layer 1
+  const M=curLayer()==='l2'?(withLayer('main',()=>animOn()?plan(geom()):null)||P):P;   // the camera (and zoom) always come from the layer 1
   return {P,M,live:true,t:U.t,off:ev(M.cam,U.t,[0,0]),s:ev(M.zs,U.t,100)/100,pan:ev(M.pan,U.t,[0,0]),zc:M.zc&&M.zc.length?ev(M.zc,U.t,null):null};
 }
 
@@ -4485,7 +4511,7 @@ function drawWorld(g,G,o){
   }
   const drawRules=()=>{
     if(!D.look.rulesOn) return;
-    const k=clamp((+D.look.ruleParallax||100)/100,0,4), lagF=Math.max(0,+D.look.ruleLag||0), oL=camMode&&lagF>0&&AM?ev(AM.cam,A.t-lagF,[0,0]):gridOff, ro=[oL[0]*k,oL[1]*k], dc=Math.round((gridOff[0]-ro[0])/G.p);   // delay: the rules follow where the camera was a few frames ago
+    const smR=camMode&&AM&&AM.camSmooth&&D.anim.chopRules===false, rc=smR?AM.camSmooth:(AM?AM.cam:null), k=clamp((+D.look.ruleParallax||100)/100,0,4), lagF=Math.max(0,+D.look.ruleLag||0), oL=camMode&&(lagF>0||smR)&&AM?ev(rc,A.t-lagF,[0,0]):gridOff, ro=[oL[0]*k,oL[1]*k], dc=Math.round((gridOff[0]-ro[0])/G.p);   // delay: the rules follow where the camera was a few frames ago
     g.save(); g.translate(ro[0],ro[1]); g.globalAlpha=o.alpha*(live&&AM&&AM.ruleOp&&AM.ruleOp.length?ev(AM.ruleOp,A.t,100)/100:1);
     g.fillStyle=D.look.rule; const min=1/(sc*s);
     rulesFor(G,c0+dc-2,c1+dc+2,r0,r1,(+D.look.ruleW||1)/s).forEach(a=>{let x=a[0],w=a[2];if(w<min){x+=(w-min)/2;w=min;}g.fillRect(x,a[1],w,a[3]);});
@@ -4497,7 +4523,7 @@ function drawWorld(g,G,o){
   // content timing for the preview
   o.fillT=live?A.t:null; o.fillBase=A&&A.P?A.P.fillBase:null; o.fillEnd=live&&A.P?A.P.fillEnd:null; o.tracks=live&&A.P?A.P.tracks:null; o.media=(()=>{try{return mediaMap(A&&A.P?A.P:plan(G));}catch(e){return null;}})(); o.nums=D.num&&(D.num.on||D.blocks.some(b=>b.num))?blockNumbers(G):null;
   // echoes (behind everything else), then blocks — layer 2 goes behind or in front of the layer 1 (per block)
-  const PMain=A?(A.M||A.P):null, shL2=t=>l2On()?l2ShiftAt(t,PMain,curLayer()==='l2'?A.P:withLayer('l2',()=>plan(G))):[0,0];
+  const PMain=A?(A.M||A.P):null, shL2=t=>l2On()?l2ShiftAt(t,PMain,curLayer()==='l2'?A.P:withLayer('l2',()=>plan(geom()))):[0,0];
   const firstPass=p=>p==null||p==='back'||p==='mb';
   const drawActive=pass=>{ o.zPass=pass; o.noEcho=!firstPass(pass); o.hidden=A&&A.P?A.P.hidden:null;
   const off=(()=>{ const o0=live?A.off:[0,0]; if(!live||curLayer()!=='l2') return o0; const d=shL2(A.t); return [o0[0]+d[0],o0[1]+d[1]]; })();
@@ -4521,7 +4547,7 @@ function drawWorld(g,G,o){
   }
   o.zPass=null; o.noEcho=false; o.hidden=null; };
   const drawOther=pass=>{ const other=curLayer()==='l2'?'main':'l2';
-    withLayer(other,()=>{ const P2=plan(G), o2=Object.assign({},o,{zPass:pass,other:true,hidden:P2.hidden});
+    withLayer(other,()=>{ const G=geom(), P2=plan(G), o2=Object.assign({},o,{zPass:pass,other:true,hidden:P2.hidden});
       const off=(()=>{ const o0=live?A.off:[0,0]; if(!live||other!=='l2') return o0; const d=l2ShiftAt(A.t,PMain,P2); return [o0[0]+d[0],o0[1]+d[1]]; })();
       o2.fillBase=P2.fillBase; o2.fillEnd=live?P2.fillEnd:null; o2.tracks=live?P2.tracks:null; try{o2.media=mediaMap(P2);}catch(e){o2.media=null;} o2.nums=D.num&&(D.num.on||D.blocks.some(b=>b.num))?blockNumbers(G):null;
       if(live){ if(firstPass(pass)) P2.echo.forEach(e=>{ if(e.src&&isHid(P2,e.src)) return; const st=blockState(e.K,A.t,e.rect);st.src=e.src;drawEcho(g,e.rect,st,o2,off[0],off[1]);});
@@ -4540,6 +4566,18 @@ function drawWorld(g,G,o){
     gl.forEach(it=>drawFillItems(g,[it],live?off[0]:0,live?off[1]:0,live&&it.t0!=null?it.t0-(it.slot||0)*Math.max(0,+D.fill.anim.stagger||0):null,live?A.t:null,o.alpha,live?it.tEnd:undefined));
   }
   if(D.look.ruleLayer==='top') drawRules();
+  /* per-block order with the column rules: rules on top → blocks marked 'above' are drawn again over them;
+     rules underneath → the rules are drawn again over blocks marked 'below' (clipped to those blocks) */
+  if(D.look.rulesOn){ const want=D.look.ruleLayer==='top'?'above':'below', L2z2=fn=>{ if(live&&D.L2&&D.L2.zoom===false&&baseXf&&g.setTransform){ g.save(); g.setTransform(baseXf); const zk=ZK; ZK=null; try{ fn(); } finally{ ZK=zk; g.restore(); } } else fn(); };
+    const zX=g.getTransform?g.getTransform():null;
+    const each=(layer,fn)=>{ const run=isCur=>{ const G2=geom(), P2=isCur&&A&&A.P?A.P:plan(G2), rz=D.anim.rz||{}; const ids=Object.keys(rz).filter(k=>rz[k]===want); if(!ids.length) return;
+        const o0=live?A.off:[0,0], d=live&&curLayer()==='l2'?l2ShiftAt(A.t,PMain,P2):[0,0], ox=o0[0]+d[0], oy=o0[1]+d[1];
+        const go=()=>P2.seq.forEach(b=>{ if(ids.indexOf(String(b.id))<0||isHid(P2,b)) return; const q=cellRect(G2,b.c,b.r,b.w,b.h), st=live?blockState(P2.tracks[b.id],A.t,q):null; if(live&&!(st&&st.op>0.01)) return; fn(G2,P2,b,q,st,ox,oy); });
+        if(curLayer()==='l2') L2z2(go); else go(); };
+      if(layer===curLayer()) run(true); else if(l2On()) withLayer(layer,()=>run(false)); };
+    ['main','l2'].forEach(layer=>each(layer,(G2,P2,b,q,st,ox,oy)=>{
+      if(want==='above'){ const o3=Object.assign({},o,{zPass:null,hidden:null,fillBase:P2.fillBase,fillEnd:live?P2.fillEnd:null,tracks:live?P2.tracks:null}); try{o3.media=mediaMap(P2);}catch(e){} drawBlock(g,G2,b,o3,ox,oy,st,false); }
+      else { const x=(st?st.x:q.x)+ox, y=(st?st.y:q.y)+oy, w=st?st.w:q.w, h=st?st.h:q.h; g.save(); g.beginPath(); g.rect(x,y,w,h); g.clip(); if(zX&&g.setTransform) g.setTransform(zX); drawRules(); g.restore(); } })); }
   g.restore();
   g.globalAlpha=1; ZK=null;
 }
@@ -4552,7 +4590,7 @@ function handlesFor(G,b){
   return out;
 }
 function drawOverlays(G,A){
-  const sc=V.sc, tool=U.tool, live=!!(A&&A.live), s=live?A.s:1, bo=live?A.off:[0,0];
+  const sc=V.sc, tool=U.tool, live=!!(A&&A.live), LV=layerView(G,A), s=live?LV.s:1, bo=live?LV.off:[0,0];
   // reveal zone (camera modes, 'when the camera arrives')
   const LKo=STEPS[U.step].id==='animate'?lockPt():null;
   if(LKo){ const x=G.W*LKo.x, y=G.H*LKo.y, k=22/sc; ctx.save(); ctx.lineWidth=1.5/sc; ctx.strokeStyle='rgba(43,217,143,.9)'; ctx.setLineDash([5/sc,4/sc]);
@@ -4590,7 +4628,7 @@ function drawOverlays(G,A){
     ctx.setLineDash([6/sc,4/sc]); ctx.lineWidth=2/sc; ctx.strokeStyle=er?'#ffb44d':'#fff'; ctx.strokeRect(q.x,q.y,q.w,q.h); ctx.setLineDash([]);
     pill(`${er?'Unmerge ':''}${ss.w} × ${ss.h}`,q.x+q.w/2,q.y+q.h/2,sc,'rgba(0,0,0,.78)','#fff',true);
   }
-  ctx.save(); zoomXf(ctx,G,s,live?A.pan:null,live?A.zc:null);
+  ctx.save(); zoomXf(ctx,G,s,live?LV.pan:null,live?LV.zc:null);
   const ssc=sc*s;
   const bad=U.drag&&(U.drag.type==='move'||U.drag.type==='resize')&&U.drag.bad;
   const list=live||(A&&A.P.lineShift)?A.P.seq:(A?D.blocks.filter(b=>valid(b,G)).concat(A.P.seq.filter(b=>b.virtual)):D.blocks.filter(b=>valid(b,G)));
@@ -4598,10 +4636,10 @@ function drawOverlays(G,A){
   list.forEach(b=>{
     const q=cellRect(G,b.c,b.r,b.w,b.h), x=q.x+bo[0], y=q.y+bo[1];
     if(live){const K=A.P.tracks[b.id];if(K&&ev(K.op,A.t,100)<=0)return;if(K&&K.rs.length&&ev(K.rs,A.t,[1,1])[0]<=0)return;if(K&&K.sc.length&&ev(K.sc,A.t,[1,1])[0]<=0)return;}
-    if(selSet.has(b.id)){
-      ctx.lineWidth=4/ssc; ctx.strokeStyle='rgba(0,0,0,.5)'; ctx.strokeRect(x,y,q.w,q.h);
-      ctx.lineWidth=2/ssc; ctx.strokeStyle=bad?'#ffb44d':'#fff'; if(bad)ctx.setLineDash([6/ssc,4/ssc]);
-      ctx.strokeRect(x,y,q.w,q.h); ctx.setLineDash([]);
+    if(selSet.has(b.id)){ const T=xfOf(G,b,x,y,q.w,q.h); ctx.save(); if(T) xfApplyCtx(ctx,T); const k=T?Math.max(0.05,Math.min(Math.abs(T.sx),Math.abs(T.sy))):1;
+      ctx.lineWidth=4/ssc/k; ctx.strokeStyle='rgba(0,0,0,.5)'; ctx.strokeRect(x,y,q.w,q.h);
+      ctx.lineWidth=2/ssc/k; ctx.strokeStyle=bad?'#ffb44d':'#fff'; if(bad)ctx.setLineDash([6/ssc/k,4/ssc/k]);
+      ctx.strokeRect(x,y,q.w,q.h); ctx.setLineDash([]); ctx.restore();
     }
     if(U.showOrder||tool==='order'){
       const man=D.anim.order==='manual'&&tool==='order'&&!b.virtual;
@@ -4626,7 +4664,7 @@ function drawOverlays(G,A){
     ctx.lineWidth=2/sc; ctx.strokeStyle='#FFC21A'; ctx.strokeRect(0,0,G.W,G.H);
     ctx.setLineDash([6/sc,5/sc]); ctx.lineWidth=1/sc; ctx.strokeStyle='rgba(255,194,26,.7)'; ctx.strokeRect(G.W*.05,G.H*.05,G.W*.9,G.H*.9); ctx.setLineDash([]);
     pill('FRAME',8/sc,-24/sc,sc,'#FFC21A','#000',false); pill('90% safe',G.W*.05+6/sc,G.H*.05+6/sc,sc,'rgba(0,0,0,.6)','#FFC21A',false);
-    ctx.restore(); ctx.save(); zoomXf(ctx,G,s,live?A.pan:null,live?A.zc:null);
+    ctx.restore(); ctx.save(); zoomXf(ctx,G,s,live?LV.pan:null,live?LV.zc:null);
   }
   ctx.restore();
   // resize handles (single selection, select tool, editing)
@@ -4662,7 +4700,24 @@ function thumb(){
 /* ------------------------------------------------------------------ pointer */
 function toWorld(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left-V.ox)/V.sc,y:(e.clientY-r.top-V.oy)/V.sc};}
 function spaceHeld(){ if(U.space&&inAE&&Date.now()-(U.spaceT||0)>900){ U.space=false; try{cv.classList.remove('panning');}catch(e){} } return !!U.space; }
-function localPt(G,w){const A=animState(G);if(A&&A.live)return{x:G.W/2+(w.x-A.pan[0]-G.W/2)/A.s-A.off[0],y:G.H/2+(w.y-A.pan[1]-G.H/2)/A.s-A.off[1]};return w;}
+/* how the active layer is seen right now: zoom, pan, zoom pivot and camera offset — layer 2 adds its own camera
+   offset and may ignore the zoom, so selection outlines and clicks line up with what's drawn */
+function layerView(G,A){ if(!(A&&A.live)) return {s:1,pan:[0,0],zc:null,off:[0,0]};
+  let v={s:A.s,pan:A.pan,zc:A.zc,off:A.off};
+  if(curLayer()==='l2'&&l2On()){ const d=l2ShiftAt(A.t,A.M||A.P,A.P); v.off=[A.off[0]+d[0],A.off[1]+d[1]]; if(D.L2&&D.L2.zoom===false) v={s:1,pan:[0,0],zc:null,off:v.off}; }
+  return v; }
+function localPt(G,w){const A=animState(G);if(A&&A.live){ const v=layerView(G,A), c=v.zc||[G.W/2,G.H/2]; return{x:c[0]+(w.x-v.pan[0]-c[0])/v.s-v.off[0],y:c[1]+(w.y-v.pan[1]-c[1])/v.s-v.off[1]}; }return w;}
+/* per-block position / rotation / scale (layer 2): the same transform drawBlock uses, around the block's centre */
+function xfOf(G,b,x,y,w,h){ const XF=D.anim.xf&&D.anim.xf[b.id]; if(!XF) return null; const R=Math.PI/180, Zc=CAM_ZOOM_K*G.W, k=XF.z?Zc/Math.max(50,Zc+(+XF.z||0)):1, sF=(XF.s!=null?+XF.s:100)/100, cx=x+w/2, cy=y+h/2;
+  return {tx:cx+(+XF.x||0)+(cx-G.W/2)*(k-1), ty:cy+(+XF.y||0)+(cy-G.H/2)*(k-1), a:(+XF.rz||0)*R, sx:k*sF*Math.cos((+XF.ry||0)*R), sy:k*sF*Math.cos((+XF.rx||0)*R), cx, cy}; }
+function xfApplyCtx(g,T){ g.translate(T.tx,T.ty); g.rotate(T.a); g.scale(T.sx||1e-6,T.sy||1e-6); g.translate(-T.cx,-T.cy); }
+/* click on a moved / rotated / scaled block: find it by its drawn shape (returns the cell of its top-left) */
+function xfPick(G,w){ if(!D.anim.xf||!Object.keys(D.anim.xf).length) return null; const A=animState(G), v=layerView(G,A), P=A&&A.P?A.P:plan(G);
+  const pS={x:w.x+v.off[0],y:w.y+v.off[1]}; const list=(P.seq||[]).slice().reverse();
+  for(const b of list){ const q=cellRect(G,b.c,b.r,b.w,b.h), x=q.x+v.off[0], y=q.y+v.off[1], T=xfOf(G,b,x,y,q.w,q.h); if(!T) continue;
+    const dx=pS.x-T.tx, dy=pS.y-T.ty, ca=Math.cos(-T.a), sa=Math.sin(-T.a), lx=(dx*ca-dy*sa)/(T.sx||1e-6)+T.cx, ly=(dx*sa+dy*ca)/(T.sy||1e-6)+T.cy;
+    if(lx>=x&&lx<=x+q.w&&ly>=y&&ly<=y+q.h) return {c:b.c,r:b.r,b}; }
+  return null; }
 function cellAt(G,w){return{c:Math.floor((w.x-G.x0)/G.p),r:Math.floor((w.y-G.y0)/G.p)};}
 function handleAt(G,w){
   const sel=selBlocks(); if(U.tool!=='select'||sel.length!==1||animActive()) return null;
@@ -4682,7 +4737,7 @@ cv.addEventListener('pointerdown',e=>{
   }
   if(e.button>0) return;
   if(U.playing) stopPlay();
-  const G=geom(), w=localPt(G,toWorld(e)), cell=cellAt(G,w), inR=inRange(G,cell.c,cell.r);
+  const G=geom(), w=localPt(G,toWorld(e)), xp=xfPick(G,w), cell=xp?{c:xp.c,r:xp.r}:cellAt(G,w), inR=inRange(G,cell.c,cell.r);
   const hd=handleAt(G,w);
   if(hd){U.drag={type:'resize',k:hd.k,id:hd.b.id,orig:{c:hd.b.c,r:hd.b.r,w:hd.b.w,h:hd.b.h},moved:false};return;}
   let b=inR?blockAt(cell.c,cell.r):null;
@@ -5101,7 +5156,7 @@ function renderInsp(){
       else { const P=plan(G), px=ids.map(id=>P.seq.find(x=>x.id===id)).filter(Boolean); if(px.length===1) h+=cardContent(px[0],true); else if(px.length>1) h+=cardContentMulti(px,true); } }
     else { if(sel.length===1) h+=cardBlock(G,sel[0]); else if(sel.length>1) h+=cardMulti(sel);
       else { const P=plan(G), b0=P.seq.find(x=>x.id===ids[0]); h+=`<div class="card"><div class="card-h">Colour<span class="r note">${ids.length>1?ids.length+' blocks':''}</span></div><div class="swatches">${swatchHTML(b0?b0.color:D.block.color,'sel.color')}</div>${Object.keys(D.blockColors||{}).some(k=>ids.indexOf(+k)>=0)?'<button class="btn ghost" data-act="colreset">Back to the line colour</button>':''}</div>`; } }
-    h+=cardL2(ids.length?ids:selBlocks().map(b=>b.id));
+    h+=cardL2(ids.length?ids:selBlocks().map(b=>b.id)); h+=cardRule(ids.length?ids:selBlocks().map(b=>b.id));
     h+=cardTiming(G,ids);
   }
   el.innerHTML=h;
@@ -6175,6 +6230,8 @@ const HELP={
   'L2.zoom':'Layer 2 zooms with the grid zoom. Off: it stays at its own size while the layer 1 zooms.',
   'L2.revealBy':'Which camera decides when a layer-2 block appears (when it reaches the reveal zone): layer 2\'s own, or the layer 1\'s.',
   'anim.hidePct':'Randomly hide this share of the blocks. Hidden blocks keep their place in the walk (the line and camera still go through them) — they just never appear. Select a block and switch off “Shown” to hide it by hand.',
+  'rand.pace.on':'Travel speed: the blocks are laid out by when they appear, so the camera following them moves at a steady speed — they still land on their beats. Slower than one block per beat: blocks share columns and step up or down a row instead.',
+  'rand.pace.speed':'How fast the camera travels, in grid cells per second.',
   'anim.vDamp':'Calms the camera\'s up/down moves. 0 = it follows the blocks fully, 100 = it never moves up or down.',
   'anim.chopEvery':'Choppy camera: it jumps to where the smooth camera would be every this many frames (2 = on twos, 4 = on fours). 0 = only when it has drifted the distance below.',
   'anim.chopMin':'Choppy camera: only jump once the smooth camera is this many cells away from where it stopped. 0 = jump every time.',
@@ -6679,7 +6736,7 @@ function payloadCore(inner){
     let rr=rulesFor(G,c0-N,c1+N,r0,r1);
     rr=free?rr.map(a=>a.map(r3)):rr.filter(inside).map(clip);
     const lwR=+D.look.ruleW||1;
-    rules={color:hexRgb(D.look.rule),lw:lwR,top:D.look.ruleLayer==='top',period:r3(N*G.p),parallax:r3(clamp((+D.look.ruleParallax||100)/100,0,4)),lag:Math.max(0,Math.round(+D.look.ruleLag||0)),op:animOn&&P.ruleOp&&P.ruleOp.length?P.ruleOp:null,
+    rules={smooth:(A.mode==='camera'&&A.camMove==='chop'&&D.anim.chopRules===false&&P.camSmooth)?P.camSmooth.map(k=>[k[0],[r3(k[1][0]),r3(k[1][1])],k[2]||'l']):null,color:hexRgb(D.look.rule),lw:lwR,top:D.look.ruleLayer==='top',period:r3(N*G.p),parallax:r3(clamp((+D.look.ruleParallax||100)/100,0,4)),lag:Math.max(0,Math.round(+D.look.ruleLag||0)),op:animOn&&P.ruleOp&&P.ruleOp.length?P.ruleOp:null,
       mode:zoomOn?'strokes':'rects', rects:zoomOn?null:rr,
       segs:zoomOn?rr.map(a=>[r3(a[0]+a[2]/2),a[1],r3(a[0]+a[2]/2),r3(a[1]+a[3])]):null};
   }
@@ -6691,7 +6748,7 @@ function payloadCore(inner){
       font:txtStyle(b).font||'',tracking:+txtStyle(b).tracking||0,leading:+txtStyle(b).leading||0,kern:txtStyle(b).kern||'metrics',
       num:numOn(b)?(()=>{const s=numStr(NUMS[b.id]||0),q2=cellRect(G,b.c,b.r,b.w,b.h),L=numLayout(q2,s);return {text:s,x:r3(L.x),y:r3(L.y),size:L.size,color:hexRgb(D.num.color),font:D.fill.font,opacity:clamp(+D.num.opacity||100,0,100),keys:animOn&&P.tracks[b.id]&&P.tracks[b.id].num&&P.tracks[b.id].num.length?P.tracks[b.id].num.map(k=>[k[0],r3(k[1]*clamp(+D.num.opacity||100,0,100)/100),k[2],k[3]]):null};})():null,
       keys:animOn?P.tracks[b.id]:null, tIn:animOn?Math.round(P.T[P.seq.indexOf(b)]):null, tOut:exitEnd(P,P.seq.indexOf(b),animOn),
-      xf:(D.anim.xf&&D.anim.xf[b.id])||null, zz:(D.anim.zord&&D.anim.zord[b.id])||null};
+      xf:(D.anim.xf&&D.anim.xf[b.id])||null, zz:(D.anim.zord&&D.anim.zord[b.id])||null, rz:(D.anim.rz&&D.anim.rz[b.id])||null};
   });
   // ---- content: auto-fill items → AE-ready descriptions
   const F=D.fill, met=fillMetrics();
@@ -6964,6 +7021,7 @@ function mAddFiles(files,relinkId){
   $('#mWalk').onclick=()=>{ U.mediaPick=true; if(!D.bmedia.selOn){pushHist(true);D.bmedia.selOn=true;syncInputs(true);} renderMediaUI(); if(U.playing) stopPlay(); else { if(U.t==null) tlSetT(0); play(); } toast('Playing the walk — pause anytime and click blocks to pick them'); };
   $('#mPickAll').onclick=()=>{ pushHist(true); D.bmedia.pick=plan(geom()).seq.map(b=>b.id); D.bmedia.selOn=true; syncInputs(true); refresh(); renderMediaUI(); };
   $('#mPickNone').onclick=()=>{ pushHist(true); D.bmedia.pick=[]; refresh(); renderMediaUI(); };
+  if($('#l2PacePreset')) $('#l2PacePreset').addEventListener('click',e=>{ const b=e.target.closest('[data-pc]'); if(!b) return; pushHist(true); D.rand.pace={on:true,speed:+b.dataset.pc}; planCache.k=''; syncInputs(true); refresh(); });
   if($('#chopPreset')) $('#chopPreset').addEventListener('click',e=>{ const b=e.target.closest('[data-ch]'); if(!b) return; const v=b.dataset.ch.split(',').map(Number); pushHist(true); Object.assign(D.anim,{camMove:'chop',chopEvery:v[0],chopMin:v[1]}); planCache.k=''; syncInputs(true); refresh(); });
   if($('#sizePreset')) $('#sizePreset').addEventListener('click',e=>{ const b=e.target.closest('[data-sv]'); if(!b) return; pushHist(true); D.rand.sizeVar=Object.assign({},D.rand.sizeVar,JSON.parse(b.dataset.sv),{on:true}); planCache.k=''; syncInputs(true); refresh(); });
   if($('#hideShuffle')) $('#hideShuffle').onclick=()=>{ pushHist(true); D.anim.hideSeed=1+Math.floor(Math.random()*1e5); D.anim.show=[]; planCache.k=''; refresh(); };
@@ -7082,7 +7140,7 @@ const L2_PRESETS=[
    when the layer 1 line reaches it (and, for walk on & off, leave when the layer 1 line leaves there) */
 function pinToMain(exitToo){
   const G=geom();
-  const MP=withLayer('main',()=>{ const P=plan(G), wf=P.walkFrom!=null?P.walkFrom:P.seq.length; return P.seq.slice(0,wf).map((b,i)=>{ const q=cellRect(G,b.c,b.r,b.w,b.h); return {x:q.x+q.w/2,xr:q.x+q.w,t:P.T[i],e:(P.exitT||[])[i]}; }); });
+  const MP=withLayer('main',()=>{ const G=geom(), P=plan(G), wf=P.walkFrom!=null?P.walkFrom:P.seq.length; return P.seq.slice(0,wf).map((b,i)=>{ const q=cellRect(G,b.c,b.r,b.w,b.h); return {x:q.x+q.w/2,xr:q.x+q.w,t:P.T[i],e:(P.exitT||[])[i]}; }); });
   if(MP.length<2) return false;
   const byX=MP.slice().sort((a,b)=>a.x-b.x), mainMax=Math.max(...MP.map(m=>m.xr));
   let run=-1e9; const tx=byX.map(m=>(run=Math.max(run,m.t)));
@@ -7108,7 +7166,7 @@ function pinToMain(exitToo){
 }
 /* put layer 2's blocks inside the frame the layer 1 camera holds on */
 function placeInView(M){
-  const G=geom(), t=M.holdT!=null?M.holdT:M.startF+M.lenF, off=withLayer('main',()=>{ const P=plan(G); return ev(P.cam,t,[0,0]); })||[0,0];
+  const G=geom(), t=M.holdT!=null?M.holdT:M.startF+M.lenF, off=withLayer('main',()=>{ const P=plan(geom()); return ev(P.cam,t,[0,0]); })||[0,0];
   const wx=-off[0]+G.W*0.03, col=Math.ceil((wx-G.x0)/G.p);
   D.rand.startCol=col; generateLine(false,true); planCache.k='';
 }
@@ -7137,17 +7195,20 @@ function renderLayerBar(){
   const act=curLayer(), tb=$('#layerTabs'); if(!tb) return;
   $$('#layerTabs [data-ltab]').forEach(b=>{ b.classList.toggle('on',b.dataset.ltab===act); if(b.dataset.ltab==='l2') b.textContent=D.L2&&D.L2.on?'Layer 2':'+ Layer 2'; });
   const bar=$('#layerBar'); if(bar){ bar.hidden=act!=='l2'; $('#l2On').checked=!!(D.L2&&D.L2.on); $$('#l2Z [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===(D.L2.z||'front'))); $$('#l2Snd [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===(D.L2.sound||'off'))); const cfg=l2CamCfg(), cur=Object.keys(L2CAM).find(k=>{ const p=L2CAM[k]; return p.camSrc===cfg.src&&p.infX/100===cfg.ix&&p.infY/100===cfg.iy; }); $$('#l2Cam [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===cur)); }
-  { const g=$('#l2CamGroup'); if(g) g.hidden=act!=='l2'||!(D.L2&&D.L2.on);
+  { const gn=$('#gridLayerNote'); if(gn) gn.hidden=act!=='l2';
+    const g=$('#l2CamGroup'); if(g) g.hidden=act!=='l2'||!(D.L2&&D.L2.on);
     const cb=$('#l2Beat'); if(cb&&act==='l2'){ cb.checked=l2BeatOn(); const n=$('#l2BeatN'); if(n) n.textContent=cb.checked?`(${timingCues().length} cues)`:''; }
+    { const pn=$('#l2PaceNote'); if(pn){ let t=''; try{ if(act==='l2'&&D.rand.pace&&D.rand.pace.on){ const P=plan(geom()), eff=P.paceEff||0, want=+D.rand.pace.speed||0; if(eff) t=eff>want*1.15?`<span style="color:#F5A524">Actually moving ${eff.toFixed(1)} cells/s</span> — the blocks are too big to fit slower at this many beats. Use smaller blocks, more rows (Layer 2 rows), fewer beats (Sound › Big hits / every Nth), or turn on Size mix.`:`Moving ${eff.toFixed(1)} cells/s.`; } }catch(e){} pn.innerHTML=t; } }
     $$('#l2MovePreset [data-mv]').forEach(b=>b.classList.toggle('on',act==='l2'&&+b.dataset.mv===+((D.anim.lock||{}).moveLen||0))); }
 }
 (()=>{ const tb=$('#layerTabs'); if(!tb) return;
   tb.addEventListener('click',e=>{ const b=e.target.closest('[data-ltab]'); if(!b) return; const want=b.dataset.ltab;
-    if(want==='l2'&&!(D.L2&&D.L2.on)){ pushHist(true); D.L2.on=true; l2Init(); setLayer('l2'); if(!D.blocks.length){ try{ generateLine(true); }catch(x){} } toast('Layer 2: a second walk — bigger blocks with content. It sits in front of the layer 1; switch it behind in the bar above.','⌘Z to undo',true); renderLayerBar(); return; }
+    if(want==='l2'&&!(D.L2&&D.L2.on)){ pushHist(true); D.L2.on=true; l2Init(); setLayer('l2'); if(!D.blocks.length){ try{ generateLine(true); }catch(x){} } toast('Layer 2: a second walk — bigger blocks with content, over layer 1. Use the bar above for stacking and music, More… for its camera.','⌘Z to undo',true); renderLayerBar(); return; }
     setLayer(want); if(want==='l2'&&!D.blocks.length){ try{ generateLine(true,true); }catch(x){} } });
   $('#l2On').onchange=e=>{ pushHist(true); D.L2.on=e.target.checked; planCache.k=''; refresh(); renderLayerBar(); };
   $('#l2Cam')&&$('#l2Cam').addEventListener('click',e=>{ const b=e.target.closest('[data-v]'); if(!b) return; pushHist(true); D.L2.cam=b.dataset.v; Object.assign(D.L2,L2CAM[b.dataset.v]||{}); planCache.k=''; syncInputs(true); refresh(); renderLayerBar();
     toast(({main:'Layer 2 moves with the layer 1 camera',x:'Layer 2 follows the camera sideways only — no up / down',fixed:'Layer 2 stays put on screen',own:'Layer 2 uses its own camera (its Style: Camera follow = its own camera)'})[D.L2.cam]); });
+  $('#l2More')&&($('#l2More').onclick=()=>{ try{ const k=STEPS.findIndex(x=>x.id==='animate'); if(k>=0&&U.step!==k) goStep(k); }catch(e){} setTimeout(()=>{ const g=$('#l2CamGroup'); if(g){ g.hidden=false; g.scrollIntoView({block:'start',behavior:'smooth'}); } },60); });
   $('#l2Setups')&&$('#l2Setups').addEventListener('click',e=>{ const b=e.target.closest('[data-l2set]'); if(!b||curLayer()!=='l2') return; const S=L2SETUPS[b.dataset.l2set]; if(!S) return;
     pushHist(true); const r=S.apply(); if(r==='beat') l2SetBeat(true); planCache.k=''; syncInputs(true); refresh(); renderLayerBar(); toast('Layer 2: '+S.name,'⌘Z to undo',true); });
   $('#l2Beat')&&$('#l2Beat').addEventListener('change',e=>l2SetBeat(e.target.checked));
@@ -7157,6 +7218,10 @@ function renderLayerBar(){
   $('#l2Z').addEventListener('click',e=>{ const b=e.target.closest('[data-v]'); if(!b) return; pushHist(true); D.L2.z=b.dataset.v; planCache.k=''; refresh(); renderLayerBar(); });
 })();
 /* ---- inspector: a layer-2 block's own z order, position, rotation and scale ---- */
+/* order with the column rules, per block (either layer) */
+function cardRule(ids){ if(!ids.length||!D.look.rulesOn) return ''; const v=(D.anim.rz||{})[ids[0]]||'', top=D.look.ruleLayer==='top';
+  return `<div class="card"><div class="card-h">Order with the rules${ids.length>1?`<span class="count">${ids.length}</span>`:''}</div>
+    <div class="seg" data-rzz="1"><button data-v="below"${v==='below'?' class="on"':''} title="Under the column rules">Behind rules</button><button data-v=""${!v?' class="on"':''} title="Rules are ${top?'on top':'underneath'} (Setup › Rules)">Default (${top?'behind':'in front'})</button><button data-v="above"${v==='above'?' class="on"':''} title="Over the column rules">In front of rules</button></div></div>`; }
 function cardL2(ids){
   if(curLayer()==='main'&&l2On()&&ids.length){ const zo=(D.anim.zord||{})[ids[0]]||'';
     return `<div class="card"><div class="card-h">Order with layer 2${ids.length>1?`<span class="count">${ids.length}</span>`:''}</div>
@@ -7174,6 +7239,7 @@ function cardL2(ids){
 $('#insp').addEventListener('input',e=>{ const t=e.target, k=t.dataset&&t.dataset.l2x; if(!k) return; const v=parseFloat(t.value); if(isNaN(v)) return;
   if(!U._l2Edit){ pushHist(true); U._l2Edit=true; } D.anim.xf=Object.assign({},D.anim.xf||{}); mSelIds().forEach(id=>{ D.anim.xf[id]=Object.assign({},D.anim.xf[id]||{},{[k]:v}); }); planCache.k=''; render(); });
 $('#insp').addEventListener('change',e=>{ if(e.target.dataset&&e.target.dataset.l2x){ U._l2Edit=false; } });
+$('#insp').addEventListener('click',e=>{ const rz=e.target.closest('[data-rzz] button[data-v]'); if(rz){ pushHist(true); D.anim.rz=Object.assign({},D.anim.rz||{}); mSelIds().forEach(id=>{ if(rz.dataset.v) D.anim.rz[id]=rz.dataset.v; else delete D.anim.rz[id]; }); planCache.k=''; renderInsp(); render(); return; } });
 $('#insp').addEventListener('click',e=>{ const z=e.target.closest('[data-l2z] button[data-v]'); if(z){ pushHist(true); D.anim.zord=Object.assign({},D.anim.zord||{}); mSelIds().forEach(id=>{ if(z.dataset.v) D.anim.zord[id]=z.dataset.v; else delete D.anim.zord[id]; }); planCache.k=''; renderInsp(); render(); return; }
   const r=e.target.closest('[data-l2reset]'); if(r){ e.preventDefault(); pushHist(true); D.anim.xf=Object.assign({},D.anim.xf||{}); D.anim.zord=Object.assign({},D.anim.zord||{}); mSelIds().forEach(id=>{ delete D.anim.xf[id]; delete D.anim.zord[id]; }); planCache.k=''; renderInsp(); render(); } });
 async function init(){
