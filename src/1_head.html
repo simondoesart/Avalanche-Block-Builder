@@ -1309,6 +1309,7 @@ body.nohelp .qm{display:none}
               <label class="check"><input type="checkbox" data-bind="rand.pace.on"> Set a travel speed <span class="note">(blocks still land on their beats)</span></label>
               <div data-show="rand.pace.on=true" style="display:grid;gap:8px">
                 <div class="field"><span class="lbl scrub" title="Grid cells per second">Travel speed</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.pace.speed" min="0.1" max="40" step="0.1"><span class="unit">cells/s</span><button data-d="1">+</button></div></div>
+                <div class="field stack"><span class="lbl">If the blocks can't fit that slowly</span><div class="seg" data-seg="rand.pace.fit"><button data-v="thin" title="Keeps the speed: blocks land only on the beats there's room for (the line keeps going all the way through)">Skip beats, keep the speed</button><button data-v="push" title="Lands a block on every beat — the camera speeds up to make room">Every beat, go faster</button></div></div>
                 <div class="note" id="l2PaceNote"></div>
                 <div class="seg" id="l2PacePreset"><button data-pc="0.5">Drift</button><button data-pc="1">Slow</button><button data-pc="2">Medium</button><button data-pc="4">Fast</button></div>
                 <div class="note">The blocks are laid out by when they land, so the camera glides at this speed. When it's slower than one block per beat, blocks share columns and step up or down a row instead.</div>
