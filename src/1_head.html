@@ -435,6 +435,10 @@ body.simple [data-adv]{display:none!important}
 
 /* curve editor */
 .curve{display:grid;gap:6px}
+.ltabs{display:flex;gap:2px;margin-left:14px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:2px}
+.ltabs button{white-space:nowrap;height:24px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:var(--mut,#a2a2ab);font:inherit;font-size:12px;cursor:pointer}
+.ltabs button.on{background:#2a2a30;color:var(--text)}.ltabs button[data-ltab="l2"].on{background:#3a2a10;color:#FFB020}
+.lbar{display:flex;align-items:center;gap:6px;margin-left:10px;font-size:11.5px;flex:none}.lbar .seg.mini{display:flex;flex-wrap:nowrap}.lbar .seg.mini button{white-space:nowrap}.lbar .seg.mini button{height:22px;padding:0 8px;font-size:11px}
 .libsamp{width:96px;height:54px;border-radius:6px;background:linear-gradient(135deg,#E6212F 0 30%,#1F1F1F 30% 100%);display:grid;place-items:center;color:#fff;font-size:18px;cursor:pointer;flex:none}
 select.msel{width:100%;height:28px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:0 6px;font:inherit;font-size:12px}
 .mlist{display:grid;gap:4px}.mlist .mrow{display:flex;align-items:center;gap:6px;font-size:11.5px;padding:4px 6px;border:1px solid var(--line);border-radius:7px}
@@ -567,6 +571,13 @@ body.nohelp .qm{display:none}
     <div class="logo">
       <div class="mark"><svg width="12" height="12" viewBox="0 0 12 12" fill="#fff"><rect width="5" height="5"/><rect x="7" width="5" height="5" opacity=".55"/><rect y="7" width="12" height="5"/></svg></div>
       <span>Grid Blocks</span>
+    </div>
+    <div class="ltabs" id="layerTabs"><button data-ltab="main" title="The main walk">Main walk</button><button data-ltab="l2" title="A second, art-directed walk — in front of or behind the main one">Layer 2</button></div>
+    <div class="lbar" id="layerBar" hidden>
+      <label class="switch" title="Show and export layer 2"><input type="checkbox" id="l2On"><span></span></label>
+      <span class="note" style="white-space:nowrap">Layer 2</span>
+      <div class="seg mini" id="l2Z"><button data-v="behind">Behind</button><button data-v="front">In front</button></div>
+      <span class="note" style="white-space:nowrap" title="Select a layer-2 block for its own depth order, position, rotation and scale">the main walk</span>
     </div>
     <div class="spacer"></div>
     <div class="chip" id="compChip" title="Composition"><span class="dot" id="liveDot"></span><b id="compName">Preview</b><span id="compMeta">1920×1080</span></div>
@@ -903,6 +914,10 @@ body.nohelp .qm{display:none}
                 <div class="field"><span class="lbl scrub" title="Move down (+) / up (−), in % of the block height">Y</span><div class="num"><input type="number" data-bind="bmedia.y" min="-500" max="500" step="1"><span class="unit">%</span></div></div>
               </div>
               <div class="row-btns"><label class="check"><input type="checkbox" data-bind="bmedia.flipX"> Flip X</label><label class="check"><input type="checkbox" data-bind="bmedia.flipY"> Flip Y</label></div>
+            </div></details>
+            <details class="sub" data-sub="m-in" open><summary>Comes on</summary><div class="subbody">
+              <div class="seg" data-seg="bmedia.inMode"><button data-v="block" title="Appears with its block (the block's own reveal)">With the block</button><button data-v="fade">Fade in</button><button data-v="scale" title="Settles from slightly larger, fading in">Scale in</button><button data-v="wipe" title="Wipes across the block">Wipe</button></div>
+              <div class="field" data-show="bmedia.inMode=fade|scale|wipe"><span class="lbl scrub" title="Starts when the clip starts (block appears + delay, or the frame you set)">Length</span><div class="num"><input type="number" data-bind="bmedia.inLen" min="1" max="240" step="1"><span class="unit">fr</span></div></div>
             </div></details>
             <details class="sub" data-sub="m-play" open data-show="bmedia.kind=video"><summary>Playback</summary><div class="subbody">
               <div class="seg" data-seg="bmedia.loop"><button data-v="loop">Loop</button><button data-v="hold" title="Plays once and stops on its last frame">Stop on last frame</button><button data-v="ping" title="Plays forward, then backward, and repeats">Ping-pong</button></div>
