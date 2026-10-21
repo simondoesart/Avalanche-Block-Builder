@@ -71,7 +71,7 @@ const DEF={
         gap:{off:{},on:true,amount:3,seed:0,color:'#E6212F',win:{on:null,off:null},anim:{own:true,anchor:'block',delay:12,jitter:10,leaveWith:true,inMode:'type',cps:60,inDur:8,buildDur:12,outMode:'fade',hold:48,outDur:12},mods:{log:true,phrase:true,barcode:true,hashes:false,dots:true,logo:true,icons:true,graph:true,stream:false,rpc:false}}},
   echo:{on:false,dx:0,dy:2,last:0,fill:true,color:'#A2AFB2',opacity:100,stroke:false,sw:4,scolor:'#A2AFB2',align:'center',dash:false,dashL:12,dashG:8,content:false,
         timing:'with',offset:6,appear:'fade',out:'stay',hold:12,outF:8},
-  rand:{pitch:{on:false,mode:'contour',semis:2,maxStep:2,amount:100},sizeVar:{on:false,mode:'free',wMin:1,wMax:6,hMin:1,hMax:4,min:1,max:3,aMin:0.5,aMax:3,list:'1x1, 2x1, 3x1, 2x2, 4x2, 3x3, 6x3, 1x2',keep:0},endSingle:true,pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
+  rand:{connect:true,pitch:{on:false,mode:'contour',semis:2,maxStep:2,amount:100},sizeVar:{on:false,mode:'free',wMin:1,wMax:6,hMin:1,hMax:4,min:1,max:3,aMin:0.5,aMax:3,list:'1x1, 2x1, 3x1, 2x2, 4x2, 3x3, 6x3, 1x2',keep:0},endSingle:true,pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
         wander:1,climb:0,stackPct:20,stackGap:0,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,offX:0,offY:0,tracking:0,leading:0,kern:'metrics',caps:'none'},
   anim:{hide:[],show:[],hidePct:0,hideSeed:1,seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:true,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
@@ -1559,7 +1559,10 @@ function extensionRaw(G,base,capOverride){
     if(Math.abs(dp)<per*0.5) return clamp(r,B.lo,B.hi);   // same note: stay level
     const unit=varOn?1:Math.max(1,last.h), st=Math.min(mx,Math.max(1,Math.round(Math.abs(dp)/per)))*unit; let nr=r-Math.sign(dp)*st;
     return clamp(nr,B.lo,B.hi); };   // at the top / bottom row it stays there until the melody turns
-  let pR=last.r;
+  let pR=last.r, pH=last.h;
+  /* keep the line joined: each block at least touches the previous one at a corner (melody / random sizes can jump further) */
+  const joinOn=(pitchOn||varOn)&&D.rand.connect!==false;
+  const join=(r,h)=>joinOn?clamp(r,pR-h,pR+pH):r;
   const place=(nb,w,h)=>{ nb.w=w; nb.h=h; const B=walkBounds(G,h); nb.r=clamp(nb.r,B.lo,B.hi); return nb; };
   let c=last.c, r=last.r, i=main.length;
   const walker=makeWalker(rnd,rMax,last.h,rMin);
@@ -1575,7 +1578,8 @@ function extensionRaw(G,base,capOverride){
       else nr=j===cap?(out.__reach?tr:r+Math.sign(tr-r)*wmax):clamp(walkRow(r,rMax,rnd,last.h,rMin),Math.max(rMin,tr-rem*wmax),Math.min(rMax,tr+rem*wmax));
       r=clamp(clamp(nr,pr-wmax,pr+wmax),rMin,rMax);   // never more than one block height from the last one
       if(pitchOn){ r=pitchRow(main.length+j-1,r,pR,DM[1]); }
-      const nb=mk(last,c,r,mixColor(i++,rnd)); if(varOn) place(nb,DM[0],DM[1]); pR=nb.r; r=nb.r;
+      r=join(r,varOn?DM[1]:last.h);
+      const nb=mk(last,c,r,mixColor(i++,rnd)); if(varOn) place(nb,DM[0],DM[1]); pR=nb.r; pH=nb.h; r=nb.r;
       if(add(nb)&&j<cap&&!varOn&&!pitchOn){const sr=stackRow(r,last.h,rMax,rnd,rMin);if(sr!==null){const p2=mk(last,c,sr,mixColor(i++,rnd));p2.stack=true;add(p2);}}
     }
     out.__endCol=c;
@@ -1584,9 +1588,10 @@ function extensionRaw(G,base,capOverride){
   for(let n=0;n<cap;n++){
     if(mode==='continue'){c+=dc;r+=dr;if(A.wrap&&A.axis==='x'){if(r<0)r=rMax;else if(r>rMax)r=0;}}
     const DM=dims();
-    if(mode!=='continue'){const w=walker(r); if(varOn){ c+=dir>0?prevW+gapC+w.extra:-(DM[0]+gapC+w.extra); prevW=DM[0]; } else c+=step+w.extra*dir; r=w.r;}
+    if(mode!=='continue'){const w=walker(r), ex=joinOn?0:w.extra; if(varOn){ c+=dir>0?prevW+gapC+ex:-(DM[0]+gapC+ex); prevW=DM[0]; } else c+=step+ex*dir; r=w.r;}
     if(pitchOn&&mode!=='continue'){ r=pitchRow(main.length+n,r,pR,DM[1]); }
-    const nb=mk(last,c,r,mixColor(i++,rnd)); if(varOn){ place(nb,DM[0],DM[1]); r=nb.r; } pR=r;
+    if(mode!=='continue') r=join(r,varOn?DM[1]:last.h);
+    const nb=mk(last,c,r,mixColor(i++,rnd)); if(varOn){ place(nb,DM[0],DM[1]); r=nb.r; } pR=r; pH=nb.h;
     if(add(nb)&&mode!=='continue'&&!varOn&&!pitchOn){const sr=stackRow(r,last.h,rMax,rnd,rMin);if(sr!==null){const p=mk(last,c,sr,mixColor(i++,rnd));p.stack=true;add(p);}}
   }
   return out;
@@ -3377,6 +3382,7 @@ function renderMedia(){
       ${PW.on?`<div class="seg" data-seg="rand.pitch.mode"><button data-v="contour" title="Steps up when a note is higher than the last, down when lower">Up &amp; down with each note</button><button data-v="height" title="Highest notes on the top row, lowest on the bottom">Row = note height</button></div>
       ${(PW.mode||'contour')==='contour'?`<div class="field2"><div class="field"><span class="lbl scrub" title="How big a jump in pitch (semitones) moves the line one row">Semitones / row</span><div class="num"><input type="number" data-bind="rand.pitch.semis" min="0.25" max="12" step="0.25"></div></div>
         <div class="field"><span class="lbl scrub" title="Most rows one step can climb or drop">Max step</span><div class="num"><input type="number" data-bind="rand.pitch.maxStep" min="1" max="6" step="1"><span class="unit">rows</span></div></div></div>`:''}
+      <label class="check" title="Each block at least touches the previous one at a corner — big jumps in the melody are shortened so the line never breaks"><input type="checkbox" data-bind="rand.connect"> Keep blocks connected (corner to corner)</label>
       <div class="field"><span class="lbl scrub" title="How many blocks follow the melody; the rest walk as usual">Follow</span><div class="num"><input type="number" data-bind="rand.pitch.amount" min="0" max="100" step="5"><span class="unit">%</span></div></div>
       <div class="note">${got?`${got} of ${cues.length} cues have a clear note${got<cues.length?' — the rest borrow their neighbour':''}. ${D.timing.sync?'':'Turn on <b>Snap block reveals to the cues</b> so each block lands on its note.'}`:(m&&m.pcm?'No clear notes found at these cues yet.':'Load the song (audio file) to read its notes.')}</div>`:''}
     </div>`; })()}
