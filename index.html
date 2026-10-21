@@ -4854,6 +4854,7 @@ function lockSnap(P,G){
 /* hidden blocks: they keep their place in the walk (and the camera still travels past them) but never show */
 function hiddenIds(P){ const A=D.anim, s=new Set((A.hide||[]).map(Number)), pct=clamp(+A.hidePct||0,0,100);
   const keep=new Set((A.show||[]).map(Number));
+  (P.seq||[]).forEach(b=>{ if(b.__rest) s.add(b.id); });   /* beat blocks: beats with no room rest */
   if(pct>0) (P.seq||[]).forEach((b,i)=>{ if(i===0||keep.has(b.id)) return; if(mHash(b.id*7.31+(+A.hideSeed||1)*1.913)*100<pct) s.add(b.id); });
   return s; }
 function isHid(P,b){ return !!(P&&P.hidden&&b&&P.hidden.has(b.id)); }
@@ -4919,15 +4920,16 @@ function beatPlace(G,base0,times,prevSeed){
   const AN=bbAnchor(B), ax=AN[0], ay=AN[1], LINE=bbLine(B);   /* block anchor: which point of a block sits on the line's point / row; LINE: layer 2's camera follows the line */
   const atRow=(row,h)=>row-Math.round(ay*(h-1));
   let prev=prevSeed||null, dirV=bias==='down'?1:-1;
-  const live=t=>x=>(x.__gone==null||x.__gone>t);
+  const live=t=>x=>!x.__rest&&(x.__gone==null||x.__gone>t);
+  const MINLIFE=Math.max(24,Math.round((D.comp.fps||30)*1));   /* a block stays at least ~1 s before another may push it out — no blink-on-then-gone */
   const clash=(cc,rr,w,h,t)=>out.some(x=>live(t)(x)&&cc<x.c+x.w&&x.c<cc+w&&rr<x.r+x.h&&x.r<rr+h);
   let o0=null;
   times.forEach((t,i)=>{ if(!o0) o0=EXT_PLACE.tot(t); const o=LINE?o0:EXT_PLACE.tot(t), DM=dims(i), w=DM[0]; let h=DM[1], rg=range(h);
     const fits=cc=>{ if(LINE) return true; const x0=G.x0+cc*G.p+o[0], x1=x0+w*G.p-G.gut; return x0>=-1&&x1<=W+1; };
     let want=Math.round((W*rx-o[0]-G.x0)/G.p-ax*w); if(LINE&&prev) want=prev.c+prev.w+gap+(B.touch===false?Math.floor(rnd()*3):0); if(!fits(want)){ const lo=Math.ceil((-o[0]-G.x0)/G.p), hi=Math.floor((W-o[0]-G.x0+G.gut)/G.p)-w; if(hi>=lo) want=clamp(want,lo,hi); }
-    let c=want, r, joined=false;
+    let c=want, r, joined=false, rest=false;
     const startR=B.startRow!=null&&B.startRow!==''?clamp(atRow(Math.round(+B.startRow)-1,h),rg[0],rg[1]):Math.round((rg[0]+rg[1])/2);
-    if(B.touch!==false&&prev){ const pe=prev.c+prev.w+gap; if(LINE||(fits(pe)&&Math.abs(pe-want)<=slack)){ c=pe; joined=true; } }
+    if(B.touch!==false&&prev){ const pe=prev.c+prev.w+gap; if(LINE||(fits(pe)&&pe-want>=-slack)){ c=pe; joined=true; } }   /* with layer 1: stay joined while the line's end is still on screen */
     if(!prev){ r=startR; }
     else if(joined){
       // walk corner to corner by default: the next block steps up or down so its corner meets the last one's corner
@@ -4955,12 +4957,14 @@ function beatPlace(G,base0,times,prevSeed){
       for(let k=1;k<=G.R&&!done;k++){ for(const s2 of [-1,1]){ const rr=r+s2*k; if(rr<rg[0]||rr>rg[1]) continue; if(!clash(c,rr,w,h,t)){ r=rr; done=true; break; } } }
       for(let dc=1;dc<=slack&&!done;dc++){ for(const rr of [r,...Array.from({length:rg[1]-rg[0]+1},(_,k)=>rg[0]+k)]){ if(fits(c+dc)&&!clash(c+dc,rr,w,h,t)){ c=c+dc; r=rr; done=true; break; } } }
       // still no room on screen: the older blocks in the way leave as this one lands (no overlap, nothing pushed off screen)
-      if(!done) out.forEach(x=>{ if(live(t)(x)&&c<x.c+x.w&&x.c<c+w&&r<x.r+x.h&&x.r<r+h) x.__gone=t; }); }
+      if(!done){ const vic=out.filter(x=>live(t)(x)&&c<x.c+x.w&&x.c<c+w&&r<x.r+x.h&&x.r<r+h);
+        if(vic.some(x=>t-x.__t<MINLIFE)) rest=true;   /* the blocks in the way only just landed: this beat rests (no block) rather than making them blink off */
+        else vic.forEach(x=>{ x.__gone=t; }); } }
     const src=base0;
     const b=i===0?Object.assign({},base0,{c,r,w,h}):{id:-1-i,c,r,w,h,color:mixColor(i,rnd),text:'',fontSize:src.fontSize,textColor:'#fff',align:src.align,pad:src.pad,virtual:true,name:'',mo:0,order:0};
     if(i>0){ TEXT_KEYS.forEach(k=>b[k]=src[k]); b.textColor=contrast(b.color); }
     if(B.stay==='beats'){ const n=Math.max(1,Math.round(+B.stayN||8)); b.__gone=times[Math.min(times.length-1,i+n)]+(i+n>=times.length?n*6:0); }
-    out.push(b); prev=b; });
+    b.__t=t; if(rest) b.__rest=true; out.push(b); if(!rest) prev=b; });
   return out; }
 const L2CAM={main:{camSrc:'main',infX:100,infY:100},x:{camSrc:'main',infX:100,infY:0},fixed:{camSrc:'main',infX:0,infY:0},own:{camSrc:'own',infX:0,infY:0}};
 function l2CamCfg(){ const L=D.L2||{}; { const B=l2BB(); if(B) return {src:'main',ix:bbLine(B)?0:clamp(+B.speed||0,0,300)/100,iy:0,bb:true,line:bbLine(B)}; } return {src:L.camSrc||'main',ix:(L.infX!=null?+L.infX:100)/100,iy:(L.infY!=null?+L.infY:100)/100}; }
