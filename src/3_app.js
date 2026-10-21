@@ -75,7 +75,7 @@ const DEF={
         wander:1,climb:0,stackPct:20,stackGap:0,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,offX:0,offY:0,tracking:0,leading:0,kern:'metrics',caps:'none'},
   anim:{seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:true,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
-        axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,rzOn:false,rzPts:null,relOn:false,relAt:85,relSlow:36,tail:24,
+        axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,lock:{on:false,x:50,y:50},rzOn:false,rzPts:null,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.42,0,0.58,1],curvePh:null,sceneEase:{on:true,hd:null,holdH:null,onAt:null,holdAt:null,start:40,land:75,landOut:50,leaveIn:50,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zd:{on:false,pts:null},zoomOn:false,zm:{pts:null,focus:'follow',ax:50,ay:50,in:24,out:96,from:100,to:140,curve:[0.65,0,0.35,1],scaleAll:false,followRemap:true,back:false,backIn:180,backOut:228,backCurve:[0.65,0,0.35,1]},extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
   lab:{flicker:{on:false,frames:8,seed:3},
@@ -1796,7 +1796,10 @@ function rzPts(){
   const s=Math.round(+A.startF||0), v=clamp(+A.revealX||75,50,120); return [{f:s,v},{f:s+Math.max(12,Math.round(+A.lenF||72)),v}];
 }
 function ensureRzPts(){ const A=D.anim; if(!Array.isArray(A.rzPts)||A.rzPts.length<2) A.rzPts=rzPts(); return A.rzPts; }
-function rzKeys(){ const A=D.anim; if(!A.rzOn||A.revealWhen!=='arrive') return []; return trkKeys(rzPts(),[0.33,0,0.67,1],false); }
+/* 'Keep the newest block at a point': with the camera following sideways + up/down, the frame holds the newest
+   block exactly on a chosen point (centre by default) — it appears there and the camera carries the line through it */
+function lockPt(){ const A=D.anim, L=A.lock; return (L&&L.on&&A.mode==='camera'&&A.axis==='xy')?{x:clamp(+L.x,0,100)/100,y:clamp(+L.y,0,100)/100}:null; }
+function rzKeys(){ const A=D.anim; if(!A.rzOn||A.revealWhen!=='arrive'||lockPt()) return []; return trkKeys(rzPts(),[0.33,0,0.67,1],false); }
 function revealXAt(t){ const K=rzKeys(); return K.length?ev(K,t,+D.anim.revealX||75):(+D.anim.revealX||75); }
 /* draw a track's curve, points and handles; returns interactive bits [{x,y,kind,i,drag(fx,fy,sh),alt(e)}]
    X/Y: frame/value → px, F/V: px → frame/value (on the track's own clock) */
@@ -2136,7 +2139,7 @@ function computePlan(G){
 
   // camera targets
   const cx=G.W/2, cy=G.H/2; let tg=[], fin=null;
-  const cm=stop?'stop':(A.camMove||'follow');
+  const cm=stop?'stop':(lockPt()?'curve':(A.camMove||'follow'));   // keeping a block on a point: the camera passes exactly through each block's spot at its reveal
   if(camOn){
     // the camera follows the frontier: the block furthest along in the build direction so far
     const dirO=A.order==='rtl'?-1:1; let front=null; const ctr=[];
@@ -2147,16 +2150,17 @@ function computePlan(G){
     }
     const dirX=ctr[used-1][0]<ctr[0][0]?-1:1, dirY=ctr[used-1][1]<ctr[0][1]?-1:1;
     const qd=(v,dir)=>(A.snap&&(cm==='step'||cm==='stop'))?(dir>0?Math.ceil(v/G.p-1e-9):Math.floor(v/G.p+1e-9))*G.p:v;
-    let pv=[0,0];
+    let pv=[0,0]; const LK=lockPt();
     ctr.forEach(c=>{
       let ox=qd(cx-c[0],dirX), oy=A.axis==='xy'?qd(cy-c[1],dirY):0;
-      if(A.mode==='camera'&&A.lazy){ox=dirX>0?Math.min(pv[0],ox):Math.max(pv[0],ox);if(A.axis==='xy')oy=dirY>0?Math.min(pv[1],oy):Math.max(pv[1],oy);}
+      if(LK){ ox=G.W*LK.x-c[0]; oy=G.H*LK.y-c[1]; }
+      else if(A.mode==='camera'&&A.lazy){ox=dirX>0?Math.min(pv[0],ox):Math.max(pv[0],ox);if(A.axis==='xy')oy=dirY>0?Math.min(pv[1],oy):Math.max(pv[1],oy);}
       P.offs.push([ox,oy]); pv=[ox,oy];
     });
     tg=P.offs.slice();
     if(A.extendOn&&A.ending==='spot'&&!manual&&A.camMove!=='curve'){   // 'With the blocks' handles the landing itself ('Last block ends up'), end row only shapes the walk
       const mains=seq.filter(b=>!b.stack), lb=mains.length?mains[mains.length-1]:seq[seq.length-1], r=cellRect(G,lb.c,lb.r,lb.w,lb.h);
-      fin=[r3(G.W*clamp(+A.endX||0,-200,300)/100-(r.x+r.w/2)),A.axis==='xy'?r3(G.H*clamp(+A.endY||0,-200,300)/100-(r.y+r.h/2)):0];
+      const LKf=lockPt(); fin=LKf?[r3(G.W*LKf.x-(r.x+r.w/2)),r3(G.H*LKf.y-(r.y+r.h/2))]:[r3(G.W*clamp(+A.endX||0,-200,300)/100-(r.x+r.w/2)),A.axis==='xy'?r3(G.H*clamp(+A.endY||0,-200,300)/100-(r.y+r.h/2)):0];
       P.fin=fin; tg.push(fin);
     }
   }
@@ -2338,19 +2342,19 @@ function computePlan(G){
         /* CURVE CAMERA: no lag, no reaction. The newest block is kept on the reveal line, so the camera's speed is
            exactly the pace of the reveals — which is the scene easing curve. Corners are rounded with a light
            symmetric blur; it doesn't move until the blocks reach the line, and holds once the last one lands. */
-        const rzK=rzKeys(), line=G.W*(A.revealWhen==='arrive'?clamp(rzK.length?revealXAt(startF):(+A.revealX||75),50,120)/100:0.62), dirO=A.order==='rtl'?-1:1;
-        const lineX=dirO>0?line:G.W-line;
+        const LK=lockPt(), rzK=rzKeys(), line=G.W*(A.revealWhen==='arrive'?clamp(rzK.length?revealXAt(startF):(+A.revealX||75),50,120)/100:0.62), dirO=A.order==='rtl'?-1:1;
+        const lineX=LK?G.W*LK.x:(dirO>0?line:G.W-line);
         let frontLastB=null; let lastFrontX=null; for(let g=0;g<usedB;g++){ seq.forEach((b,i)=>{ if(gi[i]!==g||b.stack) return; const r=cellRect(G,b.c,b.r,b.w,b.h), cx2=r.x+r.w/2; if(lastFrontX==null||dirO*cx2>dirO*lastFrontX) lastFrontX=cx2; }); }
         const key=[]; let pvx=0,pvy=0, front=null;
         for(let g=0;g<used;g++){
           const mem=seq.filter((b,i)=>gi[i]===g), main=mem.filter(b=>!b.stack), use=main.length?main:mem;
           use.forEach(b=>{const r=cellRect(G,b.c,b.r,b.w,b.h),c=[r.x+r.w/2,r.y+r.h/2];if(!front||dirO*c[0]>dirO*front[0]+1e-6)front=c;});
-          let ox=lineX-front[0], oy=A.axis==='xy'?(cy-front[1]):0;
-          ox=dirO>0?Math.min(pvx,ox):Math.max(pvx,ox);      // only ever moves forward, never before the blocks reach the line
+          let ox=lineX-front[0], oy=A.axis==='xy'?((LK?G.H*LK.y:cy)-front[1]):0;
+          if(!LK) ox=dirO>0?Math.min(pvx,ox):Math.max(pvx,ox);      // only ever moves forward, never before the blocks reach the line
           // the line finishes building: the camera carries on until the last block sits at the settle point (centre by
           // default), so the last block pops in on rhythm inside the frame instead of late at the right-hand edge
           if(g===usedB-1) frontLastB=front.slice();
-          if(!fin&&g<usedB&&!BP){ const sl=G.W*clamp(A.endX!=null?+A.endX:50,-200,300)/100, sx=dirO>0?sl:G.W-sl;
+          if(!fin&&g<usedB&&!BP&&!LK){ const sl=G.W*clamp(A.endX!=null?+A.endX:50,-200,300)/100, sx=dirO>0?sl:G.W-sl;
             if(g===usedB-1){ const so=sx-front[0]; ox=dirO>0?Math.min(ox,so):Math.max(ox,so); }
             // past the reveal line (Right, Off right): the camera stops early so the end of the line runs on off the frame
             if(dirO>0?sx>lineX:sx<lineX){ const soF=sx-lastFrontX; ox=dirO>0?Math.max(ox,soF):Math.min(ox,soF); } }   // 'Last block ends up' (Off left … Right)
@@ -2392,13 +2396,15 @@ function computePlan(G){
         }
         /* beat mode: the camera is exactly on each block (at the reveal line) on its cue — between cues it glides
            (smooth, through every key) or hits (eases into each beat) */
-        if(BP&&keyAll.length>1){ const KK=[], camEnd=WO&&used>usedB&&BP.outEnd!=null?BP.outEnd:Tg[usedB-1]; keyAll.forEach(k=>{ if(k[0]>camEnd+0.5) return; const l=KK[KK.length-1]; if(l&&k[0]<=l[0]){ l[1]=k[1]; l[2]=k[2]; } else KK.push([k[0],k[1],k[2]]); });
+        if((BP||LK)&&keyAll.length>1){ const KK=[], camEnd=BP?(WO&&used>usedB&&BP.outEnd!=null?BP.outEnd:Tg[usedB-1]):(WO&&used>usedB?Tg[used-1]:Tg[usedB-1]);
+          const gapK=BP?BP.gap:Math.max(2,(Tg[Math.max(1,usedB-1)]-Tg[0])/Math.max(1,usedB-1)); keyAll.forEach(k=>{ if(k[0]>camEnd+0.5) return; const l=KK[KK.length-1]; if(l&&k[0]<=l[0]+(LK&&!BP?2:0)&&KK.length>1){ l[1]=k[1]; l[2]=k[2]; } else KK.push([k[0],k[1],k[2]]); });
           /* the end: with a walk-off the camera keeps its speed a moment and eases to a stop as the line runs off;
              without one, it eases the last block over to "Last block ends up" — never a jump on the last beat */
-          { const L1=KK[KK.length-1], L0=KK[KK.length-2]||L1, set=Math.max(8,Math.round(BP.gap*2));
-            if(WO&&used>usedB){ const v=(L1[1]-L0[1])/Math.max(1,L1[0]-L0[0]); KK.push([L1[0]+set,L1[1]+v*set*0.5,L1[2]]); }
+          { const L1=KK[KK.length-1], L0=KK[KK.length-2]||L1, set=Math.max(8,Math.round(gapK*2));
+            if(LK&&!(WO&&used>usedB)){ /* the last block stays on the point */ }
+            else if(WO&&used>usedB){ const v=(L1[1]-L0[1])/Math.max(1,L1[0]-L0[0]); KK.push([L1[0]+set,L1[1]+v*set*0.5,L1[2]]); }
             else if(frontLastB){ const sl=G.W*clamp(A.endX!=null?+A.endX:50,-200,300)/100, sx=dirO>0?sl:G.W-sl, so=sx-frontLastB[0]; if(Math.abs(so-L1[1])>1) KK.push([L1[0]+set,so,L1[2]]); } }
-          const n=KK.length, hit=D.timing.camMove==='hit';
+          const n=KK.length, hit=BP?D.timing.camMove==='hit':A.camMove==='step';
           const tan=d=>{ const m=[]; for(let i=0;i<n;i++){ if(i===0||i===n-1){ m.push(0); continue; } const a=(KK[i][d]-KK[i-1][d])/(KK[i][0]-KK[i-1][0]), b=(KK[i+1][d]-KK[i][d])/(KK[i+1][0]-KK[i][0]); m.push(a*b<=0?0:2/(1/a+1/b)); } return m; };
           const mx=tan(1), my=tan(2);
           for(let i=0;i<N;i++){ const t=a+i; if(t<=KK[0][0]){ xs[i]=KK[0][1]; ys[i]=KK[0][2]; continue; } if(t>=KK[n-1][0]){ xs[i]=KK[n-1][1]; ys[i]=KK[n-1][2]; continue; }
@@ -2411,7 +2417,7 @@ function computePlan(G){
         P.curveLine=lineX;
         const gsg=A.axis==='xy'?Math.max(1,(+A.motionBlurF||4)*.5):0.8, R=Math.ceil(3*gsg), kk=[]; let ks=0; for(let j=-R;j<=R;j++){const v=Math.exp(-j*j/(2*gsg*gsg));kk.push(v);ks+=v;}
         const sm=arr=>{const o=new Float64Array(N);for(let i=0;i<N;i++){let acc=0;for(let j=-R;j<=R;j++)acc+=arr[clamp(i+j,0,N-1)]*kk[j+R];o[i]=acc/ks;}return o;};
-        if(!BP){ const sx=sm(xs), sy=sm(ys); for(let i=0;i<N;i++){xs[i]=sx[i];ys[i]=sy[i];} }
+        if(!BP&&!LK){ const sx=sm(xs), sy=sm(ys); for(let i=0;i<N;i++){xs[i]=sx[i];ys[i]=sy[i];} }
       } else {
       // goal sampled at sub-frame resolution, smoothed causally, then blended to rest
       const tau=Math.max(0,+A.motionBlurF), sub=4, NS=(N-1)*sub+1, gx=new Float64Array(NS), gy=new Float64Array(NS);
@@ -2471,6 +2477,7 @@ function computePlan(G){
     P.cam=clip0(cam); if(cam.length) lastT=Math.max(lastT,cam[cam.length-1][0]);
     // reveal timing vs the camera: 'lead' = on schedule (blocks appear ahead, the camera follows them in);
     // 'arrive' = a block waits until the camera has brought it inside the reveal band of the frame, then appears
+    if(lockPt()&&P.cam.length){ /* camera passes each block's spot exactly at its reveal: keep the schedule */ } else
     if(cm==='curve'&&P.cam.length&&!(D.timing&&D.timing.sync)){
       /* curve camera: the camera leads, so each block appears while it's on screen — on its schedule if that's
          when it's visible, otherwise as soon as it enters (arrive: the reveal zone; ahead: the frame), before it leaves */
@@ -2485,7 +2492,8 @@ function computePlan(G){
         const r=cellRect(G,b.c,b.r,b.w,b.h), px=r.x+r.w/2, py=r.y+r.h/2;
         // the camera carries each block onto the reveal line: it appears the frame it gets there
         // on its schedule if it's in the reveal zone then; otherwise the first frame the camera has it in the zone
-        const inZ=t=>{const q=scrAt(t,px,py), band=bandAt(t), xl=G.W*(1-band), xr=G.W*band;return q[0]>=xl&&q[0]<=xr*1.015+2&&q[1]>=yt&&q[1]<=yb;};
+        const LKr=lockPt(), inZ=LKr?(t=>{const q=scrAt(t,px,py), dirO=A.order==='rtl'?-1:1, lx=G.W*LKr.x, tol=Math.max(3,G.p*0.08); return (dirO>0?q[0]<=lx+tol:q[0]>=lx-tol)&&Math.abs(q[1]-G.H*LKr.y)<=Math.max(tol,r.h*0.5);})
+          :(t=>{const q=scrAt(t,px,py), band=bandAt(t), xl=G.W*(1-band), xr=G.W*band;return q[0]>=xl&&q[0]<=xr*1.015+2&&q[1]>=yt&&q[1]<=yb;});
         const lo=Math.max(startF,Math.round(prev)), sched=Math.max(lo,P.T[i]);
         let t=Math.max(lo,Math.min(sched,tMax));   // on its schedule (the build's last one right at the end), if it's in the zone then
         if(!inZ(t)){ let found=null; for(let k=walk?t:lo;k<=tMax;k++){ if(inZ(k)){found=k;break;} } if(found!=null) t=found; }   // walking blocks never come in before their schedule
@@ -2494,7 +2502,7 @@ function computePlan(G){
     } else
     if(A.revealWhen==='arrive'&&P.cam.length){
       const bandY=A.axis==='xy'?clamp(+A.revealY||100,50,120)/100:1e6;  // sideways-only camera: height doesn't matter
-      let xl, xr; const yt=G.H*(1-bandY), yb=G.H*bandY; const setB=t=>{const band=clamp(revealXAt(t),50,120)/100; xl=G.W*(1-band); xr=G.W*band;}; setB(0);
+      let xl, xr; const yt=G.H*(1-bandY), yb=G.H*bandY; const LKb=lockPt(); const setB=t=>{ if(LKb){ xl=-1e9; xr=G.W*LKb.x+Math.max(3,G.p*0.08); return; } const band=clamp(revealXAt(t),50,120)/100; xl=G.W*(1-band); xr=G.W*band;}; setB(0);
       const scrAt=(t,px,py)=>{const off=ev(P.cam,t,[0,0]),s=ev(P.zs,t,100)/100,pn=ev(P.pan,t,[0,0]);return [G.W/2+s*(px+off[0]-G.W/2)+pn[0],G.H/2+s*(py+off[1]-G.H/2)+pn[1]];};
       const tMax=WO?endF-1:Math.min(endF-1,Math.floor(W(L-Math.max(1,tr0))));   // a delayed reveal still finishes by the scene end
       let prev=-1e9; const T0=P.T.slice();
@@ -2976,7 +2984,7 @@ function aiState(){
   return {step:STEPS[U.step].id, playhead:U.t, inAfterEffects:inAE,
     comp:D.comp, grid:D.grid, look:D.look,
     blocks:{inLayout:D.blocks.length, animated:P.seq?P.seq.length:0, sizes:[...new Set(D.blocks.map(b=>b.w+'x'+b.h))].slice(0,6), colours:[...new Set(D.blocks.map(b=>b.color))].slice(0,6)},
-    anim:pick(A,['mode','order','startF','lenF','toEnd','countMode','pace','total','trans','appear','motion','camMove','axis','sceneCurve','revealWhen','revealX','relOn','relAt','relSlow','extendOn','extendMode','ending','zoomOn','lazy','smooth','motionBlurF','settle']),
+    anim:pick(A,['mode','order','startF','lenF','toEnd','countMode','pace','total','trans','appear','motion','camMove','axis','sceneCurve','revealWhen','revealX','lock','relOn','relAt','relSlow','extendOn','extendMode','ending','zoomOn','lazy','smooth','motionBlurF','settle']),
     scene:{startF:P.startF,endF:P.startF+P.L,previewEnd:P.end,firstReveal:P.T&&P.T[0],lastReveal:P.T&&P.T[P.T.length-1],cameraLetGoAt:P.relT},
     exit:D.exit, fill:{on:D.fill.on,density:D.fill.density,font:D.fill.family+' '+D.fill.style,anim:D.fill.anim}, num:D.num, trans:{in:pick(D.trans.in,['on','mode','start','dur']),out:pick(D.trans.out,['on','mode','start','dur','atEnd'])},
     lab:Object.keys(D.lab||{}).filter(k=>D.lab[k].on), timing:{cues:timingCues().length,sync:D.timing.sync,media:D.timing.media},
@@ -4314,7 +4322,11 @@ function handlesFor(G,b){
 function drawOverlays(G,A){
   const sc=V.sc, tool=U.tool, live=!!(A&&A.live), s=live?A.s:1, bo=live?A.off:[0,0];
   // reveal zone (camera modes, 'when the camera arrives')
-  if(STEPS[U.step].id==='animate'&&(D.anim.mode==='camera'||D.anim.mode==='push')&&D.anim.revealWhen==='arrive'){
+  const LKo=STEPS[U.step].id==='animate'?lockPt():null;
+  if(LKo){ const x=G.W*LKo.x, y=G.H*LKo.y, k=22/sc; ctx.save(); ctx.lineWidth=1.5/sc; ctx.strokeStyle='rgba(43,217,143,.9)'; ctx.setLineDash([5/sc,4/sc]);
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,G.H); ctx.moveTo(0,y); ctx.lineTo(G.W,y); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(x,y,k*0.45,0,Math.PI*2); ctx.stroke(); ctx.fillStyle='rgba(43,217,143,.95)'; ctx.font=`${11/sc}px sans-serif`; ctx.fillText('newest block here',x+k*0.6,y-k*0.6); ctx.restore(); }
+  else if(STEPS[U.step].id==='animate'&&(D.anim.mode==='camera'||D.anim.mode==='push')&&D.anim.revealWhen==='arrive'){
     const tc=live&&D.anim.rzOn?plan(G).toContent(A.t):null, bx=clamp(tc!=null?revealXAt(tc):(+D.anim.revealX||70),50,120)/100, by=D.anim.axis==='xy'?clamp(+D.anim.revealY||100,50,120)/100:1;
     ctx.save(); ctx.setLineDash([6/sc,5/sc]); ctx.lineWidth=1.25/sc; ctx.strokeStyle='rgba(43,217,143,.75)';
     ctx.strokeRect(G.W*(1-bx),G.H*(1-by),G.W*(2*bx-1),G.H*(2*by-1));
@@ -5064,6 +5076,7 @@ function syncInputs(force){
   syncIconSet(); try{renderTransPresets();}catch(e){}
   {const ub=$('#btnUnskip'); if(ub) ub.hidden=!((D.anim.skip&&D.anim.skip.length)||D.anim.cutAt!=null);}
   $$('#afterSeg [data-after]').forEach(b=>b.classList.toggle('on',D.exit.on?b.dataset.after===D.exit.mode:b.dataset.after==='stay'));
+  $$('#lockPreset [data-lk]').forEach(b=>{const v=b.dataset.lk.split(',').map(Number), L=D.anim.lock||{}; b.classList.toggle('on',+L.x===v[0]&&+L.y===v[1]);});
   $$('#zonePreset [data-z]').forEach(b=>b.classList.toggle('on',+b.dataset.z===+D.anim.revealX));
   $$('#endPreset [data-ex]').forEach(b=>b.classList.toggle('on',+b.dataset.ex===+D.anim.endX));
   $$('[data-layer]').forEach(el=>{const v=getP(el.dataset.layer);el.classList.toggle('off',!v||v==='none');});
@@ -5410,6 +5423,7 @@ document.addEventListener('click',e=>{
   fillCache.clear(); syncInputs(true); refresh();
 },true);
 ($('#camPreset')||{addEventListener(){}}).addEventListener('click',e=>{const b=e.target.closest('[data-p]');if(!b)return;const p=b.dataset.p.split(',').map(Number);pushHist(true);Object.assign(D.anim,{smooth:p[0],motionBlurF:p[1],settle:p[2]});syncInputs();refresh();});
+($('#lockPreset')||{addEventListener(){}}).addEventListener('click',e=>{const b=e.target.closest('[data-lk]');if(!b)return;pushHist(true);const v=b.dataset.lk.split(',').map(Number);D.anim.lock=Object.assign({},D.anim.lock,{on:true,x:v[0],y:v[1]});planCache.k='';syncInputs();refresh();});
 ($('#zonePreset')||{addEventListener(){}}).addEventListener('click',e=>{const b=e.target.closest('[data-z]');if(!b)return;pushHist(true);D.anim.revealX=+b.dataset.z;syncInputs();refresh();});
 $('#endPreset').addEventListener('click',e=>{const b=e.target.closest('[data-ex]');if(!b)return;pushHist(true);D.anim.endX=+b.dataset.ex;syncInputs();refresh();});
 $('#btnResetAnim').onclick=()=>{pushHist(true);const keepZoom=D.anim.zoom;D.anim=clone(DEF.anim);U.t=null;syncInputs(true);refresh();toast('Animation settings reset','',true);};
@@ -5918,6 +5932,8 @@ const HELP={
   'anim.ease':'How gentle the starts and stops are.','anim.stepEvery':'In stop-motion, how many frames each pose holds (2 = “on twos”).',
   'anim.appear':'How each block comes on: cut, fade, wipe from the left, or scale up.',
   'anim.axis':'Follow blocks sideways only, or up and down too.',
+  'anim.lock.on':'The camera keeps the newest block exactly on this point of the frame (centre by default). Each block appears there and the camera carries the line through it — up and down as well as sideways.',
+  'anim.lock.x':'Across the frame: 0 = left edge, 50 = centre, 100 = right edge.','anim.lock.y':'Down the frame: 0 = top, 50 = centre, 100 = bottom.',
   'anim.smooth':'How many blocks the camera trails behind the newest one (at least 1, so it never moves ahead of what has appeared). Larger = calmer, floatier camera.',
   'anim.motionBlurF':'Softens changes in camera speed (in frames). Higher = rounder, smoother acceleration; 0 = follows the pace exactly.',
   'anim.revealWhen':'Ahead of the camera: blocks appear on their schedule and the camera follows them in (they can pop in off to the side or off screen). When the camera arrives: each block waits until the camera has carried it into the reveal zone, so you always see it appear.',
