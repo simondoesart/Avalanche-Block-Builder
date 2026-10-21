@@ -964,8 +964,21 @@ function GB_build(d){
     if(fillLayers.length||gapLayers.length) out.push((fillLayers.length+gapLayers.length)+" content layers");
     if(d.lab){var nl=GB_labWorld(blockC,d.lab,blocks,blockLayers,fps,org,main); if(nl) out.push(nl+" lab layers");}
     if(d.rules && d.rules.top){rulesC=blockC; rulesL=GB_mkRules(blockC,d.rules); if(rulesL){locks.push(rulesL);out.push("column rules on top");}}
+    /* per-block order with the column rules (either layer): over rules that sit on top, or under rules that sit below */
+    if(rulesL){ try{ var allG=mainGroups.concat(l2groups), nR=0, skipped=0;
+      for(var rg=0;rg<allG.length;rg++){ var gz=allG[rg].b&&allG[rg].b.rz; if(!gz) continue; var gL=allG[rg].grp, td=gL.slice(4).reverse().concat([gL[2],gL[1],gL[3],gL[0]]), bu=[gL[0],gL[3],gL[1],gL[2]].concat(gL.slice(4));
+        if(gz=="above"&&d.rules.top){ for(var a1=0;a1<td.length;a1++){ if(td[a1]) try{ td[a1].moveBefore(rulesL); }catch(eA){} } nR++; }
+        else if(gz=="below"&&!d.rules.top){ if(rulesL.containingComp===blockC){ for(var b1=0;b1<bu.length;b1++){ if(bu[b1]) try{ bu[b1].moveAfter(rulesL); }catch(eB){} } nR++; } else skipped++; } }
+      if(nR) out.push(nR+" block"+(nR==1?"":"s")+" reordered with the rules"); if(skipped) out.push("(⚠ "+skipped+" block(s) set behind the rules: the rules are in the grid precomp — turn off the grid precomp to layer blocks under them)");
+    }catch(eRz){} }
     if(rulesL&&d.rules.op&&d.rules.op.length){try{GB_keys(GB_xf(rulesL).property("ADBE Opacity"),d.rules.op,fps);}catch(eRo){}}
     var camRefR=rulesC===main?camRefMain:camRefPre;
+    /* rules that glide while a choppy camera steps: a hidden null carries the smooth path, and the rules follow it */
+    var smoothRef=null;
+    if(rulesL&&d.rules&&d.rules.smooth&&d.rules.smooth.length&&A){ try{ var sn=GB_null(main,"GB · Rules camera",cam3), CXs=main.width/2, CYs=main.height/2, sk=[];
+        for(var si=0;si<d.rules.smooth.length;si++){ var s0=d.rules.smooth[si]; sk.push([s0[0], cam3?[CXs-s0[1][0],CYs-s0[1][1],0]:(A.zoom?[s0[1][0]-A.zoom.cx,s0[1][1]-A.zoom.cy]:[s0[1][0],s0[1][1]]), "l"]); }
+        GB_keys(GB_xf(sn).property("ADBE Position"),sk,fps); sn.comment="GridBlocks:null"; shy.push(sn); try{ sn.enabled=false; }catch(eSe){}
+        smoothRef=rulesC===main?'thisComp.layer("GB · Rules camera")':'comp("'+GB_esc(main.name)+'").layer("GB · Rules camera")'; camRefR=smoothRef; out.push("rules glide under the choppy camera"); }catch(eSm){} }
 
     var cam=null, wrap=null, zoom=null, conv=null;
     if(cam3){
@@ -1072,7 +1085,7 @@ function GB_build(d){
         if(A.wrap && cam){
           var rw2=GB_null(main,"GB · Rules Wrap"); rw2.comment="GridBlocks:null"; shy.push(rw2);
           rulesL.parent=rw2; if(zoom) rw2.parent=zoom;
-          GB_xf(rw2).property("ADBE Position").expression='var o=thisComp.layer("'+A.camName+'").transform.position;\n'+
+          GB_xf(rw2).property("ADBE Position").expression='var o=thisComp.layer("'+(smoothRef?'GB · Rules camera':A.camName)+'").transform.position;\n'+
             'var cx='+A.wrap.cx+', cy='+A.wrap.cy+', px='+d.rules.period+', py='+A.wrap.py+';\n'+
             'var ox=o[0]+cx, oy=o[1]+cy;\nvar x=ox-px*Math.floor(ox/px);\nvar y=py>0?oy-py*Math.floor(oy/py):oy;\n[x-cx,y-cy]';
           locks.push(rw2);
