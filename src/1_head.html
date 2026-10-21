@@ -568,6 +568,7 @@ body.nohelp .qm{display:none}
   .step-body{overflow:visible}
   .logo span,.hide-sm{display:none}
 }
+  body.l2bb [data-nobb]{display:none!important} body:not(.l2bb) [data-bbonly]{display:none!important}
   .anc9{display:grid;grid-template-columns:repeat(3,22px);grid-template-rows:repeat(3,22px);gap:3px;padding:6px;border:1px solid var(--line,#333);border-radius:6px;width:max-content}
   .anc9 button{width:22px;height:22px;padding:0;border-radius:4px;border:1px solid #444;background:transparent;position:relative;cursor:pointer}
   .anc9 button::after{content:'';position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:#666}
@@ -764,7 +765,8 @@ body.nohelp .qm{display:none}
         <div class="pane" data-pane="layout">
           <div class="group" data-ctx="blocks">
             <div class="group-h">Generate<span class="tag" id="genTag"></span></div>
-            <details class="sub" data-sub="gen-size" open><summary>Block size <span class="note" id="pickPx"></span></summary><div class="subbody">
+            <div class="note" data-bbonly>Layer 2 beat blocks build themselves, one per beat — set them in <b>Animate › Layer 2 · beat blocks</b>. <b>Walk › Size mix</b> below still sets their sizes.</div>
+            <details class="sub" data-sub="gen-size" data-nobb open><summary>Block size <span class="note" id="pickPx"></span></summary><div class="subbody">
             <div class="pick-label"><span class="big" id="pickBig">3 × 1</span></div>
             <div class="picker" id="picker"></div>
             <div class="field2">
@@ -775,7 +777,7 @@ body.nohelp .qm{display:none}
             
             </div></details>
             <div class="note songnote" data-songonly>♪ Song on — one block per beat (set the beats in <b>Song</b>).</div>
-            <details class="sub" data-sub="gen-count" data-nosong open><summary>How many <span class="note">count &amp; ending</span></summary><div class="subbody">
+            <details class="sub" data-sub="gen-count" data-nobb data-nosong open><summary>How many <span class="note">count &amp; ending</span></summary><div class="subbody">
               
               <div class="field"><span class="lbl scrub" title="How long the On phase (the build) takes on the blocks' own clock">On (build)</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.lenF" min="2" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
               <div class="field stack"><span class="lbl">Number of blocks</span><div class="seg" data-seg="anim.countMode"><button data-v="fill">Fill the length</button><button data-v="exact">Exact number</button></div></div>
@@ -801,7 +803,7 @@ body.nohelp .qm{display:none}
             
             <details class="sub" data-sub="gen-walk" open><summary>Walk <span class="note">how the line moves</span></summary><div class="subbody">
               
-              <details class="sub" data-sub="walk-details"><summary>Details <span class="note">gap, wander, stairs, jumps, pairs</span></summary><div class="subbody">
+              <details class="sub" data-sub="walk-details" data-nobb><summary>Details <span class="note">gap, wander, stairs, jumps, pairs</span></summary><div class="subbody">
               <div class="field2">
                 <div class="field"><span class="lbl scrub">Gap</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.gap" min="0" max="40" step="1"><button data-d="1">+</button></div></div>
                 <div class="field"><span class="lbl scrub">Wander</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.wander" min="0" max="4" step="1"><button data-d="1">+</button></div></div>
@@ -839,7 +841,7 @@ body.nohelp .qm{display:none}
                   <div class="field"><span class="lbl scrub" title="This share of blocks keeps the base block size">Keep base size</span><div class="num"><input type="number" data-bind="rand.sizeVar.keep" min="0" max="100" step="5"><span class="unit">%</span></div></div>
                   <div class="seg" id="sizePreset"><button data-sv='{"mode":"free","wMin":1,"wMax":6,"hMin":1,"hMax":4}'>Anything</button><button data-sv='{"mode":"free","wMin":1,"wMax":2,"hMin":1,"hMax":2}'>Small bits</button><button data-sv='{"mode":"free","wMin":3,"wMax":8,"hMin":2,"hMax":5}'>Big panels</button><button data-sv='{"mode":"list","list":"1x1, 2x2, 4x2, 6x3, 2x4"}'>Editorial</button><button data-sv='{"mode":"shape","min":1,"max":3,"aMin":1.7,"aMax":1.8}'>All 16:9</button></div>
                 </div></div></details>
-              <details class="sub" data-sub="hide-blocks"><summary>Hide blocks <span class="note">gaps in the line</span></summary><div class="subbody">
+              <details class="sub" data-sub="hide-blocks" data-nobb><summary>Hide blocks <span class="note">gaps in the line</span></summary><div class="subbody">
                 <div class="field"><span class="lbl scrub">Randomly hide</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.hidePct" min="0" max="95" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
                 <div class="row-btns"><button class="btn ghost" id="hideShuffle">Shuffle which</button><button class="btn ghost" id="hideClear">Show all</button></div>
                 <div class="note">Hidden blocks keep their place in the walk — the line and camera still pass through them. To hide one by hand, select it and switch off <b>Shown</b>.</div>
@@ -891,7 +893,7 @@ body.nohelp .qm{display:none}
             <div class="row-btns"><button class="btn" id="btnPalAdd">+ Add main colour</button><button class="btn ghost" id="btnPalReset">Reset</button></div>
             <div class="note">These colours appear in every colour picker. Alt-click a colour here to remove it.</div>
           </div>
-          <div class="group" data-adv>
+          <div class="group" data-adv data-nobb>
             <div class="group-h">Fill the frame (classic)<span class="tag" id="sizeTag"></span></div>
             <div class="seg tall" data-seg="rand.pattern">
               <button data-v="walk" title="Each block sits next to the last one, same row or one up/down"><svg width="22" height="14" viewBox="0 0 22 14" fill="currentColor"><rect y="6" width="6" height="4"/><rect x="6.5" y="2" width="6" height="4"/><rect x="13" y="6" width="6" height="4"/><rect x="6.5" y="10" width="6" height="4" opacity=".55"/></svg>Walk</button>
@@ -1282,12 +1284,12 @@ body.nohelp .qm{display:none}
           </div>
         </div>
         <div class="pane" data-pane="animate">
-          <div class="group" data-nosong id="walkPresets">
+          <div class="group" data-nosong id="walkPresets" data-nobb>
             <div class="group-h">Walk presets <span class="tag" id="wpTag"></span></div>
             <div class="note" id="wpNote"></div>
             <div class="wpgrid" id="wpGrid"></div>
           </div>
-          <div class="group">
+          <div class="group" data-nobb>
             <div class="group-h">Style<button class="btn ghost secreset" id="btnResetAnim" title="Put every animation setting back to its default (⌘Z to undo)">↺ Reset all animation</button></div>
             <div class="modecards" data-seg="anim.mode">
               <button class="modecard" data-v="static"><svg width="34" height="20" viewBox="0 0 34 20" fill="none" stroke="currentColor"><rect x=".5" y=".5" width="33" height="19" rx="2"/><rect x="5" y="11" width="8" height="4" fill="currentColor" stroke="none"/><rect x="14" y="6" width="8" height="4" fill="currentColor" stroke="none"/></svg><div class="t">Static</div><div class="d">No animation. Just the layout.</div></button>
@@ -1303,6 +1305,12 @@ body.nohelp .qm{display:none}
             <details class="sub" data-sub="bb-beats" open><summary>Beats &amp; speed <span class="note">when, and how fast it travels</span></summary><div class="subbody">
               <div class="field stack"><span class="lbl">Which beats</span><div class="seg"><button data-bbset="beats:1">Every beat</button><button data-bbset="beats:2">Every 2nd</button><button data-bbset="beats:4">Every 4th</button><button data-bbset="beats:big">Big hits</button></div></div>
               <div class="field stack"><span class="lbl">Layer 2 camera</span><div class="seg"><button data-bbset="cam:line" title="The camera keeps pace with the line: every block lands on the point, joined to the last — it travels as fast as the blocks build">Follows the line</button><button data-bbset="cam:l1" title="Travels with layer 1's camera at a set speed — blocks join when they can and start a new line when they can't">With layer 1</button></div></div>
+              <div class="field stack"><span class="lbl">Camera follows</span><div class="seg"><button data-bbset="vf:0" title="Layer 2 never moves up or down — the line stays inside the rows">Sideways</button><button data-bbset="vf:1" title="The camera also follows the line up and down. With Mostly up / Mostly down the line can climb past the frame and the camera goes with it">Sideways + up/down</button></div></div>
+              <div data-show="L2.bb.vf=true" style="display:grid;gap:8px">
+                <div class="field2"><div class="field"><span class="lbl scrub" title="Where the newest block sits, top to bottom: 0 = top, 50 = middle, 100 = bottom">Down</span><div class="num"><input type="number" data-bind="L2.bb.ry" min="0" max="100" step="1"><span class="unit">%</span></div></div>
+                  <div class="field"><span class="lbl scrub" title="0 = full up/down move · 100 = only moves when a block would land off screen">Vertical damping</span><div class="num"><input type="number" data-bind="L2.bb.vDamp" min="0" max="100" step="5"><span class="unit">%</span></div></div></div>
+                <div class="note">Set <b>The walk › Direction</b> to Mostly up or Mostly down to let the line climb past the frame.</div>
+              </div>
               <div class="field" data-show="L2.bb.cam=line"><span class="lbl scrub" title="0 = steps exactly from block to block · higher = a smoother, steadier glide (blocks always land fully on screen)">Smoothness</span><div class="num"><input type="number" data-bind="L2.bb.smooth" min="0" max="48" step="1"><span class="unit">fr</span></div></div>
               <div class="note" data-show="L2.bb.cam=line">Slower travel: fewer beats (Every 2nd / Big hits) or narrower blocks.</div>
               <div class="field stack" data-show="L2.bb.cam=l1"><span class="lbl">Speed <span class="note">with layer 1's camera</span></span><div class="seg"><button data-bbset="speed:100">Full</button><button data-bbset="speed:75">75%</button><button data-bbset="speed:50">Half</button><button data-bbset="speed:25">Slow</button><button data-bbset="speed:0">Still</button></div>
@@ -1408,7 +1416,7 @@ body.nohelp .qm{display:none}
               <div class="note">These change how layer 2 moves on screen, never when its blocks appear. With "Layer 2 camera", any layer 1 share slides blocks away from the reveal point — keep it small for a parallax drift.</div>
             </div></details>
           </div>
-          <div class="group" data-ctx="camera" data-show="anim.mode=camera|push">
+          <div class="group" data-ctx="camera" data-nobb data-show="anim.mode=camera|push">
             <div class="group-h">Camera<span id="camHead" class="note" style="margin-left:6px;text-transform:none;letter-spacing:0"></span></div>
             <details class="sub" data-sub="cam-move" open><summary>How it moves <span class="note">movement, feel</span></summary><div class="subbody">
               <div class="field stack" data-show="anim.motion=smooth"><span class="lbl">Movement</span><div class="seg" data-seg="anim.camMove"><button data-v="curve" title="Moves with the blocks; its speed over the scene comes from the Scene curve">With the blocks</button><button data-v="step">Step &amp; settle</button><button data-v="chop" title="Follows the blocks, but in jerky steps — a stop-motion camera">Choppy</button></div></div>
@@ -1553,7 +1561,7 @@ body.nohelp .qm{display:none}
             <div data-show="anim.sceneEase.on=false"><div class="curve" data-curve="anim.sceneCurve" data-ymin="0" data-ymax="1" data-title="Time remap · x = scene time, y = how far through the blocks (On · Hold · Off). Flat = holds, steep = fast"></div></div>
             <div data-adv class="field stack"><span class="lbl">Motion</span><div class="seg" data-seg="anim.motion"><button data-v="smooth">Smooth</button><button data-v="stop">Stop-motion</button></div></div><div class="field" data-show="anim.motion=stop"><span class="lbl scrub">Hold</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.stepEvery" min="1" max="60" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
           </div>
-          <div class="group" data-ctx="camera" data-show="anim.mode=camera|push">
+          <div class="group" data-ctx="camera" data-nobb data-show="anim.mode=camera|push">
             <div class="group-h">Camera timing</div>
             <div class="note" data-show="exit.mode=walk">With Walk off, the camera follows the walking line for <b>Camera follows for</b>, then lets it run off.</div>
             
