@@ -741,6 +741,13 @@ function GB_mediaLayer(comp,B,b,m,root,folder,main,fps){
       L.outPoint=comp.duration;
     }catch(eR){}
   } else { try{ L.outPoint=comp.duration; }catch(eO){} }
+  /* how the media comes on: fade / scale in / wipe, starting with the clip */
+  try{ var t0=m.startF/fps, t1=(m.startF+Math.max(1,m.inLen||12))/fps, op=xf.property("ADBE Opacity");
+    if(m.inMode=="fade"||m.inMode=="scale"){ op.setValueAtTime(t0,0); op.setValueAtTime(t1,m.opacity); }
+    if(m.inMode=="scale"){ var scp=xf.property("ADBE Scale"), sv=scp.value; scp.setValueAtTime(t0,[sv[0]*1.25,sv[1]*1.25]); scp.setValueAtTime(t1,sv); }
+    if(m.inMode=="wipe"){ var lw=L.property("ADBE Effect Parade").addProperty("ADBE Linear Wipe"); lw.property(2).setValue(270); lw.property(1).setValueAtTime(t0,100); lw.property(1).setValueAtTime(t1,0); }
+    if(m.inMode&&m.inMode!="block"){ var ease=new KeyframeEase(0,60); try{ for(var pk=1;pk<=op.numKeys;pk++) op.setTemporalEaseAtKey(pk,[ease],[ease]); }catch(eE){} }
+  }catch(eIn){}
   if(!m.audio){ try{ L.audioEnabled=false; }catch(eA){} }
   var ok=false; try{ L.setTrackMatte(B,TrackMatteType.ALPHA); ok=true; }catch(eM){ ok=false; }
   return {L:L,ok:ok};
@@ -905,10 +912,10 @@ function GB_build(d){
     if(org.headers!==false&&d.echoes.length) GB_header(blockC,"ECHOES ("+d.echoes.length+")",hdrF);
     }
     var nEcho=blocks.length;
-    for(i=0;i<d.blocks.length;i++){
-      var b=d.blocks[i];
-      var B=GB_box(blockC,b.name,b.x,b.y,b.bw,b.bh,b.color,b.outline?b.outline.w:0);
-      B.comment="GridBlocks:block|order="+b.order+"|c="+b.c+"|r="+b.r+"|w="+b.w+"|h="+b.h;
+    /* one block + everything inside it (media, text, number, content), trimmed and colour-grouped */
+    function addBlock(b,i,pre,lab2){
+      var B=GB_box(blockC,(pre||"")+b.name,b.x,b.y,b.bw,b.bh,b.color,b.outline?b.outline.w:0);
+      B.comment="GridBlocks:block|order="+b.order+"|c="+b.c+"|r="+b.r+"|w="+b.w+"|h="+b.h+(pre?"|layer=2":"");
       B.label=1;
       var ML=null; if(b.media){ var mr=null; try{ mr=GB_mediaLayer(blockC,B,b,b.media,d.mediaRoot,mediaF||folder,main,fps); }catch(eMd){ mr=null; }
         if(mr){ ML=mr.L; mediaL.push({L:ML,B:B,ok:mr.ok}); fillLayers.push(ML); } }
@@ -921,14 +928,29 @@ function GB_build(d){
       var f0=fillLayers.length; GB_fillItems(blockC,b.fill,B,fillLayers);
       if(b.tOut!=null){trimOut(B,b.tOut); if(T) trimOut(T,b.tOut); if(NT) trimOut(NT,b.tOut); for(var fb=f0;fb<fillLayers.length;fb++) trimOut(fillLayers[fb],b.tOut);}
       // one colour per block group (alternating), so each block and everything inside it reads as a band in the timeline
-      var grp=[B,T,NT,ML]; for(var fg=f0;fg<fillLayers.length;fg++) grp.push(fillLayers[fg]); GB_labelAll(grp,i%2?11:1);
+      var grp=[B,T,NT,ML]; for(var fg=f0;fg<fillLayers.length;fg++) grp.push(fillLayers[fg]); GB_labelAll(grp,lab2?(i%2?9:14):(i%2?11:1));
+      return {B:B,grp:grp,b:b};
     }
+    var firstMainB=null;
+    for(i=0;i<d.blocks.length;i++){ var gr0=addBlock(d.blocks[i],i,"",false); if(!firstMainB) firstMainB=gr0.B; }
     if(org.headers!==false&&d.blocks.length) GB_header(blockC,"BLOCKS ("+d.blocks.length+")",hdrF);
     if(d.blocks.length) out.push(d.blocks.length+(d.blocks.length==1?" block":" blocks"));
     if(nEcho) out.push(nEcho+(nEcho==1?" echo":" echoes"));
     var gapLayers=[];
     if(d.gaps){GB_fillItems(blockC,d.gaps,null,gapLayers); for(i=0;i<gapLayers.length;i++){gapLayers[i].name="Gap · "+gapLayers[i].name; gapLayers[i].label=2; blocks.push({L:gapLayers[i],T:null,b:{keys:null}});}
       if(org.headers!==false&&gapLayers.length) GB_header(blockC,"BETWEEN BLOCKS ("+gapLayers.length+")",hdrF);}
+    /* ---- LAYER 2: a second walk, in front of or behind the main one (per block) ---- */
+    var l2groups=[];
+    if(d.layer2&&d.layer2.blocks&&d.layer2.blocks.length){
+      var L2=d.layer2, nFront=0;
+      if(L2.echoes){ for(i=0;i<L2.echoes.length;i++){ var e2=L2.echoes[i], E2=GB_echoBox(blockC,e2); E2.label=4; E2.name="L2 · "+E2.name; blocks.push({L:E2,T:null,b:{keys:e2.keys}}); if(e2.tIn!=null) trimTo(E2,e2.tIn); if(e2.tOut!=null) trimOut(E2,e2.tOut); if(firstMainB&&L2.z=="behind"){ try{E2.moveAfter(firstMainB);}catch(eE2){} } } }
+      for(i=0;i<L2.blocks.length;i++){ var g2=addBlock(L2.blocks[i],i,"L2 · ",true); l2groups.push(g2);
+        var behind=(L2.blocks[i].zz||L2.z)=="behind";
+        if(behind&&firstMainB){ var gg=g2.grp, mo=[gg[0],gg[3],gg[1],gg[2]].concat(gg.slice(4)); for(var gk=0;gk<mo.length;gk++){ var lyr=mo[gk]; if(!lyr) continue; try{ lyr.moveAfter(firstMainB); }catch(eMv){} } }   // bottom-up (block, media, text, number, content) keeps the group's order
+        else nFront++; }
+      if(org.headers!==false&&nFront) GB_header(blockC,"LAYER 2 · IN FRONT ("+nFront+")",hdrF);
+      out.push(L2.blocks.length+" layer-2 blocks");
+    }
     if(fillLayers.length||gapLayers.length) out.push((fillLayers.length+gapLayers.length)+" content layers");
     if(d.lab){var nl=GB_labWorld(blockC,d.lab,blocks,blockLayers,fps,org,main); if(nl) out.push(nl+" lab layers");}
     if(d.rules && d.rules.top){rulesC=blockC; rulesL=GB_mkRules(blockC,d.rules); if(rulesL){locks.push(rulesL);out.push("column rules on top");}}
@@ -1095,6 +1117,16 @@ function GB_build(d){
         try{var m=org.markers[i], mv=new MarkerValue("GB · "+m[1]); if(m[2]) mv.duration=m[2]/fps; main.markerProperty.setValueAtTime(Math.max(0,m[0]/fps),mv);}catch(eMk){}
       }
     }
+    /* layer-2 block transforms: position / rotation / scale on top of the animation (z = towards / away from camera) */
+    for(i=0;i<l2groups.length;i++){ var xb=l2groups[i].b, XF=xb.xf, BL=l2groups[i].B; if(!XF) continue;
+      try{ var td=BL.threeDLayer, Zc=1.3889*main.width, kz=td?1:Zc/Math.max(50,Zc+(+XF.z||0)), ps=GB_xf(BL).property("ADBE Position"), pv=ps.value;
+        if(ps.numKeys===0){ if(td) ps.setValue([pv[0]+(+XF.x||0),pv[1]+(+XF.y||0),(pv[2]||0)+(+XF.z||0)]); else ps.setValue([pv[0]+(+XF.x||0),pv[1]+(+XF.y||0)]); }
+        else ps.expression='value+['+(+XF.x||0)+','+(+XF.y||0)+(td?','+(+XF.z||0):'')+']';
+        if(+XF.rz) GB_xf(BL).property("ADBE Rotate Z").setValue(+XF.rz);
+        if(td){ if(+XF.rx) GB_xf(BL).property("ADBE Rotate X").setValue(+XF.rx); if(+XF.ry) GB_xf(BL).property("ADBE Rotate Y").setValue(+XF.ry); }
+        var f=(XF.s!=null?+XF.s:100)/100*kz;
+        if(Math.abs(f-1)>1e-4){ var sp=GB_xf(BL).property("ADBE Scale"); if(sp.numKeys>0) sp.expression='value*'+f+';'; else { var sv=sp.value; sp.setValue(td?[sv[0]*f,sv[1]*f,sv[2]*f]:[sv[0]*f,sv[1]*f]); } }
+      }catch(eXf){} }
     if(mediaL.length){ GB_mediaMattes(mediaL); out.push(mediaL.length+" media layer"+(mediaL.length>1?"s":"")); }
     if(gridPre||blockPre){var pn=[];if(gridPre)pn.push("grid");if(blockPre)pn.push("blocks");out.push("precomps: "+pn.join(", "));}
     if(d.lock){for(i=0;i<locks.length;i++){try{locks[i].locked=true;}catch(eL){}}}

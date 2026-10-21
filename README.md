@@ -462,3 +462,10 @@ Every point has bezier handles (like AE's graph editor). A two-handle curve open
 
 ### v3.60.2 — Show cues
 - **Show cues** checkbox in the bottom bar (next to Show order numbers), only there once you have cues: hides/shows the cue lines on the timeline, the Cues row and the ♪ beat pulse. Remembered between sessions.
+
+## v4.0 — Layer 2 (saved the previous version as v3.60/ and git tag v3.60.2)
+- **Main walk / Layer 2 tabs** in the top bar. Layer 2 is a second walk with every control the main walk has (Blocks, Motion, Content, Media, timeline) — switch tabs to edit either one. It starts as a corner-to-corner walk of bigger 4×2 blocks with content and media on, revealing on its own schedule; the camera always comes from the main walk.
+- Layer bar (on the Layer 2 tab): on/off, and whether layer 2 sits **Behind** or **In front of** the main walk.
+- Select a layer-2 block: **Layer 2 block** card — Depth order (Behind main / Layer default / In front), Position X/Y/Z, Rotation X/Y/Z, Scale. Its animate-on comes from layer 2's own Motion settings and its timing row (shift in/out) like any block.
+- Preview draws both layers in the right order (the other layer dimmed while editing in the Blocks step). After Effects builds layer 2's blocks as "L2 · …" groups (block, media, text, content) in front of or behind the main blocks, with the per-block position / rotation (X/Y in 3D with the camera rig) / scale applied.
+- Media **Comes on**: With the block / Fade in / Scale in / Wipe, plus length — preview + After Effects (opacity, scale keys or Linear Wipe), globally or per block.
