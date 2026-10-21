@@ -2834,7 +2834,7 @@ const DEF={
   bmedia:{on:false,kind:'video',asset:'sample',precomp:false,fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,
     loop:'loop',start:'reveal',delay:0,at:0,offset:0,audio:'mute',inMode:'block',inLen:12,target:'all',pick:[],dirOn:{up:true,down:true,flat:true},
     assign:'same',pool:[],dir:{up:'',down:'',flat:''},seed:1,per:{},assets:[]},
-  timing:{src:'file',compLayer:'',inAt:null,outAt:null,syncOut:true,camMove:'glide',walkOn:false,walkOnAt:null,outBeat:60,beats:[],markers:[],use:'beats',offset:0,sync:false,sens:1.3,minGap:4,media:null,video:true,videoOpacity:60,sound:true},
+  timing:{src:'file',compLayer:'',inAt:null,outAt:null,syncOut:true,camMove:'glide',walkOn:false,walkOnAt:null,outBeat:60,cut:[],beats:[],markers:[],use:'beats',offset:0,sync:false,sens:1.3,minGap:4,media:null,video:true,videoOpacity:60,sound:true},
   exit:{on:false,holdOn:true,walkHold:24,walkPace:1,walkLen:48,walkFollow:60,trail:3,slide:1.5,mode:'hold',hold:36,at:24,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
   out:{replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180,folder:true,preGrid:true,preBlocks:false,preTrans:true,shy:true,trim:true,markers:true,headers:true,bake:true,orgV:2},
   blocks:[]
@@ -5149,6 +5149,7 @@ function computePlan(G){
             if(LK&&!(WO&&used>usedB)){ /* the last block stays on the point */ }
             else if(WO&&used>usedB){ const v=(L1[1]-L0[1])/Math.max(1,L1[0]-L0[0]); KK.push([L1[0]+set,L1[1]+v*set*0.5,L1[2]]); }
             else if(frontLastB){ const sl=G.W*clamp(A.endX!=null?+A.endX:50,-200,300)/100, sx=dirO>0?sl:G.W-sl, so=sx-frontLastB[0]; if(Math.abs(so-L1[1])>1) KK.push([L1[0]+set,so,L1[2]]); } }
+          if(BP){ for(let k=KK.length-2;k>=0;k--){ const t0=KK[k][0], t1=KK[k+1][0], hb=Math.max(2,Math.round(BP.gap)); if(t1-t0>hb+1&&cutCuesIn(t0,t1)) KK.splice(k+1,0,[t1-hb,KK[k][1],KK[k][2]]); } }   // a removed beat: hold on the block before, then move in one beat
           const n=KK.length, hit=BP?D.timing.camMove==='hit':A.camMove==='step';
           const tan=d=>{ const m=[]; for(let i=0;i<n;i++){ if(i===0||i===n-1){ m.push(0); continue; } const a=(KK[i][d]-KK[i-1][d])/(KK[i][0]-KK[i-1][0]), b=(KK[i+1][d]-KK[i][d])/(KK[i+1][0]-KK[i][0]); m.push(a*b<=0?0:2/(1/a+1/b)); } return m; };
           const mx=tan(1), my=tan(2);
@@ -5840,8 +5841,14 @@ function cueAdd(f){ const T=D.timing, k=cueList(), off=Math.round(+T.offset||0),
 function cueRowOn(){ const T=D.timing; if(U.showCues===false) return false; return !!(U.media||(T&&((T.beats||[]).length||(T.markers||[]).length||T.sync||T.media))); }
 function timingCues(){
   const T=D.timing; if(!T) return [];
-  const off=Math.round(+T.offset||0), src=(T.use==='markers'?T.markers:T.use==='both'?(T.beats||[]).concat(T.markers||[]):T.beats)||[];
+  const off=Math.round(+T.offset||0), cut=new Set((T.cut||[]).map(Math.round)), src=((T.use==='markers'?T.markers:T.use==='both'?(T.beats||[]).concat(T.markers||[]):T.beats)||[]).filter(f=>!cut.has(Math.round(f)));
   return [...new Set(src.map(f=>Math.round(f+off)))].sort((x,y)=>x-y);
+}
+/* removed beats: double-click a cue to drop it — no block lands there, the camera holds on the block before, and the
+   blocks after it slide back one place (one block per cue). Double-click the ghost to bring it back. */
+function cutCuesIn(a,b){ const T=D.timing, off=Math.round(+T.offset||0); return (T.cut||[]).some(v=>{ const f=Math.round(v)+off; return f>a&&f<b; }); }
+function cueToggle(v){ const T=D.timing, L=(T.cut||[]).slice(), k=L.indexOf(Math.round(v)); pushHist(true); if(k>=0) L.splice(k,1); else L.push(Math.round(v)); T.cut=L; planCache.k=''; renderMedia(); refresh();
+  toast(k>=0?'Beat back — a block lands on it again':'Beat removed — its block is gone and the camera holds on the one before','⌘Z to undo · double-click again to restore',true);
 }
 /* onsets from a per-frame energy envelope: rises well above the local average, at least minGap frames apart */
 function detectBeats(env,sens,minGap){
@@ -5872,7 +5879,7 @@ async function loadMediaFile(file,opt){
     const mx=Math.max(1e-6,...env); m.env=env.map(v=>v/mx); m.peaks=m.env; m.dur=ab.duration; try{ac.close();}catch(e){}
   }catch(e){ m.peaks=null; }
   pushHist(true); D.timing.media={name:(opt.label||file.name),dur:r3(m.dur),kind:m.kind}; D.timing.src=opt.comp?'comp':'file'; if(opt.offset!=null) D.timing.offset=opt.offset;
-  if(m.env){D.timing.beats=detectBeats(m.env,+D.timing.sens||1.3,+D.timing.minGap||4);}
+  if(m.env){D.timing.cut=[];D.timing.beats=detectBeats(m.env,+D.timing.sens||1.3,+D.timing.minGap||4);}
   renderMedia(); refresh(); if(!opt.silent) toast(`Loaded ${opt.label||file.name}`,m.env?`${D.timing.beats.length} beats found`:'no audio track to analyse',true);
 }
 /* After Effects: use the audio that's already in the comp — reads the layer's source file directly and lines it up with the layer */
@@ -5898,7 +5905,7 @@ async function useCompAudio(opt){
   if(!opt.silent) toast(`Using the audio from “${o.name}”`,`${pick.name} · starts at ${(+pick.start||0).toFixed(2)}s${D.timing.beats.length?` · ${D.timing.beats.length} beats`:''}`,true);
   return true;
 }
-function reBeat(){ if(U.media&&U.media.env){ pushHist(true); D.timing.beats=detectBeats(U.media.env,+D.timing.sens||1.3,+D.timing.minGap||4); planCache.k=''; renderMedia(); refresh(); } }
+function reBeat(){ if(U.media&&U.media.env){ pushHist(true); D.timing.cut=[]; D.timing.beats=detectBeats(U.media.env,+D.timing.sens||1.3,+D.timing.minGap||4); planCache.k=''; renderMedia(); refresh(); } }
 /* preview playback: keep the media in step with the preview clock */
 function mediaSync(playing){
   const m=U.media; if(!m||!m.el) return; const fps=D.comp.fps||30, t=((U.t||0)-(+D.timing.offset||0))/fps;
@@ -5969,7 +5976,7 @@ function renderMedia(){
   const as=box.querySelector('#audSrc'); if(as) as.onclick=e=>{ const b=e.target.closest('[data-src]'); if(!b) return; if(b.dataset.src==='comp') useCompAudio(); else { pushHist(true); D.timing.src='file'; renderMedia(); $('#mediaIn').click(); } };
   const ba=box.querySelector('#btnReadAE'); if(ba) ba.onclick=()=>readAEComp(confirm('Also analyse the beat of the first audio layer? (Adds a temporary keyframe layer, then removes it.)'));
   const bl=box.querySelector('#btnMediaLen'); if(bl) bl.onclick=()=>{pushHist();D.anim.lenF=Math.max(2,Math.round(D.timing.media.dur*fps)-Math.max(0,D.anim.startF)+(+D.timing.offset||0));D.anim.toEnd=false;syncInputs(true);refresh();};
-  const bc=box.querySelector('#btnClearCues'); if(bc) bc.onclick=()=>{pushHist();D.timing.beats=[];D.timing.markers=[];renderMedia();refresh();toast('Cues cleared','Find beats, tap B while playing, or double-click the Cues row to add new ones',true);};
+  const bc=box.querySelector('#btnClearCues'); if(bc) bc.onclick=()=>{pushHist();D.timing.beats=[];D.timing.markers=[];D.timing.cut=[];renderMedia();refresh();toast('Cues cleared','Find beats, tap B while playing, or double-click the Cues row to add new ones',true);};
   const bIn=box.querySelector('#bInAt'), bOut=box.querySelector('#bOutAt'), bWO=box.querySelector('#bWalkOff'), bWOn=box.querySelector('#bWOnAt');
   if(bWOn) bWOn.onchange=()=>{ pushHist(true); D.timing.walkOnAt=bWOn.value===''?null:Math.round(+bWOn.value); planCache.k=''; refresh(); renderMedia(); };
   if(bIn) bIn.onchange=()=>{ pushHist(true); D.timing.inAt=bIn.value===''?null:Math.round(+bIn.value); planCache.k=''; refresh(); renderMedia(); };
@@ -6094,9 +6101,13 @@ function drawDope(){
   const RCu=TL.rows.find(R=>R.k==='cues');
   if(RCu){ const T=D.timing, off=Math.round(+T.offset||0), lists=T.use==='both'?['beats','markers']:[T.use==='markers'?'markers':'beats'], yc=RCu.y0+RCu.h/2;
     const hitT=new Set((P.T||[]).map(t=>Math.round(t)));
-    lists.forEach(k=>(T[k]||[]).forEach((v,j)=>{ const f=Math.round(v+off), x=X(f); if(x<LW-4||x>r.width+4) return; const onBeat=T.sync&&(hitT.has(f)||hitT.has(f-1)||hitT.has(f+1));
+    const cutS=new Set((T.cut||[]).map(Math.round));
+    lists.forEach(k=>(T[k]||[]).forEach((v,j)=>{ const f=Math.round(v+off), x=X(f); if(x<LW-4||x>r.width+4) return;
+      if(cutS.has(Math.round(v))){ g.strokeStyle='rgba(160,160,170,.75)'; g.lineWidth=1.2; g.beginPath(); g.moveTo(x,yc-5); g.lineTo(x+4,yc); g.lineTo(x,yc+5); g.lineTo(x-4,yc); g.closePath(); g.stroke(); g.beginPath(); g.moveTo(x-4,yc+5); g.lineTo(x+4,yc-5); g.stroke();
+        item({type:'point',x,y:yc,cur:'pointer',tip:`removed beat · f${f} — no block here, the camera holds · double-click to bring it back`,drag:()=>{},alt:()=>cueToggle(v),dbl:()=>cueToggle(v)}); return; }
+      const onBeat=T.sync&&(hitT.has(f)||hitT.has(f-1)||hitT.has(f+1));
       g.fillStyle=k==='markers'?'#F5A524':(onBeat?'#7CF2C0':'#74A0E0'); g.beginPath(); g.moveTo(x,yc-5); g.lineTo(x+4,yc); g.lineTo(x,yc+5); g.lineTo(x-4,yc); g.closePath(); g.fill();
-      item({type:'point',x,y:yc,cur:'ew-resize',tip:`${k==='markers'?'marker':'beat'} cue · f${f}${onBeat?' · a block lands here':''} — drag to move · ⌥-click removes · double-click the row to add one`,
+      item({type:'point',x,y:yc,cur:'ew-resize',tip:`${k==='markers'?'marker':'beat'} cue · f${f}${onBeat?' · a block lands here':''} — drag to move · double-click to remove its block (hold) · ⌥-click deletes the cue`, dbl:()=>cueToggle(v),
         drag:(fx)=>{ const L=(D.timing[k]||[]).slice(); L[j]=Math.round(F(fx))-off; D.timing[k]=L; planCache.k=''; },
         alt:()=>{ pushHist(true); const L=(D.timing[k]||[]).slice(); L.splice(j,1); D.timing[k]=L; planCache.k=''; renderMedia(); refresh(); } }); }));
     if(P.beat){ const flag=(f,col,lab,key)=>{ if(f==null) return; const x=X(f); g.fillStyle=col; g.fillRect(x-1,RCu.y0+2,2,RCu.h-4); g.beginPath(); g.moveTo(x,RCu.y0+2); g.lineTo(x+9,RCu.y0+6); g.lineTo(x,RCu.y0+10); g.closePath(); g.fill(); g.font='600 9px sans-serif'; g.fillText(lab,x+11,RCu.y0+9);
@@ -6447,7 +6458,7 @@ function initDope(){
   c.addEventListener('pointermove',e=>{ if(TL.drag) return; const p=rect(e), h=tlHit(p.x,p.y); c.style.cursor=U.space?'grab':(h.cur||'default'); TL.hover=p.x>TL.LW?{x:p.x}:null; showTip(tlInfo(p.x,p.y,h)); drawDope(); });
   c.addEventListener('pointerleave',()=>{if(TL.drag)return;TL.hover=null;showTip('');drawDope();});
   c.addEventListener('contextmenu',e=>{e.preventDefault(); const p=rect(e), h=tlHit(p.x,p.y); tlMenu(e,h);});
-  c.addEventListener('dblclick',e=>{const p=rect(e), h=tlHit(p.x,p.y); const R=TL.rows.find(R=>R.k==='scene'); const cvv=TL.items.find(it=>it.type==='curve');
+  c.addEventListener('dblclick',e=>{const p=rect(e), h=tlHit(p.x,p.y); if(h&&h.dbl){ h.dbl(); return; } const R=TL.rows.find(R=>R.k==='scene'); const cvv=TL.items.find(it=>it.type==='curve');
     if(R&&cvv&&p.y>=R.y0&&p.y<R.y1&&h.type!=='handle'&&h.type!=='point'&&p.x>=cvv.x0&&p.x<=cvv.x1) tlAddPoint(cvv.u(p.x));
     { const RC2=TL.rows.find(R=>R.k==='cues'); if(RC2&&p.y>=RC2.y0&&p.y<RC2.y1&&h.type!=='point'&&p.x>TL.LW){ if(cueAdd(TL.F(p.x))){ renderMedia(); refresh(); } return; } }
     for(const [rk,tk] of [['zoom','zoom'],['rzone','rz'],['zdepth','zd']]){ const RZ2=TL.rows.find(R=>R.k===rk); if(RZ2&&p.y>=RZ2.y0&&p.y<RZ2.y1&&h.type!=='point'&&p.x>TL.LW){ const T=TRACKS[tk], fr=TL.F(p.x), f=T.real?fr:plan(geom()).toContent(fr);
