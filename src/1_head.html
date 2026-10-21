@@ -582,6 +582,8 @@ body.nohelp .qm{display:none}
       <span class="note" style="white-space:nowrap">Layer 2</span>
       <div class="seg mini" id="l2Z"><button data-v="behind">Behind</button><button data-v="front">In front</button></div>
       <span class="note" style="white-space:nowrap" title="Select a layer-2 block for its own depth order, position, rotation and scale">the main walk</span>
+      <span class="note" style="white-space:nowrap;margin-left:10px">Sound</span>
+      <div class="seg mini" id="l2Snd" title="How layer 2 follows the song"><button data-v="off" title="Not synced — layer 2 keeps its own pace">Not synced</button><button data-v="same" title="Lands on the same cues as the main walk">Same as main</button><button data-v="own" title="Its own cues, sync and walk on / off — edit them in Sound while on this tab">Its own</button></div>
     </div>
     <div class="spacer"></div>
     <div class="chip" id="compChip" title="Composition"><span class="dot" id="liveDot"></span><b id="compName">Preview</b><span id="compMeta">1920×1080</span></div>
@@ -902,13 +904,21 @@ body.nohelp .qm{display:none}
         <div class="pane" data-pane="content">
           <div class="ctabs" id="ctabs"><button data-ctab-btn="hud">Text HUD</button><button data-ctab-btn="gaps">Between blocks</button><button data-ctab-btn="numbers">Numbers</button><button data-ctab-btn="echo">Echo</button><button data-ctab-btn="text">Your text</button><button data-ctab-btn="media">Media</button></div>
           <div class="group" data-ctab="media">
-            <div class="group-h">Media in blocks<label class="switch hswitch" title="Fill blocks with a video or image, clipped to each block"><input type="checkbox" data-bind="bmedia.on"><span></span></label></div>
-            <div class="note">A video or image clipped to each block — it moves, wipes and leaves with the block. These are the global settings; select a block to give it its own media.</div>
+            <div class="group-h">Media in blocks</div>
+            <div class="note">A video or image clipped to each block — it moves, wipes and leaves with the block. Three layers, each overriding the one before: <b>All blocks</b> → <b>Picked blocks</b> → <b>one block</b> (select it on the canvas or timeline).</div>
+            <label class="check mlayer"><input type="checkbox" data-bind="bmedia.on"> <b>All blocks</b>&nbsp;get media</label>
             <div class="field stack"><span class="lbl">Type</span><div class="seg" data-seg="bmedia.kind"><button data-v="video">Video</button><button data-v="image">Image</button></div></div>
             <div class="field stack"><span class="lbl">Media</span><select id="mAsset" class="msel"></select></div>
             <div class="row-btns"><button class="btn" id="mAdd" title="Add your own video or image files">+ Add video / image…</button><input type="file" id="mFile" accept="video/*,image/*" multiple hidden></div>
             <div id="mAssetList" class="mlist"></div>
             <label class="check" title="After Effects: the clip goes inside its own precomp (one per file), and the blocks use the precomp — swap or edit the footage in one place"><input type="checkbox" data-bind="bmedia.precomp"> Bring in as an After Effects precomp</label>
+            <details class="sub" data-sub="m-picked" open><summary>Picked blocks <span class="note">override All blocks</span></summary><div class="subbody">
+              <label class="check"><input type="checkbox" data-bind="bmedia.selOn"> Picked blocks get their own media</label>
+              <div class="field stack"><span class="lbl">Media for picked blocks</span><select id="mSelAsset" class="msel"></select></div>
+              <div class="row-btns"><button class="btn" id="mPick">Pick on the canvas</button><button class="btn" id="mWalk" title="Play the walk — pause it and click blocks to pick them">▶ Preview the walk</button></div>
+              <div class="row-btns"><button class="btn ghost" id="mPickAll">Pick all</button><button class="btn ghost" id="mPickNone">Clear</button><span class="note" id="mPickN"></span></div>
+              <div class="note">Picked blocks get media even when All blocks is off. To give a single block something else, select it — its own media wins over both.</div>
+            </div></details>
             <details class="sub" data-sub="m-fit" open><summary>Fit &amp; position</summary><div class="subbody">
               <div class="seg" data-seg="bmedia.fit"><button data-v="cover" title="Fill the block, cropping the overflow">Cover</button><button data-v="contain" title="Show all of it, block colour around it">Contain</button><button data-v="stretch" title="Stretch to the block exactly">Stretch</button><button data-v="tile" title="Repeat it across the block (tile height = block height × scale)">Tile</button><button data-v="original" title="Its own pixel size">Original</button></div>
               <div class="field2">
@@ -934,12 +944,8 @@ body.nohelp .qm{display:none}
               <div class="field stack"><span class="lbl">Sound</span><div class="seg" data-seg="bmedia.audio"><button data-v="mute">Mute</button><button data-v="on">Sound on</button></div></div>
               <div class="note">The preview is silent; sound applies in After Effects.</div>
             </div></details>
-            <details class="sub" data-sub="m-which" open><summary>Which blocks</summary><div class="subbody">
-              <div class="seg" data-seg="bmedia.target"><button data-v="all">All blocks</button><button data-v="pick">Picked</button><button data-v="dir" title="Blocks the line steps up / down / level into">By direction</button></div>
-              <div data-show="bmedia.target=pick" style="display:grid;gap:7px">
-                <div class="row-btns"><button class="btn" id="mPick">Pick on the canvas</button><button class="btn" id="mWalk" title="Play the walk — pause it and click blocks to pick them">▶ Preview the walk</button></div>
-                <div class="row-btns"><button class="btn ghost" id="mPickAll">Pick all</button><button class="btn ghost" id="mPickNone">Clear</button><span class="note" id="mPickN"></span></div>
-              </div>
+            <details class="sub" data-sub="m-which" open><summary>All blocks · which ones</summary><div class="subbody">
+              <div class="seg" data-seg="bmedia.target"><button data-v="all">Every block</button><button data-v="dir" title="Blocks the line steps up / down / level into">By direction</button></div>
               <div data-show="bmedia.target=dir" class="row-btns"><label class="check"><input type="checkbox" data-bind="bmedia.dirOn.up"> Going up</label><label class="check"><input type="checkbox" data-bind="bmedia.dirOn.down"> Going down</label><label class="check"><input type="checkbox" data-bind="bmedia.dirOn.flat"> Level</label></div>
             </div></details>
             <details class="sub" data-sub="m-assign" open><summary>Which media</summary><div class="subbody">
