@@ -75,7 +75,7 @@ const DEF={
         wander:1,climb:0,stackPct:20,stackGap:0,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,offX:0,offY:0,tracking:0,leading:0,kern:'metrics',caps:'none'},
   anim:{seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:true,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
-        axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,lock:{on:false,x:50,y:50},rzOn:false,rzPts:null,relOn:false,relAt:85,relSlow:36,tail:24,
+        axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,lock:{on:false,x:50,y:50,move:'glide'},rzOn:false,rzPts:null,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.42,0,0.58,1],curvePh:null,sceneEase:{on:true,hd:null,holdH:null,onAt:null,holdAt:null,start:40,land:75,landOut:50,leaveIn:50,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zd:{on:false,pts:null},zoomOn:false,zm:{pts:null,focus:'follow',ax:50,ay:50,in:24,out:96,from:100,to:140,curve:[0.65,0,0.35,1],scaleAll:false,followRemap:true,back:false,backIn:180,backOut:228,backCurve:[0.65,0,0.35,1]},extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
   lab:{flicker:{on:false,frames:8,seed:3},
@@ -1799,6 +1799,19 @@ function rzPts(){
 function ensureRzPts(){ const A=D.anim; if(!Array.isArray(A.rzPts)||A.rzPts.length<2) A.rzPts=rzPts(); return A.rzPts; }
 /* 'Keep the newest block at a point': with the camera following sideways + up/down, the frame holds the newest
    block exactly on a chosen point (centre by default) — it appears there and the camera carries the line through it */
+/* after the scene retime, reveal frames are whole frames but the camera path isn't: nudge the path (smoothly, by
+   interpolated corrections) so at each reveal frame the block sits exactly on the point */
+function lockSnap(P,G){
+  const LK=lockPt(); if(!LK||!P.cam||P.cam.length<2||!P.seq.length) return;
+  const tgt=[G.W*LK.x,G.H*LK.y], end=P.relT!=null?P.relT:Infinity, pts=[];
+  P.seq.forEach((b,i)=>{ if(b.stack) return; const t=P.T[i]; if(t==null||t>end) return; const q=cellRect(G,b.c,b.r,b.w,b.h), o=ev(P.cam,t,[0,0]), d=[tgt[0]-(q.x+q.w/2)-o[0],tgt[1]-(q.y+q.h/2)-o[1]];
+    const l=pts[pts.length-1]; if(l&&t-l[0]<=2) pts[pts.length-1]=[t,d]; else pts.push([t,d]); });   // two blocks a frame or two apart: the camera aims at the later one (no jolt)
+  if(!pts.length) return;
+  const dAt=t=>{ if(t<=pts[0][0]) return pts[0][1]; for(let k=1;k<pts.length;k++) if(t<=pts[k][0]){ const a=pts[k-1],b=pts[k],u=(t-a[0])/Math.max(1e-6,b[0]-a[0]); return [a[1][0]+(b[1][0]-a[1][0])*u,a[1][1]+(b[1][1]-a[1][1])*u]; } return pts[pts.length-1][1]; };
+  const ts=new Set(P.cam.map(k=>k[0])); const add=pts.filter(p=>!ts.has(p[0])).map(p=>[p[0],ev(P.cam,p[0],[0,0]).slice(),'l']);
+  const K=P.cam.concat(add).sort((a,b)=>a[0]-b[0]);
+  P.cam=K.map(k=>{ const tEff=Math.min(k[0],pts[pts.length-1][0]+1e9), d=dAt(tEff); return [k[0],[r3(k[1][0]+d[0]),r3(k[1][1]+d[1])],k[2]||'l',k[3]]; }).map(k=>k[3]===undefined?k.slice(0,3):k);
+}
 function lockPt(){ const A=D.anim, L=A.lock; return (L&&L.on&&A.mode==='camera'&&A.axis==='xy')?{x:clamp(+L.x,0,100)/100,y:clamp(+L.y,0,100)/100}:null; }
 function rzKeys(){ const A=D.anim; if(!A.rzOn||A.revealWhen!=='arrive'||lockPt()) return []; return trkKeys(rzPts(),[0.33,0,0.67,1],false); }
 function revealXAt(t){ const K=rzKeys(); return K.length?ev(K,t,+D.anim.revealX||75):(+D.anim.revealX||75); }
@@ -1929,6 +1942,7 @@ function applyZoom(P){
   // where the zoom holds still: a point in the frame, or a block that ends up at that point
   const Z=D.anim.zm, G=geom(), T=[G.W*clamp(+Z.ax||50,-50,150)/100, G.H*clamp(+Z.ay||50,-50,150)/100];
   P.zc=[]; P.pan=[];
+  { const LK=lockPt(); if(LK){ P.zc=[[0,[r3(G.W*LK.x),r3(G.H*LK.y)],'h']]; return; } }   // block kept on a point: zoom pivots on that point, so the block stays put at any zoom
   if((Z.focus!=='block'&&Z.focus!=='follow')||!P.seq.length){ P.zc=[[0,T,'h']]; return; }
   if(Z.focus==='follow'){
     /* follow the walking line: the zoom pivots on the newest block (smoothed so new arrivals glide, not jump) and,
@@ -2000,7 +2014,7 @@ function plan(G){
   const key=JSON.stringify(D)+'|'+G.W+'|'+G.H;
   if(planCache.k===key) return planCache.v;
   if(planCache.k==='') PLANS.clear(); else if(planCache.k&&planCache.v) PLANS.set(planCache.k,planCache.v);
-  let v=PLANS.get(key); if(!v){ v=remappedPlan(G); applyZoom(v); } if(PLANS.size>6) PLANS.clear();
+  let v=PLANS.get(key); if(!v){ v=remappedPlan(G); try{ lockSnap(v,G); }catch(e){} applyZoom(v); } if(PLANS.size>6) PLANS.clear();
   planCache={k:key,v}; return v;
 }
 /* ---- TIME REMAP: the scene layer on top.
@@ -2207,7 +2221,7 @@ function computePlan(G){
   let sWalk=null;
   const noHold=D.exit.on&&D.exit.holdOn===false, lead=noHold?0:Math.max(0,Math.round(+A.landLead||0));   // no hold: In runs straight into Out (no settle either side)   // the last block lands this long before the hold starts (so easing into the hold never slows the last arrival)
   const olead=WO&&!noHold?Math.max(0,Math.round(+A.outLead||0)):0;   // Out settle: the camera gets going this long before the first block walks off
-  if(WO&&nW>0){ sWalk=(usedB-1)*step+tr0+lead+woH+olead; }
+  if(WO&&nW>0){ sWalk=(usedB-1)*step+tr0+lead+woH+olead; if(lockPt()) sWalk=Math.max(sWalk,usedB*step); }   // block kept on a point: the walk-off's first block comes a full step after the last one
   // reveal times on the linear clock, then re-timed by the scene curve (one at a time, in order)
   const sg=[], Tg=[]; const spread=(used-1)<=L;
   for(let g=0;g<used;g++){
@@ -2421,12 +2435,13 @@ function computePlan(G){
             else if(WO&&used>usedB){ const v=(L1[1]-L0[1])/Math.max(1,L1[0]-L0[0]); KK.push([L1[0]+set,L1[1]+v*set*0.5,L1[2]]); }
             else if(frontLastB){ const sl=G.W*clamp(A.endX!=null?+A.endX:50,-200,300)/100, sx=dirO>0?sl:G.W-sl, so=sx-frontLastB[0]; if(Math.abs(so-L1[1])>1) KK.push([L1[0]+set,so,L1[2]]); } }
           if(BP){ for(let k=KK.length-2;k>=0;k--){ const t0=KK[k][0], t1=KK[k+1][0], hb=Math.max(2,Math.round(BP.gap)); if(t1-t0>hb+1&&cutCuesIn(t0,t1)) KK.splice(k+1,0,[t1-hb,KK[k][1],KK[k][2]]); } }   // a removed beat: hold on the block before, then move in one beat
-          const n=KK.length, hit=BP?D.timing.camMove==='hit':A.camMove==='step';
+          const lkMove=LK&&!BP?((A.lock&&A.lock.move)||'glide'):null, n=KK.length, hit=BP?D.timing.camMove==='hit':(lkMove?lkMove==='ease':A.camMove==='step'), lin=lkMove==='linear';
           const tan=d=>{ const m=[]; for(let i=0;i<n;i++){ if(i===0||i===n-1){ m.push(0); continue; } const a=(KK[i][d]-KK[i-1][d])/(KK[i][0]-KK[i-1][0]), b=(KK[i+1][d]-KK[i][d])/(KK[i+1][0]-KK[i][0]); m.push(a*b<=0?0:2/(1/a+1/b)); } return m; };
           const mx=tan(1), my=tan(2);
           for(let i=0;i<N;i++){ const t=a+i; if(t<=KK[0][0]){ xs[i]=KK[0][1]; ys[i]=KK[0][2]; continue; } if(t>=KK[n-1][0]){ xs[i]=KK[n-1][1]; ys[i]=KK[n-1][2]; continue; }
             let k=0; while(k<n-2&&KK[k+1][0]<=t) k++; const t0=KK[k][0], t1=KK[k+1][0], h=t1-t0, u=(t-t0)/h;
-            if(hit){ const e=u*u*(3-2*u); xs[i]=KK[k][1]+(KK[k+1][1]-KK[k][1])*e; ys[i]=KK[k][2]+(KK[k+1][2]-KK[k][2])*e; }
+            if(lin){ xs[i]=KK[k][1]+(KK[k+1][1]-KK[k][1])*u; ys[i]=KK[k][2]+(KK[k+1][2]-KK[k][2])*u; }
+            else if(hit){ const e=u*u*(3-2*u); xs[i]=KK[k][1]+(KK[k+1][1]-KK[k][1])*e; ys[i]=KK[k][2]+(KK[k+1][2]-KK[k][2])*e; }
             else { const h00=2*u*u*u-3*u*u+1, h10=u*u*u-2*u*u+u, h01=-2*u*u*u+3*u*u, h11=u*u*u-u*u;
               xs[i]=h00*KK[k][1]+h10*h*mx[k]+h01*KK[k+1][1]+h11*h*mx[k+1]; ys[i]=h00*KK[k][2]+h10*h*my[k]+h01*KK[k+1][2]+h11*h*my[k+1]; } } }
         // animated reveal zone: the frame shifts so the newest block sits on the line wherever it is at that moment
@@ -5964,6 +5979,7 @@ const HELP={
   'anim.appear':'How each block comes on: cut, fade, wipe from the left, or scale up.',
   'anim.axis':'Follow blocks sideways only, or up and down too.',
   'anim.lock.on':'The camera keeps the newest block exactly on this point of the frame (centre by default). Each block appears there and the camera carries the line through it — up and down as well as sideways.',
+  'anim.lock.move':'How the camera travels from one block to the next. Glide: one smooth continuous move through every block. Ease each: settles on each block, then eases to the next. Linear: constant speed between blocks.',
   'anim.lock.x':'Across the frame: 0 = left edge, 50 = centre, 100 = right edge.','anim.lock.y':'Down the frame: 0 = top, 50 = centre, 100 = bottom.',
   'anim.smooth':'How many blocks the camera trails behind the newest one (at least 1, so it never moves ahead of what has appeared). Larger = calmer, floatier camera.',
   'anim.motionBlurF':'Softens changes in camera speed (in frames). Higher = rounder, smoother acceleration; 0 = follows the pace exactly.',
