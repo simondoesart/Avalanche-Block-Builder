@@ -85,8 +85,8 @@ const DEF={
        ticker:{on:false,y:94,size:14,speed:160,color:'#A2AFB2',band:true,bandColor:'#121212'},
        snow:{on:false,count:90,speed:240,size:2,stretch:6,dir:'left',color:'#EBF0FA',opacity:55,seed:9}},
   num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100,per:{}},
-  L2:{on:false,z:'front',active:'main',store:null},
-  bmedia:{on:false,kind:'video',asset:'sample',precomp:false,fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,
+  L2:{on:false,z:'front',active:'main',store:null,sound:'off',timing:null},
+  bmedia:{on:false,selOn:false,selAsset:'',kind:'video',asset:'sample',precomp:false,fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,
     loop:'loop',start:'reveal',delay:0,at:0,offset:0,audio:'mute',inMode:'block',inLen:12,target:'all',pick:[],dirOn:{up:true,down:true,flat:true},
     assign:'same',pool:[],dir:{up:'',down:'',flat:''},seed:1,per:{},assets:[]},
   timing:{src:'file',compLayer:'',inAt:null,outAt:null,syncOut:true,camMove:'glide',walkOn:false,walkOnAt:null,outBeat:60,cut:[],beats:[],markers:[],use:'beats',offset:0,sync:false,sens:1.3,minGap:4,media:null,video:true,videoOpacity:60,sound:true},
@@ -1200,6 +1200,7 @@ const snap=()=>JSON.stringify(D);
 function pushHist(keepLive){H.u.push(snap());if(H.u.length>150)H.u.shift();H.r=[];if(!keepLive)U.live=false;updUndo();}
 function setDoc(obj){
   if(obj&&obj.out&&obj.out.bake==null) obj.out.bake=true;
+  if(obj&&obj.bmedia&&obj.bmedia.target==='pick'){ const m=obj.bmedia; m.target='all'; m.selOn=!!m.on; m.selAsset=m.selAsset||''; m.on=false; }   // old 'only picked blocks' → the Picked blocks layer
   if(obj&&obj.out&&!(obj.out.orgV>=2)){ obj.out.preBlocks=false; obj.out.headers=true; obj.out.orgV=2; }   // blocks are their own layers now (click one → just that block)
   U._mediaUI=0;
   if(obj&&obj.anim){ // older layouts
@@ -1968,7 +1969,22 @@ function l2Init(){ if(D.L2.store) return; const o={};
   o.block.w=4; o.block.h=2; o.rand.seed=1+Math.floor(Math.random()*1e5); o.anim.mode='reveal'; o.anim.zoomOn=false; o.anim.zd={on:false,pts:null};
   o.anim.xf={}; o.anim.zord={}; o.fill.on=true; if(o.fill.gap) o.fill.gap.on=false; o.bmedia.on=true; o.exit.on=false; o.echo.on=false; o.num.on=false;
   D.L2.store=o; }
-function swapLayer(){ l2Init(); const st=D.L2.store; LAYER_KEYS.forEach(k=>{ const t=D[k]; D[k]=st[k]; st[k]=t; }); D.L2.active=D.L2.active==='l2'?'main':'l2'; }
+/* sound for layer 2: 'same' = follows the main walk's cues and sync; 'own' = its own cues / sync / walk-on & off (same song);
+   'off' = not synced to the sound at all. While layer 2 is active (or its plan is computed), D.timing is layer 2's. */
+function l2TimingIn(){ const L=D.L2, st=L.store, mode=L.sound||'off'; st.timingMain=D.timing;
+  if(mode==='own'){ if(!L.timing) L.timing=Object.assign(clone(D.timing),{inAt:null,outAt:null,walkOnAt:null}); D.timing=L.timing; }
+  else if(mode==='off') D.timing=Object.assign({},D.timing,{sync:false});
+  /* 'same': the very same object */ }
+function l2TimingOut(){ const L=D.L2, st=L.store, mode=L.sound||'off', main=st.timingMain;
+  if(mode==='own') L.timing=D.timing;
+  if(mode==='same'){ /* keep edits made on the layer-2 tab */ } else if(main) D.timing=main;
+  delete st.timingMain; }
+function swapLayer(){ l2Init(); const st=D.L2.store, toL2=D.L2.active!=='l2';
+  if(!toL2) l2TimingOut();
+  LAYER_KEYS.forEach(k=>{ const t=D[k]; D[k]=st[k]; st[k]=t; }); D.L2.active=toL2?'l2':'main';
+  if(toL2) l2TimingIn(); }
+function setL2Sound(v){ pushHist(true); const on=curLayer()==='l2'; if(on) swapLayer(); D.L2.sound=v; if(on) swapLayer(); planCache.k=''; syncInputs(true); try{renderMedia();}catch(e){} refresh(); renderLayerBar();
+  toast(v==='own'?'Layer 2 has its own sound timing — cues, sync, walk on / off':v==='same'?'Layer 2 follows the main walk’s sound timing':'Layer 2 ignores the sound — it keeps its own pace'); }
 function curLayer(){ return (D.L2&&D.L2.active)||'main'; }
 function l2On(){ return !!(D.L2&&D.L2.on&&(D.L2.store||curLayer()==='l2')); }
 function withLayer(name,fn){ if(!D.L2||curLayer()===name) return fn(); if(!D.L2.store) return null; swapLayer(); try{ return fn(); } finally{ swapLayer(); } }
@@ -3298,7 +3314,7 @@ function tlContentRows(){
   if(D.fill.on&&D.fill.gap&&D.fill.gap.on) r.push({k:'gaps',name:'Between blocks',tab:'gaps'});
   if(D.num&&D.num.on) r.push({k:'numbers',name:'Numbers',tab:'numbers'});
   if(D.echo&&D.echo.on) r.push({k:'echo',name:'Echo',tab:'echo'});
-  if(D.bmedia&&(D.bmedia.on||Object.values(D.bmedia.per||{}).some(p=>p.on))) r.push({k:'media',name:'Media',tab:'media'});
+  if(mediaAny()) r.push({k:'media',name:'Media',tab:'media'});
   if(!r.length) r.push({k:'none',name:'Content',tab:'hud'});
   return r;
 }
@@ -4015,10 +4031,12 @@ function mKindAsset(kind,id){ const a=mAsset(id); return a&&a.type===kind?a.id:m
 /* which way the line went to reach this block (same rule as the up/down colours) */
 function mDir(seq,i){ const b=seq[i], p=seq[i-1]; if(!p) return 'flat'; return b.r<p.r?'up':b.r>p.r?'down':'flat'; }
 function mHash(n){ const x=Math.sin(n*12.9898+78.233)*43758.5453; return x-Math.floor(x); }
+/* three layers, each overriding the one before: All blocks (M.on) → Picked blocks (M.selOn, M.pick, M.selAsset) → one block (M.per[id]) */
+function mediaAny(){ const M=D.bmedia; return !!(M&&(M.on||(M.selOn&&(M.pick||[]).length)||Object.values(M.per||{}).some(p=>p.on))); }
 function mediaSpecAt(seq,i,T){
-  const M=D.bmedia, b=seq[i], per=(M.per||{})[b.id]||null, dir=mDir(seq,i);
+  const M=D.bmedia, b=seq[i], per=(M.per||{})[b.id]||null, dir=mDir(seq,i), inSel=!!(M.selOn&&(M.pick||[]).indexOf(b.id)>=0);
   if(per&&per.on===false) return null;
-  if(!(per&&per.on===true)){
+  if(!(per&&per.on===true)&&!inSel){
     if(!M.on) return null;
     const ok=M.target==='pick'?(M.pick||[]).indexOf(b.id)>=0:M.target==='dir'?!!(M.dirOn||{})[dir]:true;
     if(!ok) return null;
@@ -4029,8 +4047,10 @@ function mediaSpecAt(seq,i,T){
   if(M.assign==='dir'){ const d=(M.dir||{})[dir]; if(d&&mAsset(d)) a=d; }
   else if(M.assign==='cycle'&&pool.length) a=pool[i%pool.length];
   else if(M.assign==='random'&&pool.length) a=pool[Math.floor(mHash(b.id*3.17+(+M.seed||1))*pool.length)%pool.length];
+  if(inSel&&M.selAsset&&mAsset(M.selAsset)) a=M.selAsset;
   if(per&&per.own) MSPEC.forEach(k=>{ if(per[k]!==undefined) s[k]=per[k]; });
   if(per&&per.asset&&mAsset(per.asset)) a=per.asset;
+  s.layer=per&&(per.on===true||per.asset)?'block':inSel?'picked':'all';
   const A=mAsset(a)||MEDIA_SAMPLE; s.asset=A.id; s.kind=A.type; s.dir=dir; s.i=i; s.tRev=T&&T[i]!=null?T[i]:0;
   return s;
 }
@@ -4039,7 +4059,7 @@ function mediaMap(P){
   if(!P||!P.seq) return {};
   const k=JSON.stringify(D.bmedia)+'|'+P.seq.map(b=>b.id+':'+b.r).join(',')+'|'+(P.T||[]).join(',');
   if(mCache.P===P&&mCache.k===k) return mCache.m;
-  const m={}; if(D.bmedia&&(D.bmedia.on||Object.keys(D.bmedia.per||{}).length)) P.seq.forEach((b,i)=>{ const s=mediaSpecAt(P.seq,i,P.T); if(s) m[b.id]=s; });
+  const m={}; if(D.bmedia&&(mediaAny()||Object.keys(D.bmedia.per||{}).length)) P.seq.forEach((b,i)=>{ const s=mediaSpecAt(P.seq,i,P.T); if(s) m[b.id]=s; });
   mCache={P,k,m}; return m;
 }
 /* seconds into the clip at output frame t */
@@ -5126,7 +5146,7 @@ function renderProps(){
   else { $('#stepEyebrow').textContent=`${U.step+1} · ${st.name}`; $('#stepTitle').textContent=st.title; $('#stepDesc').textContent=st.id==='build'?(inAE?'Create the layers in your active comp.':'Export a script, then run it in After Effects.'):st.desc; back.hidden=true; }
   // content tabs
   const cp=$('#left .pane[data-pane="content"]'); if(cp){ ['hud','gaps','numbers','echo','text','media'].forEach(t=>cp.classList.toggle('tab-'+t,U.ctab===t)); if(st.id!=='content'){ U.mediaPick=false; U.contentPick=false; } try{renderCPick();}catch(e){} try{renderMediaUI();}catch(e){}
-    const on={hud:D.fill.on,gaps:D.fill.on&&D.fill.gap.on,numbers:D.num&&D.num.on,echo:D.echo&&D.echo.on,text:D.blocks.some(b=>b.text),media:D.bmedia.on||Object.values(D.bmedia.per||{}).some(p=>p.on)};
+    const on={hud:D.fill.on,gaps:D.fill.on&&D.fill.gap.on,numbers:D.num&&D.num.on,echo:D.echo&&D.echo.on,text:D.blocks.some(b=>b.text),media:mediaAny()||Object.values(D.bmedia.per||{}).some(p=>p.on)};
     $$('#ctabs [data-ctab-btn]').forEach(b=>{const k=b.dataset.ctabBtn; b.classList.toggle('on',U.ctab===k); if(!b._lab) b._lab=b.textContent; b.innerHTML=`<span class="d${on[k]?' on':''}"></span>${b._lab}`;}); }
 }
 $('#ctxBack').onclick=()=>{U.ctx=null;U.dopeSel=[];U.selIds=[];U.sel=null;refresh();};
@@ -6690,9 +6710,10 @@ function renderMediaUI(){
   $('#mPool').innerHTML=mAssets().map(a=>`<label class="mrow"><input type="checkbox" data-mpool="${esc(a.id)}"${pool.indexOf(a.id)>=0?' checked':''}><span class="nm">${a.type==='video'?'▶':'▣'} ${esc(a.name)}</span>${pool.indexOf(a.id)>=0?`<span class="st">#${pool.indexOf(a.id)+1}</span>`:''}</label>`).join('');
   const user=mAssets().filter(a=>!a.builtin);
   $('#mAssetList').innerHTML=user.map(a=>`<div class="mrow"><span class="nm" title="${esc(a.path||a.name)}">${a.type==='video'?'▶':'▣'} ${esc(a.name)}</span><span class="st">${mStatus(a)}</span>${mUrl(a)?'':`<button class="btn ghost" data-mrelink="${esc(a.id)}" title="Choose the file again (browser files don't survive a reload)">Relink</button>`}<button class="btn ghost" data-mdel="${esc(a.id)}" title="Remove from the list">×</button></div>`).join('');
+  { const se=$('#mSelAsset'); if(se&&document.activeElement!==se) se.innerHTML=mOpts(mAssets(),M.selAsset||'','(same as All blocks)'); }
   const n=(M.pick||[]).length; if($('#mPickN')) $('#mPickN').textContent=n?`${n} picked`:'none picked yet';
   if($('#mPick')) { $('#mPick').classList.toggle('on',!!U.mediaPick); $('#mPick').textContent=U.mediaPick?'✓ Picking — click blocks':'Pick on the canvas'; }
-  if(M.on||Object.keys(M.per||{}).length){ const used=new Set(Object.values(mediaMap(plan(geom()))).map(s=>s.asset)); used.add(mKindAsset(M.kind,M.asset)); used.forEach(id=>mRuntime(mAsset(id))); }
+  if(mediaAny()||Object.keys(M.per||{}).length){ const used=new Set(Object.values(mediaMap(plan(geom()))).map(s=>s.asset)); used.add(mKindAsset(M.kind,M.asset)); if(M.selAsset) used.add(M.selAsset); used.forEach(id=>mRuntime(mAsset(id))); }
 }
 /* add files: in the browser they're session-only object URLs (relink after a reload); in After Effects, real paths */
 function mAddFiles(files,relinkId){
@@ -6704,7 +6725,7 @@ function mAddFiles(files,relinkId){
     A.url=URL.createObjectURL(f); A.name=f.name; A.file=f.name; A.type=type; if(f.path) A.path=f.path;
     delete MRT[A.id]; mRuntime(A); last=A;
   });
-  if(last&&!relinkId){ M.kind=last.type; M.asset=last.id; M.on=true; }
+  if(last&&!relinkId){ if(!M.on&&M.selOn){ M.selAsset=last.id; } else { M.kind=last.type; M.asset=last.id; M.on=true; } }
   syncInputs(true); refresh(); renderMediaUI();
 }
 (()=>{
@@ -6714,14 +6735,15 @@ function mAddFiles(files,relinkId){
     relink=null; fi.value=''; fi.click(); };
   fi.onchange=()=>{ if(fi.files&&fi.files.length) mAddFiles(fi.files,relink); relink=null; };
   $('#mAsset').onchange=e=>{ pushHist(true); D.bmedia.asset=e.target.value; refresh(); };
+  if($('#mSelAsset')) $('#mSelAsset').onchange=e=>{ pushHist(true); D.bmedia.selAsset=e.target.value; D.bmedia.selOn=true; syncInputs(true); refresh(); renderMediaUI(); };
   $$('[data-mdir]').forEach(s=>s.onchange=e=>{ pushHist(true); D.bmedia.dir=Object.assign({},D.bmedia.dir||{}); D.bmedia.dir[s.dataset.mdir]=e.target.value; refresh(); });
   $('#mPool').addEventListener('change',e=>{ const id=e.target.dataset&&e.target.dataset.mpool; if(!id) return; pushHist(true); const P2=(D.bmedia.pool||[]).filter(x=>x!==id); if(e.target.checked) P2.push(id); D.bmedia.pool=P2; refresh(); renderMediaUI(); });
   $('#mAssetList').addEventListener('click',e=>{ const d=e.target.closest('[data-mdel]'), r=e.target.closest('[data-mrelink]');
     if(d){ pushHist(true); const id=d.dataset.mdel, M=D.bmedia; M.assets=(M.assets||[]).filter(a=>a.id!==id); M.pool=(M.pool||[]).filter(x=>x!==id); if(M.asset===id) M.asset=mDefault(M.kind); Object.values(M.per||{}).forEach(p=>{if(p.asset===id) delete p.asset;}); refresh(); renderMediaUI(); }
     if(r){ relink=r.dataset.mrelink; fi.value=''; fi.click(); } });
-  $('#mPick').onclick=()=>{ U.mediaPick=!U.mediaPick; if(U.mediaPick){ U.contentPick=false; U.tool='select'; if(D.bmedia.target!=='pick'){pushHist(true);D.bmedia.target='pick';syncInputs(true);} toast('Click blocks to pick them for media · click again to unpick'); } renderMediaUI(); render(); };
-  $('#mWalk').onclick=()=>{ U.mediaPick=true; if(D.bmedia.target!=='pick'){pushHist(true);D.bmedia.target='pick';syncInputs(true);} renderMediaUI(); if(U.playing) stopPlay(); else { if(U.t==null) tlSetT(0); play(); } toast('Playing the walk — pause anytime and click blocks to pick them'); };
-  $('#mPickAll').onclick=()=>{ pushHist(true); D.bmedia.pick=plan(geom()).seq.map(b=>b.id); D.bmedia.target='pick'; syncInputs(true); refresh(); renderMediaUI(); };
+  $('#mPick').onclick=()=>{ U.mediaPick=!U.mediaPick; if(U.mediaPick){ U.contentPick=false; U.tool='select'; if(!D.bmedia.selOn){pushHist(true);D.bmedia.selOn=true;syncInputs(true);} toast('Click blocks to pick them · picked blocks get the Picked media · click again to unpick'); } renderMediaUI(); render(); };
+  $('#mWalk').onclick=()=>{ U.mediaPick=true; if(!D.bmedia.selOn){pushHist(true);D.bmedia.selOn=true;syncInputs(true);} renderMediaUI(); if(U.playing) stopPlay(); else { if(U.t==null) tlSetT(0); play(); } toast('Playing the walk — pause anytime and click blocks to pick them'); };
+  $('#mPickAll').onclick=()=>{ pushHist(true); D.bmedia.pick=plan(geom()).seq.map(b=>b.id); D.bmedia.selOn=true; syncInputs(true); refresh(); renderMediaUI(); };
   $('#mPickNone').onclick=()=>{ pushHist(true); D.bmedia.pick=[]; refresh(); renderMediaUI(); };
   $('#mReseed').onclick=()=>{ pushHist(true); D.bmedia.seed=Math.floor(Math.random()*1e5); refresh(); };
 })();
@@ -6750,7 +6772,7 @@ function renderCPick(){
 })();
 function mPickAt(G,cell){
   const P=plan(G), b=P.seq.find(x=>cell.c>=x.c&&cell.c<x.c+x.w&&cell.r>=x.r&&cell.r<x.r+x.h); if(!b) return false;
-  pushHist(true); const L=(D.bmedia.pick||[]).slice(), i=L.indexOf(b.id); if(i>=0) L.splice(i,1); else L.push(b.id); D.bmedia.pick=L; if(D.bmedia.target!=='pick') D.bmedia.target='pick';
+  pushHist(true); const L=(D.bmedia.pick||[]).slice(), i=L.indexOf(b.id); if(i>=0) L.splice(i,1); else L.push(b.id); D.bmedia.pick=L; D.bmedia.selOn=true;
   syncInputs(true); render(); renderMediaUI(); try{drawDope();}catch(e){} return true;
 }
 /* ---- block media: per-block (inspector) ---- */
@@ -6762,7 +6784,7 @@ function cardMedia(ids){
   const num=(k,lab,unit,min,max)=>`<div class="field"><span class="lbl scrub">${lab}</span><div class="num"><input type="number" data-bm="${k}" value="${+v(k)||0}" min="${min}" max="${max}" step="1"><span class="unit">${unit}</span></div></div>`;
   const asset=got?mAsset(got.asset):null;
   return `<details class="sub" data-sub="blk-media" open><summary>Media <span class="note">${got?(asset?esc(asset.name):'on'):'none'}${ids.length>1?' · '+ids.length+' blocks':''}</span></summary><div class="subbody">
-    <div class="seg" data-bmon="1"><button data-v="auto"${mode==='auto'?' class="on"':''} title="Follow the global Media settings (${M.on?'on':'off'})">Global rule</button><button data-v="on"${mode==='on'?' class="on"':''}>On</button><button data-v="off"${mode==='off'?' class="on"':''}>Off</button></div>
+    <div class="seg" data-bmon="1"><button data-v="auto"${mode==='auto'?' class="on"':''} title="Follow All blocks / Picked blocks (${got?(got.layer==='picked'?'picked':'all blocks'):'none'})">Layer rule</button><button data-v="on"${mode==='on'?' class="on"':''}>On</button><button data-v="off"${mode==='off'?' class="on"':''}>Off</button></div>
     <div class="field stack"><span class="lbl">Media for ${ids.length>1?'these blocks':'this block'}</span><select class="msel" data-bmasset="1">${mOpts(mAssets(),per.asset||'','(global choice)')}</select></div>
     <label class="check"><input type="checkbox" data-bmown="1"${own?'':' checked'}> Use the global media settings</label>
     ${own?`<div class="note">Settings below change ${ids.length>1?'the selected blocks':'this block'} only.</div>
@@ -6881,13 +6903,14 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
 function renderLayerBar(){
   const act=curLayer(), tb=$('#layerTabs'); if(!tb) return;
   $$('#layerTabs [data-ltab]').forEach(b=>{ b.classList.toggle('on',b.dataset.ltab===act); if(b.dataset.ltab==='l2') b.textContent=D.L2&&D.L2.on?'Layer 2':'+ Layer 2'; });
-  const bar=$('#layerBar'); if(bar){ bar.hidden=act!=='l2'; $('#l2On').checked=!!(D.L2&&D.L2.on); $$('#l2Z [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===(D.L2.z||'front'))); }
+  const bar=$('#layerBar'); if(bar){ bar.hidden=act!=='l2'; $('#l2On').checked=!!(D.L2&&D.L2.on); $$('#l2Z [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===(D.L2.z||'front'))); $$('#l2Snd [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===(D.L2.sound||'off'))); }
 }
 (()=>{ const tb=$('#layerTabs'); if(!tb) return;
   tb.addEventListener('click',e=>{ const b=e.target.closest('[data-ltab]'); if(!b) return; const want=b.dataset.ltab;
     if(want==='l2'&&!(D.L2&&D.L2.on)){ pushHist(true); D.L2.on=true; l2Init(); setLayer('l2'); if(!D.blocks.length){ try{ generateLine(true); }catch(x){} } toast('Layer 2: a second walk — bigger blocks with content. It sits in front of the main walk; switch it behind in the bar above.','⌘Z to undo',true); renderLayerBar(); return; }
     setLayer(want); if(want==='l2'&&!D.blocks.length){ try{ generateLine(true,true); }catch(x){} } });
   $('#l2On').onchange=e=>{ pushHist(true); D.L2.on=e.target.checked; planCache.k=''; refresh(); renderLayerBar(); };
+  $('#l2Snd')&&$('#l2Snd').addEventListener('click',e=>{ const b=e.target.closest('[data-v]'); if(!b) return; setL2Sound(b.dataset.v); });
   $('#l2Z').addEventListener('click',e=>{ const b=e.target.closest('[data-v]'); if(!b) return; pushHist(true); D.L2.z=b.dataset.v; planCache.k=''; refresh(); renderLayerBar(); });
 })();
 /* ---- inspector: a layer-2 block's own z order, position, rotation and scale ---- */
