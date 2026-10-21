@@ -435,6 +435,10 @@ body.simple [data-adv]{display:none!important}
 
 /* curve editor */
 .curve{display:grid;gap:6px}
+.wpgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.wpcard{display:grid;gap:5px;text-align:left;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;cursor:pointer}
+.wpcard:hover{border-color:#E6212F}.wpcard b{font-size:12px;font-weight:600}.wpcard span{font-size:10.5px;color:var(--mut,#8a8a93);line-height:1.35}
+.wpbar{display:flex;height:6px;border-radius:3px;overflow:hidden;gap:1px}.wpbar i{display:block;height:100%}
 .ltabs{display:flex;gap:2px;margin-left:14px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:2px}
 .ltabs button{white-space:nowrap;height:24px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:var(--mut,#a2a2ab);font:inherit;font-size:12px;cursor:pointer}
 .ltabs button.on{background:#2a2a30;color:var(--text)}.ltabs button[data-ltab="l2"].on{background:#3a2a10;color:#FFB020}
@@ -1229,6 +1233,11 @@ body.nohelp .qm{display:none}
 
         <!-- 5 ANIMATE -->
         <div class="pane" data-pane="animate">
+          <div class="group" id="walkPresets">
+            <div class="group-h">Walk presets <span class="tag" id="wpTag"></span></div>
+            <div class="note" id="wpNote"></div>
+            <div class="wpgrid" id="wpGrid"></div>
+          </div>
           <div class="group">
             <div class="group-h">Style<button class="btn ghost secreset" id="btnResetAnim" title="Put every animation setting back to its default (⌘Z to undo)">↺ Reset all animation</button></div>
             <div class="modecards" data-seg="anim.mode">
