@@ -74,7 +74,7 @@ const DEF={
   rand:{connect:true,pitch:{on:false,mode:'contour',semis:2,maxStep:2,amount:100},sizeVar:{on:false,mode:'free',wMin:1,wMax:6,hMin:1,hMax:4,min:1,max:3,aMin:0.5,aMax:3,list:'1x1, 2x1, 3x1, 2x2, 4x2, 3x3, 6x3, 1x2',keep:0},endSingle:true,pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
         wander:1,climb:0,stackPct:20,stackGap:0,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,offX:0,offY:0,tracking:0,leading:0,kern:'metrics',caps:'none'},
-  anim:{hide:[],show:[],hidePct:0,hideSeed:1,seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:true,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
+  anim:{hide:[],show:[],hidePct:0,hideSeed:1,seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,vDamp:0,stepZone:0,stepLead:0,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:true,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,lock:{on:false,x:50,y:50,move:'glide',moveLen:0},rzOn:false,rzPts:null,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.42,0,0.58,1],curvePh:null,sceneEase:{on:true,hd:null,holdH:null,onAt:null,holdAt:null,start:40,land:75,landOut:50,leaveIn:50,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zd:{on:false,pts:null},zoomOn:false,zm:{pts:null,focus:'follow',ax:50,ay:50,in:24,out:96,from:100,to:140,curve:[0.65,0,0.35,1],scaleAll:false,followRemap:true,back:false,backIn:180,backOut:228,backCurve:[0.65,0,0.35,1]},extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
@@ -1891,6 +1891,9 @@ function mediaAspectFor(i){ const M=D.bmedia||{}; let id=M.asset; const pool=(M.
   const fromPool=(M.assign==='cycle'||M.assign==='random')&&pool.length, A=fromPool?mAsset(id):(mAsset(mKindAsset(M.kind,id))||mAsset(id)); const R=A&&typeof MRT!=='undefined'?MRT[A.id]:null; const w=(A&&A.w)||(R&&R.w)||16, h=(A&&A.h)||(R&&R.h)||9; return Math.max(0.1,w/Math.max(1,h)); }
 let EXT_RC=null, EXT_TR=null;   // EXT_TR: layer 1 drift added to layer 2 — the lock compensates so blocks still land on the point
    // layer 2 revealing by the layer 1 camera: the main plan's camera, used by the reveal timing
+/* vertical damping (camera follows up/down): 0 = the full up/down move, 100 = no vertical move at all */
+function vDamp(P){ const A=D.anim, d=clamp(+A.vDamp||0,0,100)/100; if(!d||A.axis!=='xy'||!P.cam||!P.cam.length) return; const y0=P.cam[0][1][1];
+  P.cam=P.cam.map(k=>{ const n=k.slice(); n[1]=[k[1][0],r3(y0+(k[1][1]-y0)*(1-d))]; return n; }); }
 function lockPt(){ const A=D.anim, L=A.lock; return (L&&L.on&&A.mode==='camera')?{x:clamp(+L.x,0,100)/100,y:clamp(+L.y,0,100)/100,ly:A.axis==='xy'}:null; }   // ly: the point holds vertically too (camera follows up/down)
 function rzKeys(){ const A=D.anim; if(!A.rzOn||A.revealWhen!=='arrive'||lockPt()) return []; return trkKeys(rzPts(),[0.33,0,0.67,1],false); }
 function revealXAt(t){ const K=rzKeys(); return K.length?ev(K,t,+D.anim.revealX||75):(+D.anim.revealX||75); }
@@ -2108,7 +2111,7 @@ function plan(G){
   let v=PLANS.get(key); if(!v){ let rc=null, tr=null; if(curLayer()==='l2'&&D.L2&&D.L2.store){ const C=l2CamCfg();
       if(D.L2.revealBy==='main'||(C.src==='own'&&(C.ix||C.iy)&&lockPt())){ try{ const pm=withLayer('main',()=>plan(G)); if(D.L2.revealBy==='main') rc={cam:pm.cam,zs:pm.zs,pan:pm.pan};
         if(C.src==='own'&&(C.ix||C.iy)){ const scr=D.L2.zoom===false; tr=t=>{ const d=l1Travel(pm,t,scr); return [C.ix*d[0],C.iy*d[1]]; }; } }catch(e){} } }
-    EXT_RC=rc; try{ v=remappedPlan(G); } finally{ EXT_RC=null; } EXT_TR=tr; try{ lockSnap(v,G); }catch(e){} finally{ EXT_TR=null; } applyZoom(v); v.hidden=hiddenIds(v); } if(PLANS.size>6) PLANS.clear();
+    EXT_RC=rc; try{ v=remappedPlan(G); } finally{ EXT_RC=null; } EXT_TR=tr; try{ lockSnap(v,G); }catch(e){} finally{ EXT_TR=null; } try{ vDamp(v); }catch(e){} applyZoom(v); v.hidden=hiddenIds(v); } if(PLANS.size>6) PLANS.clear();
   planCache={k:key,v}; return v;
 }
 /* ---- TIME REMAP: the scene layer on top.
@@ -2273,7 +2276,7 @@ function computePlan(G){
       ctr.push(front.slice());
     }
     const dirX=ctr[used-1][0]<ctr[0][0]?-1:1, dirY=ctr[used-1][1]<ctr[0][1]?-1:1;
-    const qd=(v,dir)=>(A.snap&&(cm==='step'||cm==='stop'))?(dir>0?Math.ceil(v/G.p-1e-9):Math.floor(v/G.p+1e-9))*G.p:v;
+    const qd=(v,dir)=>(A.snap&&(cm==='step'||cm==='cut'||cm==='stop'))?(dir>0?Math.ceil(v/G.p-1e-9):Math.floor(v/G.p+1e-9))*G.p:v;
     let pv=[0,0]; const LK=lockPt();
     ctr.forEach(c=>{
       let ox=qd(cx-c[0],dirX), oy=A.axis==='xy'?qd(cy-c[1],dirY):0;
@@ -2587,18 +2590,26 @@ function computePlan(G){
       // step & settle (real frames): when a block appears, ease over to it and come to rest.
       // Blocks that arrive in quick succession are taken in one move (to the latest one), so moves never stutter.
       const fps=D.comp.fps||30, mm=Math.max(4,Math.round(fps*.25)), finLen=fin?Math.max(1,Math.round(A.finalMove)||30):0;
-      const tEndAll=endF-(fin?finLen:0), keys=[[uT[0],uO[0],'e',CC]];
+      /* step options: 'cut' = jump with no animation; Step when = only move once the newest block is this far (% of the
+         frame) from where the camera is pointing; Step past = land this far beyond it (fewer, bigger steps) */
+      const cut=cm==='cut', zone=clamp(+A.stepZone||0,0,100)/100, lead=clamp(+A.stepLead||0,0,100)/100;
+      const far=(a,b)=>zone<=0||Math.abs(a[0]-b[0])>=zone*G.W/2-1e-6||(A.axis==='xy'&&Math.abs(a[1]-b[1])>=zone*G.H/2-1e-6);
+      const past=(o,from)=>{ if(lead<=0) return o; const dx=o[0]-from[0], dy=A.axis==='xy'?o[1]-from[1]:0, L=Math.hypot(dx,dy); if(L<1e-6) return o; return [o[0]+dx/L*lead*G.W/2, o[1]+dy/L*lead*G.H/2]; };
+      const tEndAll=endF-(fin?finLen:0), keys=[[uT[0],uO[0],cut?'h':'e',CC]];
       let pos=uO[0], tFree=uT[0], k=1;
       while(k<=lastU){
-        let j=k; while(j<lastU&&uT[j+1]<Math.max(uT[k],tFree)+mm) j++;      // gather the burst
+        let j=k; while(j<lastU&&uT[j+1]<Math.max(uT[k],tFree)+(cut?1:mm)) j++;      // gather the burst
+        if(!far(uO[j],pos)&&j<lastU){ k=j+1; continue; }   // still close enough: hold
         const t0=Math.max(uT[j],tFree); if(t0>=tEndAll) {pos=uO[lastU];break;}
+        const to=j<lastU?past(uO[j],pos):uO[j];
+        if(cut){ keys.push([t0,to,'h']); pos=to; tFree=t0+1; k=j+1; continue; }
         const nxt=j<lastU?uT[j+1]:tEndAll, dur=Math.max(mm,Math.min(tEndAll-t0,(nxt-t0)*.85));
         const t1=Math.min(tEndAll,t0+dur);
-        if(t1-t0<1){pos=uO[j];k=j+1;continue;}
-        keys.push([t0,pos,'e',CC],[t1,uO[j],'e',CC]); pos=uO[j]; tFree=t1; k=j+1;
+        if(t1-t0<1){pos=to;k=j+1;continue;}
+        keys.push([t0,pos,'e',CC],[t1,to,'e',CC]); pos=to; tFree=t1; k=j+1;
       }
-      if(pos!==uO[lastU]){const t0=Math.max(tFree,Math.min(uT[lastU],tEndAll-1)),t1=Math.max(t0+1,tEndAll);keys.push([t0,pos,'e',CC],[t1,uO[lastU],'e',CC]);tFree=t1;}
-      if(fin){const t0=Math.max(tFree,endF-finLen);keys.push([t0,uO[lastU],'e',CC],[Math.max(t0+1,endF),fin,'e',CC]);}
+      if(pos!==uO[lastU]){ if(cut){ keys.push([Math.max(tFree,Math.min(uT[lastU],tEndAll-1)),uO[lastU],'h']); } else {const t0=Math.max(tFree,Math.min(uT[lastU],tEndAll-1)),t1=Math.max(t0+1,tEndAll);keys.push([t0,pos,'e',CC],[t1,uO[lastU],'e',CC]);tFree=t1;} }
+      if(fin){ if(cut) keys.push([Math.max(tFree,endF-1),fin,'h']); else {const t0=Math.max(tFree,endF-finLen);keys.push([t0,uO[lastU],'e',CC],[Math.max(t0+1,endF),fin,'e',CC]);} }
       cam=dedupe(keys.map(q=>[Math.round(q[0]),q[1],q[2],q[3]]));
     }
     if(cam.every(k=>k[1][0]===0&&k[1][1]===0)) cam=[];
@@ -6153,6 +6164,9 @@ const HELP={
   'L2.zoom':'Layer 2 zooms with the grid zoom. Off: it stays at its own size while the layer 1 zooms.',
   'L2.revealBy':'Which camera decides when a layer-2 block appears (when it reaches the reveal zone): layer 2\'s own, or the layer 1\'s.',
   'anim.hidePct':'Randomly hide this share of the blocks. Hidden blocks keep their place in the walk (the line and camera still go through them) — they just never appear. Select a block and switch off “Shown” to hide it by hand.',
+  'anim.vDamp':'Calms the camera\'s up/down moves. 0 = it follows the blocks fully, 100 = it never moves up or down.',
+  'anim.stepZone':'Step sensitivity: the camera only moves once the newest block is this far from where it\'s pointing (% of half the frame). 0 = a step for every block.',
+  'anim.stepLead':'Step size: the camera lands this far beyond the newest block (% of half the frame), so steps are bigger and fewer. 0 = right on the block.',
   'anim.lock.move':'How the camera travels from one block to the next. Glide: one smooth continuous move through every block. Ease each: settles on each block, then eases to the next. Linear: constant speed between blocks.',
   'anim.lock.x':'Across the frame: 0 = left edge, 50 = centre, 100 = right edge.','anim.lock.y':'Down the frame: 0 = top, 50 = centre, 100 = bottom.',
   'anim.smooth':'How many blocks the camera trails behind the newest one (at least 1, so it never moves ahead of what has appeared). Larger = calmer, floatier camera.',
