@@ -1318,8 +1318,14 @@ body.nohelp .qm{display:none}
           <div class="group" data-ctx="camera" data-show="anim.mode=camera|push">
             <div class="group-h">Camera<span id="camHead" class="note" style="margin-left:6px;text-transform:none;letter-spacing:0"></span></div>
             <details class="sub" data-sub="cam-move" open><summary>How it moves <span class="note">movement, feel</span></summary><div class="subbody">
-              <div class="field stack" data-show="anim.motion=smooth"><span class="lbl">Movement</span><div class="seg" data-seg="anim.camMove"><button data-v="curve" title="Moves with the blocks; its speed over the scene comes from the Scene curve">With the blocks</button><button data-v="step">Step &amp; settle</button><button data-v="cut" title="Jumps to each new spot instantly — no animation">Step (cut)</button></div></div>
-              <div data-show="anim.camMove=step|cut" class="field2"><div class="field"><span class="lbl scrub" title="Only step once the newest block is this far from where the camera points (% of half the frame). 0 = every block">Step when</span><div class="num"><input type="number" data-bind="anim.stepZone" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+              <div class="field stack" data-show="anim.motion=smooth"><span class="lbl">Movement</span><div class="seg" data-seg="anim.camMove"><button data-v="curve" title="Moves with the blocks; its speed over the scene comes from the Scene curve">With the blocks</button><button data-v="step">Step &amp; settle</button><button data-v="chop" title="Follows the blocks, but in jerky steps — a stop-motion camera">Choppy</button></div></div>
+              <div data-show="anim.camMove=chop" style="display:grid;gap:8px">
+                <div class="field2"><div class="field"><span class="lbl scrub" title="Jump every this many frames (2 = on twos, 4 = on fours). 0 = only by distance">Step every</span><div class="num"><input type="number" data-bind="anim.chopEvery" min="0" max="48" step="1"><span class="unit">fr</span></div></div>
+                  <div class="field"><span class="lbl scrub" title="Only jump once the camera has drifted this many cells. 0 = always">Min step</span><div class="num"><input type="number" data-bind="anim.chopMin" min="0" max="12" step="0.25"><span class="unit">cells</span></div></div></div>
+                <div class="seg" id="chopPreset"><button data-ch="2,0">On twos</button><button data-ch="4,0">On fours</button><button data-ch="8,0">Every 8</button><button data-ch="0,1">Each cell</button><button data-ch="0,3">Big jumps</button></div>
+                <label class="check"><input type="checkbox" data-bind="anim.chopSnap"> Snap each stop to whole cells</label>
+              </div>
+              <div data-show="anim.camMove=step" class="field2"><div class="field"><span class="lbl scrub" title="Only step once the newest block is this far from where the camera points (% of half the frame). 0 = every block">Step when</span><div class="num"><input type="number" data-bind="anim.stepZone" min="0" max="100" step="5"><span class="unit">%</span></div></div>
                 <div class="field"><span class="lbl scrub" title="Land this far past the newest block (% of half the frame) — bigger, fewer steps">Step past</span><div class="num"><input type="number" data-bind="anim.stepLead" min="0" max="100" step="5"><span class="unit">%</span></div></div></div>
               <div class="field stack"><span class="lbl">Follows</span><div class="seg" data-seg="anim.axis"><button data-v="x">Sideways</button><button data-v="xy">Sideways + up/down</button></div></div>
               <div class="field" data-show="anim.axis=xy"><span class="lbl scrub" title="0 = full up/down move, 100 = no vertical move">Vertical damping</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.vDamp" min="0" max="100" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
@@ -2914,7 +2920,7 @@ const DEF={
   rand:{connect:true,pitch:{on:false,mode:'contour',semis:2,maxStep:2,amount:100},sizeVar:{on:false,mode:'free',wMin:1,wMax:6,hMin:1,hMax:4,min:1,max:3,aMin:0.5,aMax:3,list:'1x1, 2x1, 3x1, 2x2, 4x2, 3x3, 6x3, 1x2',keep:0},endSingle:true,pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
         wander:1,climb:0,stackPct:20,stackGap:0,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,offX:0,offY:0,tracking:0,leading:0,kern:'metrics',caps:'none'},
-  anim:{hide:[],show:[],hidePct:0,hideSeed:1,seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,vDamp:0,stepZone:0,stepLead:0,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:true,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
+  anim:{hide:[],show:[],hidePct:0,hideSeed:1,seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,vDamp:0,stepZone:0,stepLead:0,chopEvery:4,chopMin:0,chopSnap:false,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:true,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,lock:{on:false,x:50,y:50,move:'glide',moveLen:0},rzOn:false,rzPts:null,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.42,0,0.58,1],curvePh:null,sceneEase:{on:true,hd:null,holdH:null,onAt:null,holdAt:null,start:40,land:75,landOut:50,leaveIn:50,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
         zd:{on:false,pts:null},zoomOn:false,zm:{pts:null,focus:'follow',ax:50,ay:50,in:24,out:96,from:100,to:140,curve:[0.65,0,0.35,1],scaleAll:false,followRemap:true,back:false,backIn:180,backOut:228,backCurve:[0.65,0,0.35,1]},extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
@@ -4049,6 +4055,7 @@ function pushHist(keepLive){H.u.push(snap());if(H.u.length>150)H.u.shift();H.r=[
 function setDoc(obj){
   if(obj&&obj.out&&obj.out.bake==null) obj.out.bake=true;
   if(obj&&obj.L2&&obj.L2.cam&&obj.L2.infX==null){ const m={x:[100,0,'main'],fixed:[0,0,'main'],own:[0,0,'own']}[obj.L2.cam]; if(m){ obj.L2.infX=m[0]; obj.L2.infY=m[1]; obj.L2.camSrc=m[2]; } }
+  if(obj&&obj.anim&&obj.anim.camMove==='cut') obj.anim.camMove='chop';
   if(obj&&obj.bmedia&&obj.bmedia.target==='pick'){ const m=obj.bmedia; m.target='all'; m.selOn=!!m.on; m.selAsset=m.selAsset||''; m.on=false; }   // old 'only picked blocks' → the Picked blocks layer
   if(obj&&obj.out&&!(obj.out.orgV>=2)){ obj.out.preBlocks=false; obj.out.headers=true; obj.out.orgV=2; }   // blocks are their own layers now (click one → just that block)
   U._mediaUI=0;
@@ -4734,6 +4741,16 @@ let EXT_RC=null, EXT_TR=null;   // EXT_TR: layer 1 drift added to layer 2 — th
 /* vertical damping (camera follows up/down): 0 = the full up/down move, 100 = no vertical move at all */
 function vDamp(P){ const A=D.anim, d=clamp(+A.vDamp||0,0,100)/100; if(!d||A.axis!=='xy'||!P.cam||!P.cam.length) return; const y0=P.cam[0][1][1];
   P.cam=P.cam.map(k=>{ const n=k.slice(); n[1]=[k[1][0],r3(y0+(k[1][1]-y0)*(1-d))]; return n; }); }
+/* choppy camera: the smooth path, but the camera only moves in jumps — every N frames, and/or once it has drifted a
+   set distance (in cells) from where it last stopped; optionally snapped to whole cells */
+function chopCam(P,G){ const A=D.anim; if(A.camMove!=='chop'||A.mode!=='camera'||!P.cam||P.cam.length<2) return;
+  const every=Math.max(0,Math.round(+A.chopEvery||0)), minD=Math.max(0,+A.chopMin||0)*G.p, snap=!!A.chopSnap, ev0=every||(!minD?4:0);
+  const t0=Math.floor(P.cam[0][0]), t1=Math.ceil(P.cam[P.cam.length-1][0]), base=P.cam[0][1];
+  const q=p=>snap?[base[0]+Math.round((p[0]-base[0])/G.p)*G.p,base[1]+Math.round((p[1]-base[1])/G.p)*G.p]:p;
+  let held=q(ev(P.cam,t0,[0,0])), last=t0; const K=[[t0,held.slice(),'h']];
+  for(let t=t0+1;t<=t1;t++){ const p=ev(P.cam,t,[0,0]); const due=ev0?(t-last>=ev0):true, far=minD?Math.hypot(p[0]-held[0],p[1]-held[1])>=minD:true;
+    if((due&&far)||t===t1){ const n=t===t1?p:q(p); if(Math.abs(n[0]-held[0])>0.01||Math.abs(n[1]-held[1])>0.01){ held=n; K.push([t,[r3(n[0]),r3(n[1])],'h']); } last=t; } }
+  P.cam=K; }
 function lockPt(){ const A=D.anim, L=A.lock; return (L&&L.on&&A.mode==='camera')?{x:clamp(+L.x,0,100)/100,y:clamp(+L.y,0,100)/100,ly:A.axis==='xy'}:null; }   // ly: the point holds vertically too (camera follows up/down)
 function rzKeys(){ const A=D.anim; if(!A.rzOn||A.revealWhen!=='arrive'||lockPt()) return []; return trkKeys(rzPts(),[0.33,0,0.67,1],false); }
 function revealXAt(t){ const K=rzKeys(); return K.length?ev(K,t,+D.anim.revealX||75):(+D.anim.revealX||75); }
@@ -4951,7 +4968,7 @@ function plan(G){
   let v=PLANS.get(key); if(!v){ let rc=null, tr=null; if(curLayer()==='l2'&&D.L2&&D.L2.store){ const C=l2CamCfg();
       if(D.L2.revealBy==='main'||(C.src==='own'&&(C.ix||C.iy)&&lockPt())){ try{ const pm=withLayer('main',()=>plan(G)); if(D.L2.revealBy==='main') rc={cam:pm.cam,zs:pm.zs,pan:pm.pan};
         if(C.src==='own'&&(C.ix||C.iy)){ const scr=D.L2.zoom===false; tr=t=>{ const d=l1Travel(pm,t,scr); return [C.ix*d[0],C.iy*d[1]]; }; } }catch(e){} } }
-    EXT_RC=rc; try{ v=remappedPlan(G); } finally{ EXT_RC=null; } EXT_TR=tr; try{ lockSnap(v,G); }catch(e){} finally{ EXT_TR=null; } try{ vDamp(v); }catch(e){} applyZoom(v); v.hidden=hiddenIds(v); } if(PLANS.size>6) PLANS.clear();
+    EXT_RC=rc; try{ v=remappedPlan(G); } finally{ EXT_RC=null; } EXT_TR=tr; try{ lockSnap(v,G); }catch(e){} finally{ EXT_TR=null; } try{ vDamp(v); }catch(e){} try{ chopCam(v,G); }catch(e){} applyZoom(v); v.hidden=hiddenIds(v); } if(PLANS.size>6) PLANS.clear();
   planCache={k:key,v}; return v;
 }
 /* ---- TIME REMAP: the scene layer on top.
@@ -5106,7 +5123,7 @@ function computePlan(G){
 
   // camera targets
   const cx=G.W/2, cy=G.H/2; let tg=[], fin=null;
-  const cm=stop?'stop':(lockPt()?'curve':(A.camMove||'follow'));   // keeping a block on a point: the camera passes exactly through each block's spot at its reveal
+  const cm=stop?'stop':(lockPt()||A.camMove==='chop'?'curve':(A.camMove||'follow'));   // choppy: the 'with the blocks' path, then held in steps (chopCam)   // keeping a block on a point: the camera passes exactly through each block's spot at its reveal
   if(camOn){
     // the camera follows the frontier: the block furthest along in the build direction so far
     const dirO=A.order==='rtl'?-1:1; let front=null; const ctr=[];
@@ -9005,6 +9022,8 @@ const HELP={
   'L2.revealBy':'Which camera decides when a layer-2 block appears (when it reaches the reveal zone): layer 2\'s own, or the layer 1\'s.',
   'anim.hidePct':'Randomly hide this share of the blocks. Hidden blocks keep their place in the walk (the line and camera still go through them) — they just never appear. Select a block and switch off “Shown” to hide it by hand.',
   'anim.vDamp':'Calms the camera\'s up/down moves. 0 = it follows the blocks fully, 100 = it never moves up or down.',
+  'anim.chopEvery':'Choppy camera: it jumps to where the smooth camera would be every this many frames (2 = on twos, 4 = on fours). 0 = only when it has drifted the distance below.',
+  'anim.chopMin':'Choppy camera: only jump once the smooth camera is this many cells away from where it stopped. 0 = jump every time.',
   'anim.stepZone':'Step sensitivity: the camera only moves once the newest block is this far from where it\'s pointing (% of half the frame). 0 = a step for every block.',
   'anim.stepLead':'Step size: the camera lands this far beyond the newest block (% of half the frame), so steps are bigger and fewer. 0 = right on the block.',
   'anim.lock.move':'How the camera travels from one block to the next. Glide: one smooth continuous move through every block. Ease each: settles on each block, then eases to the next. Linear: constant speed between blocks.',
@@ -9791,6 +9810,7 @@ function mAddFiles(files,relinkId){
   $('#mWalk').onclick=()=>{ U.mediaPick=true; if(!D.bmedia.selOn){pushHist(true);D.bmedia.selOn=true;syncInputs(true);} renderMediaUI(); if(U.playing) stopPlay(); else { if(U.t==null) tlSetT(0); play(); } toast('Playing the walk — pause anytime and click blocks to pick them'); };
   $('#mPickAll').onclick=()=>{ pushHist(true); D.bmedia.pick=plan(geom()).seq.map(b=>b.id); D.bmedia.selOn=true; syncInputs(true); refresh(); renderMediaUI(); };
   $('#mPickNone').onclick=()=>{ pushHist(true); D.bmedia.pick=[]; refresh(); renderMediaUI(); };
+  if($('#chopPreset')) $('#chopPreset').addEventListener('click',e=>{ const b=e.target.closest('[data-ch]'); if(!b) return; const v=b.dataset.ch.split(',').map(Number); pushHist(true); Object.assign(D.anim,{camMove:'chop',chopEvery:v[0],chopMin:v[1]}); planCache.k=''; syncInputs(true); refresh(); });
   if($('#sizePreset')) $('#sizePreset').addEventListener('click',e=>{ const b=e.target.closest('[data-sv]'); if(!b) return; pushHist(true); D.rand.sizeVar=Object.assign({},D.rand.sizeVar,JSON.parse(b.dataset.sv),{on:true}); planCache.k=''; syncInputs(true); refresh(); });
   if($('#hideShuffle')) $('#hideShuffle').onclick=()=>{ pushHist(true); D.anim.hideSeed=1+Math.floor(Math.random()*1e5); D.anim.show=[]; planCache.k=''; refresh(); };
   if($('#hideClear')) $('#hideClear').onclick=()=>{ pushHist(true); D.anim.hide=[]; D.anim.show=[]; D.anim.hidePct=0; planCache.k=''; syncInputs(true); refresh(); toast('Every block shown again'); };
