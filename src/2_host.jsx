@@ -931,8 +931,8 @@ function GB_build(d){
       var grp=[B,T,NT,ML]; for(var fg=f0;fg<fillLayers.length;fg++) grp.push(fillLayers[fg]); GB_labelAll(grp,lab2?(i%2?9:14):(i%2?11:1));
       return {B:B,grp:grp,b:b};
     }
-    var firstMainB=null;
-    for(i=0;i<d.blocks.length;i++){ var gr0=addBlock(d.blocks[i],i,"",false); if(!firstMainB) firstMainB=gr0.B; }
+    var firstMainB=null, mainGroups=[];
+    for(i=0;i<d.blocks.length;i++){ var gr0=addBlock(d.blocks[i],i,"",false); if(!firstMainB) firstMainB=gr0.B; mainGroups.push(gr0); }
     if(org.headers!==false&&d.blocks.length) GB_header(blockC,"BLOCKS ("+d.blocks.length+")",hdrF);
     if(d.blocks.length) out.push(d.blocks.length+(d.blocks.length==1?" block":" blocks"));
     if(nEcho) out.push(nEcho+(nEcho==1?" echo":" echoes"));
@@ -944,12 +944,27 @@ function GB_build(d){
     if(d.layer2&&d.layer2.blocks&&d.layer2.blocks.length){
       var L2=d.layer2, nFront=0;
       if(L2.echoes){ for(i=0;i<L2.echoes.length;i++){ var e2=L2.echoes[i], E2=GB_echoBox(blockC,e2); E2.label=4; E2.name="L2 · "+E2.name; blocks.push({L:E2,T:null,b:{keys:e2.keys}}); if(e2.tIn!=null) trimTo(E2,e2.tIn); if(e2.tOut!=null) trimOut(E2,e2.tOut); if(firstMainB&&L2.z=="behind"){ try{E2.moveAfter(firstMainB);}catch(eE2){} } } }
+      var lowL2=null;
       for(i=0;i<L2.blocks.length;i++){ var g2=addBlock(L2.blocks[i],i,"L2 · ",true); l2groups.push(g2);
         var behind=(L2.blocks[i].zz||L2.z)=="behind";
+        if(behind&&firstMainB&&!lowL2) lowL2=g2.grp[0];
         if(behind&&firstMainB){ var gg=g2.grp, mo=[gg[0],gg[3],gg[1],gg[2]].concat(gg.slice(4)); for(var gk=0;gk<mo.length;gk++){ var lyr=mo[gk]; if(!lyr) continue; try{ lyr.moveAfter(firstMainB); }catch(eMv){} } }   // bottom-up (block, media, text, number, content) keeps the group's order
         else nFront++; }
+      /* main blocks moved in front of / behind layer 2 */
+      for(var mg=0;mg<mainGroups.length;mg++){ var mz=mainGroups[mg].b.zz; if(mz!="front"&&mz!="behind") continue; var gm=mainGroups[mg].grp, mo2=[gm[0],gm[3],gm[1],gm[2]].concat(gm.slice(4));
+        for(var mk2=0;mk2<mo2.length;mk2++){ var ly=mo2[mk2]; if(!ly) continue; try{ if(mz=="front") ly.moveToBeginning(); else if(lowL2) ly.moveAfter(lowL2); }catch(eMz){} } }
       if(org.headers!==false&&nFront) GB_header(blockC,"LAYER 2 · IN FRONT ("+nFront+")",hdrF);
       out.push(L2.blocks.length+" layer-2 blocks");
+      /* layer 2's own camera relation (sideways only / fixed / own): one null carries every layer-2 layer by the
+         difference between its motion and the main camera */
+      if(L2.shift&&L2.shift.length){ try{
+        var sh=GB_null(blockC,"GB · Layer 2 camera",false); sh.comment="GridBlocks:null"; sh.label=9;
+        var shP=GB_xf(sh).property("ADBE Position"), bx=blockC.width/2, by=blockC.height/2; shP.setValue([bx,by]);
+        var kids=[]; for(var q2=0;q2<l2groups.length;q2++){ var gq=l2groups[q2].grp; for(var q3=0;q3<gq.length;q3++) if(gq[q3]) kids.push(gq[q3]); }
+        for(var q4=0;q4<kids.length;q4++){ try{ if(!kids[q4].parent) kids[q4].parent=sh; }catch(eP){} }
+        var shk=[]; for(var q5=0;q5<L2.shift.length;q5++){ var kk=L2.shift[q5]; shk.push([kk[0],[bx+kk[1][0],by+kk[1][1]],kk[2]||"l"]); }
+        GB_keys(shP,shk,fps); shy.push(sh); locks.push(sh); out.push("layer 2 camera offset");
+      }catch(eSh){} }
     }
     if(fillLayers.length||gapLayers.length) out.push((fillLayers.length+gapLayers.length)+" content layers");
     if(d.lab){var nl=GB_labWorld(blockC,d.lab,blocks,blockLayers,fps,org,main); if(nl) out.push(nl+" lab layers");}
