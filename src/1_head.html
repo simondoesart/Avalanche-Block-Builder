@@ -568,6 +568,10 @@ body.nohelp .qm{display:none}
   .step-body{overflow:visible}
   .logo span,.hide-sm{display:none}
 }
+  .anc9{display:grid;grid-template-columns:repeat(3,22px);grid-template-rows:repeat(3,22px);gap:3px;padding:6px;border:1px solid var(--line,#333);border-radius:6px;width:max-content}
+  .anc9 button{width:22px;height:22px;padding:0;border-radius:4px;border:1px solid #444;background:transparent;position:relative;cursor:pointer}
+  .anc9 button::after{content:'';position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:#666}
+  .anc9 button.on{border-color:#E6212F}.anc9 button.on::after{background:#E6212F;width:8px;height:8px;margin:-4px}
 </style>
 </head>
 <body>
@@ -1298,7 +1302,10 @@ body.nohelp .qm{display:none}
             <div class="note" id="l2BBState"></div>
             <details class="sub" data-sub="bb-beats" open><summary>Beats &amp; speed <span class="note">when, and how fast it travels</span></summary><div class="subbody">
               <div class="field stack"><span class="lbl">Which beats</span><div class="seg"><button data-bbset="beats:1">Every beat</button><button data-bbset="beats:2">Every 2nd</button><button data-bbset="beats:4">Every 4th</button><button data-bbset="beats:big">Big hits</button></div></div>
-              <div class="field stack"><span class="lbl">Speed <span class="note">with layer 1's camera</span></span><div class="seg"><button data-bbset="speed:100">Full</button><button data-bbset="speed:75">75%</button><button data-bbset="speed:50">Half</button><button data-bbset="speed:25">Slow</button><button data-bbset="speed:0">Still</button></div>
+              <div class="field stack"><span class="lbl">Layer 2 camera</span><div class="seg"><button data-bbset="cam:line" title="The camera keeps pace with the line: every block lands on the point, joined to the last — it travels as fast as the blocks build">Follows the line</button><button data-bbset="cam:l1" title="Travels with layer 1's camera at a set speed — blocks join when they can and start a new line when they can't">With layer 1</button></div></div>
+              <div class="field" data-show="L2.bb.cam=line"><span class="lbl scrub" title="0 = steps exactly from block to block · higher = a smoother, steadier glide (blocks always land fully on screen)">Smoothness</span><div class="num"><input type="number" data-bind="L2.bb.smooth" min="0" max="48" step="1"><span class="unit">fr</span></div></div>
+              <div class="note" data-show="L2.bb.cam=line">Slower travel: fewer beats (Every 2nd / Big hits) or narrower blocks.</div>
+              <div class="field stack" data-show="L2.bb.cam=l1"><span class="lbl">Speed <span class="note">with layer 1's camera</span></span><div class="seg"><button data-bbset="speed:100">Full</button><button data-bbset="speed:75">75%</button><button data-bbset="speed:50">Half</button><button data-bbset="speed:25">Slow</button><button data-bbset="speed:0">Still</button></div>
                 <div class="field"><span class="lbl scrub">Exact</span><div class="num"><input type="number" data-bind="L2.bb.speed" min="0" max="300" step="5"><span class="unit">%</span></div></div></div>
             </div></details>
             <details class="sub" data-sub="bb-where" open><summary>Where the line goes <span class="note">anchor point &amp; rows</span></summary><div class="subbody">
@@ -1316,16 +1323,28 @@ body.nohelp .qm{display:none}
               <div class="field stack" data-show="L2.bb.touch=true"><span class="lbl">Direction</span><div class="seg"><button data-bbset="bias:bounce" title="Keeps going one way until it reaches the top or bottom row, then turns">Bounce</button><button data-bbset="bias:even" title="Up or down at random, drifting back to the start row">Even</button><button data-bbset="bias:up">Mostly up</button><button data-bbset="bias:down">Mostly down</button></div></div>
               <div class="field stack"><span class="lbl">Rows when not joined</span><div class="seg"><button data-bbset="path:walk">Walk</button><button data-bbset="path:melody" title="Higher notes higher">Melody</button><button data-bbset="path:level">Level</button><button data-bbset="path:random">Random</button></div></div>
               <div class="field2"><div class="field"><span class="lbl scrub" title="Empty columns between joined blocks">Gap</span><div class="num"><input type="number" data-bind="L2.bb.gap" min="0" max="20" step="1"><span class="unit">cells</span></div></div>
-                <div class="field"><span class="lbl scrub" title="How far (% of the frame) a block may slide from its point to stay joined">Slide up to</span><div class="num"><input type="number" data-bind="L2.bb.slack" min="0" max="60" step="5"><span class="unit">%</span></div></div></div>
-              <div class="field stack"><span class="lbl">No room for a block</span><div class="seg"><button data-bbset="ovl:room" title="Older blocks in the way leave as the new one lands — never overlapping">Older ones leave</button><button data-bbset="ovl:allow" title="Let blocks overlap (newest on top)">Allow overlap</button></div></div>
+                <div class="field" data-show="L2.bb.cam=l1"><span class="lbl scrub" title="How far (% of the frame) a block may slide from its point to stay joined">Slide up to</span><div class="num"><input type="number" data-bind="L2.bb.slack" min="0" max="60" step="5"><span class="unit">%</span></div></div></div>
+              <div class="field stack"><span class="lbl">No room for a block</span><div class="seg"><button data-bbset="ovl:push" title="The new block slides right until it's clear of the others">Push right</button><button data-bbset="ovl:room" title="Older blocks in the way leave as the new one lands — never overlapping">Older ones leave</button><button data-bbset="ovl:allow" title="Let blocks overlap (newest on top)">Allow overlap</button></div></div>
             </div></details>
             <details class="sub" data-sub="bb-each" open><summary>Each block <span class="note">size, stay, hide</span></summary><div class="subbody">
-              <div class="field2"><div class="field"><span class="lbl scrub">Block W</span><div class="num"><input type="number" data-bind="block.w" min="1" max="40" step="1"></div></div>
-                <div class="field"><span class="lbl scrub">Block H</span><div class="num"><input type="number" data-bind="block.h" min="1" max="20" step="1"></div></div></div>
+              <div class="field stack"><span class="lbl">Size</span><div class="seg" data-seg="rand.sizeVar.on"><button data-v="false">One size</button><button data-v="true" title="Random widths and heights from the ranges below">Random sizes</button></div></div>
+              <div class="field2"><div class="field"><span class="lbl scrub" id="bbWLbl">Block W</span><div class="num"><input type="number" data-bind="block.w" min="1" max="40" step="1"></div></div>
+                <div class="field"><span class="lbl scrub" id="bbHLbl">Block H</span><div class="num"><input type="number" data-bind="block.h" min="1" max="20" step="1"></div></div></div>
+              <div data-show="rand.sizeVar.on=true" style="display:grid;gap:8px">
+                <div class="field2"><div class="field"><span class="lbl scrub" title="Narrowest block, in cells">W from</span><div class="num"><input type="number" data-bind="rand.sizeVar.wMin" min="1" max="40" step="1"></div></div>
+                  <div class="field"><span class="lbl scrub" title="Widest block">to</span><div class="num"><input type="number" data-bind="rand.sizeVar.wMax" min="1" max="40" step="1"></div></div></div>
+                <div class="field2"><div class="field"><span class="lbl scrub" title="Shortest block, in rows">H from</span><div class="num"><input type="number" data-bind="rand.sizeVar.hMin" min="1" max="20" step="1"></div></div>
+                  <div class="field"><span class="lbl scrub" title="Tallest block">to</span><div class="num"><input type="number" data-bind="rand.sizeVar.hMax" min="1" max="20" step="1"></div></div></div>
+                <div class="field"><span class="lbl scrub" title="This share of blocks keeps the base size (W × H above) — 0 = all random, 100 = none random">Keep base size</span><div class="num"><input type="number" data-bind="rand.sizeVar.keep" min="0" max="100" step="5"><span class="unit">%</span></div></div>
+                <div class="note" id="bbSizeNote"></div>
+              </div>
+              <div class="field stack"><span class="lbl">Block anchor <span class="note">the point that sits on the line</span></span>
+                <div class="anc9" id="bbAnchor"><button data-bbset="anchor:tl" title="Top left"></button><button data-bbset="anchor:t" title="Top centre"></button><button data-bbset="anchor:tr" title="Top right"></button><button data-bbset="anchor:l" title="Middle left"></button><button data-bbset="anchor:c" title="Centre"></button><button data-bbset="anchor:r" title="Middle right"></button><button data-bbset="anchor:bl" title="Bottom left"></button><button data-bbset="anchor:b" title="Bottom centre"></button><button data-bbset="anchor:br" title="Bottom right"></button></div>
+                <div class="note">Left / centre / right: which part of a new block lands on the <b>Across</b> point. Top / middle / bottom: how blocks line up on the start row and side by side (tops, middles or bottoms). Also the pivot when you rotate or scale a block.</div></div>
               <div class="field stack"><span class="lbl">On screen</span><div class="seg"><button data-bbset="stay:stay">Stays</button><button data-bbset="stay:beats">Leaves after</button></div>
                 <div class="field2"><div class="field"><span class="lbl scrub">Beats</span><div class="num"><input type="number" data-bind="L2.bb.stayN" min="1" max="64" step="1"></div></div>
                   <div class="field"><span class="lbl scrub">Randomly hide</span><div class="num"><input type="number" data-bind="anim.hidePct" min="0" max="95" step="5"><span class="unit">%</span></div></div></div></div>
-              <div class="note">Random sizes and shapes: <b>Blocks › Size mix</b>. Single blocks: select one to move, snap, hide or retime it.</div>
+              <div class="note">More size options (shapes, a list, fit the media): <b>Blocks › Size mix</b>. Single blocks: select one to move, snap, hide or retime it.</div>
             </div></details>
             <details class="sub" data-sub="bb-ctrl"><summary>Move the whole layer <span class="note">control layer</span></summary><div class="subbody">
               <div class="field2"><div class="field"><span class="lbl scrub">X</span><div class="num"><input type="number" data-bind="L2.ctrl.x" min="-20000" max="20000" step="1"><span class="unit">px</span></div></div>
