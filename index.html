@@ -435,6 +435,10 @@ body.simple [data-adv]{display:none!important}
 
 /* curve editor */
 .curve{display:grid;gap:6px}
+.wpgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.wpcard{display:grid;gap:5px;text-align:left;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;cursor:pointer}
+.wpcard:hover{border-color:#E6212F}.wpcard b{font-size:12px;font-weight:600}.wpcard span{font-size:10.5px;color:var(--mut,#8a8a93);line-height:1.35}
+.wpbar{display:flex;height:6px;border-radius:3px;overflow:hidden;gap:1px}.wpbar i{display:block;height:100%}
 .ltabs{display:flex;gap:2px;margin-left:14px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:2px}
 .ltabs button{white-space:nowrap;height:24px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:var(--mut,#a2a2ab);font:inherit;font-size:12px;cursor:pointer}
 .ltabs button.on{background:#2a2a30;color:var(--text)}.ltabs button[data-ltab="l2"].on{background:#3a2a10;color:#FFB020}
@@ -1229,6 +1233,11 @@ body.nohelp .qm{display:none}
 
         <!-- 5 ANIMATE -->
         <div class="pane" data-pane="animate">
+          <div class="group" id="walkPresets">
+            <div class="group-h">Walk presets <span class="tag" id="wpTag"></span></div>
+            <div class="note" id="wpNote"></div>
+            <div class="wpgrid" id="wpGrid"></div>
+          </div>
           <div class="group">
             <div class="group-h">Style<button class="btn ghost secreset" id="btnResetAnim" title="Put every animation setting back to its default (⌘Z to undo)">↺ Reset all animation</button></div>
             <div class="modecards" data-seg="anim.mode">
@@ -4769,10 +4778,14 @@ function remappedPlan(G){
     onEnd:P.onEnd,landT:P.landT,fillOut:P.fillOut,holdT:P.holdT,walkT:P.walkT,walkEnd:P.walkEnd,relT:P.relT,end:P.end,cam:P.cam,camPh:P.camPh?Object.assign({},P.camPh):null,cutAt:P.cutAt,cutN:P.cutN,
     fillBase:Object.assign({},P.fillBase||{}),fillEnd:Object.assign({},P.fillEnd||{}),gaps:(P.gaps||[]).map(it=>({t0:it.t0,tEnd:it.tEnd})),
     echo:(P.echo||[]).map(e=>({K:{op:e.K.op}}))};
-  remapPlan(P,curve); return P;
+  /* trimming (cut late blocks): keep the retime the full line had, so the blocks that stay keep their exact timing */
+  let fix=null;
+  if(A.cutAt!=null&&A.cutAt!==''){ const sv=A.cutAt, c=A.sceneCurve; A.cutAt=null; A.sceneCurve=[0,0,1,1]; DENSE_CAM=true; let P0=null; try{ P0=computePlan(G); }catch(e){ P0=null; } finally{ A.cutAt=sv; A.sceneCurve=c; DENSE_CAM=false; }
+    if(P0&&P0.seq.length){ const tail=Math.max(0,Math.round(A.tail)||0); fix={cEnd:Math.max(P0.startF+2,P0.end-tail)}; } }
+  remapPlan(P,curve,fix); return P;
 }
-function remapPlan(P,curve){
-  const tail=Math.max(0,Math.round(D.anim.tail)||0), c0=P.startF, cEnd=Math.max(c0+2,P.end-tail), C=cEnd-c0, R=+D.anim.remapLen>0?Math.max(2,Math.round(+D.anim.remapLen)):C;
+function remapPlan(P,curve,fix){
+  const tail=Math.max(0,Math.round(D.anim.tail)||0), c0=P.startF, cEnd=fix?fix.cEnd:Math.max(c0+2,P.end-tail), C=cEnd-c0, R=+D.anim.remapLen>0?Math.max(2,Math.round(+D.anim.remapLen)):C;
   const f=curveFn(curve), inv=invCurve(curve);
   const toReal=c=>c<=c0?c:c>=cEnd?c0+R+(c-cEnd):c0+R*inv((c-c0)/C);
   const toContent=t=>t<=c0?t:t>=c0+R?cEnd+(t-c0-R):c0+C*clamp(f((t-c0)/R),0,1);
@@ -5240,6 +5253,7 @@ function computePlan(G){
           q0=q;
         }
         if(!hit) t=best!=null?best:Math.max(t0,Math.min(tMax,prev));
+        if(P.cutAt!=null&&(P.walkFrom==null||i<P.walkFrom)) t=Math.min(t,Math.max(T0[i],P.cutAt));   // trimmed: what's left of the build still lands by the cut
         P.T[i]=Math.round(t); prev=P.T[i];
       });
     }
@@ -7798,7 +7812,7 @@ function syncInputs(force){
   $('#preset').disabled=lock;
   $('#countUnit').textContent=D.rand.count>0?'':'auto';
   $('#rowUnit').textContent=D.rand.startRow>0?'':'random';
-  $('#chkOrder').checked=U.showOrder; try{renderLayerBar();}catch(e){}
+  $('#chkOrder').checked=U.showOrder; try{renderLayerBar();}catch(e){} try{ if(STEPS[U.step].id==='animate'&&$('#wpGrid')&&$('#wpGrid').dataset.layer!==curLayer()){ renderWalkPresets(); $('#wpGrid').dataset.layer=curLayer(); } }catch(e){}
   { const w=$('#chkCuesWrap'); if(w){ w.hidden=!timingCues().length; $('#chkCues').checked=U.showCues!==false; } }
 }
 function syncPreset(){const k=D.comp.w+'x'+D.comp.h;$('#preset').value=$$('#preset option').some(o=>o.value===k)?k:'custom';}
@@ -9496,6 +9510,85 @@ $('#insp').addEventListener('change',e=>{ const t=e.target, ds=t.dataset||{};
 $('#insp').addEventListener('input',e=>{ const t=e.target, k=t.dataset&&t.dataset.bm; if(!k) return; const v=parseFloat(t.value); if(isNaN(v)) return;
   if(!U._bmEdit){ pushHist(true); U._bmEdit=true; } mPer(mSelIds(),p=>{p[k]=v;}); render(); });
 const SAFE=(()=>{try{return window.name==='gbsafe';}catch(e){return false;}})();
+/* ==================================================================== WALK PRESETS (per layer)
+   Each preset sets the layer's timing + exit (and clears trims) so the result is predictable; blocks, colours,
+   content and the seed stay. The bar shows the shape: In · Hold · Out. */
+const TRIMS_CLEAR=()=>{ Object.assign(D.anim,{cutAt:null,skip:[],dt:{},dx:{},remapLen:0}); };
+const EXIT_WALK=(o)=>Object.assign({on:true,mode:'walk',holdOn:true,walkHold:36,walkPace:1,walkLen:48,trail:3,style:'wipe'},o||{});
+const MAIN_PRESETS=[
+  {id:'stay',name:'Walk on · stay',desc:'Builds across the frame, then holds to the end.',bar:[3,6,0],apply(){ Object.assign(D.anim,{lenF:72,pace:5}); D.exit.on=false; }},
+  {id:'hold-off',name:'Walk on · hold · walk off',desc:'Builds, holds 1.5 s, then the line keeps walking off frame.',bar:[3,2,3],apply(){ Object.assign(D.anim,{lenF:72,pace:5}); Object.assign(D.exit,EXIT_WALK()); }},
+  {id:'through',name:'Walk through',desc:'No hold — the line walks on and straight off in one move.',bar:[3,0,3],apply(){ Object.assign(D.anim,{lenF:72,pace:5}); Object.assign(D.exit,EXIT_WALK({holdOn:false})); }},
+  {id:'quick-long',name:'Quick in · long hold · off',desc:'Fast build, a long 2.5 s hold, then a quicker walk off.',bar:[2,5,2],apply(){ Object.assign(D.anim,{lenF:40,pace:3}); Object.assign(D.exit,EXIT_WALK({walkHold:60,walkPace:0.7,walkLen:40})); }},
+  {id:'slow',name:'Slow build · walk off',desc:'An unhurried build, a short hold, then a steady walk off.',bar:[5,1,3],apply(){ Object.assign(D.anim,{lenF:140,pace:9}); Object.assign(D.exit,EXIT_WALK({walkHold:18,walkPace:1.2,walkLen:60})); }},
+  {id:'fade-out',name:'Walk on · hold · fade away',desc:'Builds, holds, then every block fades out in turn.',bar:[3,3,2],apply(){ Object.assign(D.anim,{lenF:72,pace:5}); Object.assign(D.exit,{on:true,mode:'end',at:36,stagger:2,style:'fade',len:10}); }},
+  {id:'trail',name:'Trail (each block leaves)',desc:'No hold — each block leaves a moment after it lands, a moving snake.',bar:[4,0,4],apply(){ Object.assign(D.anim,{lenF:96,pace:5}); Object.assign(D.exit,{on:true,mode:'hold',hold:30,style:'wipe',len:8,holdOn:true}); }},
+  {id:'step',name:'Step & settle · hold · off',desc:'The camera steps with the build and settles; hold, then walk off.',bar:[3,2,3],apply(){ Object.assign(D.anim,{lenF:80,pace:6,camMove:'step'}); Object.assign(D.exit,EXIT_WALK({walkHold:30})); }},
+];
+/* layer 2 presets read the main walk's timing so they line up with it ("pinned": the blocks live in the same
+   world as the main line and move with it) */
+const mainInfo=()=>withLayer('main',()=>{ const G=geom(), P=plan(G), b0=P.seq[0]; return {startF:+D.anim.startF||0,lenF:+D.anim.lenF||72,pace:+D.anim.pace||5,exit:clone(D.exit),holdT:P.holdT!=null?P.holdT:P.landT,walkT:P.walkT,end:P.end,c:b0?b0.c:null,r:b0?b0.r:null}; });
+const L2_PRESETS=[
+  {id:'pin-stay',pin:'stay',name:'Walk on with the line · stay',desc:'Bigger blocks walk on over the same path as the main line, then stay pinned to it.',bar:[3,6,0],apply(M){ Object.assign(D.anim,{startF:M.startF+4,lenF:M.lenF,pace:Math.max(6,Math.round(M.pace*2)),countMode:'fill'}); D.rand.gap=0; D.exit.on=false; return true; }},
+  {id:'pin-both',pin:'both',name:'Walk on & off with the line',desc:'Follows the main walk in and out — same timing, its own bigger blocks.',bar:[3,2,3],apply(M){ Object.assign(D.anim,{startF:M.startF+4,lenF:M.lenF,pace:Math.max(6,Math.round(M.pace*2)),countMode:'fill'}); D.rand.gap=0; D.exit=Object.assign(clone(M.exit),{trail:2}); return true; }},
+  {id:'hold-feature',at:'hold',name:'Feature blocks on the hold',desc:'3 big 4×3 blocks land in frame once the main line is built and stay through the hold.',bar:[0,4,1],apply(M){ const st=Math.max(0,Math.round((M.holdT!=null?M.holdT:M.startF+M.lenF)-6)); Object.assign(D.anim,{startF:st,lenF:24,countMode:'exact',total:3,appear:'scale',trans:8}); Object.assign(D.block,{w:4,h:3}); D.rand.gap=0; D.exit=M.walkT!=null?{...D.exit,on:true,mode:'end',at:Math.max(12,Math.round(M.walkT-st-24)),stagger:3,style:'fade',len:10}:{...D.exit,on:false}; D.L2.z='front'; return 'regen'; }},
+  {id:'behind-big',pin:'stay',name:'Big panels behind',desc:'Large 6×3 panels walk on slowly behind the main line and stay.',bar:[5,4,0],apply(M){ Object.assign(D.anim,{startF:M.startF,lenF:Math.round(M.lenF*1.3),pace:16,countMode:'fill',appear:'fade',trans:10}); Object.assign(D.block,{w:6,h:3}); D.rand.gap=0; D.exit.on=false; D.L2.z='behind'; return 'regen'; }},
+  {id:'accent',pin:'stay',name:'Accent hits in front',desc:'A few 2×2 blocks pop on in front, one every few beats of the main build.',bar:[3,3,0],apply(M){ Object.assign(D.anim,{startF:M.startF+8,lenF:M.lenF,pace:Math.max(10,Math.round(M.pace*3)),countMode:'fill',appear:'scale',trans:6}); Object.assign(D.block,{w:2,h:2}); D.rand.gap=5; D.exit.on=false; D.L2.z='front'; return 'regen'; }},
+];
+/* pin layer 2 to the main line: stretch its walk over the same stretch of world, then time each block to land
+   when the main line reaches it (and, for walk on & off, leave when the main line leaves there) */
+function pinToMain(exitToo){
+  const G=geom();
+  const MP=withLayer('main',()=>{ const P=plan(G), wf=P.walkFrom!=null?P.walkFrom:P.seq.length; return P.seq.slice(0,wf).map((b,i)=>{ const q=cellRect(G,b.c,b.r,b.w,b.h); return {x:q.x+q.w/2,xr:q.x+q.w,t:P.T[i],e:(P.exitT||[])[i]}; }); });
+  if(MP.length<2) return false;
+  const byX=MP.slice().sort((a,b)=>a.x-b.x), mainMax=Math.max(...MP.map(m=>m.xr));
+  let run=-1e9; const tx=byX.map(m=>(run=Math.max(run,m.t)));
+  const ex=byX.filter(m=>m.e!=null); let runE=-1e9; const ee=ex.map(m=>(runE=Math.max(runE,m.e)));
+  const interp=(xs,ys,x)=>{ if(!xs.length) return null; if(x<=xs[0]) return ys[0]; for(let k=1;k<xs.length;k++) if(x<=xs[k]){ const u=(x-xs[k-1])/Math.max(1e-6,xs[k]-xs[k-1]); return ys[k-1]+(ys[k]-ys[k-1])*u; } return ys[ys.length-1]; };
+  const built=()=>{ const P=plan(G), wf=P.walkFrom!=null?P.walkFrom:P.seq.length; return {P,wf,rects:P.seq.slice(0,wf).map(b=>cellRect(G,b.c,b.r,b.w,b.h))}; };
+  D.anim.dt={}; D.anim.dx={}; D.anim.countMode='exact';
+  if(exitToo) D.exit=Object.assign({},D.exit,{on:true,mode:'hold',holdOn:true,hold:36,len:+D.exit.len||8,style:D.exit.style||'wipe'});
+  // 1. as many blocks as it takes to cover the main line
+  const reach=n=>{ D.anim.total=n; planCache.k=''; const B=built(); return B.rects.length?Math.max(...B.rects.map(q=>q.x+q.w)):-1e9; };
+  let lo=2, hi=4; while(hi<160&&reach(hi)<mainMax-G.p*0.5) hi=Math.min(160,hi*2);
+  while(lo<hi){ const mid=(lo+hi)>>1; if(reach(mid)>=mainMax-G.p*0.5) hi=mid; else lo=mid+1; }
+  reach(lo);
+  { const B=built(), sk=[]; B.rects.forEach((q,i)=>{ if(i>0&&q.x>mainMax+G.p) sk.push(B.P.seq[i].id); }); D.anim.skip=sk; planCache.k=''; }   // nothing past the end of the main line
+  // 2. land (and leave) where the main line does
+  for(let it=0;it<4;it++){ planCache.k=''; const B=built(); let prev=-1e9, prevE=-1e9;
+    B.rects.forEach((q,i)=>{ const id=B.P.seq[i].id, x=q.x+Math.min(q.w/2,G.p*0.75);
+      let t=Math.round(interp(byX.map(m=>m.x),tx,x)); t=Math.max(t,prev+1); prev=t;
+      const d=t-B.P.T[i]; if(d) D.anim.dt[id]=(+D.anim.dt[id]||0)+d;
+      if(exitToo&&ex.length&&B.P.exitT&&B.P.exitT[i]!=null){ let e=Math.round(interp(ex.map(m=>m.x),ee,q.x+q.w/2)); e=Math.max(e,prevE+1,t+12); prevE=e; const de=e-B.P.exitT[i]; if(de) D.anim.dx[id]=(+D.anim.dx[id]||0)+de; } });
+    Object.keys(D.anim.dt).forEach(k=>{ if(!D.anim.dt[k]) delete D.anim.dt[k]; }); Object.keys(D.anim.dx).forEach(k=>{ if(!D.anim.dx[k]) delete D.anim.dx[k]; }); }
+  planCache.k=''; return true;
+}
+/* put layer 2's blocks inside the frame the main camera holds on */
+function placeInView(M){
+  const G=geom(), t=M.holdT!=null?M.holdT:M.startF+M.lenF, off=withLayer('main',()=>{ const P=plan(G); return ev(P.cam,t,[0,0]); })||[0,0];
+  const wx=-off[0]+G.W*0.03, col=Math.ceil((wx-G.x0)/G.p);
+  D.rand.startCol=col; generateLine(false,true); planCache.k='';
+}
+function applyWalkPreset(id){
+  const L2=curLayer()==='l2', list=L2?L2_PRESETS:MAIN_PRESETS, p=list.find(x=>x.id===id); if(!p) return;
+  pushHist(true); const M=L2?mainInfo():null; TRIMS_CLEAR();
+  if(D.anim.mode==='static') D.anim.mode=L2?'reveal':'camera';
+  const r=p.apply(M);
+  if(L2&&M&&M.c!=null){ D.rand.startCol=M.c; D.rand.startR=M.r; }   // walk the same path as the main line
+  if(L2&&(r==='regen'||r===true)){ try{ generateLine(false,true); }catch(e){} }
+  if(L2&&p.pin){ try{ pinToMain(p.pin==='both'); }catch(e){ console.warn('pin',e); } }
+  if(L2&&p.at==='hold'&&M){ try{ placeInView(M); }catch(e){} }
+  planCache.k=''; fillCache.clear(); syncInputs(true); refresh(); renderWalkPresets(id);
+  toast(`Preset: ${p.name}`,'⌘Z to undo',true);
+}
+function renderWalkPresets(on){
+  const g=$('#wpGrid'); if(!g) return; const L2=curLayer()==='l2', list=L2?L2_PRESETS:MAIN_PRESETS;
+  $('#wpTag').textContent=L2?'layer 2':'main walk';
+  $('#wpNote').textContent=L2?'Line layer 2 up with the main walk. Its blocks live in the same world, so they move with the main line (pinned).':'Pick a starting point — then fine-tune below or drag on the timeline.';
+  const col=['#E6212F','#5a5a63','#74A0E0'];
+  g.innerHTML=list.map(p=>`<button class="wpcard${on===p.id?' on':''}" data-wp="${p.id}" title="${esc(p.desc)}"><div class="wpbar">${p.bar.map((w,i)=>w?`<i style="flex:${w};background:${col[i]}"></i>`:'').join('')}</div><b>${esc(p.name)}</b><span>${esc(p.desc)}</span></button>`).join('');
+}
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-wp]'); if(b) applyWalkPreset(b.dataset.wp); });
 /* ---- layer tabs (top bar) ---- */
 function renderLayerBar(){
   const act=curLayer(), tb=$('#layerTabs'); if(!tb) return;
