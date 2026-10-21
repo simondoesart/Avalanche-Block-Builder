@@ -832,6 +832,10 @@ function GB_build(d){
       comp.openInViewer(); made=true;
     }
     if(d.fitDur && d.comp.dur && comp.duration<d.comp.dur) comp.duration=d.comp.dur;
+    /* in / out points: the comp ends at the out point and the work area covers the range */
+    if(d.io){ try{ var fpsI=d.fps||comp.frameRate, ioA=d.io["in"]!=null?d.io["in"]/fpsI:0, ioB=d.io.out!=null?d.io.out/fpsI:comp.duration;
+        if(d.io.out!=null&&ioB>ioA) comp.duration=Math.max(ioB,1/fpsI);
+        comp.workAreaStart=Math.max(0,Math.min(ioA,comp.duration-1/fpsI)); comp.workAreaDuration=Math.max(1/fpsI,Math.min(ioB,comp.duration)-comp.workAreaStart); }catch(eIO){} }
     if(d.replace) GB_clear(comp);
     var main=comp, fps=d.fps||comp.frameRate, A=d.anim;
     var cam3=(d.rig=="camera");
@@ -958,7 +962,7 @@ function GB_build(d){
       if(org.headers!==false&&nFront) GB_header(blockC,"LAYER 2 · IN FRONT ("+nFront+")",hdrF);
       out.push(L2.blocks.length+" layer-2 blocks");
       /* layer 2's camera (influence / own camera / no zoom): handled once the rig exists, below */
-      l2Info={kids:[],shift:L2.shift,abs:L2.abs,zoom:L2.zoom!==false};
+      l2Info={kids:[],shift:L2.shift,abs:L2.abs,zoom:L2.zoom!==false,ctrl:L2.ctrl||null};
       for(var q2=0;q2<l2groups.length;q2++){ var gq=l2groups[q2].grp; for(var q3=0;q3<gq.length;q3++) if(gq[q3]) l2Info.kids.push(gq[q3]); }
     }
     if(fillLayers.length||gapLayers.length) out.push((fillLayers.length+gapLayers.length)+" content layers");
@@ -1113,14 +1117,23 @@ function GB_build(d){
     /* ---- layer 2 camera: one null carries layer 2 — by the difference from the main camera (moves with the rig),
        or, when layer 2 ignores the zoom, by its whole offset (outside the rig, 2D) ---- */
     if(l2Info&&l2Info.kids.length){ try{
-      var useAbs=!l2Info.zoom&&l2Info.abs&&l2Info.abs.length, keysL2=useAbs?l2Info.abs:l2Info.shift;
+      var CT=l2Info.ctrl, W2=blockC.width/2, H2=blockC.height/2;
+      /* with a control layer in the 2D rig, layer 2 carries its whole camera offset itself (so the control can sit on top
+         in screen space: block → camera offset → control → zoom) */
+      var useAbs=(!l2Info.zoom||(CT&&!cam3))&&l2Info.abs&&l2Info.abs.length, keysL2=useAbs?l2Info.abs:l2Info.shift, sh=null, ctl=null;
+      if(CT){ ctl=GB_null(blockC,"GB · Layer 2 control",false); ctl.comment="GridBlocks:null"; ctl.label=9; GB_xf(ctl).property("ADBE Position").setValue([W2,H2]); }
       if(keysL2&&keysL2.length){
-        var sh=GB_null(blockC,"GB · Layer 2 camera",false); sh.comment="GridBlocks:null"; sh.label=9;
-        for(var q4=0;q4<l2Info.kids.length;q4++){ var kd=l2Info.kids[q4]; try{ if(!kd.parent||(cam&&kd.parent===cam)||(conv&&kd.parent===conv)){ if(useAbs&&cam3) kd.threeDLayer=false; GB_jumpParent(kd,sh); } else if(useAbs&&cam3) kd.threeDLayer=false; }catch(eP){} }
-        if(!useAbs&&cam&&!cam3) GB_jumpParent(sh,cam);
-        GB_keys(GB_xf(sh).property("ADBE Position"),keysL2,fps);
-        shy.push(sh); out.push(useAbs?"layer 2 outside the zoom":"layer 2 camera offset");
-      } }catch(eSh){} }
+        sh=GB_null(blockC,"GB · Layer 2 camera",false); sh.comment="GridBlocks:null"; sh.label=9;
+        for(var q4=0;q4<l2Info.kids.length;q4++){ var kd=l2Info.kids[q4]; try{ if(useAbs&&cam3) kd.threeDLayer=false; if(!kd.parent||(cam&&kd.parent===cam)||(conv&&kd.parent===conv)) GB_jumpParent(kd,sh); }catch(eP){} }
+        var shk=keysL2; if(ctl){ shk=[]; for(var q5=0;q5<keysL2.length;q5++){ var kk=keysL2[q5]; shk.push([kk[0],[kk[1][0]-W2,kk[1][1]-H2],kk[2]||"l"]); } GB_jumpParent(sh,ctl); }
+        else if(!useAbs&&cam&&!cam3) GB_jumpParent(sh,cam);
+        GB_keys(GB_xf(sh).property("ADBE Position"),shk,fps); shy.push(sh); out.push(useAbs&&!CT?"layer 2 outside the zoom":"layer 2 camera offset");
+      } else if(ctl){ for(var q6=0;q6<l2Info.kids.length;q6++){ var kd2=l2Info.kids[q6]; try{ if(!kd2.parent||(cam&&kd2.parent===cam)||(conv&&kd2.parent===conv)){ kd2.parent=ctl; } }catch(eP2){} } }
+      if(ctl){ var base2=[W2,H2]; if(l2Info.zoom&&zoom&&!cam3&&A&&A.zoom){ GB_jumpParent(ctl,zoom); base2=[W2-(A.zoom.cx!=null?A.zoom.cx:W2),H2-(A.zoom.cy!=null?A.zoom.cy:H2)]; }
+        try{ var cp2=GB_xf(ctl).property("ADBE Position"); cp2.setValue([base2[0]+(+CT.x||0),base2[1]+(+CT.y||0)]); if(+CT.r) GB_xf(ctl).property("ADBE Rotate Z").setValue(+CT.r); var cs=(CT.s!=null?+CT.s*100:100);   // payload: s and o are fractions if(Math.abs(cs-100)>1e-3) GB_xf(ctl).property("ADBE Scale").setValue([cs,cs]);
+          if(CT.o!=null&&+CT.o<1){ for(var q7=0;q7<l2Info.kids.length;q7++){ try{ var op=GB_xf(l2Info.kids[q7]).property("ADBE Opacity"); if(op.numKeys>0) op.expression='value*'+(+CT.o)+';'; else op.setValue(op.value*(+CT.o)); }catch(eO){} } }
+        }catch(eCt){} out.push("layer 2 control layer"); }
+    }catch(eSh){} }
     if(d.lab){GB_labScreen(main,d.lab,fps);}
     if(d.trans){var belowL=blockPre?blockPre.layer:(blocks.length?blocks[0].L:null); var nt=GB_trans(main,d,fps,org,folder,comps,belowL,cam); if(nt) out.push(nt+" transition blocks");}
     // the camera (and its framing helper) on top, where animators look for it
@@ -1151,8 +1164,9 @@ function GB_build(d){
         try{var m=org.markers[i], mv=new MarkerValue("GB · "+m[1]); if(m[2]) mv.duration=m[2]/fps; main.markerProperty.setValueAtTime(Math.max(0,m[0]/fps),mv);}catch(eMk){}
       }
     }
-    /* layer-2 block transforms: position / rotation / scale on top of the animation (z = towards / away from camera) */
-    for(i=0;i<l2groups.length;i++){ var xb=l2groups[i].b, XF=xb.xf, BL=l2groups[i].B; if(!XF) continue;
+    /* block transforms (either layer): position / rotation / scale on top of the animation (z = towards / away from camera) */
+    var xfGroups=mainGroups.concat(l2groups);
+    for(i=0;i<xfGroups.length;i++){ var xb=xfGroups[i].b, XF=xb.xf, BL=xfGroups[i].B; if(!XF) continue;
       try{ var td=BL.threeDLayer, Zc=1.3889*main.width, kz=td?1:Zc/Math.max(50,Zc+(+XF.z||0)), ps=GB_xf(BL).property("ADBE Position"), pv=ps.value;
         if(ps.numKeys===0){ if(td) ps.setValue([pv[0]+(+XF.x||0),pv[1]+(+XF.y||0),(pv[2]||0)+(+XF.z||0)]); else ps.setValue([pv[0]+(+XF.x||0),pv[1]+(+XF.y||0)]); }
         else ps.expression='value+['+(+XF.x||0)+','+(+XF.y||0)+(td?','+(+XF.z||0):'')+']';
@@ -1165,6 +1179,7 @@ function GB_build(d){
     if(gridPre||blockPre){var pn=[];if(gridPre)pn.push("grid");if(blockPre)pn.push("blocks");out.push("precomps: "+pn.join(", "));}
     if(d.lock){for(i=0;i<locks.length;i++){try{locks[i].locked=true;}catch(eL){}}}
     var fm=GB_missingFonts(d.fontsUsed); if(fm.length) out.push("⚠ font not installed: "+fm.join(", ")+" (AE used a substitute)");
+    if(d.io) out.push("in/out "+(d.io["in"]!=null?"f"+d.io["in"]:"start")+"–"+(d.io.out!=null?"f"+d.io.out:"end"));
     return "OK|"+(made?"New comp “"+main.name+"” · ":"")+"Built "+out.join(", ")+" in “"+main.name+"”"+(folder?" · project items in Grid Blocks › "+folder.name:"");
   }catch(e){
     return "ERR|"+e.toString()+(e.line?" (line "+e.line+")":"");

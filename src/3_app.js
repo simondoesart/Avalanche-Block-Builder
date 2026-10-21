@@ -85,7 +85,8 @@ const DEF={
        ticker:{on:false,y:94,size:14,speed:160,color:'#A2AFB2',band:true,bandColor:'#121212'},
        snow:{on:false,count:90,speed:240,size:2,stretch:6,dir:'left',color:'#EBF0FA',opacity:55,seed:9}},
   num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100,per:{}},
-  L2:{on:false,z:'front',active:'main',store:null,sound:'off',timing:null,cam:'main',camSrc:'main',infX:100,infY:100,zoom:true,revealBy:'own'},
+  io:{in:null,out:null},
+  L2:{on:false,z:'front',active:'main',store:null,sound:'off',timing:null,cam:'main',camSrc:'main',infX:100,infY:100,zoom:true,revealBy:'own',ctrl:{x:0,y:0,r:0,s:100,o:100}},
   bmedia:{on:false,selOn:false,selAsset:'',kind:'video',asset:'sample',precomp:false,fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,
     loop:'loop',start:'reveal',delay:0,at:0,offset:0,audio:'mute',inMode:'block',inLen:12,target:'all',pick:[],dirOn:{up:true,down:true,flat:true},
     assign:'same',pool:[],dir:{up:'',down:'',flat:''},seed:1,per:{},assets:[]},
@@ -1874,7 +1875,8 @@ function ensureRzPts(){ const A=D.anim; if(!Array.isArray(A.rzPts)||A.rzPts.leng
 function lockSnap(P,G){
   const LK=lockPt(); if(!LK||!P.cam||P.cam.length<2||!P.seq.length) return;
   const tgt=[G.W*LK.x,G.H*LK.y], end=P.relT!=null?P.relT:Infinity, pts=[];
-  P.seq.forEach((b,i)=>{ if(b.stack) return; const t=P.T[i]; if(t==null||t>end) return; const q=cellRect(G,b.c,b.r,b.w,b.h), o=ev(P.cam,t,[0,0]), dr=EXT_TR?EXT_TR(t):[0,0], d=[tgt[0]-(q.x+q.w/2)-o[0]-dr[0],LK.ly?tgt[1]-(q.y+q.h/2)-o[1]-dr[1]:-dr[1]];
+  const TS=P.T0&&P.T0.length===P.T.length?P.T0:P.T;   // the camera follows the beat schedule — moving a block on the timeline only changes when it appears
+  P.seq.forEach((b,i)=>{ if(b.stack) return; const t=TS[i]; if(t==null||t>end) return; const q=cellRect(G,b.c,b.r,b.w,b.h), o=ev(P.cam,t,[0,0]), dr=EXT_TR?EXT_TR(t):[0,0], d=[tgt[0]-(q.x+q.w/2)-o[0]-dr[0],LK.ly?tgt[1]-(q.y+q.h/2)-o[1]-dr[1]:-dr[1]];
     const l=pts[pts.length-1]; if(l&&t-l[0]<1) pts[pts.length-1]=[t,d]; else pts.push([t,d]); });   // two blocks a frame or two apart: the camera aims at the later one (no jolt)
   if(!pts.length) return;
   const dAt=t=>{ if(t<=pts[0][0]) return pts[0][1]; for(let k=1;k<pts.length;k++) if(t<=pts[k][0]){ const a=pts[k-1],b=pts[k],u=(t-a[0])/Math.max(1e-6,b[0]-a[0]); return [a[1][0]+(b[1][0]-a[1][0])*u,a[1][1]+(b[1][1]-a[1][1])*u]; } return pts[pts.length-1][1]; };
@@ -1931,7 +1933,7 @@ function chopCam(P,G){ const A=D.anim; if(A.camMove!=='chop'||A.mode!=='camera'|
 /* travel speed: the camera glides at one steady speed along the line the blocks were laid on (a straight fit through
    each block's position at its reveal), easing in at the first block and out at the last — no stalls where blocks stack */
 function paceCam(P,G){ const PC=D.rand.pace||{}, A=D.anim; if(!PC.on||A.mode!=='camera'||!P.cam||!P.cam.length||P.seq.length<3) return;
-  const pts=[]; P.seq.forEach((b,i)=>{ const q=cellRect(G,b.c,b.r,b.w,b.h); if(P.T[i]!=null) pts.push([P.T[i],q.x+q.w/2]); }); if(pts.length<3) return;
+  const TS=P.T0&&P.T0.length===P.T.length?P.T0:P.T; const pts=[]; P.seq.forEach((b,i)=>{ const q=cellRect(G,b.c,b.r,b.w,b.h); if(TS[i]!=null) pts.push([TS[i],q.x+q.w/2]); }); if(pts.length<3) return;
   const n=pts.length, mt=pts.reduce((a,p)=>a+p[0],0)/n, mx=pts.reduce((a,p)=>a+p[1],0)/n; let sxy=0,sxx=0; pts.forEach(p=>{ sxy+=(p[0]-mt)*(p[1]-mx); sxx+=(p[0]-mt)*(p[0]-mt); });
   const k=sxx>0?sxy/sxx:0, fps=D.comp.fps||30; P.paceEff=Math.abs(k)*fps/G.p;   // px per frame along the line → cells per second actually travelled
   const tA=pts[0][0], tB=pts[n-1][0], LK=lockPt(), anchorX=LK?G.W*LK.x:null;
@@ -3891,6 +3893,11 @@ function drawDope(){
   g.fillStyle='#9a9aa3'; g.font='10px sans-serif'; g.textBaseline='middle'; for(let s=Math.ceil(V0.f0/fps/stepS)*stepS;s*fps<=V0.f1;s+=stepS){const x=X(s*fps); g.fillRect(x,ROWS.ruler-9,1,9); g.fillText((+s.toFixed(2))+'s',x+3,8);}
   if(anim&&P.seq.length){g.fillStyle='rgba(230,33,47,.8)'; g.fillRect(X(P.startF),ROWS.ruler-3,Math.max(1,X(P.startF+(P.R||P.L))-X(P.startF)),3);}
   g.fillStyle='rgba(255,255,255,.35)'; g.fillRect(X(compF),0,1,r.height);
+  { const IO=ioRange(); if(IO.in!=null||IO.out!=null){ const xi=IO.in!=null?X(IO.in):null, xo=IO.out!=null?X(IO.out):null;
+      g.fillStyle='rgba(0,0,0,.45)'; if(xi!=null&&xi>LW) g.fillRect(LW,0,xi-LW,r.height); if(xo!=null&&xo<r.width) g.fillRect(xo,0,r.width-xo,r.height);
+      const flag=(x,lab,left)=>{ g.fillStyle='#F5C542'; g.fillRect(x-1,0,2,r.height); g.beginPath(); if(left){ g.moveTo(x,2); g.lineTo(x+16,2); g.lineTo(x+16,13); g.lineTo(x,16);} else { g.moveTo(x,2); g.lineTo(x-20,2); g.lineTo(x-20,13); g.lineTo(x,16);} g.closePath(); g.fill(); g.fillStyle='#1a1a1a'; g.font='700 8px sans-serif'; g.textBaseline='middle'; g.fillText(lab,left?x+2:x-19,8); };
+      if(xi!=null&&xi>=LW-2&&xi<=r.width+2){ flag(xi,'IN',true); item({type:'point',x:xi+6,y:8,cur:'ew-resize',tip:`In point · f${IO.in} — drag · ⌥-click clears · the After Effects work area starts here`,drag:fx=>{ D.io.in=Math.max(0,Math.min(Math.round(F(fx)),(IO.out!=null?IO.out-1:1e9))); planCache.k=''; },alt:()=>ioSet('in',null)}); }
+      if(xo!=null&&xo>=LW-2&&xo<=r.width+2){ flag(xo,'OUT',false); item({type:'point',x:xo-8,y:8,cur:'ew-resize',tip:`Out point · f${IO.out} — drag · ⌥-click clears · nothing that appears after it goes to After Effects`,drag:fx=>{ D.io.out=Math.max((IO.in!=null?IO.in+1:1),Math.round(F(fx))); planCache.k=''; },alt:()=>ioSet('out',null)}); } } }
   const cues=U.showCues===false?[]:timingCues(); g.fillStyle=D.timing&&D.timing.sync?'rgba(116,157,211,.7)':'rgba(116,157,211,.32)'; cues.forEach(f=>{g.fillRect(X(f),ROWS.ruler,1,r.height-ROWS.ruler);});
   if(U.t!=null&&anim&&P.remapped&&TL.contentY0!=null){ const x=X(U.t), xc=X(P.toContent(U.t)), yC=TL.contentY0;
     g.fillStyle='#E6212F'; g.fillRect(x-.5,0,1.5,yC-6); g.strokeStyle='#E6212F'; g.lineWidth=1.5; g.setLineDash([]); g.beginPath(); g.moveTo(x,yC-6); g.lineTo(xc,yC+2); g.stroke();
@@ -4575,7 +4582,7 @@ function drawWorld(g,G,o){
         P2.seq.forEach(b=>{const q=cellRect(G,b.c,b.r,b.w,b.h);drawBlock(g,G,b,o2,off[0],off[1],blockState(P2.tracks[b.id],A.t,q),false);}); }
       else { g.save(); g.globalAlpha*=0.45; P2.seq.concat(P2.statics).forEach(b=>drawBlock(g,G,b,o2,0,0,null,false)); g.restore(); } }); };
   if(!l2On()) drawActive(null);
-  else { const L2z=fn=>{ if(live&&D.L2&&D.L2.zoom===false&&baseXf&&g.setTransform){ g.save(); g.setTransform(baseXf); const zk=ZK; ZK=null; try{ fn(); } finally{ ZK=zk; g.restore(); } } else fn(); };   // layer 2 not affected by the zoom
+  else { const L2C=l2Ctrl(), L2z=fn=>{ const fz=live&&D.L2&&D.L2.zoom===false&&baseXf&&g.setTransform; if(!fz&&!L2C) return fn(); g.save(); const zk=ZK; if(fz){ g.setTransform(baseXf); ZK=null; } ctrlApply(g,G,L2C); try{ fn(); } finally{ ZK=zk; g.restore(); } };   // layer 2 not affected by the zoom
     if(curLayer()==='main'){ drawActive('mb'); L2z(()=>drawOther('back')); drawActive('mid'); L2z(()=>drawOther('front')); drawActive('mf'); }
     else { drawOther('mb'); L2z(()=>drawActive('back')); drawOther('mid'); L2z(()=>drawActive('front')); drawOther('mf'); } }
   // text in the gaps between blocks
@@ -4588,7 +4595,7 @@ function drawWorld(g,G,o){
   if(D.look.ruleLayer==='top') drawRules();
   /* per-block order with the column rules: rules on top → blocks marked 'above' are drawn again over them;
      rules underneath → the rules are drawn again over blocks marked 'below' (clipped to those blocks) */
-  if(D.look.rulesOn){ const want=D.look.ruleLayer==='top'?'above':'below', L2z2=fn=>{ if(live&&D.L2&&D.L2.zoom===false&&baseXf&&g.setTransform){ g.save(); g.setTransform(baseXf); const zk=ZK; ZK=null; try{ fn(); } finally{ ZK=zk; g.restore(); } } else fn(); };
+  if(D.look.rulesOn){ const want=D.look.ruleLayer==='top'?'above':'below', L2z2=fn=>{ const fz=live&&D.L2&&D.L2.zoom===false&&baseXf&&g.setTransform, C=l2Ctrl(); if(!fz&&!C) return fn(); g.save(); const zk=ZK; if(fz){ g.setTransform(baseXf); ZK=null; } ctrlApply(g,G,C); try{ fn(); } finally{ ZK=zk; g.restore(); } };
     const zX=g.getTransform?g.getTransform():null;
     const each=(layer,fn)=>{ const run=isCur=>{ const G2=geom(), P2=isCur&&A&&A.P?A.P:plan(G2), rz=D.anim.rz||{}; const ids=Object.keys(rz).filter(k=>rz[k]===want); if(!ids.length) return;
         const o0=live?A.off:[0,0], d=live&&curLayer()==='l2'?l2ShiftAt(A.t,PMain,P2):[0,0], ox=o0[0]+d[0], oy=o0[1]+d[1];
@@ -4648,7 +4655,7 @@ function drawOverlays(G,A){
     ctx.setLineDash([6/sc,4/sc]); ctx.lineWidth=2/sc; ctx.strokeStyle=er?'#ffb44d':'#fff'; ctx.strokeRect(q.x,q.y,q.w,q.h); ctx.setLineDash([]);
     pill(`${er?'Unmerge ':''}${ss.w} × ${ss.h}`,q.x+q.w/2,q.y+q.h/2,sc,'rgba(0,0,0,.78)','#fff',true);
   }
-  ctx.save(); zoomXf(ctx,G,s,live?LV.pan:null,live?LV.zc:null);
+  ctx.save(); zoomXf(ctx,G,s,live?LV.pan:null,live?LV.zc:null); ctrlApply(ctx,G,LV.ctrl); ctx.globalAlpha=1;
   const ssc=sc*s;
   const bad=U.drag&&(U.drag.type==='move'||U.drag.type==='resize')&&U.drag.bad;
   const list=live||(A&&A.P.lineShift)?A.P.seq:(A?D.blocks.filter(b=>valid(b,G)).concat(A.P.seq.filter(b=>b.virtual)):D.blocks.filter(b=>valid(b,G)));
@@ -4663,7 +4670,8 @@ function drawOverlays(G,A){
     }
     if(U.showOrder||tool==='order'){
       const man=D.anim.order==='manual'&&tool==='order'&&!b.virtual;
-      pill(String(b.order),x+5/ssc,y+5/ssc,ssc,man&&!b.mo?'rgba(255,180,77,.9)':b.virtual?'rgba(0,0,0,.4)':'rgba(0,0,0,.65)',man&&!b.mo?'#000':'#fff',false);
+      const Tp=xfOf(G,b,x,y,q.w,q.h), pp=Tp?(()=>{ const lx=(x+5/ssc-Tp.cx)*Tp.sx, ly=(y+5/ssc-Tp.cy)*Tp.sy; return [Tp.tx+lx*Math.cos(Tp.a)-ly*Math.sin(Tp.a), Tp.ty+lx*Math.sin(Tp.a)+ly*Math.cos(Tp.a)]; })():[x+5/ssc,y+5/ssc];
+      pill(String(b.order),pp[0],pp[1],ssc,man&&!b.mo?'rgba(255,180,77,.9)':b.virtual?'rgba(0,0,0,.4)':'rgba(0,0,0,.65)',man&&!b.mo?'#000':'#fff',false);
     }
   });
   if(A&&STEPS[U.step].id==='animate'&&D.anim.ending==='spot'&&D.anim.extendOn&&A.P.endCol!=null){
@@ -4722,11 +4730,19 @@ function toWorld(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.lef
 function spaceHeld(){ if(U.space&&inAE&&Date.now()-(U.spaceT||0)>900){ U.space=false; try{cv.classList.remove('panning');}catch(e){} } return !!U.space; }
 /* how the active layer is seen right now: zoom, pan, zoom pivot and camera offset — layer 2 adds its own camera
    offset and may ignore the zoom, so selection outlines and clicks line up with what's drawn */
-function layerView(G,A){ if(!(A&&A.live)) return {s:1,pan:[0,0],zc:null,off:[0,0]};
-  let v={s:A.s,pan:A.pan,zc:A.zc,off:A.off};
-  if(curLayer()==='l2'&&l2On()){ const d=l2ShiftAt(A.t,A.M||A.P,A.P); v.off=[A.off[0]+d[0],A.off[1]+d[1]]; if(D.L2&&D.L2.zoom===false) v={s:1,pan:[0,0],zc:null,off:v.off}; }
+/* layer 2's control layer: one transform (move / rotate / scale / fade) over every layer-2 block, around the frame centre */
+/* in / out points (timeline ruler): the part that gets built in After Effects — nothing appearing after the out point
+   is brought over, and the comp's work area is set to the range */
+function ioRange(){ const o=D.io||{}; let a=o.in!=null&&o.in!==''?Math.max(0,Math.round(+o.in)):null, b=o.out!=null&&o.out!==''?Math.round(+o.out):null; if(a!=null&&b!=null&&b<=a) b=a+1; return {in:a,out:b}; }
+function ioSet(which,f){ pushHist(true); D.io=Object.assign({in:null,out:null},D.io||{}); D.io[which]=f==null?null:Math.max(0,Math.round(f)); const r=ioRange(); D.io.in=r.in; D.io.out=r.out; planCache.k=''; drawDope(); toast(f==null?`${which==='in'?'In':'Out'} point cleared`:`${which==='in'?'In':'Out'} point at f${Math.round(f)}`,which==='out'?'nothing after it goes to After Effects':'the After Effects work area starts here',true); }
+function l2Ctrl(){ const c=D.L2&&D.L2.ctrl; if(!c) return null; const x=+c.x||0, y=+c.y||0, r=+c.r||0, s=(c.s!=null?+c.s:100)/100, o=(c.o!=null?+c.o:100)/100; return (x||y||r||Math.abs(s-1)>1e-6||o<1)?{x,y,r,s,o}:null; }
+function ctrlApply(g,G,C){ if(!C) return; g.translate(G.W/2+C.x,G.H/2+C.y); g.rotate(C.r*Math.PI/180); g.scale(C.s||1e-6,C.s||1e-6); g.translate(-G.W/2,-G.H/2); g.globalAlpha*=C.o; }
+function ctrlInv(G,C,p){ if(!C) return p; const dx=p.x-G.W/2-C.x, dy=p.y-G.H/2-C.y, a=-C.r*Math.PI/180, ca=Math.cos(a), sa=Math.sin(a); return {x:(dx*ca-dy*sa)/(C.s||1e-6)+G.W/2, y:(dx*sa+dy*ca)/(C.s||1e-6)+G.H/2}; }
+function layerView(G,A){ const C=curLayer()==='l2'&&l2On()?l2Ctrl():null; if(!(A&&A.live)) return {s:1,pan:[0,0],zc:null,off:[0,0],ctrl:C};
+  let v={s:A.s,pan:A.pan,zc:A.zc,off:A.off,ctrl:C};
+  if(curLayer()==='l2'&&l2On()){ const d=l2ShiftAt(A.t,A.M||A.P,A.P); v.off=[A.off[0]+d[0],A.off[1]+d[1]]; if(D.L2&&D.L2.zoom===false) v={s:1,pan:[0,0],zc:null,off:v.off,ctrl:C}; }
   return v; }
-function localPt(G,w){const A=animState(G);if(A&&A.live){ const v=layerView(G,A), c=v.zc||[G.W/2,G.H/2]; return{x:c[0]+(w.x-v.pan[0]-c[0])/v.s-v.off[0],y:c[1]+(w.y-v.pan[1]-c[1])/v.s-v.off[1]}; }return w;}
+function localPt(G,w){const A=animState(G), v=layerView(G,A);if(A&&A.live){ const c=v.zc||[G.W/2,G.H/2]; const z={x:c[0]+(w.x-v.pan[0]-c[0])/v.s,y:c[1]+(w.y-v.pan[1]-c[1])/v.s}, u=ctrlInv(G,v.ctrl,z); return{x:u.x-v.off[0],y:u.y-v.off[1]}; } return ctrlInv(G,v.ctrl,w);}
 /* per-block position / rotation / scale (layer 2): the same transform drawBlock uses, around the block's centre */
 function xfOf(G,b,x,y,w,h){ const XF=D.anim.xf&&D.anim.xf[b.id]; if(!XF) return null; const R=Math.PI/180, Zc=CAM_ZOOM_K*G.W, k=XF.z?Zc/Math.max(50,Zc+(+XF.z||0)):1, sF=(XF.s!=null?+XF.s:100)/100, cx=x+w/2, cy=y+h/2;
   return {tx:cx+(+XF.x||0)+(cx-G.W/2)*(k-1), ty:cy+(+XF.y||0)+(cy-G.H/2)*(k-1), a:(+XF.rz||0)*R, sx:k*sF*Math.cos((+XF.ry||0)*R), sy:k*sF*Math.cos((+XF.rx||0)*R), cx, cy}; }
@@ -4761,7 +4777,9 @@ cv.addEventListener('pointerdown',e=>{
   const hd=handleAt(G,w);
   if(hd){U.drag={type:'resize',k:hd.k,id:hd.b.id,orig:{c:hd.b.c,r:hd.b.r,w:hd.b.w,h:hd.b.h},moved:false};return;}
   let b=inR?blockAt(cell.c,cell.r):null;
-  if(b&&isGenerated()&&(plan(G).lineShift||0)) b=null;   // the line is drawn slid up/down: hit-test the drawn blocks instead
+  if(b&&isGenerated()&&(plan(G).lineShift||0)) b=null;
+  /* ⌥ / Alt + drag on a block: slide it freely (its own position offset, either layer, generated blocks too) */
+  if(e.altKey&&U.tool==='select'&&inR){ const hb=(xp&&xp.b)||b||virtualAt(G,cell); if(hb){ const xf=(D.anim.xf||{})[hb.id]||{}; U.dopeSel=[hb.id]; U.selIds=b&&b.id===hb.id?[hb.id]:[]; U.drag={type:'xf',id:hb.id,x0:w.x,y0:w.y,bx:+xf.x||0,by:+xf.y||0,moved:false}; refresh(); return; } }   // the line is drawn slid up/down: hit-test the drawn blocks instead
   const tool=U.tool;
   if(U.mediaPick&&STEPS[U.step].id==='content'&&tool==='select'&&!e.shiftKey){ if(mPickAt(G,cell)) return; }
   if(U.contentPick&&STEPS[U.step].id==='content'&&tool==='select'&&!e.shiftKey){ if(cPickAt(G,cell)) return; }
@@ -4830,6 +4848,8 @@ cv.addEventListener('pointermove',e=>{
       if(cell.c!==d.last.c||cell.r!==d.last.r){d.last=cell;if(tryStamp(cell)){if(!d.any){histSettle();H.u.push(d.before);H.r=[];U.live=false;updUndo();}d.any=true;render();}}
       return;
     }
+    if(d.type==='xf'){ const dx=w.x-d.x0, dy=w.y-d.y0; if(!d.moved&&Math.hypot(dx,dy)<2) return; if(!d.moved){ pushHist(true); d.moved=true; }
+      D.anim.xf=Object.assign({},D.anim.xf||{}); D.anim.xf[d.id]=Object.assign({},D.anim.xf[d.id]||{},{x:Math.round(d.bx+dx),y:Math.round(d.by+dy)}); planCache.k=''; render(); return; }
     if(d.type==='vmove'){   // dragging a generated block: make the line editable, then it's a normal move
       if(cell.c===d.sc&&cell.r===d.sr) return;
       const map=materialize(); const nid=map&&map[d.vid]; const nb=nid!=null?byId(nid):null;
@@ -5797,8 +5817,8 @@ document.addEventListener('keydown',e=>{
   if(mod&&kl==='z'&&U.curveEd&&!$('#curveModal').hidden){e.preventDefault();U.curveEd.step(e.shiftKey?1:-1);return;}
   const textTyping=t.matches&&t.matches('input[type=text],input:not([type]),input[type=search],textarea');   // number fields / selects: ⌘Z is the app's undo
   if(mod&&kl==='z'){if(textTyping)return;e.preventDefault();if(typing&&t.blur)t.blur();e.shiftKey?redo():undo();return;}
+  if(!mod&&!typing&&(kl==='i'||kl==='o')&&U.t!=null){ e.preventDefault(); ioSet(kl==='i'?'in':'out',e.altKey?null:U.t); return; }   // I / O: in / out point at the playhead (⌥ clears)
   if(mod&&kl==='y'){if(textTyping)return;e.preventDefault();if(typing&&t.blur)t.blur();redo();return;}   // ⌘Y / Ctrl+Y: redo too
-  if(mod&&kl==='y'){if(textTyping)return;e.preventDefault();redo();return;}
   if(mod&&kl==='s'){e.preventDefault();openLib(true);return;}
   if(typing){if(k==='Escape')t.blur();return;}
   if(!$('#libModal').hidden){if(k==='Escape')closeLib();return;}
@@ -6250,6 +6270,7 @@ const HELP={
   'L2.infY':'How much of the layer 1 camera\'s up/down travel layer 2 picks up. 0 = never shifts up or down.',
   'L2.zoom':'Layer 2 zooms with the grid zoom. Off: it stays at its own size while the layer 1 zooms.',
   'L2.revealBy':'Which camera decides when a layer-2 block appears (when it reaches the reveal zone): layer 2\'s own, or the layer 1\'s.',
+  'L2.ctrl.x':'Moves every layer-2 block together (px). In After Effects this is the GB · Layer 2 control null.',
   'anim.hidePct':'Randomly hide this share of the blocks. Hidden blocks keep their place in the walk (the line and camera still go through them) — they just never appear. Select a block and switch off “Shown” to hide it by hand.',
   'rand.pace.on':'Travel speed: the blocks are laid out by when they appear, so the camera following them moves at a steady speed — they still land on their beats. Slower than one block per beat: blocks share columns and step up or down a row instead.',
   'rand.pace.speed':'How fast the camera travels, in grid cells per second.',
@@ -6714,9 +6735,9 @@ function autosave(){
 /* ------------------------------------------------------------------ build payload */
 /* the export always describes the layer 1, with layer 2 (if on) alongside it */
 function payload(){
-  return withLayer('main',()=>{ const d=payloadCore(); d.layer2=null;
+  return withLayer('main',()=>{ const d=payloadCore(); d.layer2=null; { const IO=ioRange(); d.io=(IO.in!=null||IO.out!=null)?{in:IO.in,out:IO.out}:null; }
     const OL=(D.out&&D.out.layers)||'both';
-    if(l2On()&&OL!=='main'){ const PM=plan(geom()); d.layer2=withLayer('l2',()=>{ const q=payloadCore(true); let shift=null, abs=null; try{ const P2=plan(geom()); shift=l2ShiftKeys(PM,P2); if(D.L2.zoom===false) abs=l2ShiftKeys(PM,P2,true); }catch(e){} return {z:D.L2.z,blocks:q.blocks,echoes:q.echoes,shift,abs,zoom:D.L2.zoom!==false}; }); }
+    if(l2On()&&OL!=='main'){ const PM=plan(geom()); d.layer2=withLayer('l2',()=>{ const q=payloadCore(true); let shift=null, abs=null; const C=l2Ctrl(); try{ const P2=plan(geom()); shift=l2ShiftKeys(PM,P2); if(D.L2.zoom===false||C) abs=l2ShiftKeys(PM,P2,true); }catch(e){} return {z:D.L2.z,blocks:q.blocks,echoes:q.echoes,shift,abs,zoom:D.L2.zoom!==false,ctrl:C}; }); }
     if(OL==='l2'&&d.layer2){ d.blocks=[]; d.echoes=[]; d.gaps=null; }
     return d; });
 }
@@ -6762,7 +6783,8 @@ function payloadCore(inner){
       segs:zoomOn?rr.map(a=>[r3(a[0]+a[2]/2),a[1],r3(a[0]+a[2]/2),r3(a[1]+a[3])]):null};
   }
   const NUMS=blockNumbers(G);
-  const blocks=P.seq.filter(b=>!isHid(P,b)).map(b=>{
+  const IO=ioRange(), past=i=>animOn&&IO.out!=null&&P.T[i]!=null&&P.T[i]>IO.out;   // after the out point: not built
+  const blocks=P.seq.filter((b,i)=>!isHid(P,b)&&!past(i)).map(b=>{
     const q=cellRect(G,b.c,b.r,b.w,b.h);
     return{name:bname(b),order:b.order,c:b.c+1,r:b.r+1,w:b.w,h:b.h,x:r3(q.x),y:r3(q.y),bw:r3(q.w),bh:r3(q.h),
       color:hexRgb(b.color),text:casedText(txtStyle(b)).replace(/\n/g,'\r'),fontSize:txtStyle(b).fontSize,textColor:hexRgb(b.textColor),align:txtStyle(b).align,pad:txtStyle(b).pad,offX:+txtStyle(b).offX||0,offY:+txtStyle(b).offY||0,
@@ -6810,7 +6832,7 @@ function payloadCore(inner){
   // echoes
   const E=D.echo; let echoes=[];
   if(E.on&&(E.fill||(E.stroke&&+E.sw>0))){
-    const src=animOn?P.echo.filter(e=>!(e.src&&isHid(P,e.src))).map(e=>({b:e.src,r:e.rect,K:e.K})):echoTargets(D.blocks.filter(b=>valid(b,G))).map(b=>({b,r:echoRect(G,b),K:null}));
+    const src=animOn?P.echo.filter(e=>!(e.src&&isHid(P,e.src))&&!(e.src&&past(P.seq.indexOf(e.src)))).map(e=>({b:e.src,r:e.rect,K:e.K})):echoTargets(D.blocks.filter(b=>valid(b,G))).map(b=>({b,r:echoRect(G,b),K:null}));
     echoes=src.map(e=>({name:bname(e.b)+' · Echo',x:r3(e.r.x),y:r3(e.r.y),w:r3(e.r.w),h:r3(e.r.h),
       fill:E.fill?hexRgb(E.color):null, opacity:clamp(+E.opacity||0,0,100),
       stroke:E.stroke&&+E.sw>0?{w:+E.sw,color:hexRgb(E.scolor),dash:E.dash?[Math.max(1,+E.dashL||1),Math.max(1,+E.dashG||1)]:null}:null,
@@ -6820,7 +6842,7 @@ function payloadCore(inner){
   let gaps=null;
   if(F.on&&F.gap.on){
     const gl=animOn&&P.gaps?P.gaps:gapItems(G,(animOn?P.seq:D.blocks.filter(b=>valid(b,G)))).map(it=>Object.assign({},it,{t0:0}));
-    gaps=gl.map(it=>payItem(it,it.t0||0,it.tEnd));
+    gaps=gl.filter(it=>!(IO.out!=null&&animOn&&(it.t0||0)>IO.out)).map(it=>payItem(it,it.t0||0,it.tEnd));
   }
   const endSec=animOn?P.end/fps:0;
   const labels={reveal:'reveal animation',camera:'camera-follow animation',push:'conveyor animation'};
@@ -7042,6 +7064,9 @@ function mAddFiles(files,relinkId){
   $('#mWalk').onclick=()=>{ U.mediaPick=true; if(!D.bmedia.selOn){pushHist(true);D.bmedia.selOn=true;syncInputs(true);} renderMediaUI(); if(U.playing) stopPlay(); else { if(U.t==null) tlSetT(0); play(); } toast('Playing the walk — pause anytime and click blocks to pick them'); };
   $('#mPickAll').onclick=()=>{ pushHist(true); D.bmedia.pick=plan(geom()).seq.map(b=>b.id); D.bmedia.selOn=true; syncInputs(true); refresh(); renderMediaUI(); };
   $('#mPickNone').onclick=()=>{ pushHist(true); D.bmedia.pick=[]; refresh(); renderMediaUI(); };
+  if($('#l2CtrlReset')) $('#l2CtrlReset').onclick=()=>{ pushHist(true); D.L2.ctrl={x:0,y:0,r:0,s:100,o:100}; planCache.k=''; syncInputs(true); refresh(); };
+  if($('#btnIn')) $('#btnIn').onclick=e=>{ if(e.altKey) return ioSet('in',null); ioSet('in',U.t!=null?U.t:0); };
+  if($('#btnOut')) $('#btnOut').onclick=e=>{ if(e.altKey) return ioSet('out',null); ioSet('out',U.t!=null?U.t:Math.round((D.comp.dur||10)*(D.comp.fps||30))); };
   if($('#l2PacePreset')) $('#l2PacePreset').addEventListener('click',e=>{ const b=e.target.closest('[data-pc]'); if(!b) return; pushHist(true); D.rand.pace={on:true,speed:+b.dataset.pc}; planCache.k=''; syncInputs(true); refresh(); });
   if($('#chopPreset')) $('#chopPreset').addEventListener('click',e=>{ const b=e.target.closest('[data-ch]'); if(!b) return; const v=b.dataset.ch.split(',').map(Number); pushHist(true); Object.assign(D.anim,{camMove:'chop',chopEvery:v[0],chopMin:v[1]}); planCache.k=''; syncInputs(true); refresh(); });
   if($('#sizePreset')) $('#sizePreset').addEventListener('click',e=>{ const b=e.target.closest('[data-sv]'); if(!b) return; pushHist(true); D.rand.sizeVar=Object.assign({},D.rand.sizeVar,JSON.parse(b.dataset.sv),{on:true}); planCache.k=''; syncInputs(true); refresh(); });
@@ -7244,9 +7269,14 @@ function cardRule(ids){ if(!ids.length||!D.look.rulesOn) return ''; const v=(D.a
   return `<div class="card"><div class="card-h">Order with the rules${ids.length>1?`<span class="count">${ids.length}</span>`:''}</div>
     <div class="seg" data-rzz="1"><button data-v="below"${v==='below'?' class="on"':''} title="Under the column rules">Behind rules</button><button data-v=""${!v?' class="on"':''} title="Rules are ${top?'on top':'underneath'} (Setup › Rules)">Default (${top?'behind':'in front'})</button><button data-v="above"${v==='above'?' class="on"':''} title="Over the column rules">In front of rules</button></div></div>`; }
 function cardL2(ids){
-  if(curLayer()==='main'&&l2On()&&ids.length){ const zo=(D.anim.zord||{})[ids[0]]||'';
-    return `<div class="card"><div class="card-h">Order with layer 2${ids.length>1?`<span class="count">${ids.length}</span>`:''}</div>
-      <div class="seg" data-l2z="1"><button data-v="behind"${zo==='behind'?' class="on"':''} title="Under every layer-2 block">Behind layer 2</button><button data-v=""${!zo?' class="on"':''}>Normal</button><button data-v="front"${zo==='front'?' class="on"':''} title="Over every layer-2 block">In front of layer 2</button></div></div>`; }
+  if(curLayer()==='main'&&ids.length){ const zo=(D.anim.zord||{})[ids[0]]||'', xf=(D.anim.xf||{})[ids[0]]||{}, v=k=>xf[k]!=null?xf[k]:(k==='s'?100:0);
+    const num=(k,lab,unit,step)=>`<div class="field"><span class="lbl scrub">${lab}</span><div class="num"><input type="number" data-l2x="${k}" value="${v(k)}" step="${step||1}"><span class="unit">${unit}</span></div></div>`;
+    return (l2On()?`<div class="card"><div class="card-h">Order with layer 2${ids.length>1?`<span class="count">${ids.length}</span>`:''}</div>
+      <div class="seg" data-l2z="1"><button data-v="behind"${zo==='behind'?' class="on"':''} title="Under every layer-2 block">Behind layer 2</button><button data-v=""${!zo?' class="on"':''}>Normal</button><button data-v="front"${zo==='front'?' class="on"':''} title="Over every layer-2 block">In front of layer 2</button></div></div>`:'')+
+      `<div class="card"><div class="card-h">Move this block${ids.length>1?`<span class="count">${ids.length}</span>`:''}<span class="r"><a href="#" data-l2reset="1" class="note">reset</a></span></div>
+      <div class="field stack"><span class="lbl">Position</span><div class="field3">${num('x','X','px')}${num('y','Y','px')}${num('z','Z','px',10)}</div></div>
+      <div class="field stack"><span class="lbl">Rotation</span><div class="field3">${num('rx','X','°')}${num('ry','Y','°')}${num('rz','Z','°')}</div></div>
+      <div class="field2">${num('s','Scale','%')}<div class="note">On top of its animation. Tip: hold ⌥ (Alt) and drag a block on the canvas to slide it.</div></div></div>`; }
   if(curLayer()!=='l2'||!ids.length) return '';
   const xf=(D.anim.xf||{})[ids[0]]||{}, zo=(D.anim.zord||{})[ids[0]]||'', v=k=>xf[k]!=null?xf[k]:(k==='s'?100:0);
   const num=(k,lab,unit,step)=>`<div class="field"><span class="lbl scrub">${lab}</span><div class="num"><input type="number" data-l2x="${k}" value="${v(k)}" step="${step||1}"><span class="unit">${unit}</span></div></div>`;
