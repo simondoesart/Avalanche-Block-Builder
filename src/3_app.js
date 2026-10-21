@@ -86,7 +86,7 @@ const DEF={
        snow:{on:false,count:90,speed:240,size:2,stretch:6,dir:'left',color:'#EBF0FA',opacity:55,seed:9}},
   num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100,per:{}},
   io:{in:null,out:null},
-  L2:{on:false,z:'front',active:'main',store:null,sound:'off',timing:null,cam:'main',camSrc:'main',infX:100,infY:100,zoom:true,revealBy:'own',ctrl:{x:0,y:0,r:0,s:100,o:100},bb:{on:false,cam:'line',smooth:8,anchor:'c',speed:100,rx:65,band:'any',rowFrom:null,rowTo:null,startRow:null,path:'walk',touch:true,step:'corner',sidePct:30,bias:'bounce',gap:0,overlap:false,slack:25,stay:'stay',stayN:8}},
+  L2:{on:false,z:'front',active:'main',store:null,sound:'off',timing:null,cam:'main',camSrc:'main',infX:100,infY:100,zoom:true,revealBy:'own',ctrl:{x:0,y:0,r:0,s:100,o:100},bb:{on:false,cam:'line',smooth:8,anchor:'c',vf:false,vDamp:0,ry:50,speed:100,rx:65,band:'any',rowFrom:null,rowTo:null,startRow:null,path:'walk',touch:true,step:'corner',sidePct:30,bias:'bounce',gap:0,overlap:false,slack:25,stay:'stay',stayN:8}},
   bmedia:{on:false,selOn:false,selAsset:'',kind:'video',asset:'sample',precomp:false,fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,
     loop:'loop',start:'reveal',delay:0,at:0,offset:0,audio:'mute',inMode:'block',inLen:12,target:'all',pick:[],dirOn:{up:true,down:true,flat:true},
     assign:'same',pool:[],dir:{up:'',down:'',flat:''},seed:1,per:{},assets:[]},
@@ -1915,21 +1915,28 @@ function bbAnchor(B){ const a=(B&&B.anchor)||'c'; return [a.indexOf('l')>=0?0:a.
 function bbLine(B){ return !B||B.cam!=='l1'; }   /* layer 2's camera follows the line (default) vs travels with layer 1 at a set speed */
 function bbOvl(B){ return B.overlap===true?'allow':(B.overlap==='room'||B.overlap==='allow'||B.overlap==='push')?B.overlap:'push'; }
 /* the line camera: each new block's anchor lands on the point (Across %) at its beat; a smooth glide between (box-smoothed monotone path) */
-function bbCamBuild(P,G){ const B=D.L2.bb||{}, AN=bbAnchor(B), rx=clamp(+B.rx||65,5,95)/100, K=[];
-  const lim=[]; P.seq.forEach((b,i)=>{ const t=P.T[i]; if(t==null) return; const bw=b.w*G.p-G.gut, lft=G.x0+b.c*G.p; let sx=G.W*rx-AN[0]*bw; if(bw<=G.W) sx=clamp(sx,0,G.W-bw); K.push([t,sx-lft]); if(bw<=G.W) lim.push([t,-lft,G.W-bw-lft]); });   /* whole block on screen when it lands */
-  K.sort((a,b)=>a[0]-b[0]); if(!K.length){ P.bbCam=null; return; }
-  for(let i=1;i<K.length;i++) if(K[i][1]>K[i-1][1]) K[i][1]=K[i-1][1];   // never backwards
-  const end=Math.ceil(Math.max(P.end||0,K[K.length-1][0]))+2, n=end+1, raw=new Float64Array(n);
+/* a smooth camera path (one value per frame) through keys [[t,v]], box-smoothed, then nudged so each block lands inside lim [[t,lo,hi]] */
+function bbPath(K,lim,n,S){ const raw=new Float64Array(n);
   const m=K.map((k,i)=>{ if(i===0||i===K.length-1) return 0; const d0=(k[1]-K[i-1][1])/Math.max(1e-6,k[0]-K[i-1][0]), d1=(K[i+1][1]-k[1])/Math.max(1e-6,K[i+1][0]-k[0]); return d0*d1<=0?0:2/(1/d0+1/d1); });
   let j=0; for(let f=0;f<n;f++){ if(f<=K[0][0]){ raw[f]=K[0][1]; continue; } if(f>=K[K.length-1][0]){ raw[f]=K[K.length-1][1]; continue; }
     while(j<K.length-2&&f>K[j+1][0]) j++; const a=K[j], b=K[j+1], h=Math.max(1e-6,b[0]-a[0]), u=(f-a[0])/h, u2=u*u, u3=u2*u;
     raw[f]=(2*u3-3*u2+1)*a[1]+(u3-2*u2+u)*h*m[j]+(-2*u3+3*u2)*b[1]+(u3-u2)*h*m[j+1]; }
-  const S=Math.round(clamp(B.smooth!=null?+B.smooth:8,0,48)/2); let cur=raw;
+  let cur=raw;
   if(S>0) for(let pass=0;pass<2;pass++){ const nx=new Float64Array(n); for(let f=0;f<n;f++){ let s=0,c=0; for(let k=-S;k<=S;k++){ const q=clamp(f+k,0,n-1); s+=cur[q]; c++; } nx[f]=s/c; } cur=nx; }
-  if(S>0) for(let it=0;it<16;it++){ let moved=false; lim.forEach((L,li)=>{ const f=clamp(Math.round(L[0]),0,n-1), v=cur[f], d=v<L[1]?L[1]-v:v>L[2]?L[2]-v:0; if(Math.abs(d)<0.5) return; moved=true;
+  for(let it=0;it<16;it++){ let moved=false; lim.forEach((L,li)=>{ const f=clamp(Math.round(L[0]),0,n-1), v=cur[f], d=v<L[1]?L[1]-v:v>L[2]?L[2]-v:0; if(Math.abs(d)<0.5) return; moved=true;
       const nb=Math.min(li>0?f-Math.round(lim[li-1][0]):99,li<lim.length-1?Math.round(lim[li+1][0])-f:99), R=Math.max(1,Math.min(S*2+1,nb-1));
-      for(let k=-R;k<=R;k++){ const q=f+k; if(q<0||q>=n) continue; cur[q]+=d*(0.5+0.5*Math.cos(Math.PI*k/(R+1))); } }); if(!moved) break; }   /* nudge the glide where a block would land partly off screen */
-  P.bbCam=Array.from(cur,v=>r3(v)); }
+      for(let k=-R;k<=R;k++){ const q=f+k; if(q<0||q>=n) continue; cur[q]+=d*(0.5+0.5*Math.cos(Math.PI*k/(R+1))); } }); if(!moved) break; }   /* nudge where a block would land partly off screen */
+  return Array.from(cur,v=>r3(v)); }
+/* the line camera: across — each new block's anchor lands on the point (Across %) at its beat; up/down (when on) — on the Down % point, damped */
+function bbCamBuild(P,G){ const B=D.L2.bb||{}, AN=bbAnchor(B), rx=clamp(+B.rx||65,5,95)/100, S=Math.round(clamp(B.smooth!=null?+B.smooth:8,0,48)/2);
+  P.bbCam=null; P.bbCamY=null; const pts=[]; P.seq.forEach((b,i)=>{ const t=P.T[i]; if(t!=null&&!(P.hidden&&P.hidden.has(b.id))&&!b.__rest) pts.push([t,b]); }); pts.sort((a,b)=>a[0]-b[0]); if(!pts.length) return;
+  const end=Math.ceil(Math.max(P.end||0,pts[pts.length-1][0]))+2, n=end+1;
+  if(bbLine(B)){ const K=[], lim=[]; pts.forEach(([t,b])=>{ const bw=b.w*G.p-G.gut, lft=G.x0+b.c*G.p; let sx=G.W*rx-AN[0]*bw; if(bw<=G.W) sx=clamp(sx,0,G.W-bw); K.push([t,sx-lft]); if(bw<=G.W) lim.push([t,-lft,G.W-bw-lft]); });
+    for(let i=1;i<K.length;i++) if(K[i][1]>K[i-1][1]) K[i][1]=K[i-1][1];   // never backwards
+    P.bbCam=bbPath(K,S>0?lim:[],n,S); }
+  if(B.vf){ const ry=clamp(B.ry!=null?+B.ry:50,0,100)/100, dmp=clamp(+B.vDamp||0,0,100)/100, K=[], lim=[];
+    pts.forEach(([t,b])=>{ const q=cellRect(G,b.c,b.r,b.w,b.h); let y=G.H*ry-(q.y+AN[1]*q.h); y*=1-dmp; K.push([t,y]); if(q.h<=G.H) lim.push([t,-q.y,G.H-q.h-q.y]); });
+    P.bbCamY=bbPath(K,lim,n,Math.max(S,2)); } }
 function l2BB(){ const L=D.L2||{}, B=L.bb; if(!B||!B.on) return null; const T=l2Timing(); return T&&T.sync&&(T.beats||[]).length?B:null; }
 let EXT_PLACE=null;   // set while layer 2's plan is computed in beat-block mode: {tot(t) → layer-2 camera offset}
 function beatPlace(G,base0,times,prevSeed){
@@ -1945,8 +1952,10 @@ function beatPlace(G,base0,times,prevSeed){
       if(a>=1){ h=k; w=Math.max(1,Math.round(k*a)); } else { w=k; h=Math.max(1,Math.round(k/a)); } }
     return [Math.max(1,w),Math.min(Math.max(1,h),G.R)]; };
   // the rows the line may use: an explicit range (from–to), or a band (top / middle / bottom / any)
-  const range=h=>{ const R=G.R; let lo,hi;
-    if(B.rowFrom!=null&&B.rowFrom!==''&&B.rowTo!=null&&B.rowTo!==''){ lo=Math.max(0,Math.round(+B.rowFrom)-1); hi=Math.min(R-1,Math.round(+B.rowTo)-1); }
+  const FREE_V=!!B.vf&&(B.bias==='up'||B.bias==='down');   /* camera follows up/down + mostly up/down: the line may climb past the frame */
+  const has=v=>v!=null&&v!==''&&isFinite(+v);
+  const range=h=>{ const R=G.R; let lo,hi; if(FREE_V) return [-100000,100000];
+    if(has(B.rowFrom)||has(B.rowTo)){ lo=has(B.rowFrom)?Math.max(0,Math.round(+B.rowFrom)-1):0; hi=has(B.rowTo)?Math.min(R-1,Math.round(+B.rowTo)-1):R-1; if(hi<lo){ const x=lo; lo=hi; hi=x; } }
     else { const t=B.band||'any'; if(t==='top'){ lo=0; hi=Math.max(0,Math.ceil(R/2)-1); } else if(t==='bottom'){ lo=Math.floor(R/2); hi=R-1; } else if(t==='mid'){ lo=Math.floor(R/4); hi=Math.max(lo,Math.ceil(3*R/4)-1); } else { lo=0; hi=R-1; } }
     const a=lo, b=Math.max(lo,hi-h+1); return b>=a?[clamp(a,0,Math.max(0,R-h)),clamp(b,0,Math.max(0,R-h))]:[clamp(lo,0,Math.max(0,R-h)),clamp(lo,0,Math.max(0,R-h))]; };
   const PP=B.path==='melody'?cuePitches():[]; const pv=PP.filter(x=>x!=null).sort((a,b)=>a-b), pr=pv.length?[pv[Math.floor(pv.length*.05)],pv[Math.floor(pv.length*.95)]||pv[pv.length-1]]:null;
@@ -1963,7 +1972,7 @@ function beatPlace(G,base0,times,prevSeed){
     const fits=cc=>{ if(LINE) return true; const x0=G.x0+cc*G.p+o[0], x1=x0+w*G.p-G.gut; return x0>=-1&&x1<=W+1; };
     let want=Math.round((W*rx-o[0]-G.x0)/G.p-ax*w); if(LINE&&prev) want=prev.c+prev.w+gap+(B.touch===false?Math.floor(rnd()*3):0); if(!fits(want)){ const lo=Math.ceil((-o[0]-G.x0)/G.p), hi=Math.floor((W-o[0]-G.x0+G.gut)/G.p)-w; if(hi>=lo) want=clamp(want,lo,hi); }
     let c=want, r, joined=false, rest=false;
-    const startR=B.startRow!=null&&B.startRow!==''?clamp(atRow(Math.round(+B.startRow)-1,h),rg[0],rg[1]):Math.round((rg[0]+rg[1])/2);
+    const startR=B.startRow!=null&&B.startRow!==''?clamp(atRow(Math.round(+B.startRow)-1,h),rg[0],rg[1]):FREE_V?Math.max(0,Math.floor((G.R-h)/2)):Math.round((rg[0]+rg[1])/2);
     if(B.touch!==false&&prev){ const pe=prev.c+prev.w+gap; if(LINE||(fits(pe)&&pe-want>=-slack)){ c=pe; joined=true; } }   /* with layer 1: stay joined while the line's end is still on screen */
     if(!prev){ r=startR; }
     else if(joined){
@@ -2007,8 +2016,9 @@ function l2CamCfg(){ const L=D.L2||{}; { const B=l2BB(); if(B) return {src:'main
 function l2ShiftAt(t,PM,P2){ const C=l2CamCfg(); if(!PM||(C.src==='main'&&C.ix===1&&C.iy===1)) return [0,0];
   const c=PM.cam&&PM.cam.length?PM.cam:null, mo=c?ev(c,t,[0,0]):[0,0], m0=c?c[0][1]:[0,0];
   const tr=l1Travel(PM,t,D.L2&&D.L2.zoom===false);   // how far layer 1's camera has travelled — as seen on screen when layer 2 ignores the zoom
-  if(C.line&&P2&&P2.bbCam&&P2.bbCam.length){ const A=P2.bbCam, f=clamp(t,0,A.length-1), i0=Math.floor(f), i1=Math.min(A.length-1,i0+1), x=A[i0]+(A[i1]-A[i0])*(f-i0); return [x-mo[0],-mo[1]]; }
-  const base=C.src==='own'?(P2&&P2.cam&&P2.cam.length?ev(P2.cam,t,[0,0]):[0,0]):(C.bb?[m0[0],0]:m0), tot=[base[0]+C.ix*tr[0],base[1]+C.iy*tr[1]];
+  const sm=A=>{ const f=clamp(t,0,A.length-1), i0=Math.floor(f), i1=Math.min(A.length-1,i0+1); return A[i0]+(A[i1]-A[i0])*(f-i0); }, by=C.bb&&P2&&P2.bbCamY&&P2.bbCamY.length?sm(P2.bbCamY):0;   /* beat blocks: up/down follow */
+  if(C.line&&P2&&P2.bbCam&&P2.bbCam.length) return [sm(P2.bbCam)-mo[0],by-mo[1]];
+  const base=C.src==='own'?(P2&&P2.cam&&P2.cam.length?ev(P2.cam,t,[0,0]):[0,0]):(C.bb?[m0[0],0]:m0), tot=[base[0]+C.ix*tr[0],C.bb?by:base[1]+C.iy*tr[1]];
   return [tot[0]-mo[0],tot[1]-mo[1]]; }
 function l2ShiftKeys(PM,P2,abs){ const C=l2CamCfg(); if(!abs&&C.src==='main'&&C.ix===1&&C.iy===1) return null; const end=Math.ceil(Math.max(PM.end||0,P2.end||0))+1, out=[];
   for(let t=0;t<=end;t++){ const d=l2ShiftAt(t,PM,P2), m=abs&&PM.cam&&PM.cam.length?ev(PM.cam,t,[0,0]):[0,0]; out.push([t,[r3(d[0]+m[0]),r3(d[1]+m[1])],'l']); }
@@ -2268,7 +2278,7 @@ function plan(G){
     let pl=null; if(curLayer()==='l2'&&D.L2&&D.L2.store){ const B=l2BB(); if(B){ try{ const pm=withLayer('main',()=>plan(geom())), C=l2CamCfg(), scr=D.L2.zoom===false, c0=pm.cam&&pm.cam.length?pm.cam[0][1]:[0,0];
         pl={bb:B,tot:t=>{ const d=l1Travel(pm,t,scr); return [c0[0]+C.ix*d[0],0]; }}; /* beat blocks: rows stay put in the frame (layer 2 never shifts up/down) */ }catch(e){ pl=null; } } }
     const svMode=D.anim.mode; if(pl){ rc=null; if(svMode==='camera'||svMode==='push') D.anim.mode='reveal'; }   // beat blocks: layer 2 has no camera of its own — the placement does the work
-    EXT_RC=rc; EXT_PLACE=pl; try{ v=remappedPlan(G); if(pl&&v&&v.beatPlaced&&bbLine(pl.bb)) bbCamBuild(v,G); } finally{ EXT_RC=null; EXT_PLACE=null; D.anim.mode=svMode; } EXT_TR=tr; try{ lockSnap(v,G); }catch(e){} finally{ EXT_TR=null; } try{ paceCam(v,G); }catch(e){} try{ vDamp(v); }catch(e){} try{ chopCam(v,G); }catch(e){} applyZoom(v); v.hidden=hiddenIds(v); } if(PLANS.size>6) PLANS.clear();
+    EXT_RC=rc; EXT_PLACE=pl; try{ v=remappedPlan(G); if(pl&&v&&v.beatPlaced){ v.hidden=hiddenIds(v); bbCamBuild(v,G); } } finally{ EXT_RC=null; EXT_PLACE=null; D.anim.mode=svMode; } EXT_TR=tr; try{ lockSnap(v,G); }catch(e){} finally{ EXT_TR=null; } try{ paceCam(v,G); }catch(e){} try{ vDamp(v); }catch(e){} try{ chopCam(v,G); }catch(e){} applyZoom(v); v.hidden=hiddenIds(v); } if(PLANS.size>6) PLANS.clear();
   planCache={k:key,v}; return v;
 }
 /* ---- TIME REMAP: the scene layer on top.
@@ -5588,7 +5598,7 @@ function renderStepUI(){
   const st=STEPS[U.step];
   $$('.railbtn').forEach((b,i)=>{b.classList.toggle('on',i===U.step);});
   $$('.pane').forEach(p=>p.classList.toggle('on',p.dataset.pane===st.id));
-  { const sm=beatMode(); document.body.classList.toggle('songmode',sm); const n=$('#songCount'); if(n) n.textContent=sm?`${timingCues().length} beats → ${timingCues().length} blocks`:''; }   // song on: the scene / pace / easing controls step aside
+  { let bb=false; try{ bb=curLayer()==='l2'&&!!l2BB(); }catch(e){} document.body.classList.toggle('l2bb',bb); } { const sm=beatMode(); document.body.classList.toggle('songmode',sm); const n=$('#songCount'); if(n) n.textContent=sm?`${timingCues().length} beats → ${timingCues().length} blocks`:''; }   // song on: the scene / pace / easing controls step aside
   renderProps();
   $('#btnBack').disabled=nextVisible(U.step,-1)<0;
   const nxI=nextVisible(U.step,1), nx=nxI>=0?STEPS[nxI]:null; $('#btnNext').hidden=!nx&&!(STEPS[U.step].id==='build');
@@ -7185,7 +7195,7 @@ function mAddFiles(files,relinkId){
       else if(k==='path') D.L2.bb.path=v;
       else if(k==='touch') D.L2.bb.touch=v==='1';
       else if(k==='stay'){ D.L2.bb.stay=v; l2BBExit(); }
-      else if(k==='step') D.L2.bb.step=v; else if(k==='bias') D.L2.bb.bias=v; else if(k==='ovl') D.L2.bb.overlap=v; else if(k==='cam') D.L2.bb.cam=v; else if(k==='anchor') D.L2.bb.anchor=v; else if(k==='rows'){ const m={all:[null,null],top:[1,Math.ceil(geom().R/2)],mid:[Math.floor(geom().R/4)+1,Math.ceil(3*geom().R/4)],bottom:[Math.floor(geom().R/2)+1,geom().R]}[v]||[null,null]; D.L2.bb.rowFrom=m[0]; D.L2.bb.rowTo=m[1]; D.L2.bb.band='any'; }
+      else if(k==='step') D.L2.bb.step=v; else if(k==='bias') D.L2.bb.bias=v; else if(k==='ovl') D.L2.bb.overlap=v; else if(k==='cam') D.L2.bb.cam=v; else if(k==='vf') D.L2.bb.vf=v==='1'; else if(k==='anchor') D.L2.bb.anchor=v; else if(k==='rows'){ const m={all:[null,null],top:[1,Math.ceil(geom().R/2)],mid:[Math.floor(geom().R/4)+1,Math.ceil(3*geom().R/4)],bottom:[Math.floor(geom().R/2)+1,geom().R]}[v]||[null,null]; D.L2.bb.rowFrom=m[0]; D.L2.bb.rowTo=m[1]; D.L2.bb.band='any'; }
       planCache.k=''; syncInputs(true); refresh(); renderLayerBar(); });
     const on=$('#l2BBOn'); if(on) on.addEventListener('change',()=>{ if(curLayer()!=='l2') return; pushHist(true); D.L2.bb=Object.assign({},D.L2.bb,{on:on.checked});
       if(on.checked){ if(D.L2.sound!=='own') setL2Sound('own',true); D.timing.sync=true; D.anim.mode='reveal'; D.anim.lock=Object.assign({},D.anim.lock||{},{on:false}); if(D.rand.pace) D.rand.pace.on=false; D.L2.zoom=false; if(!timingCues().length) toast('Layer 2 needs beats — load the song in Song (or press B while playing)'); }
@@ -7370,7 +7380,7 @@ function renderLayerBar(){
   { const gn=$('#gridLayerNote'); if(gn) gn.hidden=act!=='l2';
     const g=$('#l2CamGroup'); if(g) g.hidden=act!=='l2'||!(D.L2&&D.L2.on);
     { const bg=$('#l2BBGroup'), cg=$('#l2CamGroup'), B=D.L2&&D.L2.bb||{}; if(bg){ bg.hidden=act!=='l2'||!(D.L2&&D.L2.on); const live=act==='l2'&&!!l2BB(); if(cg&&act==='l2'&&D.L2&&D.L2.on) cg.hidden=live; const ob=$('#l2BBOn'); if(ob) ob.checked=!!B.on;
-      $$('#l2BBGroup [data-bbset]').forEach(b=>{ const [k,v]=b.dataset.bbset.split(':'); let on=false; const T=act==='l2'?D.timing:{}; if(k==='beats') on=v==='big'?T.kind==='strong':(T.kind!=='strong'&&+(T.every||1)===+v); else if(k==='speed') on=+B.speed===+v; else if(k==='rx') on=+B.rx===+v; else if(k==='band') on=(B.band||'any')===v; else if(k==='path') on=(B.path||'walk')===v; else if(k==='touch') on=(B.touch!==false)===(v==='1'); else if(k==='stay') on=(B.stay||'stay')===v; else if(k==='step') on=(B.step||'corner')===v; else if(k==='bias') on=(B.bias||'bounce')===v; else if(k==='ovl') on=bbOvl(B)===v; else if(k==='cam') on=(bbLine(B)?'line':'l1')===v; else if(k==='anchor') on=(B.anchor||'c')===v; else if(k==='rows') on=v==='all'?(B.rowFrom==null||B.rowFrom===''):false; b.classList.toggle('on',on); });
+      $$('#l2BBGroup [data-bbset]').forEach(b=>{ const [k,v]=b.dataset.bbset.split(':'); let on=false; const T=act==='l2'?D.timing:{}; if(k==='beats') on=v==='big'?T.kind==='strong':(T.kind!=='strong'&&+(T.every||1)===+v); else if(k==='speed') on=+B.speed===+v; else if(k==='rx') on=+B.rx===+v; else if(k==='band') on=(B.band||'any')===v; else if(k==='path') on=(B.path||'walk')===v; else if(k==='touch') on=(B.touch!==false)===(v==='1'); else if(k==='stay') on=(B.stay||'stay')===v; else if(k==='step') on=(B.step||'corner')===v; else if(k==='bias') on=(B.bias||'bounce')===v; else if(k==='ovl') on=bbOvl(B)===v; else if(k==='cam') on=(bbLine(B)?'line':'l1')===v; else if(k==='vf') on=(!!B.vf)===(v==='1'); else if(k==='anchor') on=(B.anchor||'c')===v; else if(k==='rows') on=v==='all'?(B.rowFrom==null||B.rowFrom===''):false; b.classList.toggle('on',on); });
       if(act==='l2'){ const SV=D.rand.sizeVar||{}, rn=!!SV.on, wl=$('#bbWLbl'), hl=$('#bbHLbl'), sn=$('#bbSizeNote'); if(wl) wl.textContent=rn?'Base W':'Block W'; if(hl) hl.textContent=rn?'Base H':'Block H';
         if(sn) sn.innerHTML=!rn?'':(+SV.keep||0)>=100?'<span style="color:#F5A524">Keep base size is 100% — every block uses the base size. Lower it for random sizes.</span>':(SV.mode&&SV.mode!=='free')?`Using <b>Size mix › ${({list:'a list',shape:'shapes',media:'fit the media'})[SV.mode]||SV.mode}</b> — the W/H ranges here apply to Free sizes.`:''; }
       const st=$('#l2BBState'); if(st&&act==='l2'){ const n=timingCues().length; st.innerHTML=B.on?(n?(D.timing.sync?`<b>${n}</b> beats → one block each, placed by the camera.`:'Turn on beats (choose which above).'):'<span style="color:#F5A524">No beats yet — load the song in <b>Song</b>.</span>'):'Off — layer 2 uses the classic walk below.'; } } }

@@ -568,6 +568,7 @@ body.nohelp .qm{display:none}
   .step-body{overflow:visible}
   .logo span,.hide-sm{display:none}
 }
+  body.l2bb [data-nobb]{display:none!important} body:not(.l2bb) [data-bbonly]{display:none!important}
   .anc9{display:grid;grid-template-columns:repeat(3,22px);grid-template-rows:repeat(3,22px);gap:3px;padding:6px;border:1px solid var(--line,#333);border-radius:6px;width:max-content}
   .anc9 button{width:22px;height:22px;padding:0;border-radius:4px;border:1px solid #444;background:transparent;position:relative;cursor:pointer}
   .anc9 button::after{content:'';position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:#666}
@@ -764,7 +765,8 @@ body.nohelp .qm{display:none}
         <div class="pane" data-pane="layout">
           <div class="group" data-ctx="blocks">
             <div class="group-h">Generate<span class="tag" id="genTag"></span></div>
-            <details class="sub" data-sub="gen-size" open><summary>Block size <span class="note" id="pickPx"></span></summary><div class="subbody">
+            <div class="note" data-bbonly>Layer 2 beat blocks build themselves, one per beat — set them in <b>Animate › Layer 2 · beat blocks</b>. <b>Walk › Size mix</b> below still sets their sizes.</div>
+            <details class="sub" data-sub="gen-size" data-nobb open><summary>Block size <span class="note" id="pickPx"></span></summary><div class="subbody">
             <div class="pick-label"><span class="big" id="pickBig">3 × 1</span></div>
             <div class="picker" id="picker"></div>
             <div class="field2">
@@ -775,7 +777,7 @@ body.nohelp .qm{display:none}
             
             </div></details>
             <div class="note songnote" data-songonly>♪ Song on — one block per beat (set the beats in <b>Song</b>).</div>
-            <details class="sub" data-sub="gen-count" data-nosong open><summary>How many <span class="note">count &amp; ending</span></summary><div class="subbody">
+            <details class="sub" data-sub="gen-count" data-nobb data-nosong open><summary>How many <span class="note">count &amp; ending</span></summary><div class="subbody">
               
               <div class="field"><span class="lbl scrub" title="How long the On phase (the build) takes on the blocks' own clock">On (build)</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.lenF" min="2" max="99999" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
               <div class="field stack"><span class="lbl">Number of blocks</span><div class="seg" data-seg="anim.countMode"><button data-v="fill">Fill the length</button><button data-v="exact">Exact number</button></div></div>
@@ -801,7 +803,7 @@ body.nohelp .qm{display:none}
             
             <details class="sub" data-sub="gen-walk" open><summary>Walk <span class="note">how the line moves</span></summary><div class="subbody">
               
-              <details class="sub" data-sub="walk-details"><summary>Details <span class="note">gap, wander, stairs, jumps, pairs</span></summary><div class="subbody">
+              <details class="sub" data-sub="walk-details" data-nobb><summary>Details <span class="note">gap, wander, stairs, jumps, pairs</span></summary><div class="subbody">
               <div class="field2">
                 <div class="field"><span class="lbl scrub">Gap</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.gap" min="0" max="40" step="1"><button data-d="1">+</button></div></div>
                 <div class="field"><span class="lbl scrub">Wander</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="rand.wander" min="0" max="4" step="1"><button data-d="1">+</button></div></div>
@@ -839,7 +841,7 @@ body.nohelp .qm{display:none}
                   <div class="field"><span class="lbl scrub" title="This share of blocks keeps the base block size">Keep base size</span><div class="num"><input type="number" data-bind="rand.sizeVar.keep" min="0" max="100" step="5"><span class="unit">%</span></div></div>
                   <div class="seg" id="sizePreset"><button data-sv='{"mode":"free","wMin":1,"wMax":6,"hMin":1,"hMax":4}'>Anything</button><button data-sv='{"mode":"free","wMin":1,"wMax":2,"hMin":1,"hMax":2}'>Small bits</button><button data-sv='{"mode":"free","wMin":3,"wMax":8,"hMin":2,"hMax":5}'>Big panels</button><button data-sv='{"mode":"list","list":"1x1, 2x2, 4x2, 6x3, 2x4"}'>Editorial</button><button data-sv='{"mode":"shape","min":1,"max":3,"aMin":1.7,"aMax":1.8}'>All 16:9</button></div>
                 </div></div></details>
-              <details class="sub" data-sub="hide-blocks"><summary>Hide blocks <span class="note">gaps in the line</span></summary><div class="subbody">
+              <details class="sub" data-sub="hide-blocks" data-nobb><summary>Hide blocks <span class="note">gaps in the line</span></summary><div class="subbody">
                 <div class="field"><span class="lbl scrub">Randomly hide</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.hidePct" min="0" max="95" step="5"><span class="unit">%</span><button data-d="1">+</button></div></div>
                 <div class="row-btns"><button class="btn ghost" id="hideShuffle">Shuffle which</button><button class="btn ghost" id="hideClear">Show all</button></div>
                 <div class="note">Hidden blocks keep their place in the walk — the line and camera still pass through them. To hide one by hand, select it and switch off <b>Shown</b>.</div>
@@ -891,7 +893,7 @@ body.nohelp .qm{display:none}
             <div class="row-btns"><button class="btn" id="btnPalAdd">+ Add main colour</button><button class="btn ghost" id="btnPalReset">Reset</button></div>
             <div class="note">These colours appear in every colour picker. Alt-click a colour here to remove it.</div>
           </div>
-          <div class="group" data-adv>
+          <div class="group" data-adv data-nobb>
             <div class="group-h">Fill the frame (classic)<span class="tag" id="sizeTag"></span></div>
             <div class="seg tall" data-seg="rand.pattern">
               <button data-v="walk" title="Each block sits next to the last one, same row or one up/down"><svg width="22" height="14" viewBox="0 0 22 14" fill="currentColor"><rect y="6" width="6" height="4"/><rect x="6.5" y="2" width="6" height="4"/><rect x="13" y="6" width="6" height="4"/><rect x="6.5" y="10" width="6" height="4" opacity=".55"/></svg>Walk</button>
@@ -1282,12 +1284,12 @@ body.nohelp .qm{display:none}
           </div>
         </div>
         <div class="pane" data-pane="animate">
-          <div class="group" data-nosong id="walkPresets">
+          <div class="group" data-nosong id="walkPresets" data-nobb>
             <div class="group-h">Walk presets <span class="tag" id="wpTag"></span></div>
             <div class="note" id="wpNote"></div>
             <div class="wpgrid" id="wpGrid"></div>
           </div>
-          <div class="group">
+          <div class="group" data-nobb>
             <div class="group-h">Style<button class="btn ghost secreset" id="btnResetAnim" title="Put every animation setting back to its default (⌘Z to undo)">↺ Reset all animation</button></div>
             <div class="modecards" data-seg="anim.mode">
               <button class="modecard" data-v="static"><svg width="34" height="20" viewBox="0 0 34 20" fill="none" stroke="currentColor"><rect x=".5" y=".5" width="33" height="19" rx="2"/><rect x="5" y="11" width="8" height="4" fill="currentColor" stroke="none"/><rect x="14" y="6" width="8" height="4" fill="currentColor" stroke="none"/></svg><div class="t">Static</div><div class="d">No animation. Just the layout.</div></button>
@@ -1303,6 +1305,12 @@ body.nohelp .qm{display:none}
             <details class="sub" data-sub="bb-beats" open><summary>Beats &amp; speed <span class="note">when, and how fast it travels</span></summary><div class="subbody">
               <div class="field stack"><span class="lbl">Which beats</span><div class="seg"><button data-bbset="beats:1">Every beat</button><button data-bbset="beats:2">Every 2nd</button><button data-bbset="beats:4">Every 4th</button><button data-bbset="beats:big">Big hits</button></div></div>
               <div class="field stack"><span class="lbl">Layer 2 camera</span><div class="seg"><button data-bbset="cam:line" title="The camera keeps pace with the line: every block lands on the point, joined to the last — it travels as fast as the blocks build">Follows the line</button><button data-bbset="cam:l1" title="Travels with layer 1's camera at a set speed — blocks join when they can and start a new line when they can't">With layer 1</button></div></div>
+              <div class="field stack"><span class="lbl">Camera follows</span><div class="seg"><button data-bbset="vf:0" title="Layer 2 never moves up or down — the line stays inside the rows">Sideways</button><button data-bbset="vf:1" title="The camera also follows the line up and down. With Mostly up / Mostly down the line can climb past the frame and the camera goes with it">Sideways + up/down</button></div></div>
+              <div data-show="L2.bb.vf=true" style="display:grid;gap:8px">
+                <div class="field2"><div class="field"><span class="lbl scrub" title="Where the newest block sits, top to bottom: 0 = top, 50 = middle, 100 = bottom">Down</span><div class="num"><input type="number" data-bind="L2.bb.ry" min="0" max="100" step="1"><span class="unit">%</span></div></div>
+                  <div class="field"><span class="lbl scrub" title="0 = full up/down move · 100 = only moves when a block would land off screen">Vertical damping</span><div class="num"><input type="number" data-bind="L2.bb.vDamp" min="0" max="100" step="5"><span class="unit">%</span></div></div></div>
+                <div class="note">Set <b>The walk › Direction</b> to Mostly up or Mostly down to let the line climb past the frame.</div>
+              </div>
               <div class="field" data-show="L2.bb.cam=line"><span class="lbl scrub" title="0 = steps exactly from block to block · higher = a smoother, steadier glide (blocks always land fully on screen)">Smoothness</span><div class="num"><input type="number" data-bind="L2.bb.smooth" min="0" max="48" step="1"><span class="unit">fr</span></div></div>
               <div class="note" data-show="L2.bb.cam=line">Slower travel: fewer beats (Every 2nd / Big hits) or narrower blocks.</div>
               <div class="field stack" data-show="L2.bb.cam=l1"><span class="lbl">Speed <span class="note">with layer 1's camera</span></span><div class="seg"><button data-bbset="speed:100">Full</button><button data-bbset="speed:75">75%</button><button data-bbset="speed:50">Half</button><button data-bbset="speed:25">Slow</button><button data-bbset="speed:0">Still</button></div>
@@ -1408,7 +1416,7 @@ body.nohelp .qm{display:none}
               <div class="note">These change how layer 2 moves on screen, never when its blocks appear. With "Layer 2 camera", any layer 1 share slides blocks away from the reveal point — keep it small for a parallax drift.</div>
             </div></details>
           </div>
-          <div class="group" data-ctx="camera" data-show="anim.mode=camera|push">
+          <div class="group" data-ctx="camera" data-nobb data-show="anim.mode=camera|push">
             <div class="group-h">Camera<span id="camHead" class="note" style="margin-left:6px;text-transform:none;letter-spacing:0"></span></div>
             <details class="sub" data-sub="cam-move" open><summary>How it moves <span class="note">movement, feel</span></summary><div class="subbody">
               <div class="field stack" data-show="anim.motion=smooth"><span class="lbl">Movement</span><div class="seg" data-seg="anim.camMove"><button data-v="curve" title="Moves with the blocks; its speed over the scene comes from the Scene curve">With the blocks</button><button data-v="step">Step &amp; settle</button><button data-v="chop" title="Follows the blocks, but in jerky steps — a stop-motion camera">Choppy</button></div></div>
@@ -1553,7 +1561,7 @@ body.nohelp .qm{display:none}
             <div data-show="anim.sceneEase.on=false"><div class="curve" data-curve="anim.sceneCurve" data-ymin="0" data-ymax="1" data-title="Time remap · x = scene time, y = how far through the blocks (On · Hold · Off). Flat = holds, steep = fast"></div></div>
             <div data-adv class="field stack"><span class="lbl">Motion</span><div class="seg" data-seg="anim.motion"><button data-v="smooth">Smooth</button><button data-v="stop">Stop-motion</button></div></div><div class="field" data-show="anim.motion=stop"><span class="lbl scrub">Hold</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="anim.stepEvery" min="1" max="60" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
           </div>
-          <div class="group" data-ctx="camera" data-show="anim.mode=camera|push">
+          <div class="group" data-ctx="camera" data-nobb data-show="anim.mode=camera|push">
             <div class="group-h">Camera timing</div>
             <div class="note" data-show="exit.mode=walk">With Walk off, the camera follows the walking line for <b>Camera follows for</b>, then lets it run off.</div>
             
@@ -3051,7 +3059,7 @@ const DEF={
        snow:{on:false,count:90,speed:240,size:2,stretch:6,dir:'left',color:'#EBF0FA',opacity:55,seed:9}},
   num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100,per:{}},
   io:{in:null,out:null},
-  L2:{on:false,z:'front',active:'main',store:null,sound:'off',timing:null,cam:'main',camSrc:'main',infX:100,infY:100,zoom:true,revealBy:'own',ctrl:{x:0,y:0,r:0,s:100,o:100},bb:{on:false,cam:'line',smooth:8,anchor:'c',speed:100,rx:65,band:'any',rowFrom:null,rowTo:null,startRow:null,path:'walk',touch:true,step:'corner',sidePct:30,bias:'bounce',gap:0,overlap:false,slack:25,stay:'stay',stayN:8}},
+  L2:{on:false,z:'front',active:'main',store:null,sound:'off',timing:null,cam:'main',camSrc:'main',infX:100,infY:100,zoom:true,revealBy:'own',ctrl:{x:0,y:0,r:0,s:100,o:100},bb:{on:false,cam:'line',smooth:8,anchor:'c',vf:false,vDamp:0,ry:50,speed:100,rx:65,band:'any',rowFrom:null,rowTo:null,startRow:null,path:'walk',touch:true,step:'corner',sidePct:30,bias:'bounce',gap:0,overlap:false,slack:25,stay:'stay',stayN:8}},
   bmedia:{on:false,selOn:false,selAsset:'',kind:'video',asset:'sample',precomp:false,fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,
     loop:'loop',start:'reveal',delay:0,at:0,offset:0,audio:'mute',inMode:'block',inLen:12,target:'all',pick:[],dirOn:{up:true,down:true,flat:true},
     assign:'same',pool:[],dir:{up:'',down:'',flat:''},seed:1,per:{},assets:[]},
@@ -4880,21 +4888,28 @@ function bbAnchor(B){ const a=(B&&B.anchor)||'c'; return [a.indexOf('l')>=0?0:a.
 function bbLine(B){ return !B||B.cam!=='l1'; }   /* layer 2's camera follows the line (default) vs travels with layer 1 at a set speed */
 function bbOvl(B){ return B.overlap===true?'allow':(B.overlap==='room'||B.overlap==='allow'||B.overlap==='push')?B.overlap:'push'; }
 /* the line camera: each new block's anchor lands on the point (Across %) at its beat; a smooth glide between (box-smoothed monotone path) */
-function bbCamBuild(P,G){ const B=D.L2.bb||{}, AN=bbAnchor(B), rx=clamp(+B.rx||65,5,95)/100, K=[];
-  const lim=[]; P.seq.forEach((b,i)=>{ const t=P.T[i]; if(t==null) return; const bw=b.w*G.p-G.gut, lft=G.x0+b.c*G.p; let sx=G.W*rx-AN[0]*bw; if(bw<=G.W) sx=clamp(sx,0,G.W-bw); K.push([t,sx-lft]); if(bw<=G.W) lim.push([t,-lft,G.W-bw-lft]); });   /* whole block on screen when it lands */
-  K.sort((a,b)=>a[0]-b[0]); if(!K.length){ P.bbCam=null; return; }
-  for(let i=1;i<K.length;i++) if(K[i][1]>K[i-1][1]) K[i][1]=K[i-1][1];   // never backwards
-  const end=Math.ceil(Math.max(P.end||0,K[K.length-1][0]))+2, n=end+1, raw=new Float64Array(n);
+/* a smooth camera path (one value per frame) through keys [[t,v]], box-smoothed, then nudged so each block lands inside lim [[t,lo,hi]] */
+function bbPath(K,lim,n,S){ const raw=new Float64Array(n);
   const m=K.map((k,i)=>{ if(i===0||i===K.length-1) return 0; const d0=(k[1]-K[i-1][1])/Math.max(1e-6,k[0]-K[i-1][0]), d1=(K[i+1][1]-k[1])/Math.max(1e-6,K[i+1][0]-k[0]); return d0*d1<=0?0:2/(1/d0+1/d1); });
   let j=0; for(let f=0;f<n;f++){ if(f<=K[0][0]){ raw[f]=K[0][1]; continue; } if(f>=K[K.length-1][0]){ raw[f]=K[K.length-1][1]; continue; }
     while(j<K.length-2&&f>K[j+1][0]) j++; const a=K[j], b=K[j+1], h=Math.max(1e-6,b[0]-a[0]), u=(f-a[0])/h, u2=u*u, u3=u2*u;
     raw[f]=(2*u3-3*u2+1)*a[1]+(u3-2*u2+u)*h*m[j]+(-2*u3+3*u2)*b[1]+(u3-u2)*h*m[j+1]; }
-  const S=Math.round(clamp(B.smooth!=null?+B.smooth:8,0,48)/2); let cur=raw;
+  let cur=raw;
   if(S>0) for(let pass=0;pass<2;pass++){ const nx=new Float64Array(n); for(let f=0;f<n;f++){ let s=0,c=0; for(let k=-S;k<=S;k++){ const q=clamp(f+k,0,n-1); s+=cur[q]; c++; } nx[f]=s/c; } cur=nx; }
-  if(S>0) for(let it=0;it<16;it++){ let moved=false; lim.forEach((L,li)=>{ const f=clamp(Math.round(L[0]),0,n-1), v=cur[f], d=v<L[1]?L[1]-v:v>L[2]?L[2]-v:0; if(Math.abs(d)<0.5) return; moved=true;
+  for(let it=0;it<16;it++){ let moved=false; lim.forEach((L,li)=>{ const f=clamp(Math.round(L[0]),0,n-1), v=cur[f], d=v<L[1]?L[1]-v:v>L[2]?L[2]-v:0; if(Math.abs(d)<0.5) return; moved=true;
       const nb=Math.min(li>0?f-Math.round(lim[li-1][0]):99,li<lim.length-1?Math.round(lim[li+1][0])-f:99), R=Math.max(1,Math.min(S*2+1,nb-1));
-      for(let k=-R;k<=R;k++){ const q=f+k; if(q<0||q>=n) continue; cur[q]+=d*(0.5+0.5*Math.cos(Math.PI*k/(R+1))); } }); if(!moved) break; }   /* nudge the glide where a block would land partly off screen */
-  P.bbCam=Array.from(cur,v=>r3(v)); }
+      for(let k=-R;k<=R;k++){ const q=f+k; if(q<0||q>=n) continue; cur[q]+=d*(0.5+0.5*Math.cos(Math.PI*k/(R+1))); } }); if(!moved) break; }   /* nudge where a block would land partly off screen */
+  return Array.from(cur,v=>r3(v)); }
+/* the line camera: across — each new block's anchor lands on the point (Across %) at its beat; up/down (when on) — on the Down % point, damped */
+function bbCamBuild(P,G){ const B=D.L2.bb||{}, AN=bbAnchor(B), rx=clamp(+B.rx||65,5,95)/100, S=Math.round(clamp(B.smooth!=null?+B.smooth:8,0,48)/2);
+  P.bbCam=null; P.bbCamY=null; const pts=[]; P.seq.forEach((b,i)=>{ const t=P.T[i]; if(t!=null&&!(P.hidden&&P.hidden.has(b.id))&&!b.__rest) pts.push([t,b]); }); pts.sort((a,b)=>a[0]-b[0]); if(!pts.length) return;
+  const end=Math.ceil(Math.max(P.end||0,pts[pts.length-1][0]))+2, n=end+1;
+  if(bbLine(B)){ const K=[], lim=[]; pts.forEach(([t,b])=>{ const bw=b.w*G.p-G.gut, lft=G.x0+b.c*G.p; let sx=G.W*rx-AN[0]*bw; if(bw<=G.W) sx=clamp(sx,0,G.W-bw); K.push([t,sx-lft]); if(bw<=G.W) lim.push([t,-lft,G.W-bw-lft]); });
+    for(let i=1;i<K.length;i++) if(K[i][1]>K[i-1][1]) K[i][1]=K[i-1][1];   // never backwards
+    P.bbCam=bbPath(K,S>0?lim:[],n,S); }
+  if(B.vf){ const ry=clamp(B.ry!=null?+B.ry:50,0,100)/100, dmp=clamp(+B.vDamp||0,0,100)/100, K=[], lim=[];
+    pts.forEach(([t,b])=>{ const q=cellRect(G,b.c,b.r,b.w,b.h); let y=G.H*ry-(q.y+AN[1]*q.h); y*=1-dmp; K.push([t,y]); if(q.h<=G.H) lim.push([t,-q.y,G.H-q.h-q.y]); });
+    P.bbCamY=bbPath(K,lim,n,Math.max(S,2)); } }
 function l2BB(){ const L=D.L2||{}, B=L.bb; if(!B||!B.on) return null; const T=l2Timing(); return T&&T.sync&&(T.beats||[]).length?B:null; }
 let EXT_PLACE=null;   // set while layer 2's plan is computed in beat-block mode: {tot(t) → layer-2 camera offset}
 function beatPlace(G,base0,times,prevSeed){
@@ -4910,8 +4925,10 @@ function beatPlace(G,base0,times,prevSeed){
       if(a>=1){ h=k; w=Math.max(1,Math.round(k*a)); } else { w=k; h=Math.max(1,Math.round(k/a)); } }
     return [Math.max(1,w),Math.min(Math.max(1,h),G.R)]; };
   // the rows the line may use: an explicit range (from–to), or a band (top / middle / bottom / any)
-  const range=h=>{ const R=G.R; let lo,hi;
-    if(B.rowFrom!=null&&B.rowFrom!==''&&B.rowTo!=null&&B.rowTo!==''){ lo=Math.max(0,Math.round(+B.rowFrom)-1); hi=Math.min(R-1,Math.round(+B.rowTo)-1); }
+  const FREE_V=!!B.vf&&(B.bias==='up'||B.bias==='down');   /* camera follows up/down + mostly up/down: the line may climb past the frame */
+  const has=v=>v!=null&&v!==''&&isFinite(+v);
+  const range=h=>{ const R=G.R; let lo,hi; if(FREE_V) return [-100000,100000];
+    if(has(B.rowFrom)||has(B.rowTo)){ lo=has(B.rowFrom)?Math.max(0,Math.round(+B.rowFrom)-1):0; hi=has(B.rowTo)?Math.min(R-1,Math.round(+B.rowTo)-1):R-1; if(hi<lo){ const x=lo; lo=hi; hi=x; } }
     else { const t=B.band||'any'; if(t==='top'){ lo=0; hi=Math.max(0,Math.ceil(R/2)-1); } else if(t==='bottom'){ lo=Math.floor(R/2); hi=R-1; } else if(t==='mid'){ lo=Math.floor(R/4); hi=Math.max(lo,Math.ceil(3*R/4)-1); } else { lo=0; hi=R-1; } }
     const a=lo, b=Math.max(lo,hi-h+1); return b>=a?[clamp(a,0,Math.max(0,R-h)),clamp(b,0,Math.max(0,R-h))]:[clamp(lo,0,Math.max(0,R-h)),clamp(lo,0,Math.max(0,R-h))]; };
   const PP=B.path==='melody'?cuePitches():[]; const pv=PP.filter(x=>x!=null).sort((a,b)=>a-b), pr=pv.length?[pv[Math.floor(pv.length*.05)],pv[Math.floor(pv.length*.95)]||pv[pv.length-1]]:null;
@@ -4928,7 +4945,7 @@ function beatPlace(G,base0,times,prevSeed){
     const fits=cc=>{ if(LINE) return true; const x0=G.x0+cc*G.p+o[0], x1=x0+w*G.p-G.gut; return x0>=-1&&x1<=W+1; };
     let want=Math.round((W*rx-o[0]-G.x0)/G.p-ax*w); if(LINE&&prev) want=prev.c+prev.w+gap+(B.touch===false?Math.floor(rnd()*3):0); if(!fits(want)){ const lo=Math.ceil((-o[0]-G.x0)/G.p), hi=Math.floor((W-o[0]-G.x0+G.gut)/G.p)-w; if(hi>=lo) want=clamp(want,lo,hi); }
     let c=want, r, joined=false, rest=false;
-    const startR=B.startRow!=null&&B.startRow!==''?clamp(atRow(Math.round(+B.startRow)-1,h),rg[0],rg[1]):Math.round((rg[0]+rg[1])/2);
+    const startR=B.startRow!=null&&B.startRow!==''?clamp(atRow(Math.round(+B.startRow)-1,h),rg[0],rg[1]):FREE_V?Math.max(0,Math.floor((G.R-h)/2)):Math.round((rg[0]+rg[1])/2);
     if(B.touch!==false&&prev){ const pe=prev.c+prev.w+gap; if(LINE||(fits(pe)&&pe-want>=-slack)){ c=pe; joined=true; } }   /* with layer 1: stay joined while the line's end is still on screen */
     if(!prev){ r=startR; }
     else if(joined){
@@ -4972,8 +4989,9 @@ function l2CamCfg(){ const L=D.L2||{}; { const B=l2BB(); if(B) return {src:'main
 function l2ShiftAt(t,PM,P2){ const C=l2CamCfg(); if(!PM||(C.src==='main'&&C.ix===1&&C.iy===1)) return [0,0];
   const c=PM.cam&&PM.cam.length?PM.cam:null, mo=c?ev(c,t,[0,0]):[0,0], m0=c?c[0][1]:[0,0];
   const tr=l1Travel(PM,t,D.L2&&D.L2.zoom===false);   // how far layer 1's camera has travelled — as seen on screen when layer 2 ignores the zoom
-  if(C.line&&P2&&P2.bbCam&&P2.bbCam.length){ const A=P2.bbCam, f=clamp(t,0,A.length-1), i0=Math.floor(f), i1=Math.min(A.length-1,i0+1), x=A[i0]+(A[i1]-A[i0])*(f-i0); return [x-mo[0],-mo[1]]; }
-  const base=C.src==='own'?(P2&&P2.cam&&P2.cam.length?ev(P2.cam,t,[0,0]):[0,0]):(C.bb?[m0[0],0]:m0), tot=[base[0]+C.ix*tr[0],base[1]+C.iy*tr[1]];
+  const sm=A=>{ const f=clamp(t,0,A.length-1), i0=Math.floor(f), i1=Math.min(A.length-1,i0+1); return A[i0]+(A[i1]-A[i0])*(f-i0); }, by=C.bb&&P2&&P2.bbCamY&&P2.bbCamY.length?sm(P2.bbCamY):0;   /* beat blocks: up/down follow */
+  if(C.line&&P2&&P2.bbCam&&P2.bbCam.length) return [sm(P2.bbCam)-mo[0],by-mo[1]];
+  const base=C.src==='own'?(P2&&P2.cam&&P2.cam.length?ev(P2.cam,t,[0,0]):[0,0]):(C.bb?[m0[0],0]:m0), tot=[base[0]+C.ix*tr[0],C.bb?by:base[1]+C.iy*tr[1]];
   return [tot[0]-mo[0],tot[1]-mo[1]]; }
 function l2ShiftKeys(PM,P2,abs){ const C=l2CamCfg(); if(!abs&&C.src==='main'&&C.ix===1&&C.iy===1) return null; const end=Math.ceil(Math.max(PM.end||0,P2.end||0))+1, out=[];
   for(let t=0;t<=end;t++){ const d=l2ShiftAt(t,PM,P2), m=abs&&PM.cam&&PM.cam.length?ev(PM.cam,t,[0,0]):[0,0]; out.push([t,[r3(d[0]+m[0]),r3(d[1]+m[1])],'l']); }
@@ -5233,7 +5251,7 @@ function plan(G){
     let pl=null; if(curLayer()==='l2'&&D.L2&&D.L2.store){ const B=l2BB(); if(B){ try{ const pm=withLayer('main',()=>plan(geom())), C=l2CamCfg(), scr=D.L2.zoom===false, c0=pm.cam&&pm.cam.length?pm.cam[0][1]:[0,0];
         pl={bb:B,tot:t=>{ const d=l1Travel(pm,t,scr); return [c0[0]+C.ix*d[0],0]; }}; /* beat blocks: rows stay put in the frame (layer 2 never shifts up/down) */ }catch(e){ pl=null; } } }
     const svMode=D.anim.mode; if(pl){ rc=null; if(svMode==='camera'||svMode==='push') D.anim.mode='reveal'; }   // beat blocks: layer 2 has no camera of its own — the placement does the work
-    EXT_RC=rc; EXT_PLACE=pl; try{ v=remappedPlan(G); if(pl&&v&&v.beatPlaced&&bbLine(pl.bb)) bbCamBuild(v,G); } finally{ EXT_RC=null; EXT_PLACE=null; D.anim.mode=svMode; } EXT_TR=tr; try{ lockSnap(v,G); }catch(e){} finally{ EXT_TR=null; } try{ paceCam(v,G); }catch(e){} try{ vDamp(v); }catch(e){} try{ chopCam(v,G); }catch(e){} applyZoom(v); v.hidden=hiddenIds(v); } if(PLANS.size>6) PLANS.clear();
+    EXT_RC=rc; EXT_PLACE=pl; try{ v=remappedPlan(G); if(pl&&v&&v.beatPlaced){ v.hidden=hiddenIds(v); bbCamBuild(v,G); } } finally{ EXT_RC=null; EXT_PLACE=null; D.anim.mode=svMode; } EXT_TR=tr; try{ lockSnap(v,G); }catch(e){} finally{ EXT_TR=null; } try{ paceCam(v,G); }catch(e){} try{ vDamp(v); }catch(e){} try{ chopCam(v,G); }catch(e){} applyZoom(v); v.hidden=hiddenIds(v); } if(PLANS.size>6) PLANS.clear();
   planCache={k:key,v}; return v;
 }
 /* ---- TIME REMAP: the scene layer on top.
@@ -8553,7 +8571,7 @@ function renderStepUI(){
   const st=STEPS[U.step];
   $$('.railbtn').forEach((b,i)=>{b.classList.toggle('on',i===U.step);});
   $$('.pane').forEach(p=>p.classList.toggle('on',p.dataset.pane===st.id));
-  { const sm=beatMode(); document.body.classList.toggle('songmode',sm); const n=$('#songCount'); if(n) n.textContent=sm?`${timingCues().length} beats → ${timingCues().length} blocks`:''; }   // song on: the scene / pace / easing controls step aside
+  { let bb=false; try{ bb=curLayer()==='l2'&&!!l2BB(); }catch(e){} document.body.classList.toggle('l2bb',bb); } { const sm=beatMode(); document.body.classList.toggle('songmode',sm); const n=$('#songCount'); if(n) n.textContent=sm?`${timingCues().length} beats → ${timingCues().length} blocks`:''; }   // song on: the scene / pace / easing controls step aside
   renderProps();
   $('#btnBack').disabled=nextVisible(U.step,-1)<0;
   const nxI=nextVisible(U.step,1), nx=nxI>=0?STEPS[nxI]:null; $('#btnNext').hidden=!nx&&!(STEPS[U.step].id==='build');
@@ -10150,7 +10168,7 @@ function mAddFiles(files,relinkId){
       else if(k==='path') D.L2.bb.path=v;
       else if(k==='touch') D.L2.bb.touch=v==='1';
       else if(k==='stay'){ D.L2.bb.stay=v; l2BBExit(); }
-      else if(k==='step') D.L2.bb.step=v; else if(k==='bias') D.L2.bb.bias=v; else if(k==='ovl') D.L2.bb.overlap=v; else if(k==='cam') D.L2.bb.cam=v; else if(k==='anchor') D.L2.bb.anchor=v; else if(k==='rows'){ const m={all:[null,null],top:[1,Math.ceil(geom().R/2)],mid:[Math.floor(geom().R/4)+1,Math.ceil(3*geom().R/4)],bottom:[Math.floor(geom().R/2)+1,geom().R]}[v]||[null,null]; D.L2.bb.rowFrom=m[0]; D.L2.bb.rowTo=m[1]; D.L2.bb.band='any'; }
+      else if(k==='step') D.L2.bb.step=v; else if(k==='bias') D.L2.bb.bias=v; else if(k==='ovl') D.L2.bb.overlap=v; else if(k==='cam') D.L2.bb.cam=v; else if(k==='vf') D.L2.bb.vf=v==='1'; else if(k==='anchor') D.L2.bb.anchor=v; else if(k==='rows'){ const m={all:[null,null],top:[1,Math.ceil(geom().R/2)],mid:[Math.floor(geom().R/4)+1,Math.ceil(3*geom().R/4)],bottom:[Math.floor(geom().R/2)+1,geom().R]}[v]||[null,null]; D.L2.bb.rowFrom=m[0]; D.L2.bb.rowTo=m[1]; D.L2.bb.band='any'; }
       planCache.k=''; syncInputs(true); refresh(); renderLayerBar(); });
     const on=$('#l2BBOn'); if(on) on.addEventListener('change',()=>{ if(curLayer()!=='l2') return; pushHist(true); D.L2.bb=Object.assign({},D.L2.bb,{on:on.checked});
       if(on.checked){ if(D.L2.sound!=='own') setL2Sound('own',true); D.timing.sync=true; D.anim.mode='reveal'; D.anim.lock=Object.assign({},D.anim.lock||{},{on:false}); if(D.rand.pace) D.rand.pace.on=false; D.L2.zoom=false; if(!timingCues().length) toast('Layer 2 needs beats — load the song in Song (or press B while playing)'); }
@@ -10335,7 +10353,7 @@ function renderLayerBar(){
   { const gn=$('#gridLayerNote'); if(gn) gn.hidden=act!=='l2';
     const g=$('#l2CamGroup'); if(g) g.hidden=act!=='l2'||!(D.L2&&D.L2.on);
     { const bg=$('#l2BBGroup'), cg=$('#l2CamGroup'), B=D.L2&&D.L2.bb||{}; if(bg){ bg.hidden=act!=='l2'||!(D.L2&&D.L2.on); const live=act==='l2'&&!!l2BB(); if(cg&&act==='l2'&&D.L2&&D.L2.on) cg.hidden=live; const ob=$('#l2BBOn'); if(ob) ob.checked=!!B.on;
-      $$('#l2BBGroup [data-bbset]').forEach(b=>{ const [k,v]=b.dataset.bbset.split(':'); let on=false; const T=act==='l2'?D.timing:{}; if(k==='beats') on=v==='big'?T.kind==='strong':(T.kind!=='strong'&&+(T.every||1)===+v); else if(k==='speed') on=+B.speed===+v; else if(k==='rx') on=+B.rx===+v; else if(k==='band') on=(B.band||'any')===v; else if(k==='path') on=(B.path||'walk')===v; else if(k==='touch') on=(B.touch!==false)===(v==='1'); else if(k==='stay') on=(B.stay||'stay')===v; else if(k==='step') on=(B.step||'corner')===v; else if(k==='bias') on=(B.bias||'bounce')===v; else if(k==='ovl') on=bbOvl(B)===v; else if(k==='cam') on=(bbLine(B)?'line':'l1')===v; else if(k==='anchor') on=(B.anchor||'c')===v; else if(k==='rows') on=v==='all'?(B.rowFrom==null||B.rowFrom===''):false; b.classList.toggle('on',on); });
+      $$('#l2BBGroup [data-bbset]').forEach(b=>{ const [k,v]=b.dataset.bbset.split(':'); let on=false; const T=act==='l2'?D.timing:{}; if(k==='beats') on=v==='big'?T.kind==='strong':(T.kind!=='strong'&&+(T.every||1)===+v); else if(k==='speed') on=+B.speed===+v; else if(k==='rx') on=+B.rx===+v; else if(k==='band') on=(B.band||'any')===v; else if(k==='path') on=(B.path||'walk')===v; else if(k==='touch') on=(B.touch!==false)===(v==='1'); else if(k==='stay') on=(B.stay||'stay')===v; else if(k==='step') on=(B.step||'corner')===v; else if(k==='bias') on=(B.bias||'bounce')===v; else if(k==='ovl') on=bbOvl(B)===v; else if(k==='cam') on=(bbLine(B)?'line':'l1')===v; else if(k==='vf') on=(!!B.vf)===(v==='1'); else if(k==='anchor') on=(B.anchor||'c')===v; else if(k==='rows') on=v==='all'?(B.rowFrom==null||B.rowFrom===''):false; b.classList.toggle('on',on); });
       if(act==='l2'){ const SV=D.rand.sizeVar||{}, rn=!!SV.on, wl=$('#bbWLbl'), hl=$('#bbHLbl'), sn=$('#bbSizeNote'); if(wl) wl.textContent=rn?'Base W':'Block W'; if(hl) hl.textContent=rn?'Base H':'Block H';
         if(sn) sn.innerHTML=!rn?'':(+SV.keep||0)>=100?'<span style="color:#F5A524">Keep base size is 100% — every block uses the base size. Lower it for random sizes.</span>':(SV.mode&&SV.mode!=='free')?`Using <b>Size mix › ${({list:'a list',shape:'shapes',media:'fit the media'})[SV.mode]||SV.mode}</b> — the W/H ranges here apply to Free sizes.`:''; }
       const st=$('#l2BBState'); if(st&&act==='l2'){ const n=timingCues().length; st.innerHTML=B.on?(n?(D.timing.sync?`<b>${n}</b> beats → one block each, placed by the camera.`:'Turn on beats (choose which above).'):'<span style="color:#F5A524">No beats yet — load the song in <b>Song</b>.</span>'):'Off — layer 2 uses the classic walk below.'; } } }
