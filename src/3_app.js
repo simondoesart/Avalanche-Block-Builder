@@ -71,7 +71,7 @@ const DEF={
         gap:{off:{},on:true,amount:3,seed:0,color:'#E6212F',win:{on:null,off:null},anim:{own:true,anchor:'block',delay:12,jitter:10,leaveWith:true,inMode:'type',cps:60,inDur:8,buildDur:12,outMode:'fade',hold:48,outDur:12},mods:{log:true,phrase:true,barcode:true,hashes:false,dots:true,logo:true,icons:true,graph:true,stream:false,rpc:false}}},
   echo:{on:false,dx:0,dy:2,last:0,fill:true,color:'#A2AFB2',opacity:100,stroke:false,sw:4,scolor:'#A2AFB2',align:'center',dash:false,dashL:12,dashG:8,content:false,
         timing:'with',offset:6,appear:'fade',out:'stay',hold:12,outF:8},
-  rand:{pace:{on:false,speed:2},connect:true,pitch:{on:false,mode:'contour',semis:2,maxStep:2,amount:100},sizeVar:{on:false,mode:'free',wMin:1,wMax:6,hMin:1,hMax:4,min:1,max:3,aMin:0.5,aMax:3,list:'1x1, 2x1, 3x1, 2x2, 4x2, 3x3, 6x3, 1x2',keep:0},endSingle:true,pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
+  rand:{pace:{on:false,speed:2,fit:'thin'},connect:true,pitch:{on:false,mode:'contour',semis:2,maxStep:2,amount:100},sizeVar:{on:false,mode:'free',wMin:1,wMax:6,hMin:1,hMax:4,min:1,max:3,aMin:0.5,aMax:3,list:'1x1, 2x1, 3x1, 2x2, 4x2, 3x3, 6x3, 1x2',keep:0},endSingle:true,pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
         wander:1,climb:0,stackPct:20,stackGap:0,stairPct:15,jumpPct:5,multiCol:true},
   text:{family:'Aeonik Fono',style:'Regular',font:'AeonikFono-Regular',size:48,align:'center',pad:24,offX:0,offY:0,tracking:0,leading:0,kern:'metrics',caps:'none'},
   anim:{hide:[],show:[],hidePct:0,hideSeed:1,seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,vDamp:0,stepZone:0,stepLead:0,chopEvery:4,chopMin:0,chopSnap:false,chopRules:true,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:true,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
@@ -1573,7 +1573,9 @@ function extensionRaw(G,base,capOverride){
   const pacePlace=(nb,idx)=>{ if(!paceOn) return nb; const want=cBase+dir*Math.round((+PC.speed)*(paceT(idx)-tBase)/fpsG);
     nb.c=dir>0?Math.max(want,cBase+1):Math.min(want,cBase-1); const B=walkBounds(G,nb.h), r0=nb.r, tries=[0];
     for(let k=1;k<=12;k++){ tries.push(-k*nb.h,k*nb.h); }
-    for(let push=0;push<60;push++){ for(const dr of tries){ const rr=r0+dr; if(rr<B.lo||rr>B.hi) continue; nb.r=rr; if(!all.some(x=>hits(x,nb))) return nb; } nb.c+=dir; nb.r=r0; }
+    for(let push=0;push<24;push++){ for(const dr of tries){ const rr=r0+dr; if(rr<B.lo||rr>B.hi) continue; nb.r=rr; if(!all.some(x=>hits(x,nb))) return nb; } nb.c+=dir; nb.r=r0; }
+    // no room near its time (blocks too big for this speed): put it just past the end of the line — never drop a block
+    const ends=all.map(x=>dir>0?x.c+x.w:x.c); nb.c=dir>0?Math.max(nb.c,...ends):Math.min(nb.c,...ends)-(dir>0?0:nb.w); nb.r=clamp(r0,B.lo,B.hi);
     return nb; };
   const place=(nb,w,h)=>{ nb.w=w; nb.h=h; const B=walkBounds(G,h); nb.r=clamp(nb.r,B.lo,B.hi); return nb; };
   let c=last.c, r=last.r, i=main.length;
@@ -3283,8 +3285,16 @@ function cueRowOn(){ const T=D.timing; if(U.showCues===false) return false; retu
 function timingCues(){
   const T=D.timing; if(!T) return [];
   const off=Math.round(+T.offset||0), cut=new Set((T.cut||[]).map(Math.round)), src=((T.use==='markers'?T.markers:T.use==='both'?(T.beats||[]).concat(T.markers||[]):T.beats)||[]).filter(f=>!cut.has(Math.round(f)));
-  return [...new Set(src.map(f=>Math.round(f+off)))].sort((x,y)=>x-y);
+  const all=[...new Set(src.map(f=>Math.round(f+off)))].sort((x,y)=>x-y);
+  return paceThin(all);
 }
+/* travel speed too slow for every beat: skip beats so the speed holds — the next block lands on the first beat after
+   there's room for it (block width ÷ the rows it can stack in ÷ the speed) */
+function paceThin(cs){ const PC=D.rand&&D.rand.pace; if(!PC||!PC.on||PC.fit==='push'||!(+PC.speed>0)||cs.length<2) return cs;
+  let G; try{ G=geom(); }catch(e){ return cs; } const SV=D.rand.sizeVar||{}, b0=(D.blocks&&D.blocks[0])||D.block||{w:3,h:1};
+  const w=SV.on?((SV.mode==='free'?(+SV.wMin+ +SV.wMax)/2:(+SV.min+ +SV.max))||b0.w):b0.w, h=SV.on?((SV.mode==='free'?(+SV.hMin+ +SV.hMax)/2:(+SV.min||1))||b0.h):b0.h;
+  const stack=Math.max(1,Math.floor((G.R||1)/Math.max(1,h))), fps=D.comp.fps||30, gap=(w/stack)/(+PC.speed)*fps;
+  const out=[cs[0]]; for(let i=1;i<cs.length;i++) if(cs[i]-out[out.length-1]>=gap-0.5) out.push(cs[i]); return out; }
 /* removed beats: double-click a cue to drop it — no block lands there, the camera holds on the block before, and the
    blocks after it slide back one place (one block per cue). Double-click the ghost to bring it back. */
 function cutCuesIn(a,b){ const T=D.timing, off=Math.round(+T.offset||0); return (T.cut||[]).some(v=>{ const f=Math.round(v)+off; return f>a&&f<b; }); }
