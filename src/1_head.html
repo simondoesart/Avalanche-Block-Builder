@@ -568,6 +568,8 @@ body.nohelp .qm{display:none}
   .step-body{overflow:visible}
   .logo span,.hide-sm{display:none}
 }
+  .vidopts{display:grid;gap:6px}.vidopt{display:grid;grid-template-columns:18px 1fr;column-gap:8px;padding:8px 10px;border:1px solid #333;border-radius:8px;cursor:pointer}
+  .vidopt input{grid-row:1/3;margin-top:2px}.vidopt span{color:#9a9aa3;font-size:11.5px;line-height:1.35}.vidopt.on{border-color:#E6212F;background:rgba(230,33,47,.07)}
   body.l2bb [data-nobb]{display:none!important} body:not(.l2bb) [data-bbonly]{display:none!important}
   .anc9{display:grid;grid-template-columns:repeat(3,22px);grid-template-rows:repeat(3,22px);gap:3px;padding:6px;border:1px solid var(--line,#333);border-radius:6px;width:max-content}
   .anc9 button{width:22px;height:22px;padding:0;border-radius:4px;border:1px solid #444;background:transparent;position:relative;cursor:pointer}
@@ -1701,6 +1703,7 @@ body.nohelp .qm{display:none}
               <button class="btn danger" id="btnRemoveAE" title="Delete every Grid Blocks layer from the active comp">Remove from comp</button>
             </div>
             <div class="note" id="buildNote"></div>
+            <div class="note" id="vidNote"></div>
           </div>
           <div class="group">
             <div class="group-h">Save</div>
@@ -1716,6 +1719,23 @@ body.nohelp .qm{display:none}
   </main>
 </div>
 
+<div class="modal" id="vidModal" hidden>
+  <div class="sheet" style="max-width:460px">
+    <div class="sheet-h"><h3>Video in the blocks</h3><div class="spacer"></div><button class="btn icon ghost" data-vid="cancel" title="Cancel">✕</button></div>
+    <div style="display:grid;gap:10px;padding:4px 2px">
+      <div class="note">How should After Effects bring video into the blocks? The sample clip goes in as a placeholder you can swap.</div>
+      <div class="vidopts" id="vidOpts">
+        <label class="vidopt"><input type="radio" name="vidm" value="shared"><b>One clip for every block</b><span>A single <i>GB · Replace me</i> comp holds the sample clip. Swap the clip inside it once and every block updates.</span></label>
+        <label class="vidopt"><input type="radio" name="vidm" value="each"><b>A clip per block</b><span>Each block gets its own <i>Replace me</i> comp, so you can swap them one by one.</span></label>
+        <label class="vidopt"><input type="radio" name="vidm" value="set"><b>As set in Block media</b><span>Only the blocks you gave media in Content › Media.</span></label>
+        <label class="vidopt"><input type="radio" name="vidm" value="none"><b>No video</b><span>Blocks only.</span></label>
+      </div>
+      <div id="vidLayers" style="display:flex;gap:14px;flex-wrap:wrap"><label class="check"><input type="checkbox" id="vidL1"> Layer 1 blocks</label><label class="check"><input type="checkbox" id="vidL2"> Layer 2 blocks</label></div>
+      <label class="check"><input type="checkbox" id="vidRemember"> Don’t ask again <span class="note">(change it in Build)</span></label>
+    </div>
+    <div class="sheet-f"><button class="btn" data-vid="cancel">Cancel</button><div class="spacer"></div><button class="btn primary" data-vid="go" id="vidGo">Build</button></div>
+  </div>
+</div>
 <div class="modal" id="libModal" hidden>
   <div class="sheet">
     <div class="sheet-h"><h3>Layouts</h3><span class="note" id="libWhere"></span><div class="spacer"></div><button class="btn icon ghost" id="libClose" title="Close">✕</button></div>

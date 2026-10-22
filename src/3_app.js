@@ -7084,6 +7084,7 @@ function renderBuildSummary(G){
     <div class="note">${extras.join(' · ')}${!canPre&&(o.preGrid||o.preBlocks)?'<br><span class="warn">Grid and block precomps need the After Effects camera rig.</span>':''}</div>`;
   $('#buildLabel2').textContent=inAE?'Build in After Effects':'Export .jsx for After Effects';
   $('#btnExportJsx').hidden=!inAE;
+  { const vn=$('#vidNote'); if(vn) vn.innerHTML=`Video in blocks: <b>${vidChoiceLabel()}</b>${vidPref()?' · <a href="#" id="vidReset">ask again</a>':''}`; }
   $('#buildNote').innerHTML=inAE
     ?(U.compLive?`Builds into <b>${esc(U.aeName)}</b>.`:'No comp is open, so a new one will be made.')+' Everything goes in one undo step.'
     :'In After Effects choose <b>File › Scripts › Run Script File…</b> and pick the exported file. It builds into the active comp if it’s the same size, or makes a new comp.';
@@ -7091,9 +7092,38 @@ function renderBuildSummary(G){
 
 /* ------------------------------------------------------------------ AE link */
 function evalHost(code){return new Promise(res=>{try{cep.evalScript(code,r=>res(r));}catch(e){res('ERR|'+e);}});}
+/* ---- video in the blocks: asked on every build (unless remembered) ---- */
+function vidPref(){ try{ const v=JSON.parse(localStorage.getItem('gb.vidChoice')||'null'); return v&&v.mode?v:null; }catch(e){ return null; } }
+function vidAsk(d){ return new Promise(res=>{ const M=$('#vidModal'); if(!M) return res({mode:'set'});
+  const has2=!!(d.layer2&&d.layer2.blocks&&d.layer2.blocks.length), last=(()=>{ try{ return JSON.parse(localStorage.getItem('gb.vidLast')||'null'); }catch(e){ return null; } })()||{mode:'shared',l1:!has2,l2:has2};
+  $$('#vidOpts input').forEach(r=>r.checked=r.value===last.mode); $('#vidL1').checked=last.l1!==false&&(d.blocks||[]).length>0; $('#vidL2').checked=!!last.l2&&has2; $('#vidL2').disabled=!has2; $('#vidL2').parentElement.style.opacity=has2?1:.45;
+  $('#vidRemember').checked=false; $('#vidGo').textContent=inAE?'Build':'Export';
+  const sync=()=>{ const m=($$('#vidOpts input').find(r=>r.checked)||{}).value; $('#vidLayers').style.display=(m==='shared'||m==='each')?'flex':'none'; $$('#vidOpts input').forEach(r=>r.closest('.vidopt').classList.toggle('on',r.checked)); }; sync();
+  const done=v=>{ M.hidden=true; M.onclick=null; $('#vidOpts').onchange=null; res(v); };
+  $('#vidOpts').onchange=sync;
+  M.onclick=e=>{ const b=e.target.closest('[data-vid]'); if(e.target===M) return done(null); if(!b) return; if(b.dataset.vid==='cancel') return done(null);
+    const v={mode:($$('#vidOpts input').find(r=>r.checked)||{value:'set'}).value,l1:$('#vidL1').checked,l2:$('#vidL2').checked};
+    try{ localStorage.setItem('gb.vidLast',JSON.stringify(v)); if($('#vidRemember').checked) localStorage.setItem('gb.vidChoice',JSON.stringify(v)); }catch(x){}
+    done(v); };
+  M.hidden=false; }); }
+/* apply the choice to the payload: placeholder "Replace me" clips (one shared comp, or one per block), media as set, or none */
+function vidApply(d,v){ if(!v||v.mode==='set') return d;
+  const lists=[[d.blocks||[],'1',v.l1],[(d.layer2&&d.layer2.blocks)||[],'2',v.l2]];
+  lists.forEach(([L,ln,on])=>L.forEach((b,i)=>{
+    if(v.mode==='none'){ b.media=null; return; }
+    if(!on) return;
+    const m0=b.media, builtin=!m0||m0.id==='sample'||m0.id==='sample-still'; if(!builtin) return;   // the user's own clips stay as they are
+    const per=v.mode==='each';
+    b.media=Object.assign({fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,loop:'loop',inMode:'block',inLen:12,offset:0,audio:false},m0||{},
+      {id:per?('gbph'+ln+'_'+i):'gbph',name:'Replace me',type:'video',file:'media/sample.mp4',path:null,precomp:true,
+       compName:per?('GB · Replace me · '+(ln==='2'?'L2 · ':'')+(b.name||('Block '+(i+1)))):'GB · Replace me (all blocks)',startF:m0&&m0.startF!=null?m0.startF:(b.tIn||0)}); }));
+  return d; }
+async function vidChoose(d){ const pref=vidPref(); const v=pref||await vidAsk(d); if(!v) return null; return vidApply(d,v); }
+function vidChoiceLabel(){ const p=vidPref(); return p?({shared:'one clip for every block',each:'a clip per block',set:'as set in Block media',none:'no video'})[p.mode]:'ask on build'; }
 async function build(){
-  const d=payload();
+  let d=payload();
   if(!d.bg&&!d.cells&&!d.lines&&!d.blocks.length) return toast('Nothing to build. Turn on a layer in Grid › Look, or add blocks.','err');
+  if((d.blocks||[]).length||(d.layer2&&d.layer2.blocks&&d.layer2.blocks.length)){ d=await vidChoose(d); if(!d) return; }
   const json=JSON.stringify(d).split(LS1).join('\\u2028').split(LS2).join('\\u2029');
   if(inAE){
     $('#btnBuild').disabled=true;$('#btnBuild2').disabled=true;
@@ -7111,8 +7141,9 @@ async function build(){
   }
 }
 $('#btnBuild').onclick=build; $('#btnBuild2').onclick=build;
-$('#btnExportJsx').onclick=()=>{
-  const d=payload(), json=JSON.stringify(d).split(LS1).join('\\u2028').split(LS2).join('\\u2029');
+document.addEventListener('click',e=>{ if(e.target&&e.target.id==='vidReset'){ e.preventDefault(); try{ localStorage.removeItem('gb.vidChoice'); }catch(x){} toast('Grid Blocks will ask about video on the next build'); try{ refresh(); }catch(x){} } });
+$('#btnExportJsx').onclick=async()=>{
+  let d=payload(); d=await vidChoose(d); if(!d) return; const json=JSON.stringify(d).split(LS1).join('\\u2028').split(LS2).join('\\u2029');
   snapTake('Exported .jsx',true);
   const code='// Grid Blocks — generated build script\n// Open this file in Grid Blocks (Layouts › Open from file) to keep editing the layout.\n\n'+layoutBlock()+'\n'+HOST+'\n(function(){var r=GB_build('+json+');alert(r.replace(/^OK\\|/,"").replace(/^ERR\\|/,"Error: "));})();\n';
   evalHost('(function(){var f=new File(Folder.myDocuments.fsName+"/GridBlocks_build.jsx").saveDlg("Save build script");if(!f)return "CANCEL";f.encoding="UTF-8";f.open("w");f.write('+jsStr(code)+');f.close();return "OK|"+f.fsName;})()')

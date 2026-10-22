@@ -568,6 +568,8 @@ body.nohelp .qm{display:none}
   .step-body{overflow:visible}
   .logo span,.hide-sm{display:none}
 }
+  .vidopts{display:grid;gap:6px}.vidopt{display:grid;grid-template-columns:18px 1fr;column-gap:8px;padding:8px 10px;border:1px solid #333;border-radius:8px;cursor:pointer}
+  .vidopt input{grid-row:1/3;margin-top:2px}.vidopt span{color:#9a9aa3;font-size:11.5px;line-height:1.35}.vidopt.on{border-color:#E6212F;background:rgba(230,33,47,.07)}
   body.l2bb [data-nobb]{display:none!important} body:not(.l2bb) [data-bbonly]{display:none!important}
   .anc9{display:grid;grid-template-columns:repeat(3,22px);grid-template-rows:repeat(3,22px);gap:3px;padding:6px;border:1px solid var(--line,#333);border-radius:6px;width:max-content}
   .anc9 button{width:22px;height:22px;padding:0;border-radius:4px;border:1px solid #444;background:transparent;position:relative;cursor:pointer}
@@ -1701,6 +1703,7 @@ body.nohelp .qm{display:none}
               <button class="btn danger" id="btnRemoveAE" title="Delete every Grid Blocks layer from the active comp">Remove from comp</button>
             </div>
             <div class="note" id="buildNote"></div>
+            <div class="note" id="vidNote"></div>
           </div>
           <div class="group">
             <div class="group-h">Save</div>
@@ -1716,6 +1719,23 @@ body.nohelp .qm{display:none}
   </main>
 </div>
 
+<div class="modal" id="vidModal" hidden>
+  <div class="sheet" style="max-width:460px">
+    <div class="sheet-h"><h3>Video in the blocks</h3><div class="spacer"></div><button class="btn icon ghost" data-vid="cancel" title="Cancel">✕</button></div>
+    <div style="display:grid;gap:10px;padding:4px 2px">
+      <div class="note">How should After Effects bring video into the blocks? The sample clip goes in as a placeholder you can swap.</div>
+      <div class="vidopts" id="vidOpts">
+        <label class="vidopt"><input type="radio" name="vidm" value="shared"><b>One clip for every block</b><span>A single <i>GB · Replace me</i> comp holds the sample clip. Swap the clip inside it once and every block updates.</span></label>
+        <label class="vidopt"><input type="radio" name="vidm" value="each"><b>A clip per block</b><span>Each block gets its own <i>Replace me</i> comp, so you can swap them one by one.</span></label>
+        <label class="vidopt"><input type="radio" name="vidm" value="set"><b>As set in Block media</b><span>Only the blocks you gave media in Content › Media.</span></label>
+        <label class="vidopt"><input type="radio" name="vidm" value="none"><b>No video</b><span>Blocks only.</span></label>
+      </div>
+      <div id="vidLayers" style="display:flex;gap:14px;flex-wrap:wrap"><label class="check"><input type="checkbox" id="vidL1"> Layer 1 blocks</label><label class="check"><input type="checkbox" id="vidL2"> Layer 2 blocks</label></div>
+      <label class="check"><input type="checkbox" id="vidRemember"> Don’t ask again <span class="note">(change it in Build)</span></label>
+    </div>
+    <div class="sheet-f"><button class="btn" data-vid="cancel">Cancel</button><div class="spacer"></div><button class="btn primary" data-vid="go" id="vidGo">Build</button></div>
+  </div>
+</div>
 <div class="modal" id="libModal" hidden>
   <div class="sheet">
     <div class="sheet-h"><h3>Layouts</h3><span class="note" id="libWhere"></span><div class="spacer"></div><button class="btn icon ghost" id="libClose" title="Close">✕</button></div>
@@ -2457,7 +2477,7 @@ function GB_fillItems(comp,items,parent,list){
 
 
 /* ---------- media clipped to blocks (video / image / precomp) ---------- */
-var GB_mediaItems={};
+var GB_mediaItems={}, GB_mediaFiles={};
 function GB_pickMedia(){
   try{
     var filt=GB_isWin()?"Video or image:*.mp4;*.mov;*.m4v;*.webm;*.avi;*.mxf;*.png;*.jpg;*.jpeg;*.gif;*.tif;*.tiff;*.psd;*.ai":function(f){return (f instanceof Folder)||/\.(mp4|mov|m4v|webm|avi|mxf|png|jpe?g|gif|tiff?|psd|ai)$/i.test(f.name);};
@@ -2468,6 +2488,9 @@ function GB_pickMedia(){
   }catch(e){return "ERR|"+e.toString();}
 }
 function GB_findMedia(m,root){
+  var fk=String(m.path||m.file||m.name||""); if(GB_mediaFiles.hasOwnProperty(fk)) return GB_mediaFiles[fk];   /* ask about a missing file once, not once per block */
+  var r=GB_findMedia0(m,root); GB_mediaFiles[fk]=r; return r; }
+function GB_findMedia0(m,root){
   var tries=[], base=root||null, nm=String(m.file||m.name||"").split("/").pop(), i;
   if(m.path) tries.push(m.path);
   try{ if(!base&&$.fileName) base=File($.fileName).parent.fsName; }catch(e0){}
@@ -2490,8 +2513,11 @@ function GB_mediaSource(m,root,folder,main){
   if(!m.precomp){ GB_mediaItems[key]=ft; return ft; }
   var still=false; try{ still=ft.mainSource.isStill; }catch(e4){}
   var fr=ft.frameRate>0?ft.frameRate:main.frameRate, dur=(!still&&ft.duration>0)?ft.duration:main.duration;
-  var c=app.project.items.addComp(GB_uniqueName("GB Media · "+ft.name),ft.width,ft.height,ft.pixelAspect||1,Math.max(dur,1/fr),fr);
+  if(m.compName) dur=Math.max(dur,main.duration);   /* a "Replace me" comp: as long as the main comp, so any clip dropped in fills it */
+  var c=app.project.items.addComp(GB_uniqueName(m.compName||("GB Media · "+ft.name)),ft.width,ft.height,ft.pixelAspect||1,Math.max(dur,1/fr),fr);
   var inner=c.layers.add(ft); try{ if(still) inner.outPoint=c.duration; }catch(e5){}
+  if(m.compName){ try{ c.comment="Grid Blocks: replace the clip in here (select the layer, Alt/Option-drag new footage onto it) — every block using this comp updates."; }catch(eC){}
+    try{ if(!still){ inner.timeRemapEnabled=true; inner.property("ADBE Time Remapping").expression="// Grid Blocks: loops whatever clip is in this layer\nvar d=Math.max(thisComp.frameDuration,source.duration-source.frameDuration);\ntime%d;"; } inner.outPoint=c.duration; }catch(eL){} }
   if(folder){ try{c.parentFolder=folder;}catch(e6){} }
   GB_mediaItems[key]=c; return c;
 }
@@ -2687,7 +2713,7 @@ function GB_build(d){
       blockPre.layer.name="GB · Blocks"; blockC=blockPre.comp; comps.push(blockC);
     }
     var camRefB=blockC===main?camRefMain:camRefPre;
-    var blocks=[], fillLayers=[], blockLayers=[], mediaL=[]; GB_mediaItems={}; GB_TRIM=!!org.trim; GB_FPS=fps;
+    var blocks=[], fillLayers=[], blockLayers=[], mediaL=[]; GB_mediaItems={}; GB_mediaFiles={}; GB_TRIM=!!org.trim; GB_FPS=fps;
 
     function trimTo(Lr,t){ if(org.trim&&t>0){try{Lr.inPoint=Math.min(main.duration-1/fps,t/fps);}catch(eT){}} }
     function trimOut(Lr,t){ if(org.trim&&t!=null&&t/fps<main.duration){try{if(t/fps>Lr.inPoint)Lr.outPoint=t/fps;}catch(eT2){}} }
@@ -10060,6 +10086,7 @@ function renderBuildSummary(G){
     <div class="note">${extras.join(' · ')}${!canPre&&(o.preGrid||o.preBlocks)?'<br><span class="warn">Grid and block precomps need the After Effects camera rig.</span>':''}</div>`;
   $('#buildLabel2').textContent=inAE?'Build in After Effects':'Export .jsx for After Effects';
   $('#btnExportJsx').hidden=!inAE;
+  { const vn=$('#vidNote'); if(vn) vn.innerHTML=`Video in blocks: <b>${vidChoiceLabel()}</b>${vidPref()?' · <a href="#" id="vidReset">ask again</a>':''}`; }
   $('#buildNote').innerHTML=inAE
     ?(U.compLive?`Builds into <b>${esc(U.aeName)}</b>.`:'No comp is open, so a new one will be made.')+' Everything goes in one undo step.'
     :'In After Effects choose <b>File › Scripts › Run Script File…</b> and pick the exported file. It builds into the active comp if it’s the same size, or makes a new comp.';
@@ -10067,9 +10094,38 @@ function renderBuildSummary(G){
 
 /* ------------------------------------------------------------------ AE link */
 function evalHost(code){return new Promise(res=>{try{cep.evalScript(code,r=>res(r));}catch(e){res('ERR|'+e);}});}
+/* ---- video in the blocks: asked on every build (unless remembered) ---- */
+function vidPref(){ try{ const v=JSON.parse(localStorage.getItem('gb.vidChoice')||'null'); return v&&v.mode?v:null; }catch(e){ return null; } }
+function vidAsk(d){ return new Promise(res=>{ const M=$('#vidModal'); if(!M) return res({mode:'set'});
+  const has2=!!(d.layer2&&d.layer2.blocks&&d.layer2.blocks.length), last=(()=>{ try{ return JSON.parse(localStorage.getItem('gb.vidLast')||'null'); }catch(e){ return null; } })()||{mode:'shared',l1:!has2,l2:has2};
+  $$('#vidOpts input').forEach(r=>r.checked=r.value===last.mode); $('#vidL1').checked=last.l1!==false&&(d.blocks||[]).length>0; $('#vidL2').checked=!!last.l2&&has2; $('#vidL2').disabled=!has2; $('#vidL2').parentElement.style.opacity=has2?1:.45;
+  $('#vidRemember').checked=false; $('#vidGo').textContent=inAE?'Build':'Export';
+  const sync=()=>{ const m=($$('#vidOpts input').find(r=>r.checked)||{}).value; $('#vidLayers').style.display=(m==='shared'||m==='each')?'flex':'none'; $$('#vidOpts input').forEach(r=>r.closest('.vidopt').classList.toggle('on',r.checked)); }; sync();
+  const done=v=>{ M.hidden=true; M.onclick=null; $('#vidOpts').onchange=null; res(v); };
+  $('#vidOpts').onchange=sync;
+  M.onclick=e=>{ const b=e.target.closest('[data-vid]'); if(e.target===M) return done(null); if(!b) return; if(b.dataset.vid==='cancel') return done(null);
+    const v={mode:($$('#vidOpts input').find(r=>r.checked)||{value:'set'}).value,l1:$('#vidL1').checked,l2:$('#vidL2').checked};
+    try{ localStorage.setItem('gb.vidLast',JSON.stringify(v)); if($('#vidRemember').checked) localStorage.setItem('gb.vidChoice',JSON.stringify(v)); }catch(x){}
+    done(v); };
+  M.hidden=false; }); }
+/* apply the choice to the payload: placeholder "Replace me" clips (one shared comp, or one per block), media as set, or none */
+function vidApply(d,v){ if(!v||v.mode==='set') return d;
+  const lists=[[d.blocks||[],'1',v.l1],[(d.layer2&&d.layer2.blocks)||[],'2',v.l2]];
+  lists.forEach(([L,ln,on])=>L.forEach((b,i)=>{
+    if(v.mode==='none'){ b.media=null; return; }
+    if(!on) return;
+    const m0=b.media, builtin=!m0||m0.id==='sample'||m0.id==='sample-still'; if(!builtin) return;   // the user's own clips stay as they are
+    const per=v.mode==='each';
+    b.media=Object.assign({fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,loop:'loop',inMode:'block',inLen:12,offset:0,audio:false},m0||{},
+      {id:per?('gbph'+ln+'_'+i):'gbph',name:'Replace me',type:'video',file:'media/sample.mp4',path:null,precomp:true,
+       compName:per?('GB · Replace me · '+(ln==='2'?'L2 · ':'')+(b.name||('Block '+(i+1)))):'GB · Replace me (all blocks)',startF:m0&&m0.startF!=null?m0.startF:(b.tIn||0)}); }));
+  return d; }
+async function vidChoose(d){ const pref=vidPref(); const v=pref||await vidAsk(d); if(!v) return null; return vidApply(d,v); }
+function vidChoiceLabel(){ const p=vidPref(); return p?({shared:'one clip for every block',each:'a clip per block',set:'as set in Block media',none:'no video'})[p.mode]:'ask on build'; }
 async function build(){
-  const d=payload();
+  let d=payload();
   if(!d.bg&&!d.cells&&!d.lines&&!d.blocks.length) return toast('Nothing to build. Turn on a layer in Grid › Look, or add blocks.','err');
+  if((d.blocks||[]).length||(d.layer2&&d.layer2.blocks&&d.layer2.blocks.length)){ d=await vidChoose(d); if(!d) return; }
   const json=JSON.stringify(d).split(LS1).join('\\u2028').split(LS2).join('\\u2029');
   if(inAE){
     $('#btnBuild').disabled=true;$('#btnBuild2').disabled=true;
@@ -10087,8 +10143,9 @@ async function build(){
   }
 }
 $('#btnBuild').onclick=build; $('#btnBuild2').onclick=build;
-$('#btnExportJsx').onclick=()=>{
-  const d=payload(), json=JSON.stringify(d).split(LS1).join('\\u2028').split(LS2).join('\\u2029');
+document.addEventListener('click',e=>{ if(e.target&&e.target.id==='vidReset'){ e.preventDefault(); try{ localStorage.removeItem('gb.vidChoice'); }catch(x){} toast('Grid Blocks will ask about video on the next build'); try{ refresh(); }catch(x){} } });
+$('#btnExportJsx').onclick=async()=>{
+  let d=payload(); d=await vidChoose(d); if(!d) return; const json=JSON.stringify(d).split(LS1).join('\\u2028').split(LS2).join('\\u2029');
   snapTake('Exported .jsx',true);
   const code='// Grid Blocks — generated build script\n// Open this file in Grid Blocks (Layouts › Open from file) to keep editing the layout.\n\n'+layoutBlock()+'\n'+HOST+'\n(function(){var r=GB_build('+json+');alert(r.replace(/^OK\\|/,"").replace(/^ERR\\|/,"Error: "));})();\n';
   evalHost('(function(){var f=new File(Folder.myDocuments.fsName+"/GridBlocks_build.jsx").saveDlg("Save build script");if(!f)return "CANCEL";f.encoding="UTF-8";f.open("w");f.write('+jsStr(code)+');f.close();return "OK|"+f.fsName;})()')
