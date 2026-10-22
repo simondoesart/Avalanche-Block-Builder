@@ -673,7 +673,7 @@ function GB_fillItems(comp,items,parent,list){
 
 
 /* ---------- media clipped to blocks (video / image / precomp) ---------- */
-var GB_mediaItems={};
+var GB_mediaItems={}, GB_mediaFiles={};
 function GB_pickMedia(){
   try{
     var filt=GB_isWin()?"Video or image:*.mp4;*.mov;*.m4v;*.webm;*.avi;*.mxf;*.png;*.jpg;*.jpeg;*.gif;*.tif;*.tiff;*.psd;*.ai":function(f){return (f instanceof Folder)||/\.(mp4|mov|m4v|webm|avi|mxf|png|jpe?g|gif|tiff?|psd|ai)$/i.test(f.name);};
@@ -684,6 +684,9 @@ function GB_pickMedia(){
   }catch(e){return "ERR|"+e.toString();}
 }
 function GB_findMedia(m,root){
+  var fk=String(m.path||m.file||m.name||""); if(GB_mediaFiles.hasOwnProperty(fk)) return GB_mediaFiles[fk];   /* ask about a missing file once, not once per block */
+  var r=GB_findMedia0(m,root); GB_mediaFiles[fk]=r; return r; }
+function GB_findMedia0(m,root){
   var tries=[], base=root||null, nm=String(m.file||m.name||"").split("/").pop(), i;
   if(m.path) tries.push(m.path);
   try{ if(!base&&$.fileName) base=File($.fileName).parent.fsName; }catch(e0){}
@@ -706,8 +709,11 @@ function GB_mediaSource(m,root,folder,main){
   if(!m.precomp){ GB_mediaItems[key]=ft; return ft; }
   var still=false; try{ still=ft.mainSource.isStill; }catch(e4){}
   var fr=ft.frameRate>0?ft.frameRate:main.frameRate, dur=(!still&&ft.duration>0)?ft.duration:main.duration;
-  var c=app.project.items.addComp(GB_uniqueName("GB Media · "+ft.name),ft.width,ft.height,ft.pixelAspect||1,Math.max(dur,1/fr),fr);
+  if(m.compName) dur=Math.max(dur,main.duration);   /* a "Replace me" comp: as long as the main comp, so any clip dropped in fills it */
+  var c=app.project.items.addComp(GB_uniqueName(m.compName||("GB Media · "+ft.name)),ft.width,ft.height,ft.pixelAspect||1,Math.max(dur,1/fr),fr);
   var inner=c.layers.add(ft); try{ if(still) inner.outPoint=c.duration; }catch(e5){}
+  if(m.compName){ try{ c.comment="Grid Blocks: replace the clip in here (select the layer, Alt/Option-drag new footage onto it) — every block using this comp updates."; }catch(eC){}
+    try{ if(!still){ inner.timeRemapEnabled=true; inner.property("ADBE Time Remapping").expression="// Grid Blocks: loops whatever clip is in this layer\nvar d=Math.max(thisComp.frameDuration,source.duration-source.frameDuration);\ntime%d;"; } inner.outPoint=c.duration; }catch(eL){} }
   if(folder){ try{c.parentFolder=folder;}catch(e6){} }
   GB_mediaItems[key]=c; return c;
 }
@@ -903,7 +909,7 @@ function GB_build(d){
       blockPre.layer.name="GB · Blocks"; blockC=blockPre.comp; comps.push(blockC);
     }
     var camRefB=blockC===main?camRefMain:camRefPre;
-    var blocks=[], fillLayers=[], blockLayers=[], mediaL=[]; GB_mediaItems={}; GB_TRIM=!!org.trim; GB_FPS=fps;
+    var blocks=[], fillLayers=[], blockLayers=[], mediaL=[]; GB_mediaItems={}; GB_mediaFiles={}; GB_TRIM=!!org.trim; GB_FPS=fps;
 
     function trimTo(Lr,t){ if(org.trim&&t>0){try{Lr.inPoint=Math.min(main.duration-1/fps,t/fps);}catch(eT){}} }
     function trimOut(Lr,t){ if(org.trim&&t!=null&&t/fps<main.duration){try{if(t/fps>Lr.inPoint)Lr.outPoint=t/fps;}catch(eT2){}} }
