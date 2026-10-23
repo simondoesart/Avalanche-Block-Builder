@@ -1060,14 +1060,17 @@ function timeFill(items,base,fps){
 /* ------------------------------------------------------------------ path helpers */
 const getP=p=>p.split('.').reduce((o,k)=>o==null?o:o[k],D);
 const setP=(p,v)=>{const k=p.split('.'),l=k.pop();k.reduce((o,x)=>o[x],D)[l]=v;};
+/* a saved layout over the defaults: every saved value comes back — including per-block maps (front / behind, moves,
+   sizes, colours…) and settings newer than the defaults list; missing ones get the default */
 function merge(def,src){
   if(!src||typeof src!=='object') return def;
-  Object.keys(def).forEach(k=>{
-    if(!(k in src)) return;
+  Object.keys(src).forEach(k=>{
+    const sv=src[k];
+    if(!(k in def)){ if(sv!==undefined) def[k]=sv; return; }
     const dv=def[k];
-    if(dv&&typeof dv==='object'&&!Array.isArray(dv)) def[k]=merge(dv,src[k]);
-    else if(typeof dv===typeof src[k]||dv===null||src[k]===null) def[k]=src[k];
-    else if(Array.isArray(dv)&&Array.isArray(src[k])) def[k]=src[k];
+    if(dv&&typeof dv==='object'&&!Array.isArray(dv)){ if(sv&&typeof sv==='object'&&!Array.isArray(sv)) def[k]=Object.keys(dv).length?merge(dv,sv):sv; else if(sv===null) def[k]=null; return; }
+    if(typeof dv===typeof sv||dv===null||sv===null) def[k]=sv;
+    else if(Array.isArray(dv)&&Array.isArray(sv)) def[k]=sv;
   });
   return def;
 }
@@ -1256,7 +1259,9 @@ function setDoc(obj){
   if(obj&&obj.anim) ['dt','dx'].forEach(k=>{const m=obj.anim[k];D.anim[k]=m&&typeof m==='object'&&!Array.isArray(m)?Object.assign({},m):{};});
   if(!Array.isArray(D.palette)||!D.palette.length) D.palette=PALETTE.slice();
   D.blocks=(Array.isArray(obj.blocks)?obj.blocks:[]).map(normBlock);
-  uid=D.blocks.reduce((m,b)=>Math.max(m,b.id),0)+1;
+  /* the layer you're not looking at is saved inside L2.store — give it the same treatment */
+  if(D.L2&&D.L2.store&&typeof D.L2.store==='object'){ const st=D.L2.store; LAYER_KEYS.forEach(k=>{ if(st[k]===undefined) return; if(k==='blocks') st[k]=(Array.isArray(st[k])?st[k]:[]).map(normBlock); else if(DEF[k]&&typeof DEF[k]==='object'&&!Array.isArray(DEF[k])) st[k]=merge(clone(DEF[k]),st[k]); }); }
+  uid=Math.max(D.blocks.reduce((m,b)=>Math.max(m,b.id),0),D.L2&&D.L2.store&&Array.isArray(D.L2.store.blocks)?D.L2.store.blocks.reduce((m,b)=>Math.max(m,b.id||0),0):0)+1;
   U.sel=null;U.selIds=U.selIds.filter(id=>byId(id));
   U.moNext=D.blocks.reduce((m,b)=>Math.max(m,b.mo||0),0)+1;
 }
