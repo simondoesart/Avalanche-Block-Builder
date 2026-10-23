@@ -86,7 +86,7 @@ const DEF={
        snow:{on:false,count:90,speed:240,size:2,stretch:6,dir:'left',color:'#EBF0FA',opacity:55,seed:9}},
   num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100,per:{}},
   io:{in:null,out:null},
-  L2:{on:false,dim:{on:false,color:'#121212',op:60,len:12,delay:0,after:1},z:'front',active:'main',store:null,sound:'off',timing:null,cam:'main',camSrc:'main',infX:100,infY:100,zoom:true,revealBy:'own',ctrl:{x:0,y:0,r:0,s:100,o:100},bb:{on:false,cam:'line',smooth:8,anchor:'c',vf:false,vDamp:0,ry:50,bleed:0,ovRows:0,zoomRoom:true,per:{},adj:2,move:'glide',stepLen:6,speed:100,rx:65,band:'any',rowFrom:null,rowTo:null,startRow:null,path:'walk',touch:true,step:'corner',sidePct:30,bias:'bounce',gap:0,overlap:false,slack:25,stay:'stay',stayN:8}},
+  L2:{on:false,dim:{on:false,color:'#121212',op:60,len:12,delay:0,after:1},z:'front',active:'main',store:null,sound:'off',timing:null,cam:'main',camSrc:'main',infX:100,infY:100,zoom:true,revealBy:'own',ctrl:{x:0,y:0,r:0,s:100,o:100},bb:{on:false,cam:'line',smooth:8,anchor:'c',vf:false,vDamp:0,ry:50,bleed:0,ovRows:0,zoomRoom:true,per:{},adj:2,scale:100,move:'glide',stepLen:6,speed:100,rx:65,band:'any',rowFrom:null,rowTo:null,startRow:null,path:'walk',touch:true,step:'corner',sidePct:30,bias:'bounce',gap:0,overlap:false,slack:25,stay:'stay',stayN:8}},
   bmedia:{on:false,selOn:false,selAsset:'',kind:'video',asset:'sample',precomp:false,fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,
     loop:'loop',start:'reveal',delay:0,at:0,offset:0,audio:'mute',inMode:'block',inLen:12,target:'all',pick:[],dirOn:{up:true,down:true,flat:true},
     assign:'same',pool:[],dir:{up:'',down:'',flat:''},seed:1,per:{},assets:[]},
@@ -2007,12 +2007,13 @@ function beatPlace(G,base0,times,prevSeed){
   const LIST=String(SV.list||'').split(/[ ,;]+/).map(t=>t.match(/^(\d+)\s*[x×]\s*(\d+)$/i)).filter(Boolean).map(m=>[+m[1],+m[2]]);
   const ri=(a,b)=>{a=Math.max(1,Math.round(+a||1));b=Math.max(a,Math.round(+b||a));return a+Math.floor(rnd()*(b-a+1));};
   // the same size rules as the walk generator (Size mix: free / shape / list / fit the media, keep base %)
-  const dims=i=>{ if(!SV.on) return [bw,bh]; if(rnd()*100<(+SV.keep||0)) return [bw,bh]; const m=SV.mode||'free'; let w,h;
+  const dims0=i=>{ if(!SV.on) return [bw,bh]; if(rnd()*100<(+SV.keep||0)) return [bw,bh]; const m=SV.mode||'free'; let w,h;
     if(m==='free'){ w=ri(SV.wMin,SV.wMax); h=ri(SV.hMin,SV.hMax); }
     else if(m==='list'&&LIST.length){ const d=LIST[Math.floor(rnd()*LIST.length)]; w=d[0]; h=d[1]; }
     else { const k=ri(SV.min,SV.max); let a; if(m==='media') a=mediaAspectFor(i); else { const a0=Math.max(0.1,+SV.aMin||0.5),a1=Math.max(a0,+SV.aMax||2); a=Math.exp(Math.log(a0)+(Math.log(a1)-Math.log(a0))*rnd()); }
       if(a>=1){ h=k; w=Math.max(1,Math.round(k*a)); } else { w=k; h=Math.max(1,Math.round(k/a)); } }
     return [Math.max(1,w),Math.min(Math.max(1,h),G.R)]; };
+  const dims=i=>{ const d=dims0(i), ks=clamp(+B.scale||100,10,400)/100; return ks===1?d:[Math.max(1,Math.round(d[0]*ks)),Math.min(Math.max(1,Math.round(d[1]*ks)),G.R)]; };   /* Size scale: every block bigger / smaller */
   // the rows the line may use: an explicit range (from–to), or a band (top / middle / bottom / any)
   const has=v=>v!=null&&v!==''&&isFinite(+v);
   /* up/down: the camera's height as the line builds (damped), and how far a block may hang past the top / bottom of the frame */
@@ -5528,6 +5529,7 @@ $('#insp').addEventListener('click',e=>{
 
 /* ------------------------------------------------------------------ bindings */
 function onChange(path){
+  if(/^(block\.(w|h)$|rand\.sizeVar\.|L2\.bb\.scale$)/.test(path)&&lockedCount()&&!U.lockAskSkip) setTimeout(()=>lockAsk(path),0);   /* base size changed while blocks are locked: ask */
   if(path==='rand.sizeVar.on'&&D.rand.sizeVar&&D.rand.sizeVar.on&&(+D.rand.sizeVar.keep||0)>=100){ D.rand.sizeVar.keep=0; syncInputs(true); }   /* turning random sizes on: don't leave every block at the base size */
   if(/^rand\.sizeVar|^L2\.|^anim\.zoomOn/.test(path)&&curLayer()==='l2') setTimeout(()=>{ try{ renderLayerBar(); }catch(e){} },0);
   if(path==='comp.w'||path==='comp.h') syncPreset();
@@ -7552,6 +7554,10 @@ document.addEventListener('change',e=>{ const t=e.target; if(!t||!t.dataset||!t.
   const L=(Array.isArray(D.anim.walkSec)?D.anim.walkSec:[]).map(x=>Object.assign({},x)); if(!L[+i]) return;
   L[+i][k]=(k==='f'||k==='to')?(t.value===''?null:Math.max(0,Math.round(+t.value))):t.value; if(k==='f') L.sort((a,b)=>a.f-b.f); D.anim.walkSec=L; planCache.k=''; refresh(); renderWalkSec(); });
 /* ---- lock bar: keep blocks exactly where they are ---- */
+function lockAsk(path){ const M=$('#lockAsk'); if(!M||!M.hidden) return; const n=lockedCount(), lay=curLayer()==='l2'?'Layer 2':'Layer 1';
+  $('#lockAskTxt').innerHTML=`${lay} has <b>${n} locked block${n>1?'s':''}</b>, so the new ${/sizeVar/.test(path)?'size mix':'block size'} only changes the blocks after them.<br><br><b>Apply to every block</b> unlocks them and rebuilds the whole line at the new size (you can lock again after). ⌘Z undoes it.`;
+  M.onclick=e=>{ const b=e.target.closest('[data-lockask]'); if(!b&&e.target!==M) return; M.hidden=true; if(b&&b.dataset.lockask==='all'){ pushHist(true); D.anim.frozen=null; planCache.k=''; refresh(); toast('Unlocked — every block uses the new size'); } else { U.lockAskSkip=true; toast('Only new blocks change — unlock in the lock bar to change them all'); } };
+  M.hidden=false; }
 function renderLockBar(){ const bb=curLayer()==='l2'&&!!l2BB(), el=$(bb?'#lockBarBB':'#lockBarL1'), other=$(bb?'#lockBarL1':'#lockBarBB'); if(other) other.innerHTML=''; if(!el) return;
   const n=lockedCount(), ls=!(D.out&&D.out.lockOnSave===false), f=Math.round(U.t||0);
   el.innerHTML=`<div class="lockbar${n?' on':''}">${n?`<div><b>🔒 ${n} block${n>1?'s':''} locked</b> — they stay exactly as they are; settings now only change the blocks after them.</div>`:`<div><b>Blocks aren’t locked</b> — changing the walk, the song, or updating Grid Blocks can move them. Lock them to keep their shapes.</div>`}
