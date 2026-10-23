@@ -1373,10 +1373,17 @@ body.nohelp .qm{display:none}
               <div class="field stack"><span class="lbl">Size</span><div class="seg" data-seg="rand.sizeVar.on"><button data-v="false">One size</button><button data-v="true" title="Random widths and heights from the ranges below">Random sizes</button></div></div>
               <div class="field2"><div class="field"><span class="lbl scrub" id="bbWLbl">Block W</span><div class="num"><input type="number" data-bind="block.w" min="1" max="40" step="1"></div></div>
                 <div class="field"><span class="lbl scrub" id="bbHLbl">Block H</span><div class="num"><input type="number" data-bind="block.h" min="1" max="20" step="1"></div></div></div>
+              <div class="field"><span class="lbl scrub" title="Scales every layer-2 block — the base size, random sizes, shapes and list sizes (100 = as set)">Size scale</span><div class="num"><button data-d="-10">−</button><input type="number" data-bind="L2.bb.scale" min="10" max="400" step="10"><button data-d="10">+</button><span class="unit">%</span></div></div>
               <div data-show="rand.sizeVar.on=true" style="display:grid;gap:8px">
-                <div class="field2"><div class="field"><span class="lbl scrub" title="Narrowest block, in cells">W from</span><div class="num"><input type="number" data-bind="rand.sizeVar.wMin" min="1" max="40" step="1"></div></div>
+                <div class="field stack"><span class="lbl">Random by</span><div class="seg" data-seg="rand.sizeVar.mode"><button data-v="free" title="Width and height picked separately — any proportions">Free</button><button data-v="shape" title="A size, and a range of shapes">Shape range</button><button data-v="list" title="Only the sizes you list">From a list</button><button data-v="media" title="Each block takes the shape of its video or image">Fit the media</button></div></div>
+                <div data-show="rand.sizeVar.mode=shape|media" class="field2"><div class="field"><span class="lbl scrub" title="Smallest short side, in cells">Size from</span><div class="num"><input type="number" data-bind="rand.sizeVar.min" min="1" max="12" step="1"></div></div>
+                    <div class="field"><span class="lbl scrub" title="Largest short side, in cells">to</span><div class="num"><input type="number" data-bind="rand.sizeVar.max" min="1" max="12" step="1"></div></div></div>
+                <div data-show="rand.sizeVar.mode=shape" class="field2"><div class="field"><span class="lbl scrub" title="Narrowest shape (width ÷ height). 0.5 = twice as tall as wide">Shape from</span><div class="num"><input type="number" data-bind="rand.sizeVar.aMin" min="0.1" max="8" step="0.1"></div></div>
+                    <div class="field"><span class="lbl scrub" title="Widest shape (width ÷ height). 3 = three times as wide">to</span><div class="num"><input type="number" data-bind="rand.sizeVar.aMax" min="0.1" max="8" step="0.1"></div></div></div>
+                <div data-show="rand.sizeVar.mode=list" class="field stack"><span class="lbl">Sizes (W×H, comma-separated)</span><input type="text" data-bind="rand.sizeVar.list" placeholder="1x1, 2x1, 3x2, 4x4"></div>
+                <div data-show="rand.sizeVar.mode=free" class="field2"><div class="field"><span class="lbl scrub" title="Narrowest block, in cells">W from</span><div class="num"><input type="number" data-bind="rand.sizeVar.wMin" min="1" max="40" step="1"></div></div>
                   <div class="field"><span class="lbl scrub" title="Widest block">to</span><div class="num"><input type="number" data-bind="rand.sizeVar.wMax" min="1" max="40" step="1"></div></div></div>
-                <div class="field2"><div class="field"><span class="lbl scrub" title="Shortest block, in rows">H from</span><div class="num"><input type="number" data-bind="rand.sizeVar.hMin" min="1" max="20" step="1"></div></div>
+                <div data-show="rand.sizeVar.mode=free" class="field2"><div class="field"><span class="lbl scrub" title="Shortest block, in rows">H from</span><div class="num"><input type="number" data-bind="rand.sizeVar.hMin" min="1" max="20" step="1"></div></div>
                   <div class="field"><span class="lbl scrub" title="Tallest block">to</span><div class="num"><input type="number" data-bind="rand.sizeVar.hMax" min="1" max="20" step="1"></div></div></div>
                 <div class="field"><span class="lbl scrub" title="This share of blocks keeps the base size (W × H above) — 0 = all random, 100 = none random">Keep base size</span><div class="num"><input type="number" data-bind="rand.sizeVar.keep" min="0" max="100" step="5"><span class="unit">%</span></div></div>
                 <div class="note" id="bbSizeNote"></div>
@@ -1753,6 +1760,13 @@ body.nohelp .qm{display:none}
   </main>
 </div>
 
+<div class="modal" id="lockAsk" hidden>
+  <div class="sheet" style="max-width:420px">
+    <div class="sheet-h"><h3>Some blocks are locked</h3></div>
+    <div style="display:grid;gap:8px;padding:4px 2px"><div class="note" id="lockAskTxt"></div></div>
+    <div class="sheet-f"><button class="btn" data-lockask="new">Only blocks after them</button><div class="spacer"></div><button class="btn primary" data-lockask="all">Apply to every block</button></div>
+  </div>
+</div>
 <div class="modal" id="expModal" hidden>
   <div class="sheet" style="max-width:480px">
     <div class="sheet-h"><h3>Export video</h3><div class="spacer"></div><button class="btn icon ghost" data-exp="cancel" title="Close">✕</button></div>
