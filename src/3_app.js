@@ -86,7 +86,7 @@ const DEF={
        snow:{on:false,count:90,speed:240,size:2,stretch:6,dir:'left',color:'#EBF0FA',opacity:55,seed:9}},
   num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100,per:{}},
   io:{in:null,out:null},
-  L2:{on:false,z:'front',active:'main',store:null,sound:'off',timing:null,cam:'main',camSrc:'main',infX:100,infY:100,zoom:true,revealBy:'own',ctrl:{x:0,y:0,r:0,s:100,o:100},bb:{on:false,cam:'line',smooth:8,anchor:'c',vf:false,vDamp:0,ry:50,bleed:0,ovRows:0,zoomRoom:true,per:{},adj:2,move:'glide',stepLen:6,speed:100,rx:65,band:'any',rowFrom:null,rowTo:null,startRow:null,path:'walk',touch:true,step:'corner',sidePct:30,bias:'bounce',gap:0,overlap:false,slack:25,stay:'stay',stayN:8}},
+  L2:{on:false,dim:{on:false,color:'#121212',op:60,len:12,delay:0,after:1},z:'front',active:'main',store:null,sound:'off',timing:null,cam:'main',camSrc:'main',infX:100,infY:100,zoom:true,revealBy:'own',ctrl:{x:0,y:0,r:0,s:100,o:100},bb:{on:false,cam:'line',smooth:8,anchor:'c',vf:false,vDamp:0,ry:50,bleed:0,ovRows:0,zoomRoom:true,per:{},adj:2,move:'glide',stepLen:6,speed:100,rx:65,band:'any',rowFrom:null,rowTo:null,startRow:null,path:'walk',touch:true,step:'corner',sidePct:30,bias:'bounce',gap:0,overlap:false,slack:25,stay:'stay',stayN:8}},
   bmedia:{on:false,selOn:false,selAsset:'',kind:'video',asset:'sample',precomp:false,fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,
     loop:'loop',start:'reveal',delay:0,at:0,offset:0,audio:'mute',inMode:'block',inLen:12,target:'all',pick:[],dirOn:{up:true,down:true,flat:true},
     assign:'same',pool:[],dir:{up:'',down:'',flat:''},seed:1,per:{},assets:[]},
@@ -4556,6 +4556,10 @@ function drawMedia(g,s,q,clipR,t,alpha){
   g.restore();
 }
 function blockZ(b){ return (D.anim.zord&&D.anim.zord[b.id])||(D.L2&&D.L2.z)||'front'; }
+/* layer 2 dim: when each block gets dimmed — when the next one lands (plus a delay); the newest block stays clear */
+function dimTimes(P){ const DM=D.L2&&D.L2.dim; if(!DM||!DM.on||!P||!P.seq) return null; const key=JSON.stringify(DM)+'|'+P.seq.length; if(P._dimK===key) return P._dimT;
+  const H=P.hidden||new Set(), L=P.seq.map((b,i)=>[P.T[i],b]).filter(x=>x[0]!=null&&!H.has(x[1].id)&&!x[1].__rest&&!x[1].stack).sort((a,b)=>a[0]-b[0]), out={}, dl=Math.round(+DM.delay||0), nb=Math.max(1,Math.round(+DM.after||1));
+  L.forEach((x,i)=>{ const nx=L[i+nb]; if(nx) out[x[1].id]=nx[0]+dl; }); P._dimK=key; P._dimT=out; return out; }
 function drawBlock(g,G,b,o,dx,dy,st,ghost){
   if(o.hidden&&o.hidden.has(b.id)){ if(st) return; const h=o.hidden; o.hidden=null; g.save(); g.globalAlpha*=0.22; try{ drawBlock(g,G,b,o,dx,dy,st,true); } finally{ g.restore(); o.hidden=h; } return; }
   if(o.zPass&&curLayer()==='l2'&&(blockZ(b)==='behind'?'back':'front')!==o.zPass) return;   // layer-2 blocks: drawn in their own pass
@@ -4598,6 +4602,8 @@ function drawBlock(g,G,b,o,dx,dy,st,ghost){
     g.beginPath(); g.rect(x,y,w,h); g.clip();
     drawText(g,b,q.x+dx,q.y+dy,q.w,q.h);
   }
+  if(o.inside&&!ghost&&o.dimT&&o.dimT[b.id]!=null&&o.fillT!=null){ const DM=D.L2.dim||{}, a=clamp((o.fillT-o.dimT[b.id])/Math.max(1,+DM.len||1),0,1)*clamp(+DM.op||0,0,100)/100;   /* layer 2 dim: once the next block has landed */
+    if(a>0){ g.save(); g.globalAlpha=o.alpha*st.op*a; g.fillStyle=DM.color||'#121212'; g.fillRect(x,y,w,h); g.restore(); } }
   g.restore();
 }
 function drawFillItems(g,items,dx,dy,base,tf,alpha,tEnd){
@@ -4718,7 +4724,7 @@ function drawWorld(g,G,o){
   // echoes (behind everything else), then blocks — layer 2 goes behind or in front of the layer 1 (per block)
   const PMain=A?(A.M||A.P):null, shL2=t=>l2On()?l2ShiftAt(t,PMain,curLayer()==='l2'?A.P:withLayer('l2',()=>plan(geom()))):[0,0];
   const firstPass=p=>p==null||p==='back'||p==='mb';
-  const drawActive=pass=>{ o.zPass=pass; o.noEcho=!firstPass(pass); o.hidden=A&&A.P?A.P.hidden:null;
+  const drawActive=pass=>{ o.zPass=pass; o.noEcho=!firstPass(pass); o.hidden=A&&A.P?A.P.hidden:null; o.dimT=live&&curLayer()==='l2'?dimTimes(A.P):null;
   const off=(()=>{ const o0=live?A.off:[0,0]; if(!live||curLayer()!=='l2') return o0; const d=shL2(A.t); return [o0[0]+d[0],o0[1]+d[1]]; })();
   if(live){
     const zd=zdAt(A.t), zk=zd?(CAM_ZOOM_K*G.W)/Math.max(50,CAM_ZOOM_K*G.W+zd*s):1;   // blocks closer to / further from the camera than the grid
@@ -4738,9 +4744,9 @@ function drawWorld(g,G,o){
     if(A){ const solid=STEPS[U.step].id==='layout'&&D.anim.order!=='manual', wf=A.P.walkFrom;
       (D.anim.order==='manual'?A.P.ghosts:A.P.seq.filter(b=>b.virtual)).forEach(b=>{const walk=wf!=null&&A.P.seq.indexOf(b)>=wf; drawBlock(g,G,b,o,0,0,null,!(solid&&!walk));}); }
   }
-  o.zPass=null; o.noEcho=false; o.hidden=null; };
+  o.zPass=null; o.noEcho=false; o.hidden=null; o.dimT=null; };
   const drawOther=pass=>{ const other=curLayer()==='l2'?'main':'l2';
-    withLayer(other,()=>{ const G=geom(), P2=plan(G), o2=Object.assign({},o,{zPass:pass,other:true,hidden:P2.hidden});
+    withLayer(other,()=>{ const G=geom(), P2=plan(G), o2=Object.assign({},o,{zPass:pass,other:true,hidden:P2.hidden,dimT:live&&other==='l2'?dimTimes(P2):null});
       const off=(()=>{ const o0=live?A.off:[0,0]; if(!live||other!=='l2') return o0; const d=l2ShiftAt(A.t,PMain,P2); return [o0[0]+d[0],o0[1]+d[1]]; })();
       o2.fillBase=P2.fillBase; o2.fillEnd=live?P2.fillEnd:null; o2.tracks=live?P2.tracks:null; try{o2.media=mediaMap(P2);}catch(e){o2.media=null;} o2.nums=D.num&&(D.num.on||D.blocks.some(b=>b.num))?blockNumbers(G):null;
       if(live){ if(firstPass(pass)) P2.echo.forEach(e=>{ if(e.src&&isHid(P2,e.src)) return; const st=blockState(e.K,A.t,e.rect);st.src=e.src;drawEcho(g,e.rect,st,o2,off[0],off[1]);});
@@ -6976,7 +6982,8 @@ function payloadCore(inner){
       font:txtStyle(b).font||'',tracking:+txtStyle(b).tracking||0,leading:+txtStyle(b).leading||0,kern:txtStyle(b).kern||'metrics',
       num:numOn(b)?(()=>{const s=numStr(NUMS[b.id]||0),q2=cellRect(G,b.c,b.r,b.w,b.h),L=numLayout(q2,s);return {text:s,x:r3(L.x),y:r3(L.y),size:L.size,color:hexRgb(D.num.color),font:D.fill.font,opacity:clamp(+D.num.opacity||100,0,100),keys:animOn&&P.tracks[b.id]&&P.tracks[b.id].num&&P.tracks[b.id].num.length?P.tracks[b.id].num.map(k=>[k[0],r3(k[1]*clamp(+D.num.opacity||100,0,100)/100),k[2],k[3]]):null};})():null,
       keys:animOn?P.tracks[b.id]:null, tIn:animOn?Math.round(P.T[P.seq.indexOf(b)]):null, tOut:exitEnd(P,P.seq.indexOf(b),animOn),
-      xf:(()=>{ const X=D.anim.xf&&D.anim.xf[b.id]; if(!X) return null; const AN=xfPivot(); return (AN[0]!==0.5||AN[1]!==0.5)?Object.assign({},X,{px:r3((AN[0]-0.5)*q.w),py:r3((AN[1]-0.5)*q.h)}):X; })(), zz:(D.anim.zord&&D.anim.zord[b.id])||null, rz:(D.anim.rz&&D.anim.rz[b.id])||null};
+      xf:(()=>{ const X=D.anim.xf&&D.anim.xf[b.id]; if(!X) return null; const AN=xfPivot(); return (AN[0]!==0.5||AN[1]!==0.5)?Object.assign({},X,{px:r3((AN[0]-0.5)*q.w),py:r3((AN[1]-0.5)*q.h)}):X; })(), zz:(D.anim.zord&&D.anim.zord[b.id])||null, rz:(D.anim.rz&&D.anim.rz[b.id])||null,
+      dim:(()=>{ if(!animOn||curLayer()!=='l2') return null; const DT=dimTimes(P); if(!DT||DT[b.id]==null) return null; const DM=D.L2.dim, t0=DT[b.id], L=Math.max(1,Math.round(+DM.len||1)); return {color:hexRgb(DM.color||'#121212'),keys:[[t0,0,'e'],[t0+L,clamp(+DM.op||0,0,100),'e']]}; })()};
   });
   // ---- content: auto-fill items → AE-ready descriptions
   const F=D.fill, met=fillMetrics();
@@ -7468,6 +7475,7 @@ function renderWalkPresets(on){
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-wp]'); if(b) applyWalkPreset(b.dataset.wp); });
 /* ---- layer tabs (top bar) ---- */
 function renderLayerBar(){
+  { const dg=$('#l2DimGroup'); if(dg) dg.hidden=!(D.L2&&D.L2.on&&curLayer()==='l2'); }
   { const cl=$('#cLayer'), a0=curLayer(); if(cl){ cl.hidden=!(D.L2&&D.L2.on); $$('#cLayerSeg [data-cl]').forEach(b=>b.classList.toggle('on',b.dataset.cl===a0)); } }
   const act=curLayer(), tb=$('#layerTabs'); if(!tb) return;
   $$('#layerTabs [data-ltab]').forEach(b=>{ b.classList.toggle('on',b.dataset.ltab===act); if(b.dataset.ltab==='l2') b.textContent=D.L2&&D.L2.on?'Layer 2':'+ Layer 2'; });

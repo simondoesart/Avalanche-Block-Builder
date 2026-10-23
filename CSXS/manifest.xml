@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ExtensionManifest Version="7.0" ExtensionBundleId="com.avalabs.gridblocks" ExtensionBundleVersion="5.8.0" ExtensionBundleName="Grid Blocks" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<ExtensionManifest Version="7.0" ExtensionBundleId="com.avalabs.gridblocks" ExtensionBundleVersion="5.9.0" ExtensionBundleName="Grid Blocks" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <ExtensionList>
-    <Extension Id="com.avalabs.gridblocks.panel" Version="5.8.0"/>
-    <Extension Id="com.avalabs.gridblocks.safe" Version="5.8.0"/>
+    <Extension Id="com.avalabs.gridblocks.panel" Version="5.9.0"/>
+    <Extension Id="com.avalabs.gridblocks.safe" Version="5.9.0"/>
   </ExtensionList>
   <ExecutionEnvironment>
     <HostList>

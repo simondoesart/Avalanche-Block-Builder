@@ -944,6 +944,18 @@ body.nohelp .qm{display:none}
         <div class="pane" data-pane="content">
           <div class="group" id="cLayer" hidden style="gap:6px"><div class="field stack"><span class="lbl">Content for</span><div class="seg" id="cLayerSeg"><button data-cl="main">Layer 1</button><button data-cl="l2">Layer 2</button></div></div>
             <div class="note">Each layer has its own Text HUD, text between blocks, numbers, echo and media — switch here to set the other layer’s.</div></div>
+          <div class="group" id="l2DimGroup" hidden>
+            <div class="group-h">Layer 2 · dim older blocks<label class="switch hswitch" title="A colour layer fades in over each block once the next one lands — the newest block stays clear"><input type="checkbox" data-bind="L2.dim.on"><span></span></label></div>
+            <div class="note" data-show="L2.dim.on=false">Once a block has moved on (the next block has landed), a colour layer fades in over it. The newest block always stays clear.</div>
+            <div data-show="L2.dim.on=true" style="display:grid;gap:9px">
+              <div class="field stack"><span class="lbl">Colour</span><div class="swatches" data-pal="L2.dim.color"></div></div>
+              <div class="field2"><div class="field"><span class="lbl scrub" title="How strong the dim ends up">End opacity</span><div class="num"><button data-d="-5">−</button><input type="number" data-bind="L2.dim.op" min="0" max="100" step="5"><button data-d="5">+</button><span class="unit">%</span></div></div>
+                <div class="field"><span class="lbl scrub" title="Frames the dim takes to fade in">Fade</span><div class="num"><input type="number" data-bind="L2.dim.len" min="1" max="240" step="1"><span class="unit">fr</span></div></div></div>
+              <div class="field2"><div class="field"><span class="lbl scrub" title="Dim after this many newer blocks have landed (1 = as soon as the next one lands)">After</span><div class="num"><input type="number" data-bind="L2.dim.after" min="1" max="20" step="1"><span class="unit">blocks</span></div></div>
+                <div class="field"><span class="lbl scrub" title="Extra frames to wait after that block lands">Delay</span><div class="num"><input type="number" data-bind="L2.dim.delay" min="-60" max="240" step="1"><span class="unit">fr</span></div></div></div>
+              <div class="note">In After Effects each block gets a <i>Dim</i> layer on top, parented to it (same size, fades with it).</div>
+            </div>
+          </div>
           <div class="ctabs" id="ctabs"><button data-ctab-btn="hud">Text HUD</button><button data-ctab-btn="gaps">Between blocks</button><button data-ctab-btn="numbers">Numbers</button><button data-ctab-btn="echo">Echo</button><button data-ctab-btn="text">Your text</button><button data-ctab-btn="media">Media</button></div>
           <div class="group" data-ctab="media">
             <div class="group-h">Media in blocks</div>
