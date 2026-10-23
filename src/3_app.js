@@ -77,7 +77,7 @@ const DEF={
   anim:{hide:[],show:[],hidePct:0,hideSeed:1,seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,vDamp:0,stepZone:0,stepLead:0,chopEvery:4,chopMin:0,chopSnap:false,chopRules:true,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:true,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,lock:{on:false,x:50,y:50,move:'glide',moveLen:0},rzOn:false,rzPts:null,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.42,0,0.58,1],curvePh:null,sceneEase:{on:true,hd:null,holdH:null,onAt:null,holdAt:null,start:40,land:75,landOut:50,leaveIn:50,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
-        zd:{on:false,pts:null},zoomOn:false,walkRows:'all',walkDir:'even',walkSec:[],walkMove:{},walkAdj:0,zm:{pts:null,room:false,focus:'follow',ax:50,ay:50,in:24,out:96,from:100,to:140,curve:[0.65,0,0.35,1],scaleAll:false,followRemap:true,back:false,backIn:180,backOut:228,backCurve:[0.65,0,0.35,1]},extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
+        zd:{on:false,pts:null},zoomOn:false,walkRows:'all',walkDir:'even',walkSec:[],walkMove:{},walkAdj:0,frozen:null,zm:{pts:null,room:false,focus:'follow',ax:50,ay:50,in:24,out:96,from:100,to:140,curve:[0.65,0,0.35,1],scaleAll:false,followRemap:true,back:false,backIn:180,backOut:228,backCurve:[0.65,0,0.35,1]},extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
   lab:{flicker:{on:false,frames:8,seed:3},
        pulse:{on:false,scale:1.35,len:18,width:2,color:'#E6212F'},
        trail:{on:false,count:3,length:1.2,len:12,width:2,color:'#A2AFB2'},
@@ -92,7 +92,7 @@ const DEF={
     assign:'same',pool:[],dir:{up:'',down:'',flat:''},seed:1,per:{},assets:[]},
   timing:{src:'file',compLayer:'',inAt:null,outAt:null,syncOut:true,camMove:'glide',walkOn:false,walkOnAt:null,outBeat:60,cut:[],beats:[],markers:[],use:'beats',offset:0,sync:false,sens:1.3,minGap:4,kind:'all',strongPct:30,every:1,media:null,video:true,videoOpacity:60,sound:true},
   exit:{on:false,holdOn:true,walkHold:24,walkPace:1,walkLen:48,walkFollow:60,trail:3,slide:1.5,mode:'hold',hold:36,at:24,stagger:3,order:'same',line:10,style:'wipe',dir:'same',len:8,curve:[0.5,0,0.75,0],content:true,echo:true},
-  out:{layers:'both',replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180,folder:true,preGrid:true,preBlocks:false,preTrans:true,shy:true,trim:true,markers:true,headers:true,bake:true,orgV:2},
+  out:{lockOnSave:true,layers:'both',replace:true,lock:true,fitDur:true,rig:'camera',mb:true,mbAngle:180,folder:true,preGrid:true,preBlocks:false,preTrans:true,shy:true,trim:true,markers:true,headers:true,bake:true,orgV:2},
   blocks:[]
 };
 /* the Avalanche HUD example (what used to be the default): rules, starter walk, transitions, grid zoom */
@@ -1537,6 +1537,28 @@ function pruneStacks(out,base){
   if(!drop.size) return out;
   const res=out.filter(b=>!drop.has(b)); ['__endCol','__reach','__endRow'].forEach(k=>{if(k in out) res[k]=out[k];}); return res;
 }
+/* the generated line with its locked part kept exactly: locked blocks first, then the walk carries on from the last of them */
+function frozenExt(G,base,n){ const FZ=D.anim.frozen; if(!FZ||FZ.kind!=='walk'||!Array.isArray(FZ.b)||!FZ.b.length||!base.length) return extension(G,base,n);
+  const src=base[base.length-1], mk=f=>{ const b={id:f.id,c:f.c,r:f.r,w:f.w,h:f.h,color:f.color||src.color,text:'',fontSize:src.fontSize,textColor:contrast(f.color||src.color),align:src.align,pad:src.pad,virtual:true,name:'',mo:0,order:0}; TEXT_KEYS.forEach(k=>b[k]=src[k]); if(f.stack) b.stack=true; b.__locked=true; return b; };
+  const out=[]; let mains=0; for(const f of FZ.b){ if(!f.stack){ if(mains>=n) break; mains++; } out.push(mk(f)); }
+  if(mains<n){ const wm=D.anim.walkMove; D.anim.walkMove={}; let more; try{ more=extension(G,base.concat(out),n-mains); } finally{ D.anim.walkMove=wm; }
+    const minId=Math.min(-1,...out.map(b=>b.id)); more.forEach((b,k)=>{ b.id=minId-1-k; });
+    if(wm&&Object.keys(wm).length){ const mm=more.filter(b=>!b.stack), PER={}; mm.forEach((b,i)=>{ if(wm[b.id]) PER[i]=wm[b.id]; }); if(Object.keys(PER).length) lineAdjust(mm,PER,clamp(D.anim.walkAdj!=null?Math.round(+D.anim.walkAdj):0,0,8),D.rand.gap); }
+    out.push(...more); ['__endCol','__reach','__endRow'].forEach(k=>{ if(k in more) out[k]=more[k]; }); }
+  else { const last=out.filter(b=>!b.stack).pop(); if(last) out.__endCol=last.c; }
+  return out; }
+/* lock: keep the line's blocks exactly as they are now (all, or those that land up to frame upTo) */
+function lockLayer(upTo){ const P=plan(geom()); if(!P||!P.seq) return 0; let n=0;
+  if(P.beatPlaced){ const L=[]; for(let i=0;i<P.seq.length;i++){ const b=P.seq[i]; if(upTo!=null&&P.T[i]!=null&&P.T[i]>upTo) break; L.push({c:b.c,r:b.r,w:b.w,h:b.h,color:b.color,rest:b.__rest?1:undefined,gone:b.__gone!=null?b.__gone:undefined}); }
+    D.anim.frozen={kind:'bb',b:L,at:Date.now()}; n=L.length;
+    const per={}; Object.entries((D.L2.bb&&D.L2.bb.per)||{}).forEach(([k,o])=>{ if(+k>=n) per[k]=o; }); D.L2.bb=Object.assign({},D.L2.bb,{per}); }   // hand edits are baked into the locked blocks
+  else { const L=[]; P.seq.forEach((b,i)=>{ if(!b.virtual||b.id<=-100000) return; if(upTo!=null&&P.T[i]!=null&&P.T[i]>upTo) return; L.push({id:b.id,c:b.c,r:b.r,w:b.w,h:b.h,color:b.color,stack:b.stack?1:undefined}); });
+    L.sort((a,b)=>b.id-a.id); D.anim.frozen={kind:'walk',b:L,at:Date.now()}; n=L.filter(x=>!x.stack).length;
+    const wm={}; const ids=new Set(L.map(x=>x.id)); Object.entries(D.anim.walkMove||{}).forEach(([k,o])=>{ if(!ids.has(+k)) wm[k]=o; }); D.anim.walkMove=wm; }
+  planCache.k=''; return n; }
+function lockedCount(){ const F=D.anim.frozen; return F&&Array.isArray(F.b)?F.b.filter(x=>!x.stack).length:0; }
+function lockAllLayers(){ let n=0; try{ n+=lockLayer(null); }catch(e){} if(l2On()){ const other=curLayer()==='l2'?'main':'l2'; try{ n+=withLayer(other,()=>lockLayer(null)); }catch(e){} } planCache.k=''; return n; }
+function lockOnSave(){ if(D.out&&D.out.lockOnSave===false) return; const n=lockAllLayers(); if(n) toast(`Locked ${n} blocks with the save — they’ll load exactly like this`,'',true); }
 function extension(G,base,capOverride){ const out=pruneStacks(extensionRaw(G,base,capOverride),base); const WM=D.anim.walkMove;
   if(WM&&Object.keys(WM).length){ const main=out.filter(b=>!b.stack), PER={}; main.forEach((b,i)=>{ const m=WM[b.id]; if(m) PER[i]=m; }); if(Object.keys(PER).length) lineAdjust(main,PER,clamp(D.anim.walkAdj!=null?Math.round(+D.anim.walkAdj):0,0,8),D.rand.gap); }   /* blocks moved by hand with 'the walk follows' */
   return out; }
@@ -2015,7 +2037,13 @@ function beatPlace(G,base0,times,prevSeed){
   const MINLIFE=Math.max(24,Math.round((D.comp.fps||30)*1));   /* a block stays at least ~1 s before another may push it out — no blink-on-then-gone */
   const clash=(cc,rr,w,h,t)=>out.some(x=>live(t)(x)&&cc<x.c+x.w&&x.c<cc+w&&rr<x.r+x.h&&x.r<rr+h);
   let o0=null;
-  times.forEach((t,i)=>{ if(ZM) Zt=ZM(t); if(SECS){ const S=walkSecAt(t,{rows:'all',dir:bias0}); SB=S.rows; levelNow=S.dir==='level'; bias=levelNow?bias0:S.dir; } if(!o0) o0=EXT_PLACE.tot(t); const o=LINE?o0:EXT_PLACE.tot(t), DM=dims(i), w=DM[0]; let h=DM[1], rg=range(h);
+  const FZ=D.anim.frozen&&D.anim.frozen.kind==='bb'&&Array.isArray(D.anim.frozen.b)?D.anim.frozen.b:null;   /* locked blocks: kept exactly as they were */
+  times.forEach((t,i)=>{ if(ZM) Zt=ZM(t);
+    if(FZ&&FZ[i]){ const f=FZ[i], src=base0; const b=i===0?Object.assign({},base0,{c:f.c,r:f.r,w:f.w,h:f.h}):{id:-1-i,c:f.c,r:f.r,w:f.w,h:f.h,color:f.color||mixColor(i,rnd),text:'',fontSize:src.fontSize,textColor:'#fff',align:src.align,pad:src.pad,virtual:true,name:'',mo:0,order:0};
+      if(i>0){ TEXT_KEYS.forEach(k=>b[k]=src[k]); b.textColor=contrast(b.color); } if(f.rest) b.__rest=true; if(f.gone!=null) b.__gone=f.gone;
+      if(B.vf&&!f.rest){ const hp=b.h*G.p-G.gut, tgt=G.H*ryF-(G.y0+b.r*G.p+ay*hp); camY+=(1-dmpV)*(tgt-camY); }
+      b.__camY=camY; b.__t=t; b.__locked=true; out.push(b); if(!f.rest) prev=b; return; }
+    if(SECS){ const S=walkSecAt(t,{rows:'all',dir:bias0}); SB=S.rows; levelNow=S.dir==='level'; bias=levelNow?bias0:S.dir; } if(!o0) o0=EXT_PLACE.tot(t); const o=LINE?o0:EXT_PLACE.tot(t), DM=dims(i), w=DM[0]; let h=DM[1], rg=range(h);
     const fits=cc=>{ if(LINE) return true; const zx=x=>Zt.px+Zt.s*(x-Zt.px), x0=zx(G.x0+cc*G.p+o[0]), x1=zx(G.x0+cc*G.p+o[0]+w*G.p-G.gut); return x0>=-1&&x1<=W+1; };
     let want=Math.round((W*rx-o[0]-G.x0)/G.p-ax*w); if(LINE&&prev) want=prev.c+prev.w+gap+(B.touch===false?Math.floor(rnd()*3):0); if(!fits(want)){ const vx0=Zt.px-Zt.px/Zt.s, vx1=Zt.px+(W-Zt.px)/Zt.s, lo=Math.ceil((vx0-o[0]-G.x0)/G.p), hi=Math.floor((vx1-o[0]-G.x0+G.gut)/G.p)-w; if(hi>=lo) want=clamp(want,lo,hi); }   /* the part of the grid in view (at this beat's zoom) */
     let c=want, r, joined=false, rest=false;
@@ -2065,7 +2093,7 @@ function bbIdx(id,P){ if(id<0) return -id-1; return 0; }   /* beat index of a be
 function bbSetSize(ids,fn){ pushHist(true); const P=plan(geom()); D.L2.bb=Object.assign({},D.L2.bb); const per=Object.assign({},D.L2.bb.per||{});
   ids.forEach(id=>{ const b=P.seq.find(x=>x.id===id); if(!b) return; const i=bbIdx(id,P), cur=Object.assign({w:b.w,h:b.h},per[i]||{}); fn(cur,b); per[i]=cur; }); D.L2.bb.per=per; planCache.k=''; renderInsp(); render(); }
 function bbAncOf(out,k,a){ if(a&&a!=='auto') return a; const b=out[k], p=k>0?out[k-1]:null; if(!p) return 'l'; return b.r+b.h<=p.r+(p.h>1?p.h-1:0)&&b.r<p.r?'bl':b.r>p.r?'tl':'l'; }
-function bbResize(out,B){ lineAdjust(out,B.per||{},clamp(B.adj!=null?Math.round(+B.adj):2,0,8),B.gap); }
+function bbResize(out,B){ const F=D.anim.frozen&&D.anim.frozen.kind==='bb'&&Array.isArray(D.anim.frozen.b)?D.anim.frozen.b.length:0, per={}; Object.keys(B.per||{}).forEach(k=>{ if(+k>=F) per[k]=B.per[k]; }); lineAdjust(out,per,clamp(B.adj!=null?Math.round(+B.adj):2,0,8),B.gap); }
 /* hand edits along a walked line: PER[index] = {w,h,anc} (resize from the anchor) and/or {dc,dr} (move by whole cells) */
 function lineAdjust(out,PER,ADJ,gapB){ const keys=Object.keys(PER).map(Number).filter(k=>out[k]).sort((a,b)=>a-b);
   keys.forEach(k=>{ const o=PER[k]||{}, b=out[k], O={c:b.c,r:b.r,w:b.w,h:b.h}, nw=Math.max(1,Math.round(+o.w||O.w)), nh=Math.max(1,Math.round(+o.h||O.h)), mc=Math.round(+o.dc||0), mr=Math.round(+o.dr||0); if(nw===O.w&&nh===O.h&&!mc&&!mr) return;
@@ -2473,7 +2501,7 @@ function computePlan(G){
   // phases on the content clock: ON (the build, length L) · HOLD (woH) · OFF (the walk-off, at its own pace)
   const wantB=want;
   P.woN=woN;
-  const exts=manual?[]:extension(G,base,Math.max(0,wantB-baseMain)); P.endCol=exts.__endCol; P.endReach=exts.__reach; P.endRowUsed=exts.__endRow;
+  const exts=manual?[]:frozenExt(G,base,Math.max(0,wantB-baseMain)); P.endCol=exts.__endCol; P.endReach=exts.__reach; P.endRowUsed=exts.__endRow;
   if(WO&&!manual){ // the walk-off continues the pattern from where the build ended (an end row only applies to the build)
     const sv=A.ending, svOn=A.extendOn; A.ending='count'; A.extendOn=true;
     const more=extension(G,base.concat(exts),woN); A.ending=sv; A.extendOn=svOn;
@@ -5688,7 +5716,7 @@ function setTool(t){
   U.tool=t; U.sel=t==='select'?U.sel:null; refresh();
 }
 function setHTML(el,h){if(el&&el._h!==h){el.innerHTML=h;el._h=h;}}
-function renderStepUI(){ try{ const ae=document.activeElement; if(!(ae&&ae.dataset&&ae.dataset.ws)) renderWalkSec(); }catch(e){}
+function renderStepUI(){ try{ const ae=document.activeElement; if(!(ae&&ae.dataset&&ae.dataset.ws)) renderWalkSec(); renderLockBar(); }catch(e){}
   const st=STEPS[U.step];
   $$('.railbtn').forEach((b,i)=>{b.classList.toggle('on',i===U.step);});
   $$('.pane').forEach(p=>p.classList.toggle('on',p.dataset.pane===st.id));
@@ -5883,6 +5911,7 @@ $('#btnBake').onclick=bakeExtension;
 function generateLine(newSeed,quiet){
   const G=geom(); if(!quiet) pushHist();
   if(newSeed){D.rand.seed=Math.floor(Math.random()*99999)+1; D.anim.seed=0;}
+  if(newSeed&&!quiet&&D.anim.frozen){ D.anim.frozen=null; toast('Unlocked the blocks to make a new walk (⌘Z to undo)'); }
   const rnd=rng(D.rand.seed), bw=clamp(Math.round(D.block.w)||1,1,G.C), bh=Math.max(1,Math.round(D.block.h)||1), WB=walkBounds(G,bh), rMax=WB.hi;
   const hiStart=WB.ext?Math.max(WB.lo,WB.hi-bh):rMax;
   const row=D.rand.startCol!=null&&D.rand.startR!=null?Math.round(+D.rand.startR):D.rand.startRow>0?clamp(D.rand.startRow-1,WB.lo,rMax):WB.lo+Math.floor(rnd()*(hiStart-WB.lo+1));
@@ -6819,10 +6848,11 @@ $('#libList').addEventListener('click',e=>{
   const sp=e.target.closest('[data-lsample]'); if(sp){ const x=LIB_SAMPLES[+sp.dataset.lsample]; pushHist(); setDoc(clone(x.doc)); closeLib(); if(V.fit)fitView(V.fit); afterDocChange(); toast(`Loaded “${x.name}”`,'ok',true); return; }
   const t=e.target.closest('[data-lload],[data-ldel],[data-lover]'); if(!t) return;
   if(t.dataset.lload!=null){const x=U.lib[+t.dataset.lload];pushHist();setDoc(clone(x.doc));closeLib();if(V.fit)fitView(V.fit);afterDocChange();toast(`Loaded “${x.name}”`,'ok',true);}
-  else if(t.dataset.lover!=null){const i=+t.dataset.lover;U.lib[i]=Object.assign(U.lib[i],{doc:clone(D),thumb:thumb(),date:Date.now()});libSaveStore();renderLib();toast('Layout updated','ok');}
+  else if(t.dataset.lover!=null){const i=+t.dataset.lover;lockOnSave();U.lib[i]=Object.assign(U.lib[i],{doc:clone(D),thumb:thumb(),date:Date.now()});libSaveStore();renderLib();toast('Layout updated','ok');}
   else{const i=+t.dataset.ldel;if(t.dataset.armed){U.lib.splice(i,1);libSaveStore();renderLib();}else{t.dataset.armed='1';t.textContent='Sure?';setTimeout(()=>{if(t.isConnected){delete t.dataset.armed;t.textContent='Delete';}},2500);}}
 });
 function saveToLib(name){
+  lockOnSave();
   name=(name||'').trim()||`Layout ${U.lib.length+1}`;
   U.lib.unshift({id:Date.now(),name,date:Date.now(),thumb:thumb(),doc:clone(D)});
   libSaveStore(); renderLib(); $('#libName').value=''; toast(`Saved “${name}”`,'ok');
@@ -6835,6 +6865,7 @@ $('#btnLib').onclick=()=>openLib(false);
 $('#btnSaveLib').onclick=()=>openLib(true);
 
 function exportFile(){
+  lockOnSave(); refresh();
   const json=JSON.stringify({app:'GridBlocks',v:2,doc:D},null,1);
   const name=`GridBlocks_${D.comp.w}x${D.comp.h}.json`;
   if(inAE){evalHost('GB_saveDialog('+jsStr(json)+','+jsStr(name)+')').then(r=>{const p=String(r).split('|');if(p[0]==='OK')toast('Saved to '+p.slice(1).join('|'),'ok');else if(p[0]==='ERR')toast(p.slice(1).join('|'),'err');});}
@@ -7520,8 +7551,19 @@ document.addEventListener('click',e=>{ const t=e.target; if(!t||!t.closest) retu
 document.addEventListener('change',e=>{ const t=e.target; if(!t||!t.dataset||!t.dataset.ws) return; const [k,i]=t.dataset.ws.split(':'); pushHist(true);
   const L=(Array.isArray(D.anim.walkSec)?D.anim.walkSec:[]).map(x=>Object.assign({},x)); if(!L[+i]) return;
   L[+i][k]=(k==='f'||k==='to')?(t.value===''?null:Math.max(0,Math.round(+t.value))):t.value; if(k==='f') L.sort((a,b)=>a.f-b.f); D.anim.walkSec=L; planCache.k=''; refresh(); renderWalkSec(); });
+/* ---- lock bar: keep blocks exactly where they are ---- */
+function renderLockBar(){ const bb=curLayer()==='l2'&&!!l2BB(), el=$(bb?'#lockBarBB':'#lockBarL1'), other=$(bb?'#lockBarL1':'#lockBarBB'); if(other) other.innerHTML=''; if(!el) return;
+  const n=lockedCount(), ls=!(D.out&&D.out.lockOnSave===false), f=Math.round(U.t||0);
+  el.innerHTML=`<div class="lockbar${n?' on':''}">${n?`<div><b>🔒 ${n} block${n>1?'s':''} locked</b> — they stay exactly as they are; settings now only change the blocks after them.</div>`:`<div><b>Blocks aren’t locked</b> — changing the walk, the song, or updating Grid Blocks can move them. Lock them to keep their shapes.</div>`}
+    <div class="row-btns">${n?`<button class="btn" data-lock="off" title="Let every block follow the settings again">Unlock</button><button class="btn" data-lock="all" title="Lock every block as it is now">Lock all again</button>`:`<button class="btn primary" data-lock="all">Lock all blocks</button>`}<button class="btn" data-lock="play" title="Lock the blocks that appear up to the playhead (frame ${f}); later ones keep following the settings">Lock up to playhead</button></div>
+    <label class="check"><input type="checkbox" data-lockonsave="1"${ls?' checked':''}> Lock blocks when saving</label></div>`; }
+document.addEventListener('click',e=>{ const b=e.target&&e.target.closest&&e.target.closest('[data-lock]'); if(!b) return; e.preventDefault(); pushHist(true); const k=b.dataset.lock;
+  if(k==='off'){ D.anim.frozen=null; planCache.k=''; toast('Unlocked — blocks follow the settings again (⌘Z to undo)'); }
+  else { const n=lockLayer(k==='play'?Math.round(U.t||0):null); toast(n?`Locked ${n} block${n>1?'s':''}`:'Nothing to lock yet','',true); }
+  refresh(); renderLockBar(); });
+document.addEventListener('change',e=>{ const t=e.target; if(!t||!t.dataset||!t.dataset.lockonsave) return; pushHist(true); D.out.lockOnSave=t.checked; renderLockBar(); });
 function renderLayerBar(){
-  try{ renderWalkSec(); }catch(e){}
+  try{ renderWalkSec(); }catch(e){} try{ renderLockBar(); }catch(e){}
   { const dg=$('#l2DimGroup'); if(dg) dg.hidden=!(D.L2&&D.L2.on&&curLayer()==='l2'); }
   { const cl=$('#cLayer'), a0=curLayer(); if(cl){ cl.hidden=!(D.L2&&D.L2.on); $$('#cLayerSeg [data-cl]').forEach(b=>b.classList.toggle('on',b.dataset.cl===a0)); } }
   const act=curLayer(), tb=$('#layerTabs'); if(!tb) return;

@@ -571,6 +571,7 @@ body.nohelp .qm{display:none}
   .expl{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}.expbar{height:6px;border-radius:3px;background:#2a2a2e;overflow:hidden}.expbar div{height:100%;width:0;background:#E6212F;transition:width .1s}
   .vidopts{display:grid;gap:6px}.vidopt{display:grid;grid-template-columns:18px 1fr;column-gap:8px;padding:8px 10px;border:1px solid #333;border-radius:8px;cursor:pointer}
   .vidopt input{grid-row:1/3;margin-top:2px}.vidopt span{color:#9a9aa3;font-size:11.5px;line-height:1.35}.vidopt.on{border-color:#E6212F;background:rgba(230,33,47,.07)}
+  .lockbar{display:grid;gap:7px;padding:9px 10px;border:1px solid #F5A52455;border-radius:8px;background:rgba(245,165,36,.06);font-size:12px}.lockbar.on{border-color:#2BD98F66;background:rgba(43,217,143,.06)}
   .wsec{display:grid;grid-template-columns:auto 1fr;gap:6px;align-items:center;padding:6px 8px;border:1px solid #333;border-radius:7px;font-size:11.5px}
   .wsec .wt{display:flex;gap:4px;align-items:center;flex-wrap:wrap}.wsec input{width:52px}.wsec select{font-size:11.5px}
   body.l2bb [data-nobb]{display:none!important} body:not(.l2bb) [data-bbonly]{display:none!important}
@@ -771,6 +772,7 @@ body.nohelp .qm{display:none}
         <div class="pane" data-pane="layout">
           <div class="group" data-ctx="blocks">
             <div class="group-h">Generate<span class="tag" id="genTag"></span></div>
+            <div id="lockBarL1" data-nobb></div>
             <div class="note" data-bbonly>Layer 2 beat blocks build themselves, one per beat — set them in <b>Animate › Layer 2 · beat blocks</b>. <b>Walk › Size mix</b> below still sets their sizes.</div>
             <details class="sub" data-sub="gen-size" data-nobb open><summary>Block size <span class="note" id="pickPx"></span></summary><div class="subbody">
             <div class="pick-label"><span class="big" id="pickBig">3 × 1</span></div>
@@ -1327,6 +1329,7 @@ body.nohelp .qm{display:none}
             <div class="group-h">Layer 2 · beat blocks</div>
             <label class="check" title="One block per beat, placed where the camera will see it — always on screen, always on the beat"><input type="checkbox" id="l2BBOn"> <b>Beat blocks</b> — one block on each beat, always on screen</label>
             <div class="note" id="l2BBState"></div>
+            <div id="lockBarBB"></div>
             <details class="sub" data-sub="bb-beats" open><summary>Beats &amp; speed <span class="note">when, and how fast it travels</span></summary><div class="subbody">
               <div class="field stack"><span class="lbl">Which beats</span><div class="seg"><button data-bbset="beats:1">Every beat</button><button data-bbset="beats:2">Every 2nd</button><button data-bbset="beats:4">Every 4th</button><button data-bbset="beats:big">Big hits</button></div></div>
               <div class="field stack"><span class="lbl">Layer 2 camera</span><div class="seg"><button data-bbset="cam:line" title="The camera keeps pace with the line: every block lands on the point, joined to the last — it travels as fast as the blocks build">Follows the line</button><button data-bbset="cam:l1" title="Travels with layer 1's camera at a set speed — blocks join when they can and start a new line when they can't">With layer 1</button></div></div>
