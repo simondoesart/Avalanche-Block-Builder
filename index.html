@@ -1327,11 +1327,14 @@ body.nohelp .qm{display:none}
                 <div class="field2"><div class="field"><span class="lbl scrub" title="Top row the line may use (1 = top). Empty = all">From row</span><div class="num"><input type="number" data-bind="L2.bb.rowFrom" min="1" max="60" step="1"></div></div>
                   <div class="field"><span class="lbl scrub" title="Bottom row the line may use">To row</span><div class="num"><input type="number" data-bind="L2.bb.rowTo" min="1" max="60" step="1"></div></div></div></div>
               <div class="field"><span class="lbl scrub" title="How much of a block may hang past the top or bottom of the frame — 0 = always fully in frame, 50 = up to half, 100 = only needs to touch the frame">Past top / bottom</span><div class="num"><input type="number" data-bind="L2.bb.bleed" min="0" max="90" step="5"><span class="unit">%</span></div></div>
+              <label class="check" title="When layer 2 has its own zoom: zoomed out, the walk can use the extra rows and columns now in view; zoomed in, it keeps to what's on screen"><input type="checkbox" data-bind="L2.bb.zoomRoom"> Use the extra room when layer 2 zooms out</label>
               <div class="field"><span class="lbl scrub" title="Where the line starts (and drifts back to). Empty = the middle of its rows">Start row</span><div class="num"><input type="number" data-bind="L2.bb.startRow" min="1" max="60" step="1"></div></div>
             </div></details>
             <details class="sub" data-sub="bb-walk" open><summary>The walk <span class="note">how blocks join up</span></summary><div class="subbody">
               <div class="field stack"><span class="lbl">Connected</span><div class="seg"><button data-bbset="touch:1" title="Each block joins the last one">Joined</button><button data-bbset="touch:0" title="Each block lands exactly on the point — gaps and stacks as the camera moves">Free</button></div></div>
               <div class="field stack" data-show="L2.bb.touch=true"><span class="lbl">Join</span><div class="seg"><button data-bbset="step:corner" title="Each block steps up or down so the corners meet (the classic walk)">Corner to corner</button><button data-bbset="step:side" title="Side by side on the same row">Side by side</button><button data-bbset="step:mixed">Mixed</button></div>
+                <div class="field" data-show="L2.bb.step=corner|mixed"><span class="lbl scrub" title="Corner steps share this many rows with the block before (0 = corners just touch)">Overlap rows</span><div class="num"><input type="number" data-bind="L2.bb.ovRows" min="0" max="10" step="1"><span class="unit">rows</span></div></div>
+                <div class="note" data-show="L2.bb.cam=l1">With layer 1's camera, a block only joins while the end of the line is on screen — for every block corner to corner use <b>Follows the line</b>.</div>
                 <div class="field" data-show="L2.bb.step=mixed"><span class="lbl scrub">Side by side</span><div class="num"><input type="number" data-bind="L2.bb.sidePct" min="0" max="100" step="5"><span class="unit">%</span></div></div></div>
               <div class="field stack" data-show="L2.bb.touch=true"><span class="lbl">Direction</span><div class="seg"><button data-bbset="bias:bounce" title="Keeps going one way until it reaches the top or bottom row, then turns">Bounce</button><button data-bbset="bias:even" title="Up or down at random, drifting back to the start row">Even</button><button data-bbset="bias:up">Mostly up</button><button data-bbset="bias:down">Mostly down</button></div></div>
               <div class="field stack"><span class="lbl">Rows when not joined</span><div class="seg"><button data-bbset="path:walk">Walk</button><button data-bbset="path:melody" title="Higher notes higher">Melody</button><button data-bbset="path:level">Level</button><button data-bbset="path:random">Random</button></div></div>
@@ -3096,7 +3099,7 @@ const DEF={
        snow:{on:false,count:90,speed:240,size:2,stretch:6,dir:'left',color:'#EBF0FA',opacity:55,seed:9}},
   num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100,per:{}},
   io:{in:null,out:null},
-  L2:{on:false,z:'front',active:'main',store:null,sound:'off',timing:null,cam:'main',camSrc:'main',infX:100,infY:100,zoom:true,revealBy:'own',ctrl:{x:0,y:0,r:0,s:100,o:100},bb:{on:false,cam:'line',smooth:8,anchor:'c',vf:false,vDamp:0,ry:50,bleed:0,move:'glide',stepLen:6,speed:100,rx:65,band:'any',rowFrom:null,rowTo:null,startRow:null,path:'walk',touch:true,step:'corner',sidePct:30,bias:'bounce',gap:0,overlap:false,slack:25,stay:'stay',stayN:8}},
+  L2:{on:false,z:'front',active:'main',store:null,sound:'off',timing:null,cam:'main',camSrc:'main',infX:100,infY:100,zoom:true,revealBy:'own',ctrl:{x:0,y:0,r:0,s:100,o:100},bb:{on:false,cam:'line',smooth:8,anchor:'c',vf:false,vDamp:0,ry:50,bleed:0,ovRows:0,zoomRoom:true,per:{},adj:2,move:'glide',stepLen:6,speed:100,rx:65,band:'any',rowFrom:null,rowTo:null,startRow:null,path:'walk',touch:true,step:'corner',sidePct:30,bias:'bounce',gap:0,overlap:false,slack:25,stay:'stay',stayN:8}},
   bmedia:{on:false,selOn:false,selAsset:'',kind:'video',asset:'sample',precomp:false,fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,
     loop:'loop',start:'reveal',delay:0,at:0,offset:0,audio:'mute',inMode:'block',inLen:12,target:'all',pick:[],dirOn:{up:true,down:true,flat:true},
     assign:'same',pool:[],dir:{up:'',down:'',flat:''},seed:1,per:{},assets:[]},
@@ -4948,12 +4951,12 @@ function bbStepify(A,ts,mode,L){ if(!A||!ts.length||mode==='glide') return A; co
    up/down (when on): the damped height worked out while placing; then optional steps on the beat */
 function bbCamBuild(P,G,tot){ const B=D.L2.bb||{}, AN=bbAnchor(B), rx=clamp(+B.rx||65,5,95)/100, S=Math.round(clamp(B.smooth!=null?+B.smooth:8,0,48)/2), BL=clamp(+B.bleed||0,0,100)/100;
   P.bbCam=null; P.bbCamY=null; const pts=[]; P.seq.forEach((b,i)=>{ const t=P.T[i]; if(t!=null&&!(P.hidden&&P.hidden.has(b.id))&&!b.__rest) pts.push([t,b]); }); pts.sort((a,b)=>a[0]-b[0]); if(!pts.length) return;
-  const end=Math.ceil(Math.max(P.end||0,pts[pts.length-1][0]))+2, n=end+1, mv=B.move||'glide', ts=pts.map(p=>Math.round(p[0]));
-  if(bbLine(B)){ const K=[], lim=[]; pts.forEach(([t,b])=>{ const bw=b.w*G.p-G.gut, lft=G.x0+b.c*G.p; let sx=G.W*rx-AN[0]*bw; if(bw<=G.W) sx=clamp(sx,0,G.W-bw); K.push([t,sx-lft]); if(bw<=G.W) lim.push([t,-lft,G.W-bw-lft]); });
+  const end=Math.ceil(Math.max(P.end||0,pts[pts.length-1][0]))+2, n=end+1, mv=B.move||'glide', ts=pts.map(p=>Math.round(p[0])), ZM=bbZoom(G), zAt=t=>ZM?ZM(t):{s:1,px:G.W/2,py:G.H/2};
+  if(bbLine(B)){ const K=[], lim=[]; pts.forEach(([t,b])=>{ const bw=b.w*G.p-G.gut, lft=G.x0+b.c*G.p; let sx=G.W*rx-AN[0]*bw; const z=zAt(t); if(bw*z.s<=G.W){ sx=clamp(sx,z.px-z.px/z.s,z.px+(G.W-z.s*bw-z.px)/z.s); lim.push([t,z.px-z.px/z.s-lft,z.px+(G.W-z.s*bw-z.px)/z.s-lft]); } K.push([t,sx-lft]); });   /* whole block on screen when it lands (at that moment's zoom) */
     for(let i=1;i<K.length;i++) if(K[i][1]>K[i-1][1]) K[i][1]=K[i-1][1];   // never backwards
     P.bbCam=bbStepify(bbPath(K,S>0&&mv==='glide'?lim:[],n,mv==='glide'?S:0),ts,mv,B.stepLen); }
   else if(tot&&mv!=='glide'){ const A=[]; for(let f=0;f<n;f++) A.push(r3(tot(f)[0])); P.bbCam=bbStepify(A,ts,mv,B.stepLen); }
-  if(B.vf){ const K=[], lim=[]; pts.forEach(([t,b])=>{ const q=cellRect(G,b.c,b.r,b.w,b.h); K.push([t,b.__camY||0]); if(q.h<=G.H) lim.push([t,-q.y-BL*q.h,G.H-q.h-q.y+BL*q.h]); });
+  if(B.vf){ const K=[], lim=[]; pts.forEach(([t,b])=>{ const q=cellRect(G,b.c,b.r,b.w,b.h); K.push([t,b.__camY||0]); const z=zAt(t); if(q.h*z.s<=G.H) lim.push([t,(-BL*q.h*z.s-z.py)/z.s+z.py-q.y,(G.H+BL*q.h*z.s-z.py)/z.s+z.py-q.h-q.y]); });
     P.bbCamY=bbStepify(bbPath(K,lim,n,mv==='glide'?Math.max(S,2):0),ts,mv,B.stepLen); } }
 function l2BB(){ const L=D.L2||{}, B=L.bb; if(!B||!B.on) return null; const T=l2Timing(); return T&&T.sync&&(T.beats||[]).length?B:null; }
 let EXT_PLACE=null;   // set while layer 2's plan is computed in beat-block mode: {tot(t) → layer-2 camera offset}
@@ -4973,8 +4976,9 @@ function beatPlace(G,base0,times,prevSeed){
   const has=v=>v!=null&&v!==''&&isFinite(+v);
   /* up/down: the camera's height as the line builds (damped), and how far a block may hang past the top / bottom of the frame */
   const BL=clamp(+B.bleed||0,0,100)/100, dmpV=clamp(+B.vDamp||0,0,100)/100, ryF=clamp(B.ry!=null?+B.ry:50,0,100)/100; let camY=0;
-  const USEWIN=!!B.vf||(BL>0&&!has(B.rowFrom)&&!has(B.rowTo)&&(B.band||'any')==='any');
-  const win=h=>{ const hp=h*G.p-G.gut, lo=Math.ceil((-BL*hp-camY-G.y0)/G.p-1e-6), hi=Math.floor((G.H+BL*hp-hp-camY-G.y0)/G.p+1e-6); return hi>=lo?[lo,hi]:[Math.round((lo+hi)/2),Math.round((lo+hi)/2)]; };   /* top rows that keep the block (mostly) in frame */
+  const ZM=bbZoom(G); let Zt={s:1,px:G.W/2,py:G.H/2};   /* zoom at the current beat (1 when layer 2 doesn't zoom) */
+  const USEWIN=!!B.vf||!!ZM||(BL>0&&!has(B.rowFrom)&&!has(B.rowTo)&&(B.band||'any')==='any');
+  const win=h=>{ const hp=h*G.p-G.gut, zs=Zt.s, py=Zt.py, lo=Math.ceil((((-BL*hp*zs-py)/zs+py)-camY-G.y0)/G.p-1e-6), hi=Math.floor((((G.H+BL*hp*zs-py)/zs+py)-hp-camY-G.y0)/G.p+1e-6); return hi>=lo?[lo,hi]:[Math.round((lo+hi)/2),Math.round((lo+hi)/2)]; };   /* top rows that keep the block (mostly) in frame */
   const range=h=>{ const R=G.R; let lo,hi; if(USEWIN) return win(h);
     if(has(B.rowFrom)||has(B.rowTo)){ lo=has(B.rowFrom)?Math.max(0,Math.round(+B.rowFrom)-1):0; hi=has(B.rowTo)?Math.min(R-1,Math.round(+B.rowTo)-1):R-1; if(hi<lo){ const x=lo; lo=hi; hi=x; } }
     else { const t=B.band||'any'; if(t==='top'){ lo=0; hi=Math.max(0,Math.ceil(R/2)-1); } else if(t==='bottom'){ lo=Math.floor(R/2); hi=R-1; } else if(t==='mid'){ lo=Math.floor(R/4); hi=Math.max(lo,Math.ceil(3*R/4)-1); } else { lo=0; hi=R-1; } }
@@ -4983,18 +4987,18 @@ function beatPlace(G,base0,times,prevSeed){
   const slack=Math.max(1,Math.round(clamp(+B.slack||25,0,60)/100*W/G.p)), gap=Math.max(0,Math.round(+B.gap||0));
   const step=B.step||'corner', sidePct=clamp(+B.sidePct||30,0,100), bias=B.bias||'even';
   const AN=bbAnchor(B), ax=AN[0], ay=AN[1], LINE=bbLine(B);   /* block anchor: which point of a block sits on the line's point / row; LINE: layer 2's camera follows the line */
-  const atRow=(row,h)=>row-Math.round(ay*(h-1));
+  const atRow=(row,h)=>row-Math.round(ay*(h-1)), OV=Math.max(0,Math.round(+B.ovRows||0));
   let prev=prevSeed||null, dirV=bias==='down'?1:-1;
   const live=t=>x=>!x.__rest&&(x.__gone==null||x.__gone>t);
   const MINLIFE=Math.max(24,Math.round((D.comp.fps||30)*1));   /* a block stays at least ~1 s before another may push it out — no blink-on-then-gone */
   const clash=(cc,rr,w,h,t)=>out.some(x=>live(t)(x)&&cc<x.c+x.w&&x.c<cc+w&&rr<x.r+x.h&&x.r<rr+h);
   let o0=null;
-  times.forEach((t,i)=>{ if(!o0) o0=EXT_PLACE.tot(t); const o=LINE?o0:EXT_PLACE.tot(t), DM=dims(i), w=DM[0]; let h=DM[1], rg=range(h);
-    const fits=cc=>{ if(LINE) return true; const x0=G.x0+cc*G.p+o[0], x1=x0+w*G.p-G.gut; return x0>=-1&&x1<=W+1; };
-    let want=Math.round((W*rx-o[0]-G.x0)/G.p-ax*w); if(LINE&&prev) want=prev.c+prev.w+gap+(B.touch===false?Math.floor(rnd()*3):0); if(!fits(want)){ const lo=Math.ceil((-o[0]-G.x0)/G.p), hi=Math.floor((W-o[0]-G.x0+G.gut)/G.p)-w; if(hi>=lo) want=clamp(want,lo,hi); }
+  times.forEach((t,i)=>{ if(ZM) Zt=ZM(t); if(!o0) o0=EXT_PLACE.tot(t); const o=LINE?o0:EXT_PLACE.tot(t), DM=dims(i), w=DM[0]; let h=DM[1], rg=range(h);
+    const fits=cc=>{ if(LINE) return true; const zx=x=>Zt.px+Zt.s*(x-Zt.px), x0=zx(G.x0+cc*G.p+o[0]), x1=zx(G.x0+cc*G.p+o[0]+w*G.p-G.gut); return x0>=-1&&x1<=W+1; };
+    let want=Math.round((W*rx-o[0]-G.x0)/G.p-ax*w); if(LINE&&prev) want=prev.c+prev.w+gap+(B.touch===false?Math.floor(rnd()*3):0); if(!fits(want)){ const vx0=Zt.px-Zt.px/Zt.s, vx1=Zt.px+(W-Zt.px)/Zt.s, lo=Math.ceil((vx0-o[0]-G.x0)/G.p), hi=Math.floor((vx1-o[0]-G.x0+G.gut)/G.p)-w; if(hi>=lo) want=clamp(want,lo,hi); }   /* the part of the grid in view (at this beat's zoom) */
     let c=want, r, joined=false, rest=false;
     const startR=B.startRow!=null&&B.startRow!==''?clamp(atRow(Math.round(+B.startRow)-1,h),rg[0],rg[1]):Math.round((rg[0]+rg[1])/2);
-    if(B.touch!==false&&prev){ const pe=prev.c+prev.w+gap; if(LINE||(fits(pe)&&pe-want>=-slack)){ c=pe; joined=true; } }   /* with layer 1: stay joined while the line's end is still on screen */
+    if(B.touch!==false&&prev){ const pe=prev.c+prev.w+gap; if(LINE||fits(pe)){ c=pe; joined=true; } }   /* with layer 1: stay joined whenever the line's end is still on screen */
     if(!prev){ r=startR; }
     else if(joined){
       // walk corner to corner by default: the next block steps up or down so its corner meets the last one's corner
@@ -5002,9 +5006,9 @@ function beatPlace(G,base0,times,prevSeed){
       if(B.path==='level') mode='side';
       let want2=dirV; if(B.path==='melody'&&PP[i]!=null&&PP[i-1]!=null&&Math.abs(PP[i]-PP[i-1])>=0.5) want2=PP[i]>PP[i-1]?-1:1;
       else if(bias==='even'||B.path==='random'){ const pull=clamp((prev.r-startR)/Math.max(1,rg[1]-rg[0]),-0.4,0.4); want2=rnd()<0.5+pull?-1:1; }   // even: drifts back toward the start row else if(bias==='up') want2=rnd()<0.8?-1:1; else if(bias==='down') want2=rnd()<0.8?1:-1;
-      if(mode!=='side'&&SV.on){ const R1=range(1), roomUp=prev.r-R1[0], roomDn=R1[1]-(prev.r+prev.h)+1, wantUp=want2<0;   /* random sizes: a block too tall to step up or down is cut to the room left, so the corners still meet */
+      if(mode!=='side'&&SV.on){ const R1=range(1), roomUp=prev.r-R1[0]+OV, roomDn=R1[1]-(prev.r+prev.h)+1+OV, wantUp=want2<0;   /* random sizes: a block too tall to step up or down is cut to the room left, so the corners still meet */
         const roomW=wantUp?roomUp:roomDn, roomA=wantUp?roomDn:roomUp; if(h>roomW&&h>roomA&&Math.max(roomW,roomA)>=1){ h=Math.max(roomW,roomA); rg=range(h); } }
-      const up=prev.r-h, dn=prev.r+prev.h;
+      const ov=Math.max(0,Math.min(OV,h-1,prev.h-1)), up=prev.r-h+ov, dn=prev.r+prev.h-ov;   /* overlap: the step shares this many rows with the last block */
       if(mode==='side') r=clamp(ay===0?prev.r:ay===1?prev.r+prev.h-h:Math.round(prev.r+(prev.h-h)/2),rg[0],rg[1]);   /* side by side: lined up on the anchor (tops / middles / bottoms) */
       else { const pick=want2<0?up:dn, alt=want2<0?dn:up; r=(pick>=rg[0]&&pick<=rg[1])?pick:(alt>=rg[0]&&alt<=rg[1])?alt:clamp(prev.r,rg[0],rg[1]); if(bias==='bounce'){ if(r===alt) dirV=-dirV; } }
     } else {
@@ -5031,7 +5035,29 @@ function beatPlace(G,base0,times,prevSeed){
     if(B.stay==='beats'){ const n=Math.max(1,Math.round(+B.stayN||8)); b.__gone=times[Math.min(times.length-1,i+n)]+(i+n>=times.length?n*6:0); }
     if(B.vf&&!rest){ const hp=h*G.p-G.gut, tgt=G.H*ryF-(G.y0+r*G.p+ay*hp); camY+=(1-dmpV)*(tgt-camY); }   /* the camera follows the line up/down — damping holds it back (100 = never moves) */
     b.__camY=camY; b.__t=t; if(rest) b.__rest=true; out.push(b); if(!rest) prev=b; });
+  bbResize(out,B);
   return out; }
+/* single beat blocks resized by hand (Layer 2 block › Size): the block grows / shrinks from its anchor corner, then the next
+   few blocks stretch or shrink to meet it (their far edges stay put) so the line stays joined; anything left over shifts the rest */
+function bbIdx(id,P){ if(id<0) return -id-1; return 0; }   /* beat index of a beat block (the first is the layer's real block) */
+function bbSetSize(ids,fn){ pushHist(true); const P=plan(geom()); D.L2.bb=Object.assign({},D.L2.bb); const per=Object.assign({},D.L2.bb.per||{});
+  ids.forEach(id=>{ const b=P.seq.find(x=>x.id===id); if(!b) return; const i=bbIdx(id,P), cur=Object.assign({w:b.w,h:b.h},per[i]||{}); fn(cur,b); per[i]=cur; }); D.L2.bb.per=per; planCache.k=''; renderInsp(); render(); }
+function bbAncOf(out,k,a){ if(a&&a!=='auto') return a; const b=out[k], p=k>0?out[k-1]:null; if(!p) return 'l'; return b.r+b.h<=p.r+(p.h>1?p.h-1:0)&&b.r<p.r?'bl':b.r>p.r?'tl':'l'; }
+function bbResize(out,B){ const PER=B.per||{}, ADJ=clamp(B.adj!=null?Math.round(+B.adj):2,0,8), keys=Object.keys(PER).map(Number).filter(k=>out[k]).sort((a,b)=>a-b);
+  keys.forEach(k=>{ const o=PER[k]||{}, b=out[k], O={c:b.c,r:b.r,w:b.w,h:b.h}, nw=Math.max(1,Math.round(+o.w||O.w)), nh=Math.max(1,Math.round(+o.h||O.h)); if(nw===O.w&&nh===O.h) return;
+    const A=bbAncOf(out,k,o.anc), fx=A.indexOf('r')>=0?1:A.indexOf('l')>=0?0:0.5, fy=A.indexOf('b')>=0?1:A.indexOf('t')>=0?0:0.5;
+    b.c=Math.round(O.c+fx*(O.w-nw)); b.r=Math.round(O.r+fy*(O.h-nh)); b.w=nw; b.h=nh; b.__sized=true;
+    let pO=O, pN={c:b.c,r:b.r,w:b.w,h:b.h};
+    for(let j=k+1;j<out.length;j++){ const n=out[j], nO={c:n.c,r:n.r,w:n.w,h:n.h};
+      const dx=(pN.c+pN.w)-(pO.c+pO.w), above=nO.r+nO.h<=pO.r+Math.max(0,Math.min(nO.h,pO.h)-1)&&nO.r<pO.r, below=nO.r>pO.r&&!above;
+      const dy=above?pN.r-pO.r:below?(pN.r+pN.h)-(pO.r+pO.h):0;
+      if(!dx&&!dy) break;
+      { const g=nO.c-(pO.c+pO.w), vt=nO.r<=pO.r+pO.h&&nO.r+nO.h>=pO.r; if(g<0||g>Math.max(0,Math.round(+B.gap||0))+2||!vt) break; }   /* only blocks still joined to the one before follow — a new line (restart) stays where it is */
+      if(j-k<=ADJ&&!(PER[j])){ let w2=nO.w-dx; if(w2<1) w2=1; n.c=nO.c+dx; n.w=w2;   /* left edge follows, right edge stays (unless it would vanish) */
+        if(above){ let h2=nO.h+dy; if(h2<1){ n.h=1; n.r=nO.r+nO.h+dy-1; } else { n.h=h2; n.r=nO.r; } }
+        else if(below){ let h2=nO.h-dy; if(h2<1){ n.r=nO.r+dy; n.h=1; } else { n.r=nO.r+dy; n.h=h2; } } }
+      else { n.c=nO.c+dx; n.r=nO.r+dy; }   /* beyond the ones that adapt: the rest of the line moves along with it */
+      pO=nO; pN={c:n.c,r:n.r,w:n.w,h:n.h}; } }); }
 const L2CAM={main:{camSrc:'main',infX:100,infY:100},x:{camSrc:'main',infX:100,infY:0},fixed:{camSrc:'main',infX:0,infY:0},own:{camSrc:'own',infX:0,infY:0}};
 function l2CamCfg(){ const L=D.L2||{}; { const B=l2BB(); if(B) return {src:'main',ix:bbLine(B)?0:clamp(+B.speed||0,0,300)/100,iy:0,bb:true,line:bbLine(B)}; } return {src:L.camSrc||'main',ix:(L.infX!=null?+L.infX:100)/100,iy:(L.infY!=null?+L.infY:100)/100}; }
 /* layer 2's offset on top of the layer 1 camera: total = (its own camera, or where the layer 1 camera started) + influence × the layer 1 camera's travel */
@@ -7735,7 +7761,7 @@ function drawWorld(g,G,o){
   if(D.look.ruleLayer==='top') drawRules();
   /* per-block order with the column rules: rules on top → blocks marked 'above' are drawn again over them;
      rules underneath → the rules are drawn again over blocks marked 'below' (clipped to those blocks) */
-  if(D.look.rulesOn){ const want=D.look.ruleLayer==='top'?'above':'below', L2z2=fn=>{ const fz=live&&D.L2&&D.L2.zoom===false&&baseXf&&g.setTransform, C=l2Ctrl(); if(!fz&&!C) return fn(); g.save(); const zk=ZK; if(fz){ g.setTransform(baseXf); ZK=null; } ctrlApply(g,G,C); try{ fn(); } finally{ ZK=zk; g.restore(); } };
+  if(D.look.rulesOn){ const want=D.look.ruleLayer==='top'?'above':'below', L2z2=fn=>{ const fz=live&&D.L2&&D.L2.zoom===false&&baseXf&&g.setTransform, C=l2Ctrl(); if(!fz&&!C) return fn(); g.save(); const zk=ZK; if(fz){ g.setTransform(baseXf); ZK=null; try{ const Z=l2OwnZoom(G,A&&A.P&&curLayer()==='l2'?A.P:withLayer('l2',()=>plan(geom())),A.t); if(Z) zoomXf(g,G,Z.s,null,Z.c); }catch(e){} } ctrlApply(g,G,C); try{ fn(); } finally{ ZK=zk; g.restore(); } };
     const zX=g.getTransform?g.getTransform():null;
     const each=(layer,fn)=>{ const run=isCur=>{ const G2=geom(), P2=isCur&&A&&A.P?A.P:plan(G2), rz=D.anim.rz||{}; const ids=Object.keys(rz).filter(k=>rz[k]===want); if(!ids.length) return;
         const o0=live?A.off:[0,0], d=live&&curLayer()==='l2'?l2ShiftAt(A.t,PMain,P2):[0,0], ox=o0[0]+d[0], oy=o0[1]+d[1];
@@ -7744,7 +7770,7 @@ function drawWorld(g,G,o){
       if(layer===curLayer()) run(true); else if(l2On()) withLayer(layer,()=>run(false)); };
     ['main','l2'].forEach(layer=>each(layer,(G2,P2,b,q,st,ox,oy)=>{
       if(want==='above'){ const o3=Object.assign({},o,{zPass:null,hidden:null,fillBase:P2.fillBase,fillEnd:live?P2.fillEnd:null,tracks:live?P2.tracks:null}); try{o3.media=mediaMap(P2);}catch(e){} drawBlock(g,G2,b,o3,ox,oy,st,false); }
-      else { const x=(st?st.x:q.x)+ox, y=(st?st.y:q.y)+oy, w=st?st.w:q.w, h=st?st.h:q.h; g.save(); g.beginPath(); g.rect(x,y,w,h); g.clip(); if(zX&&g.setTransform) g.setTransform(zX); drawRules(); g.restore(); } })); }
+      else { const x=(st?st.x:q.x)+ox, y=(st?st.y:q.y)+oy, w=st?st.w:q.w, h=st?st.h:q.h, R0=ZK?zkGrow({x,y,w,h}):{x,y,w,h}; g.save(); const XT=xfOf(G2,b,x,y,w,h); if(XT) xfApplyCtx(g,XT); g.beginPath(); g.rect(R0.x,R0.y,R0.w,R0.h); g.clip();   /* clip to the block as drawn: moved / rotated / scaled, and grown like the zoomed blocks */ if(zX&&g.setTransform) g.setTransform(zX); drawRules(); g.restore(); } })); }
   g.restore();
   g.globalAlpha=1; ZK=null;
 }
@@ -7880,6 +7906,9 @@ function ctrlApply(g,G,C){ if(!C) return; g.translate(G.W/2+C.x,G.H/2+C.y); g.ro
 function ctrlInv(G,C,p){ if(!C) return p; const dx=p.x-G.W/2-C.x, dy=p.y-G.H/2-C.y, a=-C.r*Math.PI/180, ca=Math.cos(a), sa=Math.sin(a); return {x:(dx*ca-dy*sa)/(C.s||1e-6)+G.W/2, y:(dx*sa+dy*ca)/(C.s||1e-6)+G.H/2}; }
 /* layer 2's own zoom (when it doesn't ride layer 1's): its Zoom points, around the beat blocks' point (or the frame centre) */
 function l2ZoomPivot(G){ const B=D.L2&&D.L2.bb; let bb=null; try{ bb=l2BB(); }catch(e){} return bb?[G.W*clamp(+B.rx||65,5,95)/100,G.H*(B.vf?clamp(B.ry!=null?+B.ry:50,0,100)/100:0.5)]:[G.W/2,G.H/2]; }
+/* beat blocks + layer 2's own zoom: the zoom at a frame (and its pivot), so zooming out gives the walk more room */
+function bbZoom(G){ const B=D.L2&&D.L2.bb; if(!B||B.zoomRoom===false||!(D.L2.zoom===false)||!D.anim.zoomOn) return null; let K=null; try{ K=zoomKeys(); }catch(e){ K=null; } if(!K||!K.length) return null;
+  const c=l2ZoomPivot(G); return t=>({s:Math.max(0.05,ev(K,t,K[0][1])/100),px:c[0],py:c[1]}); }
 function l2OwnZoom(G,P2,t){ if(!(D.L2&&D.L2.zoom===false)||!P2||!P2.zs||!P2.zs.length) return null; const s=ev(P2.zs,t,100)/100; return {s:Math.max(0.01,s),c:l2ZoomPivot(G)}; }
 function layerView(G,A){ const C=curLayer()==='l2'&&l2On()?l2Ctrl():null; if(!(A&&A.live)) return {s:1,pan:[0,0],zc:null,off:[0,0],ctrl:C};
   let v={s:A.s,pan:A.pan,zc:A.zc,off:A.off,ctrl:C};
@@ -10492,6 +10521,14 @@ function cardL2(ids){
       <div class="field2">${num('s','Scale','%')}<div class="note">On top of its animation. Tip: hold ⌥ (Alt) and drag a block on the canvas to slide it.</div></div></div>`; }
   if(curLayer()!=='l2'||!ids.length) return '';
   const xf=(D.anim.xf||{})[ids[0]]||{}, zo=(D.anim.zord||{})[ids[0]]||'', v=k=>xf[k]!=null?xf[k]:(k==='s'?100:0);
+  const szCard=(()=>{ if(!l2BB()) return ''; let P=null; try{ P=plan(geom()); }catch(e){} const b=P&&P.seq.find(x=>x.id===ids[0]); if(!b) return ''; const i=bbIdx(b.id,P), per=((D.L2.bb.per||{})[i])||{}, anc=per.anc||'auto';
+    const cell=a=>`<button data-bbanc="${a}"${anc===a?' class="on"':''} title="${({tl:'Top left',t:'Top',tr:'Top right',l:'Left',c:'Centre',r:'Right',bl:'Bottom left',b:'Bottom',br:'Bottom right'})[a]} stays put"></button>`;
+    return `<div class="card"><div class="card-h">Block size${ids.length>1?`<span class="count">${ids.length}</span>`:''}<span class="r">${Object.keys(D.L2.bb.per||{}).length?'<a href="#" data-bbszreset="1" class="note">reset size</a>':''}</span></div>
+      <div class="field2"><div class="field"><span class="lbl scrub">W</span><div class="num"><button data-bbszd="w:-1">−</button><input type="number" data-bbsz="w" value="${b.w}" min="1" max="60" step="1"><button data-bbszd="w:1">+</button><span class="unit">cells</span></div></div>
+        <div class="field"><span class="lbl scrub">H</span><div class="num"><button data-bbszd="h:-1">−</button><input type="number" data-bbsz="h" value="${b.h}" min="1" max="40" step="1"><button data-bbszd="h:1">+</button><span class="unit">rows</span></div></div></div>
+      <div class="field stack"><span class="lbl">Anchor <span class="note">the corner that stays put</span></span><div style="display:flex;gap:10px;align-items:center"><div class="anc9">${['tl','t','tr','l','c','r','bl','b','br'].map(cell).join('')}</div><button class="btn ghost${anc==='auto'?' on':''}" data-bbanc="auto" title="The corner that meets the block before">Auto (joined corner)</button></div></div>
+      <div class="field"><span class="lbl scrub" title="How many blocks after this one stretch or shrink to meet it — the rest of the line then moves along">Next blocks adapt</span><div class="num"><input type="number" data-bbadj="1" value="${D.L2.bb.adj!=null?D.L2.bb.adj:2}" min="0" max="8" step="1"></div></div>
+      <div class="note">Beat ${i+1}. The next blocks keep their far edges and stretch to meet this one, so the line stays joined.</div></div>`; })();
   const num=(k,lab,unit,step)=>`<div class="field"><span class="lbl scrub">${lab}</span><div class="num"><input type="number" data-l2x="${k}" value="${v(k)}" step="${step||1}"><span class="unit">${unit}</span></div></div>`;
   return `<div class="card"><div class="card-h">Layer 2 block${ids.length>1?`<span class="count">${ids.length}</span>`:''}<span class="r"><a href="#" data-l2reset="1" class="note">reset</a></span></div>
     <div class="field stack"><span class="lbl">Depth order</span><div class="seg" data-l2z="1"><button data-v="behind"${zo==='behind'?' class="on"':''}>Behind layer 1</button><button data-v=""${!zo?' class="on"':''}>Layer default</button><button data-v="front"${zo==='front'?' class="on"':''}>In front</button></div></div>
@@ -10499,7 +10536,7 @@ function cardL2(ids){
     ${xfToolsHTML()}
     <div class="field stack"><span class="lbl">Rotation</span><div class="field3">${num('rx','X','°')}${num('ry','Y','°')}${num('rz','Z','°')}</div></div>
     <div class="field2">${num('s','Scale','%')}<div class="note">Z: − closer to the camera, + further away. X/Y rotation turn in 3D in After Effects (camera rig).</div></div>
-  </div>`;
+  </div>`+szCard;
 }
 $('#insp').addEventListener('input',e=>{ const t=e.target, k=t.dataset&&t.dataset.l2x; if(!k) return; const v=parseFloat(t.value); if(isNaN(v)) return;
   if(!U._l2Edit){ pushHist(true); U._l2Edit=true; } D.anim.xf=Object.assign({},D.anim.xf||{}); mSelIds().forEach(id=>{ D.anim.xf[id]=Object.assign({},D.anim.xf[id]||{},{[k]:v}); }); planCache.k=''; render(); });
@@ -10507,6 +10544,10 @@ $('#insp').addEventListener('change',e=>{ if(e.target.dataset&&e.target.dataset.
   if(e.target.dataset&&e.target.dataset.xsnap){ U.snapXf=e.target.checked; try{ localStorage.setItem('gridblocks.snapXf',U.snapXf?'1':'0'); }catch(x){}
     if(U.snapXf){ pushHist(true); D.anim.xf=Object.assign({},D.anim.xf||{}); mSelIds().forEach(id=>{ const xf=D.anim.xf[id]||{}, sn=xfSnap(id,+xf.x||0,+xf.y||0); D.anim.xf[id]=Object.assign({},xf,{x:sn[0],y:sn[1]}); }); planCache.k=''; }
     renderInsp(); render(); } });
+$('#insp').addEventListener('click',e=>{ const bd=e.target.closest('[data-bbszd]'); if(bd){ const [k,d]=bd.dataset.bbszd.split(':'); bbSetSize(mSelIds(),c=>{ c[k]=Math.max(1,(+c[k]||1)+(+d)*(e.shiftKey?2:1)); }); return; }
+  const ba=e.target.closest('[data-bbanc]'); if(ba){ bbSetSize(mSelIds(),c=>{ c.anc=ba.dataset.bbanc; }); return; }
+  const br=e.target.closest('[data-bbszreset]'); if(br){ e.preventDefault(); pushHist(true); D.L2.bb=Object.assign({},D.L2.bb,{per:{}}); planCache.k=''; renderInsp(); render(); toast('Block sizes back to the walk'); return; } });
+$('#insp').addEventListener('change',e=>{ const t=e.target; if(t.dataset&&t.dataset.bbadj){ pushHist(true); D.L2.bb=Object.assign({},D.L2.bb,{adj:clamp(Math.round(+t.value||0),0,8)}); planCache.k=''; render(); return; } if(t.dataset&&t.dataset.bbsz){ const k=t.dataset.bbsz, v=Math.max(1,Math.round(+t.value||1)); bbSetSize(mSelIds(),c=>{ c[k]=v; }); } });
 $('#insp').addEventListener('click',e=>{ const gb=e.target.closest('[data-xgrid] button[data-v]'); if(gb){ U.snapGrid=gb.dataset.v; try{ localStorage.setItem('gridblocks.snapGrid',U.snapGrid); }catch(x){} renderInsp(); return; }
   const nb=e.target.closest('[data-xn]'); if(!nb) return; const [dx,dy]=nb.dataset.xn.split(',').map(Number), k=e.shiftKey?5:1; pushHist(true); D.anim.xf=Object.assign({},D.anim.xf||{});
   const G=geom(), Gr=U.snapXf&&(U.snapGrid||'own')==='other'&&l2On()?withLayer(curLayer()==='l2'?'main':'l2',()=>geom()):G, st=U.snapXf?Gr.p:10;
