@@ -969,6 +969,9 @@ function GB_build(d){
       out.push(L2.blocks.length+" layer-2 blocks");
       /* layer 2's camera (influence / own camera / no zoom): handled once the rig exists, below */
       l2Info={kids:[],shift:L2.shift,abs:L2.abs,zoom:L2.zoom!==false,ctrl:L2.ctrl||null,ozoom:L2.ozoom||null};
+      /* layer 2's text between blocks: built like layer 1's, then carried by layer 2's camera / zoom / control */
+      if(L2.gaps&&L2.gaps.length){ var g2L=[]; try{ GB_fillItems(blockC,L2.gaps,null,g2L); }catch(eG2){} for(var gq2=0;gq2<g2L.length;gq2++){ g2L[gq2].name="L2 · Gap · "+g2L[gq2].name; g2L[gq2].label=2; blocks.push({L:g2L[gq2],T:null,b:{keys:null}}); l2Info.kids.push(g2L[gq2]); }
+        if(g2L.length) out.push(g2L.length+" layer-2 between-block items"); }
       for(var q2=0;q2<l2groups.length;q2++){ var gq=l2groups[q2].grp; for(var q3=0;q3<gq.length;q3++) if(gq[q3]) l2Info.kids.push(gq[q3]); }
     }
     if(fillLayers.length||gapLayers.length) out.push((fillLayers.length+gapLayers.length)+" content layers");
