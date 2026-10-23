@@ -571,6 +571,7 @@ body.nohelp .qm{display:none}
   .expl{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}.expbar{height:6px;border-radius:3px;background:#2a2a2e;overflow:hidden}.expbar div{height:100%;width:0;background:#E6212F;transition:width .1s}
   .vidopts{display:grid;gap:6px}.vidopt{display:grid;grid-template-columns:18px 1fr;column-gap:8px;padding:8px 10px;border:1px solid #333;border-radius:8px;cursor:pointer}
   .vidopt input{grid-row:1/3;margin-top:2px}.vidopt span{color:#9a9aa3;font-size:11.5px;line-height:1.35}.vidopt.on{border-color:#E6212F;background:rgba(230,33,47,.07)}
+  .bldt{width:100%;border-collapse:collapse;font-size:12px}.bldt td,.bldt th{padding:5px 6px;border-bottom:1px solid #2a2a2e;text-align:left;vertical-align:middle}.bldt th{color:#9a9aa3;font-weight:500}.bldt select{width:100%;font-size:12px}
   .lockbar{display:grid;gap:7px;padding:9px 10px;border:1px solid #F5A52455;border-radius:8px;background:rgba(245,165,36,.06);font-size:12px}.lockbar.on{border-color:#2BD98F66;background:rgba(43,217,143,.06)}
   .wsec{display:grid;grid-template-columns:auto 1fr;gap:6px;align-items:center;padding:6px 8px;border:1px solid #333;border-radius:7px;font-size:11.5px}
   .wsec .wt{display:flex;gap:4px;align-items:center;flex-wrap:wrap}.wsec input{width:52px}.wsec select{font-size:11.5px}
@@ -1762,6 +1763,13 @@ body.nohelp .qm{display:none}
   </main>
 </div>
 
+<div class="modal" id="bldModal" hidden>
+  <div class="sheet" style="max-width:560px">
+    <div class="sheet-h"><h3 id="bldTitle">Build in After Effects</h3><div class="spacer"></div><button class="btn icon ghost" data-bld="cancel" title="Cancel">✕</button></div>
+    <div style="display:grid;gap:11px;padding:4px 2px;max-height:70vh;overflow:auto" id="bldBody"></div>
+    <div class="sheet-f"><label class="check"><input type="checkbox" id="bldRemember"> Don’t ask again <span class="note">(⌥-click Build to see this again)</span></label><div class="spacer"></div><button class="btn" data-bld="cancel">Cancel</button><button class="btn primary" data-bld="go" id="bldGo">Build</button></div>
+  </div>
+</div>
 <div class="modal" id="lockAsk" hidden>
   <div class="sheet" style="max-width:420px">
     <div class="sheet-h"><h3>Some blocks are locked</h3></div>
