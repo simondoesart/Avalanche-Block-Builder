@@ -570,6 +570,8 @@ body.nohelp .qm{display:none}
 }
   .vidopts{display:grid;gap:6px}.vidopt{display:grid;grid-template-columns:18px 1fr;column-gap:8px;padding:8px 10px;border:1px solid #333;border-radius:8px;cursor:pointer}
   .vidopt input{grid-row:1/3;margin-top:2px}.vidopt span{color:#9a9aa3;font-size:11.5px;line-height:1.35}.vidopt.on{border-color:#E6212F;background:rgba(230,33,47,.07)}
+  .wsec{display:grid;grid-template-columns:auto 1fr;gap:6px;align-items:center;padding:6px 8px;border:1px solid #333;border-radius:7px;font-size:11.5px}
+  .wsec .wt{display:flex;gap:4px;align-items:center;flex-wrap:wrap}.wsec input{width:52px}.wsec select{font-size:11.5px}
   body.l2bb [data-nobb]{display:none!important} body:not(.l2bb) [data-bbonly]{display:none!important}
   .anc9{display:grid;grid-template-columns:repeat(3,22px);grid-template-rows:repeat(3,22px);gap:3px;padding:6px;border:1px solid var(--line,#333);border-radius:6px;width:max-content}
   .anc9 button{width:22px;height:22px;padding:0;border-radius:4px;border:1px solid #444;background:transparent;position:relative;cursor:pointer}
@@ -804,6 +806,11 @@ body.nohelp .qm{display:none}
             
             
             <details class="sub" data-sub="gen-walk" open><summary>Walk <span class="note">how the line moves</span></summary><div class="subbody">
+              <div data-nobb style="display:grid;gap:8px">
+                <div class="field stack"><span class="lbl">Rows the walk uses</span><div class="seg" data-seg="anim.walkRows"><button data-v="all" title="Every row in view">All rows</button><button data-v="top">Top half</button><button data-v="mid">Middle</button><button data-v="bottom">Bottom half</button></div></div>
+                <div class="field stack"><span class="lbl">Direction</span><div class="seg" data-seg="anim.walkDir"><button data-v="even" title="Up and down as set in Details (Up ↔ down)">Even</button><button data-v="up">Mostly up</button><button data-v="down">Mostly down</button><button data-v="level" title="Stays on its row">Level</button></div></div>
+                <div id="walkSecL1"></div>
+              </div>
               
               <details class="sub" data-sub="walk-details" data-nobb><summary>Details <span class="note">gap, wander, stairs, jumps, pairs</span></summary><div class="subbody">
               <div class="field2">
@@ -1351,6 +1358,7 @@ body.nohelp .qm{display:none}
                 <div class="note" data-show="L2.bb.cam=l1">With layer 1's camera, a block only joins while the end of the line is on screen — for every block corner to corner use <b>Follows the line</b>.</div>
                 <div class="field" data-show="L2.bb.step=mixed"><span class="lbl scrub">Side by side</span><div class="num"><input type="number" data-bind="L2.bb.sidePct" min="0" max="100" step="5"><span class="unit">%</span></div></div></div>
               <div class="field stack" data-show="L2.bb.touch=true"><span class="lbl">Direction</span><div class="seg"><button data-bbset="bias:bounce" title="Keeps going one way until it reaches the top or bottom row, then turns">Bounce</button><button data-bbset="bias:even" title="Up or down at random, drifting back to the start row">Even</button><button data-bbset="bias:up">Mostly up</button><button data-bbset="bias:down">Mostly down</button></div></div>
+              <div id="walkSecBB"></div>
               <div class="field stack"><span class="lbl">Rows when not joined</span><div class="seg"><button data-bbset="path:walk">Walk</button><button data-bbset="path:melody" title="Higher notes higher">Melody</button><button data-bbset="path:level">Level</button><button data-bbset="path:random">Random</button></div></div>
               <div class="field2"><div class="field"><span class="lbl scrub" title="Empty columns between joined blocks">Gap</span><div class="num"><input type="number" data-bind="L2.bb.gap" min="0" max="20" step="1"><span class="unit">cells</span></div></div>
                 <div class="field" data-show="L2.bb.cam=l1"><span class="lbl scrub" title="How far (% of the frame) a block may slide from its point to stay joined">Slide up to</span><div class="num"><input type="number" data-bind="L2.bb.slack" min="0" max="60" step="5"><span class="unit">%</span></div></div></div>

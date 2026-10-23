@@ -570,6 +570,8 @@ body.nohelp .qm{display:none}
 }
   .vidopts{display:grid;gap:6px}.vidopt{display:grid;grid-template-columns:18px 1fr;column-gap:8px;padding:8px 10px;border:1px solid #333;border-radius:8px;cursor:pointer}
   .vidopt input{grid-row:1/3;margin-top:2px}.vidopt span{color:#9a9aa3;font-size:11.5px;line-height:1.35}.vidopt.on{border-color:#E6212F;background:rgba(230,33,47,.07)}
+  .wsec{display:grid;grid-template-columns:auto 1fr;gap:6px;align-items:center;padding:6px 8px;border:1px solid #333;border-radius:7px;font-size:11.5px}
+  .wsec .wt{display:flex;gap:4px;align-items:center;flex-wrap:wrap}.wsec input{width:52px}.wsec select{font-size:11.5px}
   body.l2bb [data-nobb]{display:none!important} body:not(.l2bb) [data-bbonly]{display:none!important}
   .anc9{display:grid;grid-template-columns:repeat(3,22px);grid-template-rows:repeat(3,22px);gap:3px;padding:6px;border:1px solid var(--line,#333);border-radius:6px;width:max-content}
   .anc9 button{width:22px;height:22px;padding:0;border-radius:4px;border:1px solid #444;background:transparent;position:relative;cursor:pointer}
@@ -804,6 +806,11 @@ body.nohelp .qm{display:none}
             
             
             <details class="sub" data-sub="gen-walk" open><summary>Walk <span class="note">how the line moves</span></summary><div class="subbody">
+              <div data-nobb style="display:grid;gap:8px">
+                <div class="field stack"><span class="lbl">Rows the walk uses</span><div class="seg" data-seg="anim.walkRows"><button data-v="all" title="Every row in view">All rows</button><button data-v="top">Top half</button><button data-v="mid">Middle</button><button data-v="bottom">Bottom half</button></div></div>
+                <div class="field stack"><span class="lbl">Direction</span><div class="seg" data-seg="anim.walkDir"><button data-v="even" title="Up and down as set in Details (Up ↔ down)">Even</button><button data-v="up">Mostly up</button><button data-v="down">Mostly down</button><button data-v="level" title="Stays on its row">Level</button></div></div>
+                <div id="walkSecL1"></div>
+              </div>
               
               <details class="sub" data-sub="walk-details" data-nobb><summary>Details <span class="note">gap, wander, stairs, jumps, pairs</span></summary><div class="subbody">
               <div class="field2">
@@ -1351,6 +1358,7 @@ body.nohelp .qm{display:none}
                 <div class="note" data-show="L2.bb.cam=l1">With layer 1's camera, a block only joins while the end of the line is on screen — for every block corner to corner use <b>Follows the line</b>.</div>
                 <div class="field" data-show="L2.bb.step=mixed"><span class="lbl scrub">Side by side</span><div class="num"><input type="number" data-bind="L2.bb.sidePct" min="0" max="100" step="5"><span class="unit">%</span></div></div></div>
               <div class="field stack" data-show="L2.bb.touch=true"><span class="lbl">Direction</span><div class="seg"><button data-bbset="bias:bounce" title="Keeps going one way until it reaches the top or bottom row, then turns">Bounce</button><button data-bbset="bias:even" title="Up or down at random, drifting back to the start row">Even</button><button data-bbset="bias:up">Mostly up</button><button data-bbset="bias:down">Mostly down</button></div></div>
+              <div id="walkSecBB"></div>
               <div class="field stack"><span class="lbl">Rows when not joined</span><div class="seg"><button data-bbset="path:walk">Walk</button><button data-bbset="path:melody" title="Higher notes higher">Melody</button><button data-bbset="path:level">Level</button><button data-bbset="path:random">Random</button></div></div>
               <div class="field2"><div class="field"><span class="lbl scrub" title="Empty columns between joined blocks">Gap</span><div class="num"><input type="number" data-bind="L2.bb.gap" min="0" max="20" step="1"><span class="unit">cells</span></div></div>
                 <div class="field" data-show="L2.bb.cam=l1"><span class="lbl scrub" title="How far (% of the frame) a block may slide from its point to stay joined">Slide up to</span><div class="num"><input type="number" data-bind="L2.bb.slack" min="0" max="60" step="5"><span class="unit">%</span></div></div></div>
@@ -3116,7 +3124,7 @@ const DEF={
   anim:{hide:[],show:[],hidePct:0,hideSeed:1,seed:0,landLead:12,outLead:12,skip:[],cutAt:null,dt:{},dx:{},remapLen:0,camEase:8,vDamp:0,stepZone:0,stepLead:0,chopEvery:4,chopMin:0,chopSnap:false,chopRules:true,paceUnit:'f',settleX:50,endFix:'reroute',reroutePct:30,mode:'camera',order:'ltr',orderSeed:7,groupCol:true,startF:0,lenF:72,toEnd:false,countMode:'fill',pace:5,total:24,trans:1,motion:'smooth',camMove:'curve',stepEvery:2,appear:'wipe',
         axis:'x',lazy:true,snap:true,smooth:1.5,settle:18,settleEase:true,motionBlurF:4,revealWhen:'arrive',revealX:75,revealY:100,lock:{on:false,x:50,y:50,move:'glide',moveLen:0},rzOn:false,rzPts:null,relOn:false,relAt:85,relSlow:36,tail:24,
         sceneCurve:[0.42,0,0.58,1],curvePh:null,sceneEase:{on:true,hd:null,holdH:null,onAt:null,holdAt:null,start:40,land:75,landOut:50,leaveIn:50,leave:60,end:40,mid:'point'},camCurve:[0.33,0,0.67,1],zoomCurve:[0.65,0,0.35,1],revCurve:[0.25,0.1,0.25,1],endX:50,endY:50,finalMove:30,
-        zd:{on:false,pts:null},zoomOn:false,zm:{pts:null,room:false,focus:'follow',ax:50,ay:50,in:24,out:96,from:100,to:140,curve:[0.65,0,0.35,1],scaleAll:false,followRemap:true,back:false,backIn:180,backOut:228,backCurve:[0.65,0,0.35,1]},extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
+        zd:{on:false,pts:null},zoomOn:false,walkRows:'all',walkDir:'even',walkSec:[],walkMove:{},walkAdj:0,zm:{pts:null,room:false,focus:'follow',ax:50,ay:50,in:24,out:96,from:100,to:140,curve:[0.65,0,0.35,1],scaleAll:false,followRemap:true,back:false,backIn:180,backOut:228,backCurve:[0.65,0,0.35,1]},extendOn:true,extendMode:'walk',ending:'count',extendN:16,endAt:null,endRow:3,unpicked:'hidden',wrap:true,zoom:[{on:true,closed:false,rows:14,mode:'frames',f0:4,f1:28,at:1,off:0,dur:24,rev:true,sx:0,sy:0,ex:0,ey:0}]},
   lab:{flicker:{on:false,frames:8,seed:3},
        pulse:{on:false,scale:1.35,len:18,width:2,color:'#E6212F'},
        trail:{on:false,count:3,length:1.2,len:12,width:2,color:'#A2AFB2'},
@@ -4479,6 +4487,14 @@ function applyColourMode(seq){
    block up or down inside the frame (e.g. 3×5 in 7 rows), it may run partly off the top/bottom (cropped by the
    frame) — at least half the frame's rows stay covered — so the line can still climb and fall. */
 /* the rows in view at block idx's time, when the zoom changes over the scene (Zoom › Walk uses the extra room) */
+/* the frame a block lands on, by its place in the line (beats when synced, else the pace) — for zoom room and walk sections */
+function walkTimeFn(){ const A=D.anim, cs=D.timing&&D.timing.sync?timingCues():null, pace=Math.max(1,+A.pace||6), t0=+A.startF||0;
+  return i=>cs&&cs.length?(i<cs.length?cs[i]:cs[cs.length-1]+(i-cs.length+1)*pace):t0+i*pace; }
+/* walk rows & direction at frame t: the base setting, then any timed change that covers t (later ones win) */
+function walkSecAt(t,base){ const A=D.anim, L=Array.isArray(A.walkSec)?A.walkSec:[]; let s=base||{rows:A.walkRows||'all',dir:A.walkDir||'even'};
+  L.forEach(x=>{ if(x&&t>=(+x.f||0)&&(x.to==null||x.to===''||t<+x.to)) s={rows:x.rows||s.rows,dir:x.dir||s.dir}; }); return s; }
+function walkSecOn(){ const A=D.anim; return (A.walkRows&&A.walkRows!=='all')||(A.walkDir&&A.walkDir!=='even')||(Array.isArray(A.walkSec)&&A.walkSec.length>0); }
+const WALK_CLIMB_OF={up:70,down:-70};
 function zoomRoomFn(G){ const A=D.anim, Z=A.zm||{}; if(!A.zoomOn||!Z.room||A.mode==='static') return null; let K=null; try{ K=zoomKeys(); }catch(e){} if(!K||K.length<2) return null;
   const cs=D.timing&&D.timing.sync?timingCues():null, pace=Math.max(1,+A.pace||6), t0=+A.startF||0;
   const tAt=i=>cs&&cs.length?(i<cs.length?cs[i]:cs[cs.length-1]+(i-cs.length+1)*pace):t0+i*pace;
@@ -4487,9 +4503,11 @@ function zoomRoomFn(G){ const A=D.anim, Z=A.zm||{}; if(!A.zoomOn||!Z.room||A.mod
     let lo=Math.floor(pr-pr/sc+1e-6), hi=Math.ceil(pr+(R-pr)/sc-1e-6)-h; if(sc>=1){ lo=Math.max(0,lo); hi=Math.min(Math.max(0,R-h),hi); } if(hi<lo){ const m=Math.round((lo+hi)/2); lo=hi=m; }
     return {lo,hi,ext:false}; }; }
 function walkBounds(G,h){ h=Math.max(1,h|0); if(G.R-h>=h) return {lo:0,hi:Math.max(0,G.R-h),ext:false}; const mv=Math.max(1,Math.floor(G.R/2)); return {lo:mv-h,hi:G.R-mv,ext:true}; }
+/* walk sections (Walk › Rows & direction, changing over time): set while a block's row is picked */
+let WALK_CLIMB=null, WALK_LEVEL=false;
 function walkRow(r,rMax,rnd,h,rMin){
-  rMin=rMin||0; const R=D.rand, w=clamp(Math.round(R.wander)||0,0,4); h=Math.max(1,h||D.block.h||1); if(!w||rMax<=rMin) return r;
-  const b=clamp((+R.climb||0)/100,-1,1), pU=(1+b)/3, pD=(1-b)/3, u=rnd();
+  rMin=rMin||0; const R=D.rand; let w=clamp(Math.round(R.wander)||0,0,4); h=Math.max(1,h||D.block.h||1); if(WALK_LEVEL) return r; if(WALK_CLIMB!=null) w=Math.max(1,w); if(!w||rMax<=rMin) return r;
+  const b=clamp((WALK_CLIMB!=null?WALK_CLIMB:(+R.climb||0))/100,-1,1), pU=(1+b)/3, pD=(1-b)/3, u=rnd();
   let dir=u<pU?-1:u<pU+pD?1:0; if(!dir) return r;
   const mag=h===1?1+Math.floor(rnd()*w):1;   // 1-row blocks may wander up to `w` rows; taller blocks step exactly one block height
   let n=r+dir*mag*h; if(n<rMin||n>rMax) n=r-dir*mag*h;
@@ -4538,11 +4556,11 @@ function makeWalker(rnd,rMax0,h,rMin0){
   const R=D.rand; let run=0, runDir=-1; h=Math.max(1,h||D.block.h||1);
   return r=>{
     const rMax=typeof rMax0==='function'?rMax0():rMax0, rMin=typeof rMin0==='function'?rMin0():(rMin0||0);   /* bounds can change along the line (zoom room) */
-    let extra=0;
+    let extra=0; if(WALK_LEVEL){ run=0; return {r,extra}; }
     if(run>0){run--; const n=r+runDir*h; if(n<rMin||n>rMax){run=0;return {r,extra};} r=n; if(r-h<rMin||r+h>rMax) run=0; return {r,extra};}
     const u=rnd();
     if(u<(R.stairPct||0)/100&&rMax>rMin){
-      const b=clamp((+R.climb||0)/100,-1,1); runDir=rnd()<(1+b)/2?-1:1;
+      const b=clamp((WALK_CLIMB!=null?WALK_CLIMB:(+R.climb||0))/100,-1,1); runDir=rnd()<(1+b)/2?-1:1;
       if(r+runDir*h<rMin||r+runDir*h>rMax) runDir=-runDir;
       run=1+Math.floor(rnd()*3); const n=r+runDir*h; if(n>=rMin&&n<=rMax) r=n; return {r,extra};
     }
@@ -4566,7 +4584,9 @@ function pruneStacks(out,base){
   if(!drop.size) return out;
   const res=out.filter(b=>!drop.has(b)); ['__endCol','__reach','__endRow'].forEach(k=>{if(k in out) res[k]=out[k];}); return res;
 }
-function extension(G,base,capOverride){ return pruneStacks(extensionRaw(G,base,capOverride),base); }
+function extension(G,base,capOverride){ const out=pruneStacks(extensionRaw(G,base,capOverride),base); const WM=D.anim.walkMove;
+  if(WM&&Object.keys(WM).length){ const main=out.filter(b=>!b.stack), PER={}; main.forEach((b,i)=>{ const m=WM[b.id]; if(m) PER[i]=m; }); if(Object.keys(PER).length) lineAdjust(main,PER,clamp(D.anim.walkAdj!=null?Math.round(+D.anim.walkAdj):0,0,8),D.rand.gap); }   /* blocks moved by hand with 'the walk follows' */
+  return out; }
 function extensionRaw(G,base,capOverride){
   const A=D.anim; if(!A.extendOn||!base.length) return [];
   const spot=A.ending==='spot';
@@ -4581,7 +4601,12 @@ function extensionRaw(G,base,capOverride){
   const last=main[main.length-1]||base[base.length-1], prev=main[main.length-2];
   /* zoom room: zoomed out, the rows in view grow — the walk may use them (Zoom › Walk uses the extra room) */
   const ZR=zoomRoomFn(G); let curIdx=main.length;
-  const WBf=h=>{ const b=walkBounds(G,h); if(!ZR) return b; const z=ZR(curIdx,h); return z||b; };
+  const SECON=walkSecOn(), TF=SECON?walkTimeFn():null, secOf=i=>SECON?walkSecAt(TF(i)):null;
+  const WBf=h=>{ let b=walkBounds(G,h); if(ZR){ const z=ZR(curIdx,h); if(z) b=z; } const S=secOf(curIdx);
+    if(S&&S.rows&&S.rows!=='all'){ const lo0=b.lo, hi0=b.hi+h-1, span=hi0-lo0+1; let a,c;
+      if(S.rows==='top'){ a=lo0; c=lo0+Math.ceil(span/2)-1; } else if(S.rows==='bottom'){ a=lo0+Math.floor(span/2); c=hi0; } else { a=lo0+Math.floor(span/4); c=lo0+Math.ceil(3*span/4)-1; }
+      b={lo:a,hi:Math.max(a,c-h+1),ext:b.ext}; }
+    return b; };
   const WB=WBf(last.h); let rMax=WB.hi, rMin=WB.lo;
   const rMaxF=()=>WBf(last.h).hi, rMinF=()=>WBf(last.h).lo;
   const mode=spot?'steer':A.extendMode;
@@ -4642,9 +4667,9 @@ function extensionRaw(G,base,capOverride){
     // no room near its time (blocks too big for this speed): put it just past the end of the line — never drop a block
     const ends=all.map(x=>dir>0?x.c+x.w:x.c); nb.c=dir>0?Math.max(nb.c,...ends):Math.min(nb.c,...ends)-(dir>0?0:nb.w); nb.r=clamp(r0,B.lo,B.hi);
     return nb; };
-  const place=(nb,w,h)=>{ nb.w=w; nb.h=h; const B=WBf(h); nb.r=clamp(nb.r,B.lo,B.hi); return nb; };
+  const place=(nb,w,h)=>{ nb.w=w; nb.h=h; const B=WBf(h); nb.r=(ZR||SECON)?(nb.r<B.lo?Math.min(B.lo,pR+pH):nb.r>B.hi?Math.max(B.hi,pR-h):nb.r):clamp(nb.r,B.lo,B.hi); return nb; };
   let c=last.c, r=last.r, i=main.length;
-  const walker=makeWalker(rnd,ZR?rMaxF:rMax,last.h,ZR?rMinF:rMin);
+  const walker=makeWalker(rnd,(ZR||SECON)?rMaxF:rMax,last.h,(ZR||SECON)?rMinF:rMin);
   if(mode==='steer'){
     // exactly `cap` more blocks, evenly stepped (no gaps), steering the rows to land on the chosen end row
     let tr=clamp(Math.round((A.endRow||1)-1),rMin,rMax); const wmax=last.h>1?last.h:Math.max(1,Math.round(D.rand.wander)||1);
@@ -4664,15 +4689,17 @@ function extensionRaw(G,base,capOverride){
     out.__endCol=c;
     return out;
   }
-  for(let n=0;n<cap;n++){ curIdx=main.length+n; if(ZR){ const b0=WBf(last.h); rMax=b0.hi; rMin=b0.lo; }
+  try{ for(let n=0;n<cap;n++){ curIdx=main.length+n; if(ZR||SECON){ const b0=WBf(last.h); rMax=b0.hi; rMin=b0.lo; }
+    if(SECON){ const S=secOf(curIdx); WALK_LEVEL=S.dir==='level'; WALK_CLIMB=WALK_CLIMB_OF[S.dir]!=null?WALK_CLIMB_OF[S.dir]:null; }
     if(mode==='continue'){c+=dc;r+=dr;if(A.wrap&&A.axis==='x'){if(r<0)r=rMax;else if(r>rMax)r=0;}}
     const DM=dims();
     if(mode!=='continue'){const w=walker(r), ex=joinOn||paceOn?0:w.extra; if(varOn){ c+=dir>0?prevW+gapC+ex:-(DM[0]+gapC+ex); prevW=DM[0]; } else c+=step+ex*dir; r=w.r;}
     if(pitchOn&&mode!=='continue'){ r=pitchRow(main.length+n,r,pR,DM[1]); }
+    if((ZR||SECON)&&mode!=='continue'){ const hh=varOn?DM[1]:last.h, B0=WBf(hh); if(r<B0.lo) r=Math.min(B0.lo,pR+hh); else if(r>B0.hi) r=Math.max(B0.hi,pR-hh); }   /* rows changed (zoom / walk section): step toward them a block at a time, still joined */
     if(mode!=='continue'&&!paceOn) r=join(r,varOn?DM[1]:last.h);
     const nb=mk(last,c,r,mixColor(i++,rnd)); if(varOn){ place(nb,DM[0],DM[1]); r=nb.r; } if(paceOn){ pacePlace(nb,main.length+n); c=nb.c; r=nb.r; prevW=nb.w; } pR=r; pH=nb.h;
     if(add(nb)&&mode!=='continue'&&!varOn&&!pitchOn&&!paceOn){const sr=stackRow(r,last.h,rMax,rnd,rMin);if(sr!==null){const p=mk(last,c,sr,mixColor(i++,rnd));p.stack=true;add(p);}}
-  }
+  } } finally{ WALK_CLIMB=null; WALK_LEVEL=false; }
   return out;
 }
 const curveCache={};
@@ -5018,21 +5045,24 @@ function beatPlace(G,base0,times,prevSeed){
   const ZM=bbZoom(G); let Zt={s:1,px:G.W/2,py:G.H/2};   /* zoom at the current beat (1 when layer 2 doesn't zoom) */
   const USEWIN=!!B.vf||!!ZM||(BL>0&&!has(B.rowFrom)&&!has(B.rowTo)&&(B.band||'any')==='any');
   const win=h=>{ const hp=h*G.p-G.gut, zs=Zt.s, py=Zt.py, lo=Math.ceil((((-BL*hp*zs-py)/zs+py)-camY-G.y0)/G.p-1e-6), hi=Math.floor((((G.H+BL*hp*zs-py)/zs+py)-hp-camY-G.y0)/G.p+1e-6); return hi>=lo?[lo,hi]:[Math.round((lo+hi)/2),Math.round((lo+hi)/2)]; };   /* top rows that keep the block (mostly) in frame */
-  const range=h=>{ const R=G.R; let lo,hi; if(USEWIN) return win(h);
+  const SECS=Array.isArray(D.anim.walkSec)&&D.anim.walkSec.length>0; let SB=null;   /* walk sections (timed rows & direction) */
+  const secCut=(r2,h)=>{ if(!SB||SB==='all') return r2; const lo0=r2[0], hi0=r2[1]+h-1, span=hi0-lo0+1; let a,c; if(SB==='top'){ a=lo0; c=lo0+Math.ceil(span/2)-1; } else if(SB==='bottom'){ a=lo0+Math.floor(span/2); c=hi0; } else { a=lo0+Math.floor(span/4); c=lo0+Math.ceil(3*span/4)-1; } return [a,Math.max(a,c-h+1)]; };
+  const range=h=>secCut(range0(h),h);
+  const range0=h=>{ const R=G.R; let lo,hi; if(USEWIN) return win(h);
     if(has(B.rowFrom)||has(B.rowTo)){ lo=has(B.rowFrom)?Math.max(0,Math.round(+B.rowFrom)-1):0; hi=has(B.rowTo)?Math.min(R-1,Math.round(+B.rowTo)-1):R-1; if(hi<lo){ const x=lo; lo=hi; hi=x; } }
     else { const t=B.band||'any'; if(t==='top'){ lo=0; hi=Math.max(0,Math.ceil(R/2)-1); } else if(t==='bottom'){ lo=Math.floor(R/2); hi=R-1; } else if(t==='mid'){ lo=Math.floor(R/4); hi=Math.max(lo,Math.ceil(3*R/4)-1); } else { lo=0; hi=R-1; } }
     const a=lo, b=Math.max(lo,hi-h+1); return b>=a?[clamp(a,0,Math.max(0,R-h)),clamp(b,0,Math.max(0,R-h))]:[clamp(lo,0,Math.max(0,R-h)),clamp(lo,0,Math.max(0,R-h))]; };
   const PP=B.path==='melody'?cuePitches():[]; const pv=PP.filter(x=>x!=null).sort((a,b)=>a-b), pr=pv.length?[pv[Math.floor(pv.length*.05)],pv[Math.floor(pv.length*.95)]||pv[pv.length-1]]:null;
   const slack=Math.max(1,Math.round(clamp(+B.slack||25,0,60)/100*W/G.p)), gap=Math.max(0,Math.round(+B.gap||0));
-  const step=B.step||'corner', sidePct=clamp(+B.sidePct||30,0,100), bias=B.bias||'even';
+  const step=B.step||'corner', sidePct=clamp(+B.sidePct||30,0,100), bias0=B.bias||'even'; let bias=bias0, levelNow=false;
   const AN=bbAnchor(B), ax=AN[0], ay=AN[1], LINE=bbLine(B);   /* block anchor: which point of a block sits on the line's point / row; LINE: layer 2's camera follows the line */
   const atRow=(row,h)=>row-Math.round(ay*(h-1)), OV=Math.max(0,Math.round(+B.ovRows||0));
-  let prev=prevSeed||null, dirV=bias==='down'?1:-1;
+  let prev=prevSeed||null, dirV=bias0==='down'?1:-1;
   const live=t=>x=>!x.__rest&&(x.__gone==null||x.__gone>t);
   const MINLIFE=Math.max(24,Math.round((D.comp.fps||30)*1));   /* a block stays at least ~1 s before another may push it out — no blink-on-then-gone */
   const clash=(cc,rr,w,h,t)=>out.some(x=>live(t)(x)&&cc<x.c+x.w&&x.c<cc+w&&rr<x.r+x.h&&x.r<rr+h);
   let o0=null;
-  times.forEach((t,i)=>{ if(ZM) Zt=ZM(t); if(!o0) o0=EXT_PLACE.tot(t); const o=LINE?o0:EXT_PLACE.tot(t), DM=dims(i), w=DM[0]; let h=DM[1], rg=range(h);
+  times.forEach((t,i)=>{ if(ZM) Zt=ZM(t); if(SECS){ const S=walkSecAt(t,{rows:'all',dir:bias0}); SB=S.rows; levelNow=S.dir==='level'; bias=levelNow?bias0:S.dir; } if(!o0) o0=EXT_PLACE.tot(t); const o=LINE?o0:EXT_PLACE.tot(t), DM=dims(i), w=DM[0]; let h=DM[1], rg=range(h);
     const fits=cc=>{ if(LINE) return true; const zx=x=>Zt.px+Zt.s*(x-Zt.px), x0=zx(G.x0+cc*G.p+o[0]), x1=zx(G.x0+cc*G.p+o[0]+w*G.p-G.gut); return x0>=-1&&x1<=W+1; };
     let want=Math.round((W*rx-o[0]-G.x0)/G.p-ax*w); if(LINE&&prev) want=prev.c+prev.w+gap+(B.touch===false?Math.floor(rnd()*3):0); if(!fits(want)){ const vx0=Zt.px-Zt.px/Zt.s, vx1=Zt.px+(W-Zt.px)/Zt.s, lo=Math.ceil((vx0-o[0]-G.x0)/G.p), hi=Math.floor((vx1-o[0]-G.x0+G.gut)/G.p)-w; if(hi>=lo) want=clamp(want,lo,hi); }   /* the part of the grid in view (at this beat's zoom) */
     let c=want, r, joined=false, rest=false;
@@ -5042,9 +5072,9 @@ function beatPlace(G,base0,times,prevSeed){
     else if(joined){
       // walk corner to corner by default: the next block steps up or down so its corner meets the last one's corner
       let mode=step==='mixed'?(rnd()*100<sidePct?'side':'corner'):step;
-      if(B.path==='level') mode='side';
+      if(B.path==='level'||levelNow) mode='side';
       let want2=dirV; if(B.path==='melody'&&PP[i]!=null&&PP[i-1]!=null&&Math.abs(PP[i]-PP[i-1])>=0.5) want2=PP[i]>PP[i-1]?-1:1;
-      else if(bias==='even'||B.path==='random'){ const pull=clamp((prev.r-startR)/Math.max(1,rg[1]-rg[0]),-0.4,0.4); want2=rnd()<0.5+pull?-1:1; }   // even: drifts back toward the start row else if(bias==='up') want2=rnd()<0.8?-1:1; else if(bias==='down') want2=rnd()<0.8?1:-1;
+      else if(bias==='even'||B.path==='random'){ const pull=clamp((prev.r-startR)/Math.max(1,rg[1]-rg[0]),-0.4,0.4); want2=rnd()<0.5+pull?-1:1; }   /* even: drifts back toward the start row */ else if(bias==='up') want2=rnd()<0.8?-1:1; else if(bias==='down') want2=rnd()<0.8?1:-1;
       if(mode!=='side'&&SV.on){ const R1=range(1), roomUp=prev.r-R1[0]+OV, roomDn=R1[1]-(prev.r+prev.h)+1+OV, wantUp=want2<0;   /* random sizes: a block too tall to step up or down is cut to the room left, so the corners still meet */
         const roomW=wantUp?roomUp:roomDn, roomA=wantUp?roomDn:roomUp; if(h>roomW&&h>roomA&&Math.max(roomW,roomA)>=1){ h=Math.max(roomW,roomA); rg=range(h); } }
       const ov=Math.max(0,Math.min(OV,h-1,prev.h-1)), up=prev.r-h+ov, dn=prev.r+prev.h-ov;   /* overlap: the step shares this many rows with the last block */
@@ -5082,19 +5112,22 @@ function bbIdx(id,P){ if(id<0) return -id-1; return 0; }   /* beat index of a be
 function bbSetSize(ids,fn){ pushHist(true); const P=plan(geom()); D.L2.bb=Object.assign({},D.L2.bb); const per=Object.assign({},D.L2.bb.per||{});
   ids.forEach(id=>{ const b=P.seq.find(x=>x.id===id); if(!b) return; const i=bbIdx(id,P), cur=Object.assign({w:b.w,h:b.h},per[i]||{}); fn(cur,b); per[i]=cur; }); D.L2.bb.per=per; planCache.k=''; renderInsp(); render(); }
 function bbAncOf(out,k,a){ if(a&&a!=='auto') return a; const b=out[k], p=k>0?out[k-1]:null; if(!p) return 'l'; return b.r+b.h<=p.r+(p.h>1?p.h-1:0)&&b.r<p.r?'bl':b.r>p.r?'tl':'l'; }
-function bbResize(out,B){ const PER=B.per||{}, ADJ=clamp(B.adj!=null?Math.round(+B.adj):2,0,8), keys=Object.keys(PER).map(Number).filter(k=>out[k]).sort((a,b)=>a-b);
-  keys.forEach(k=>{ const o=PER[k]||{}, b=out[k], O={c:b.c,r:b.r,w:b.w,h:b.h}, nw=Math.max(1,Math.round(+o.w||O.w)), nh=Math.max(1,Math.round(+o.h||O.h)); if(nw===O.w&&nh===O.h) return;
+function bbResize(out,B){ lineAdjust(out,B.per||{},clamp(B.adj!=null?Math.round(+B.adj):2,0,8),B.gap); }
+/* hand edits along a walked line: PER[index] = {w,h,anc} (resize from the anchor) and/or {dc,dr} (move by whole cells) */
+function lineAdjust(out,PER,ADJ,gapB){ const keys=Object.keys(PER).map(Number).filter(k=>out[k]).sort((a,b)=>a-b);
+  keys.forEach(k=>{ const o=PER[k]||{}, b=out[k], O={c:b.c,r:b.r,w:b.w,h:b.h}, nw=Math.max(1,Math.round(+o.w||O.w)), nh=Math.max(1,Math.round(+o.h||O.h)), mc=Math.round(+o.dc||0), mr=Math.round(+o.dr||0); if(nw===O.w&&nh===O.h&&!mc&&!mr) return;
     const A=bbAncOf(out,k,o.anc), fx=A.indexOf('r')>=0?1:A.indexOf('l')>=0?0:0.5, fy=A.indexOf('b')>=0?1:A.indexOf('t')>=0?0:0.5;
-    b.c=Math.round(O.c+fx*(O.w-nw)); b.r=Math.round(O.r+fy*(O.h-nh)); b.w=nw; b.h=nh; b.__sized=true;
+    b.c=Math.round(O.c+fx*(O.w-nw))+mc; b.r=Math.round(O.r+fy*(O.h-nh))+mr; b.w=nw; b.h=nh; b.__sized=true;
     let pO=O, pN={c:b.c,r:b.r,w:b.w,h:b.h};
     for(let j=k+1;j<out.length;j++){ const n=out[j], nO={c:n.c,r:n.r,w:n.w,h:n.h};
       const dx=(pN.c+pN.w)-(pO.c+pO.w), above=nO.r+nO.h<=pO.r+Math.max(0,Math.min(nO.h,pO.h)-1)&&nO.r<pO.r, below=nO.r>pO.r&&!above;
-      const dy=above?pN.r-pO.r:below?(pN.r+pN.h)-(pO.r+pO.h):0;
+      const dy=above?pN.r-pO.r:below?(pN.r+pN.h)-(pO.r+pO.h):pN.r-pO.r;   /* side by side: keeps its row relative to the one before */
       if(!dx&&!dy) break;
-      { const g=nO.c-(pO.c+pO.w), vt=nO.r<=pO.r+pO.h&&nO.r+nO.h>=pO.r; if(g<0||g>Math.max(0,Math.round(+B.gap||0))+2||!vt) break; }   /* only blocks still joined to the one before follow — a new line (restart) stays where it is */
+      { const g=nO.c-(pO.c+pO.w), vt=nO.r<=pO.r+pO.h&&nO.r+nO.h>=pO.r; if(g<0||g>Math.max(0,Math.round(+gapB||0))+2||!vt) break; }   /* only blocks still joined to the one before follow — a new line (restart) stays where it is */
       if(j-k<=ADJ&&!(PER[j])){ let w2=nO.w-dx; if(w2<1) w2=1; n.c=nO.c+dx; n.w=w2;   /* left edge follows, right edge stays (unless it would vanish) */
         if(above){ let h2=nO.h+dy; if(h2<1){ n.h=1; n.r=nO.r+nO.h+dy-1; } else { n.h=h2; n.r=nO.r; } }
-        else if(below){ let h2=nO.h-dy; if(h2<1){ n.r=nO.r+dy; n.h=1; } else { n.r=nO.r+dy; n.h=h2; } } }
+        else if(below){ let h2=nO.h-dy; if(h2<1){ n.r=nO.r+dy; n.h=1; } else { n.r=nO.r+dy; n.h=h2; } }
+        else n.r=nO.r+dy; }
       else { n.c=nO.c+dx; n.r=nO.r+dy; }   /* beyond the ones that adapt: the rest of the line moves along with it */
       pO=nO; pN={c:n.c,r:n.r,w:n.w,h:n.h}; } }); }
 const L2CAM={main:{camSrc:'main',infX:100,infY:100},x:{camSrc:'main',infX:100,infY:0},fixed:{camSrc:'main',infX:0,infY:0},own:{camSrc:'own',infX:0,infY:0}};
@@ -5118,7 +5151,7 @@ function mediaAspectFor(i){ const M=D.bmedia||{}; let id=M.asset; const pool=(M.
 let EXT_RC=null, EXT_TR=null;   // EXT_TR: layer 1 drift added to layer 2 — the lock compensates so blocks still land on the point
    // layer 2 revealing by the layer 1 camera: the main plan's camera, used by the reveal timing
 /* vertical damping (camera follows up/down): 0 = the full up/down move, 100 = no vertical move at all */
-function vDamp(P){ const A=D.anim, d=clamp(+A.vDamp||0,0,100)/100; if(!d||A.axis!=='xy'||!P.cam||!P.cam.length) return; const y0=P.cam[0][1][1];
+function vDamp(P){ const A=D.anim, d=(()=>{ try{ if(A.zoomOn&&A.zm&&A.zm.room&&zoomRoomFn(geom())) return 1; }catch(e){} return clamp(+A.vDamp||0,0,100)/100; })();   /* zoom room: the camera stays level so the walk really spreads over the rows in view */ if(!d||A.axis!=='xy'||!P.cam||!P.cam.length) return; const y0=P.cam[0][1][1];
   P.cam=P.cam.map(k=>{ const n=k.slice(); n[1]=[k[1][0],r3(y0+(k[1][1]-y0)*(1-d))]; return n; }); }
 /* choppy camera: the smooth path, but the camera only moves in jumps — every N frames, and/or once it has drifted a
    set distance (in cells) from where it last stopped; optionally snapped to whole cells */
@@ -8701,7 +8734,7 @@ function setTool(t){
   U.tool=t; U.sel=t==='select'?U.sel:null; refresh();
 }
 function setHTML(el,h){if(el&&el._h!==h){el.innerHTML=h;el._h=h;}}
-function renderStepUI(){
+function renderStepUI(){ try{ const ae=document.activeElement; if(!(ae&&ae.dataset&&ae.dataset.ws)) renderWalkSec(); }catch(e){}
   const st=STEPS[U.step];
   $$('.railbtn').forEach((b,i)=>{b.classList.toggle('on',i===U.step);});
   $$('.pane').forEach(p=>p.classList.toggle('on',p.dataset.pane===st.id));
@@ -10513,7 +10546,27 @@ function renderWalkPresets(on){
 }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-wp]'); if(b) applyWalkPreset(b.dataset.wp); });
 /* ---- layer tabs (top bar) ---- */
+/* ---- walk sections: timed changes to the rows & direction ---- */
+const WS_ROWS=[['all','All rows'],['top','Top half'],['mid','Middle'],['bottom','Bottom half']], WS_DIR=[['even','Even'],['up','Mostly up'],['down','Mostly down'],['level','Level'],['bounce','Bounce']];
+function renderWalkSec(){ const bb=curLayer()==='l2'&&!!l2BB(), el=$(bb?'#walkSecBB':'#walkSecL1'), other=$(bb?'#walkSecL1':'#walkSecBB'); if(other) other.innerHTML=''; if(!el) return;
+  const L=Array.isArray(D.anim.walkSec)?D.anim.walkSec:[], fps=D.comp.fps||30, opt=(list,v)=>list.filter(x=>bb||x[0]!=='bounce').map(x=>`<option value="${x[0]}"${x[0]===v?' selected':''}>${x[1]}</option>`).join('');
+  el.innerHTML=`<div class="field stack"><span class="lbl">Changes over time <span class="note">from frame → to frame (empty = to the end)</span></span>
+    ${L.map((x,i)=>`<div class="wsec"><div class="wt"><input type="number" data-ws="f:${i}" value="${Math.round(+x.f||0)}" min="0" step="1" title="Starts at this frame"><button class="btn ghost" data-wsnow="f:${i}" title="Start at the playhead">⌖</button>→<input type="number" data-ws="to:${i}" value="${x.to!=null&&x.to!==''?Math.round(+x.to):''}" min="0" step="1" placeholder="end" title="Ends at this frame (empty = until the end or the next change)"><button class="btn ghost" data-wsnow="to:${i}" title="End at the playhead">⌖</button></div>
+      <div class="wt"><select data-ws="rows:${i}">${opt(WS_ROWS,x.rows||'all')}</select><select data-ws="dir:${i}">${opt(WS_DIR,x.dir||'even')}</select><button class="btn ghost" data-wsdel="${i}" title="Remove">✕</button></div></div>`).join('')}
+    <button class="btn" data-wsadd="1">+ Change at the playhead</button>
+    <div class="note">${L.length?`Before the first change: ${bb?'the settings above':'the Rows & Direction above'}. Later changes win where they overlap. Blocks step into new rows a block at a time, still joined.`:'E.g. all rows to start, then from a frame on, walk mostly up.'}</div></div>`; }
+document.addEventListener('click',e=>{ const t=e.target; if(!t||!t.closest) return;
+  const add=t.closest('[data-wsadd]'), now=t.closest('[data-wsnow]'), del=t.closest('[data-wsdel]'); if(!add&&!now&&!del) return; e.preventDefault(); pushHist(true);
+  const L=(Array.isArray(D.anim.walkSec)?D.anim.walkSec:[]).map(x=>Object.assign({},x)), f=Math.round(U.t||0), bb=curLayer()==='l2'&&!!l2BB();
+  if(add){ const cur=walkSecAt(f,bb?{rows:'all',dir:(D.L2.bb.bias||'even')}:null); L.push({f,to:null,rows:cur.rows,dir:cur.dir==='even'&&!bb?'up':cur.dir}); L.sort((a,b)=>a.f-b.f); }
+  if(now){ const [k,i]=now.dataset.wsnow.split(':'); if(L[+i]) L[+i][k]=f; }
+  if(del) L.splice(+del.dataset.wsdel,1);
+  D.anim.walkSec=L; planCache.k=''; refresh(); renderWalkSec(); });
+document.addEventListener('change',e=>{ const t=e.target; if(!t||!t.dataset||!t.dataset.ws) return; const [k,i]=t.dataset.ws.split(':'); pushHist(true);
+  const L=(Array.isArray(D.anim.walkSec)?D.anim.walkSec:[]).map(x=>Object.assign({},x)); if(!L[+i]) return;
+  L[+i][k]=(k==='f'||k==='to')?(t.value===''?null:Math.max(0,Math.round(+t.value))):t.value; if(k==='f') L.sort((a,b)=>a.f-b.f); D.anim.walkSec=L; planCache.k=''; refresh(); renderWalkSec(); });
 function renderLayerBar(){
+  try{ renderWalkSec(); }catch(e){}
   { const dg=$('#l2DimGroup'); if(dg) dg.hidden=!(D.L2&&D.L2.on&&curLayer()==='l2'); }
   { const cl=$('#cLayer'), a0=curLayer(); if(cl){ cl.hidden=!(D.L2&&D.L2.on); $$('#cLayerSeg [data-cl]').forEach(b=>b.classList.toggle('on',b.dataset.cl===a0)); } }
   const act=curLayer(), tb=$('#layerTabs'); if(!tb) return;
@@ -10554,11 +10607,22 @@ function cardRule(ids){ if(!ids.length||!D.look.rulesOn) return ''; const v=(D.a
   return `<div class="card"><div class="card-h">Order with the rules${ids.length>1?`<span class="count">${ids.length}</span>`:''}</div>
     <div class="seg" data-rzz="1"><button data-v="below"${v==='below'?' class="on"':''} title="Under the column rules">Behind rules</button><button data-v=""${!v?' class="on"':''} title="Rules are ${top?'on top':'underneath'} (Setup › Rules)">Default (${top?'behind':'in front'})</button><button data-v="above"${v==='above'?' class="on"':''} title="Over the column rules">In front of rules</button></div></div>`; }
 /* moving single blocks: snap to a grid (this layer's, or the other layer's as seen on screen at the block's reveal) and nudge */
+try{ U.routeXf=localStorage.getItem('gridblocks.routeXf')==='1'; }catch(e){}
 try{ U.snapXf=localStorage.getItem('gridblocks.snapXf')==='1'; U.snapGrid=localStorage.getItem('gridblocks.snapGrid')||'own'; }catch(e){}
 function xfToolsHTML(){ const on=!!U.snapXf, g=U.snapGrid||'own', other=curLayer()==='l2'?'Layer 1':'Layer 2';
   return `<div class="field stack"><label class="check"><input type="checkbox" data-xsnap="1"${on?' checked':''}> Snap to grid <span class="note">(moving, nudging, ⌥-drag)</span></label>
     <div class="seg" data-xgrid="1"${on?'':' style="opacity:.5"'}><button data-v="own"${g==='own'?' class="on"':''} title="This layer's own grid">This layer's grid</button>${l2On()?`<button data-v="other"${g==='other'?' class="on"':''} title="Line up with the other layer's grid as it's seen on screen when this block appears">${other}'s grid</button>`:''}</div>
-    <div class="row-btns"><span class="lbl">Nudge</span><button class="btn ghost" data-xn="-1,0" title="Left">←</button><button class="btn ghost" data-xn="1,0" title="Right">→</button><button class="btn ghost" data-xn="0,-1" title="Up">↑</button><button class="btn ghost" data-xn="0,1" title="Down">↓</button><span class="note">${on?'one cell':'10 px'} · ⇧ ×5</span></div></div>`; }
+    <div class="row-btns"><span class="lbl">Nudge</span><button class="btn ghost" data-xn="-1,0" title="Left">←</button><button class="btn ghost" data-xn="1,0" title="Right">→</button><button class="btn ghost" data-xn="0,-1" title="Up">↑</button><button class="btn ghost" data-xn="0,1" title="Down">↓</button><span class="note">${U.routeXf?'one cell, the line follows':on?'one cell':'10 px'} · ⇧ ×5</span></div>
+    <label class="check" title="Nudging moves the block on the grid and the walk after it re-routes from its new spot, still corner to corner"><input type="checkbox" data-xroute="1"${U.routeXf?' checked':''}> The walk follows the block</label>
+    ${U.routeXf?`<div class="field"><span class="lbl scrub" title="Blocks after this one that stretch to meet it — the rest of the line then moves along (0 = the whole rest of the line moves)">Next blocks adapt</span><div class="num"><input type="number" data-xadj="1" value="${curLayer()==='l2'&&l2BB()?(D.L2.bb.adj!=null?D.L2.bb.adj:2):(D.anim.walkAdj||0)}" min="0" max="8" step="1"></div></div>${routeMovedAny()?'<a href="#" class="note" data-xroutereset="1">reset moved blocks</a>':''}`:''}</div>`; }
+function routeMovedAny(){ if(curLayer()==='l2'&&l2BB()) return Object.values(D.L2.bb.per||{}).some(o=>o&&(o.dc||o.dr)); return Object.keys(D.anim.walkMove||{}).length>0; }
+/* nudge with 'the walk follows': move the block on the grid; the line after it re-routes */
+function routeNudge(ids,dx,dy){ pushHist(true); const P=plan(geom()), bb=curLayer()==='l2'&&!!l2BB();
+  if(bb){ D.L2.bb=Object.assign({},D.L2.bb); const per=Object.assign({},D.L2.bb.per||{}); ids.forEach(id=>{ const i=bbIdx(id,P), cur=Object.assign({},per[i]||{}); cur.dc=(+cur.dc||0)+dx; cur.dr=(+cur.dr||0)+dy; per[i]=cur; }); D.L2.bb.per=per; }
+  else { const wm=Object.assign({},D.anim.walkMove||{}); ids.forEach(id=>{ const real=D.blocks.find(b=>b.id===id);
+      if(real){ real.c+=dx; real.r+=dy; return; }   // a block you placed: move it — the generated walk continues from it
+      const cur=Object.assign({},wm[id]||{}); cur.dc=(+cur.dc||0)+dx; cur.dr=(+cur.dr||0)+dy; wm[id]=cur; }); D.anim.walkMove=wm; }
+  planCache.k=''; refresh(); renderInsp(); }
 function xfSnap(id,x,y){ if(!U.snapXf) return [x,y]; const G=geom(), P=plan(G), i=P.seq.findIndex(b=>b.id===id); if(i<0) return [x,y]; const b=P.seq[i], q=cellRect(G,b.c,b.r,b.w,b.h);
   if((U.snapGrid||'own')==='own'||!l2On()) return [Math.round((q.x+x-G.x0)/G.p)*G.p+G.x0-q.x, Math.round((q.y+y-G.y0)/G.p)*G.p+G.y0-q.y];
   const t=P.T[i]||0, cur=curLayer(), other=cur==='l2'?'main':'l2', Gr=withLayer(other,()=>geom());
@@ -10598,6 +10662,8 @@ function cardL2(ids){
 $('#insp').addEventListener('input',e=>{ const t=e.target, k=t.dataset&&t.dataset.l2x; if(!k) return; const v=parseFloat(t.value); if(isNaN(v)) return;
   if(!U._l2Edit){ pushHist(true); U._l2Edit=true; } D.anim.xf=Object.assign({},D.anim.xf||{}); mSelIds().forEach(id=>{ D.anim.xf[id]=Object.assign({},D.anim.xf[id]||{},{[k]:v}); }); planCache.k=''; render(); });
 $('#insp').addEventListener('change',e=>{ if(e.target.dataset&&e.target.dataset.l2x){ U._l2Edit=false; }
+  if(e.target.dataset&&e.target.dataset.xroute){ U.routeXf=e.target.checked; try{ localStorage.setItem('gridblocks.routeXf',U.routeXf?'1':'0'); }catch(x){} renderInsp(); return; }
+  if(e.target.dataset&&e.target.dataset.xadj){ pushHist(true); const v=clamp(Math.round(+e.target.value||0),0,8); if(curLayer()==='l2'&&l2BB()) D.L2.bb=Object.assign({},D.L2.bb,{adj:v}); else D.anim.walkAdj=v; planCache.k=''; refresh(); return; }
   if(e.target.dataset&&e.target.dataset.xsnap){ U.snapXf=e.target.checked; try{ localStorage.setItem('gridblocks.snapXf',U.snapXf?'1':'0'); }catch(x){}
     if(U.snapXf){ pushHist(true); D.anim.xf=Object.assign({},D.anim.xf||{}); mSelIds().forEach(id=>{ const xf=D.anim.xf[id]||{}, sn=xfSnap(id,+xf.x||0,+xf.y||0); D.anim.xf[id]=Object.assign({},xf,{x:sn[0],y:sn[1]}); }); planCache.k=''; }
     renderInsp(); render(); } });
@@ -10606,7 +10672,10 @@ $('#insp').addEventListener('click',e=>{ const bd=e.target.closest('[data-bbszd]
   const br=e.target.closest('[data-bbszreset]'); if(br){ e.preventDefault(); pushHist(true); D.L2.bb=Object.assign({},D.L2.bb,{per:{}}); planCache.k=''; renderInsp(); render(); toast('Block sizes back to the walk'); return; } });
 $('#insp').addEventListener('change',e=>{ const t=e.target; if(t.dataset&&t.dataset.bbadj){ pushHist(true); D.L2.bb=Object.assign({},D.L2.bb,{adj:clamp(Math.round(+t.value||0),0,8)}); planCache.k=''; render(); return; } if(t.dataset&&t.dataset.bbsz){ const k=t.dataset.bbsz, v=Math.max(1,Math.round(+t.value||1)); bbSetSize(mSelIds(),c=>{ c[k]=v; }); } });
 $('#insp').addEventListener('click',e=>{ const gb=e.target.closest('[data-xgrid] button[data-v]'); if(gb){ U.snapGrid=gb.dataset.v; try{ localStorage.setItem('gridblocks.snapGrid',U.snapGrid); }catch(x){} renderInsp(); return; }
-  const nb=e.target.closest('[data-xn]'); if(!nb) return; const [dx,dy]=nb.dataset.xn.split(',').map(Number), k=e.shiftKey?5:1; pushHist(true); D.anim.xf=Object.assign({},D.anim.xf||{});
+  const rr=e.target.closest('[data-xroutereset]'); if(rr){ e.preventDefault(); pushHist(true); if(curLayer()==='l2'&&l2BB()){ const per={}; Object.entries(D.L2.bb.per||{}).forEach(([k,o])=>{ const c=Object.assign({},o); delete c.dc; delete c.dr; if(Object.keys(c).length) per[k]=c; }); D.L2.bb=Object.assign({},D.L2.bb,{per}); } else D.anim.walkMove={}; planCache.k=''; refresh(); renderInsp(); return; }
+  const nb=e.target.closest('[data-xn]'); if(!nb) return; const [dx,dy]=nb.dataset.xn.split(',').map(Number), k=e.shiftKey?5:1;
+  if(U.routeXf){ routeNudge(mSelIds(),dx*k,dy*k); return; }
+  pushHist(true); D.anim.xf=Object.assign({},D.anim.xf||{});
   const G=geom(), Gr=U.snapXf&&(U.snapGrid||'own')==='other'&&l2On()?withLayer(curLayer()==='l2'?'main':'l2',()=>geom()):G, st=U.snapXf?Gr.p:10;
   mSelIds().forEach(id=>{ const xf=D.anim.xf[id]||{}; let x=(+xf.x||0)+dx*st*k, y=(+xf.y||0)+dy*st*k; const sn=xfSnap(id,x,y); D.anim.xf[id]=Object.assign({},xf,{x:sn[0],y:sn[1]}); }); planCache.k=''; renderInsp(); render(); });
 $('#insp').addEventListener('click',e=>{ const rz=e.target.closest('[data-rzz] button[data-v]'); if(rz){ pushHist(true); D.anim.rz=Object.assign({},D.anim.rz||{}); mSelIds().forEach(id=>{ if(rz.dataset.v) D.anim.rz[id]=rz.dataset.v; else delete D.anim.rz[id]; }); planCache.k=''; renderInsp(); render(); return; } });
