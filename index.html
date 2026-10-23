@@ -4678,9 +4678,9 @@ function frozenExt(G,base,n){ const FZ=D.anim.frozen; if(!FZ||FZ.kind!=='walk'||
   const out=[]; let mains=0; for(const f of FZ.b){ if(!f.stack){ if(mains>=n) break; mains++; } out.push(mk(f)); }
   if(mains<n){ const wm=D.anim.walkMove; D.anim.walkMove={}; let more; try{ more=extension(G,base.concat(out),n-mains); } finally{ D.anim.walkMove=wm; }
     const minId=Math.min(-1,...out.map(b=>b.id)); more.forEach((b,k)=>{ b.id=minId-1-k; });
-    if(wm&&Object.keys(wm).length){ const mm=more.filter(b=>!b.stack), PER={}; mm.forEach((b,i)=>{ if(wm[b.id]) PER[i]=wm[b.id]; }); if(Object.keys(PER).length) lineAdjust(mm,PER,clamp(D.anim.walkAdj!=null?Math.round(+D.anim.walkAdj):0,0,8),D.rand.gap); }
     out.push(...more); ['__endCol','__reach','__endRow'].forEach(k=>{ if(k in more) out[k]=more[k]; }); }
   else { const last=out.filter(b=>!b.stack).pop(); if(last) out.__endCol=last.c; }
+  { const wm=D.anim.walkMove; if(wm&&Object.keys(wm).length){ const mm=out.filter(b=>!b.stack), PER={}; mm.forEach((b,i)=>{ if(wm[b.id]) PER[i]=wm[b.id]; }); if(Object.keys(PER).length) lineAdjust(mm,PER,clamp(D.anim.walkAdj!=null?Math.round(+D.anim.walkAdj):0,0,8),D.rand.gap); } }   /* nudges with 'the walk follows' — locked blocks too */
   return out; }
 /* lock: keep the line's blocks exactly as they are now (all, or those that land up to frame upTo) */
 function lockLayer(upTo){ const P=plan(geom()); if(!P||!P.seq) return 0; let n=0;
@@ -5228,7 +5228,7 @@ function bbIdx(id,P){ if(id<0) return -id-1; return 0; }   /* beat index of a be
 function bbSetSize(ids,fn){ pushHist(true); const P=plan(geom()); D.L2.bb=Object.assign({},D.L2.bb); const per=Object.assign({},D.L2.bb.per||{});
   ids.forEach(id=>{ const b=P.seq.find(x=>x.id===id); if(!b) return; const i=bbIdx(id,P), cur=Object.assign({w:b.w,h:b.h},per[i]||{}); fn(cur,b); per[i]=cur; }); D.L2.bb.per=per; planCache.k=''; renderInsp(); render(); }
 function bbAncOf(out,k,a){ if(a&&a!=='auto') return a; const b=out[k], p=k>0?out[k-1]:null; if(!p) return 'l'; return b.r+b.h<=p.r+(p.h>1?p.h-1:0)&&b.r<p.r?'bl':b.r>p.r?'tl':'l'; }
-function bbResize(out,B){ const F=D.anim.frozen&&D.anim.frozen.kind==='bb'&&Array.isArray(D.anim.frozen.b)?D.anim.frozen.b.length:0, per={}; Object.keys(B.per||{}).forEach(k=>{ if(+k>=F) per[k]=B.per[k]; }); lineAdjust(out,per,clamp(B.adj!=null?Math.round(+B.adj):2,0,8),B.gap); }
+function bbResize(out,B){ lineAdjust(out,B.per||{},clamp(B.adj!=null?Math.round(+B.adj):2,0,8),B.gap); }   /* edits made after locking apply to locked blocks too (locking bakes earlier ones in) */
 /* hand edits along a walked line: PER[index] = {w,h,anc} (resize from the anchor) and/or {dc,dr} (move by whole cells) */
 function lineAdjust(out,PER,ADJ,gapB){ const keys=Object.keys(PER).map(Number).filter(k=>out[k]).sort((a,b)=>a-b);
   keys.forEach(k=>{ const o=PER[k]||{}, b=out[k], O={c:b.c,r:b.r,w:b.w,h:b.h}, nw=Math.max(1,Math.round(+o.w||O.w)), nh=Math.max(1,Math.round(+o.h||O.h)), mc=Math.round(+o.dc||0), mr=Math.round(+o.dr||0); if(nw===O.w&&nh===O.h&&!mc&&!mr) return;
