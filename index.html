@@ -610,6 +610,7 @@ body.nohelp .qm{display:none}
     <button class="btn ghost" id="btnLib" title="Saved layouts (⌘S to save)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2.5h7.5L13 5v8.5H3z"/><path d="M5.5 2.5v3h4v-3M5.5 13.5v-4h5v4"/></svg><span class="hide-sm">Layouts</span></button>
     <button class="btn ghost" id="btnClear" title="Clear & reset"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg><span class="hide-sm">Clear</span><svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor"><path d="M1 2.5h6L4 6z"/></svg></button>
     <a class="btn ghost" id="btnPanel" href="GridBlocks-panel.zip" download hidden title="Download the After Effects panel (installs into AE 2022 or newer)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8m-3-3 3 3 3-3M3 13h10"/></svg><span class="hide-sm">AE panel</span></a>
+    <button class="btn ghost" id="btnExportVidTop" title="Export the preview as an MP4, or a MOV with transparency — pick which layers go in"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="1.5" y="3.5" width="9.5" height="9" rx="1.5"/><path d="M11 6.5l3.5-2v7l-3.5-2"/></svg><span class="hide-sm">Export video</span></button>
     <button class="btn primary" id="btnBuild"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg><span id="buildLabel">Build</span></button>
   </header>
 
@@ -10335,7 +10336,8 @@ function vidApply(d,v){ if(!v||v.mode==='set') return d;
   return d; }
 async function vidChoose(d){ const pref=vidPref(); const v=pref||await vidAsk(d); if(!v) return null; return vidApply(d,v); }
 function vidChoiceLabel(){ const p=vidPref(); return p?({shared:'one clip for every block',each:'a clip per block',set:'as set in Block media',none:'no video'})[p.mode]:'ask on build'; }
-async function build(){
+async function build(ev){
+  if(ev&&ev.altKey){ try{ localStorage.removeItem('gb.vidChoice'); }catch(x){} }   /* ⌥-click Build: ask about video in the blocks again */
   let d=payload();
   if(!d.bg&&!d.cells&&!d.lines&&!d.blocks.length) return toast('Nothing to build. Turn on a layer in Grid › Look, or add blocks.','err');
   if((d.blocks||[]).length||(d.layer2&&d.layer2.blocks&&d.layer2.blocks.length)){ d=await vidChoose(d); if(!d) return; }
@@ -10921,7 +10923,7 @@ async function exportVideo(o){
   }catch(e){ if(String(e&&e.message)==='stopped') toast('Export stopped'); else toast('Export failed: '+(e&&e.message||e),'err'); try{ if(sink&&sink.close&&inAE) await sink.close(); }catch(x){} }
   finally{ EXP=null; Object.assign(D.look,look); try{ enc&&enc.state!=='closed'&&enc.close(); }catch(x){} try{ aenc&&aenc.state!=='closed'&&aenc.close(); }catch(x){} U.exporting=false; $('#expModal').hidden=true; render(); }
 }
-$('#btnExportVid')&&($('#btnExportVid').onclick=expOpen);
+$('#btnExportVid')&&($('#btnExportVid').onclick=expOpen); $('#btnExportVidTop')&&($('#btnExportVidTop').onclick=expOpen);
 init().catch(e=>{if(window.__gbShowErr)window.__gbShowErr('startup: '+(e&&(e.stack||e.message)||e));});
 };
 /* start after the loading screen has painted, so a slow or stuck start shows where it is instead of a black panel */
