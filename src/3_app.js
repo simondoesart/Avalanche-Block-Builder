@@ -4712,7 +4712,7 @@ function drawWorld(g,G,o){
         P2.seq.forEach(b=>{const q=cellRect(G,b.c,b.r,b.w,b.h);drawBlock(g,G,b,o2,off[0],off[1],blockState(P2.tracks[b.id],A.t,q),false);}); }
       else { g.save(); g.globalAlpha*=0.45; P2.seq.concat(P2.statics).forEach(b=>drawBlock(g,G,b,o2,0,0,null,false)); g.restore(); } }); };
   if(!l2On()) drawActive(null);
-  else { const L2C=l2Ctrl(), L2z=fn=>{ const fz=live&&D.L2&&D.L2.zoom===false&&baseXf&&g.setTransform; if(!fz&&!L2C) return fn(); g.save(); const zk=ZK; if(fz){ g.setTransform(baseXf); ZK=null; } ctrlApply(g,G,L2C); try{ fn(); } finally{ ZK=zk; g.restore(); } };   // layer 2 not affected by the zoom
+  else { const L2C=l2Ctrl(), L2z=fn=>{ const fz=live&&D.L2&&D.L2.zoom===false&&baseXf&&g.setTransform; if(!fz&&!L2C) return fn(); g.save(); const zk=ZK; if(fz){ g.setTransform(baseXf); ZK=null; try{ const P2z=curLayer()==='l2'?A.P:withLayer('l2',()=>plan(geom())), Z=l2OwnZoom(G,P2z,A.t); if(Z) zoomXf(g,G,Z.s,null,Z.c); }catch(e){} } ctrlApply(g,G,L2C); try{ fn(); } finally{ ZK=zk; g.restore(); } };   // layer 2 not affected by the zoom
     if(curLayer()==='main'){ drawActive('mb'); L2z(()=>drawOther('back')); drawActive('mid'); L2z(()=>drawOther('front')); drawActive('mf'); }
     else { drawOther('mb'); L2z(()=>drawActive('back')); drawOther('mid'); L2z(()=>drawActive('front')); drawOther('mf'); } }
   // text in the gaps between blocks
@@ -4868,9 +4868,12 @@ function ioSet(which,f){ pushHist(true); D.io=Object.assign({in:null,out:null},D
 function l2Ctrl(){ const c=D.L2&&D.L2.ctrl; if(!c) return null; const x=+c.x||0, y=+c.y||0, r=+c.r||0, s=(c.s!=null?+c.s:100)/100, o=(c.o!=null?+c.o:100)/100; return (x||y||r||Math.abs(s-1)>1e-6||o<1)?{x,y,r,s,o}:null; }
 function ctrlApply(g,G,C){ if(!C) return; g.translate(G.W/2+C.x,G.H/2+C.y); g.rotate(C.r*Math.PI/180); g.scale(C.s||1e-6,C.s||1e-6); g.translate(-G.W/2,-G.H/2); g.globalAlpha*=C.o; }
 function ctrlInv(G,C,p){ if(!C) return p; const dx=p.x-G.W/2-C.x, dy=p.y-G.H/2-C.y, a=-C.r*Math.PI/180, ca=Math.cos(a), sa=Math.sin(a); return {x:(dx*ca-dy*sa)/(C.s||1e-6)+G.W/2, y:(dx*sa+dy*ca)/(C.s||1e-6)+G.H/2}; }
+/* layer 2's own zoom (when it doesn't ride layer 1's): its Zoom points, around the beat blocks' point (or the frame centre) */
+function l2ZoomPivot(G){ const B=D.L2&&D.L2.bb; let bb=null; try{ bb=l2BB(); }catch(e){} return bb?[G.W*clamp(+B.rx||65,5,95)/100,G.H*(B.vf?clamp(B.ry!=null?+B.ry:50,0,100)/100:0.5)]:[G.W/2,G.H/2]; }
+function l2OwnZoom(G,P2,t){ if(!(D.L2&&D.L2.zoom===false)||!P2||!P2.zs||!P2.zs.length) return null; const s=ev(P2.zs,t,100)/100; return {s:Math.max(0.01,s),c:l2ZoomPivot(G)}; }
 function layerView(G,A){ const C=curLayer()==='l2'&&l2On()?l2Ctrl():null; if(!(A&&A.live)) return {s:1,pan:[0,0],zc:null,off:[0,0],ctrl:C};
   let v={s:A.s,pan:A.pan,zc:A.zc,off:A.off,ctrl:C};
-  if(curLayer()==='l2'&&l2On()){ const d=l2ShiftAt(A.t,A.M||A.P,A.P); v.off=[A.off[0]+d[0],A.off[1]+d[1]]; if(D.L2&&D.L2.zoom===false) v={s:1,pan:[0,0],zc:null,off:v.off,ctrl:C}; }
+  if(curLayer()==='l2'&&l2On()){ const d=l2ShiftAt(A.t,A.M||A.P,A.P); v.off=[A.off[0]+d[0],A.off[1]+d[1]]; if(D.L2&&D.L2.zoom===false){ const Z=l2OwnZoom(G,A.P,A.t); v={s:Z?Z.s:1,pan:[0,0],zc:Z?Z.c:null,off:v.off,ctrl:C}; } }
   return v; }
 function localPt(G,w){const A=animState(G), v=layerView(G,A);if(A&&A.live){ const c=v.zc||[G.W/2,G.H/2]; const z={x:c[0]+(w.x-v.pan[0]-c[0])/v.s,y:c[1]+(w.y-v.pan[1]-c[1])/v.s}, u=ctrlInv(G,v.ctrl,z); return{x:u.x-v.off[0],y:u.y-v.off[1]}; } return ctrlInv(G,v.ctrl,w);}
 /* per-block position / rotation / scale (layer 2): the same transform drawBlock uses, around the block's centre */
@@ -5419,7 +5422,7 @@ $('#insp').addEventListener('click',e=>{
 /* ------------------------------------------------------------------ bindings */
 function onChange(path){
   if(path==='rand.sizeVar.on'&&D.rand.sizeVar&&D.rand.sizeVar.on&&(+D.rand.sizeVar.keep||0)>=100){ D.rand.sizeVar.keep=0; syncInputs(true); }   /* turning random sizes on: don't leave every block at the base size */
-  if(/^rand\.sizeVar|^L2\.bb/.test(path)&&curLayer()==='l2') setTimeout(()=>{ try{ renderLayerBar(); }catch(e){} },0);
+  if(/^rand\.sizeVar|^L2\.|^anim\.zoomOn/.test(path)&&curLayer()==='l2') setTimeout(()=>{ try{ renderLayerBar(); }catch(e){} },0);
   if(path==='comp.w'||path==='comp.h') syncPreset();
   if(path==='comp.dur'||path==='comp.fps'){TL.autoN=0;TL.f0=TL.f1=null;}
   if(path==='comp.follow'&&D.comp.follow) detect();
@@ -6871,7 +6874,8 @@ function autosave(){
 function payload(){
   return withLayer('main',()=>{ const d=payloadCore(); d.layer2=null; { const IO=ioRange(); d.io=(IO.in!=null||IO.out!=null)?{in:IO.in,out:IO.out}:null; }
     const OL=(D.out&&D.out.layers)||'both';
-    if(l2On()&&OL!=='main'){ const PM=plan(geom()); d.layer2=withLayer('l2',()=>{ const q=payloadCore(true); let shift=null, abs=null; const C=l2Ctrl(); try{ const P2=plan(geom()); shift=l2ShiftKeys(PM,P2); if(D.L2.zoom===false||C) abs=l2ShiftKeys(PM,P2,true); }catch(e){} return {z:D.L2.z,blocks:q.blocks,echoes:q.echoes,shift,abs,zoom:D.L2.zoom!==false,ctrl:C}; }); }
+    if(l2On()&&OL!=='main'){ const PM=plan(geom()); d.layer2=withLayer('l2',()=>{ const q=payloadCore(true); let shift=null, abs=null; const C=l2Ctrl(); try{ const P2=plan(geom()); shift=l2ShiftKeys(PM,P2); if(D.L2.zoom===false||C) abs=l2ShiftKeys(PM,P2,true); }catch(e){} let oz=null; try{ const P2=plan(geom()); if(D.L2.zoom===false&&P2.zs&&P2.zs.length){ const c=l2ZoomPivot(geom()); oz={keys:P2.zs.map(k=>[k[0],[r3(k[1]),r3(k[1])],k[2]||'l',k[3]]),cx:r3(c[0]),cy:r3(c[1])}; } }catch(e){}
+        return {z:D.L2.z,blocks:q.blocks,echoes:q.echoes,shift,abs,zoom:D.L2.zoom!==false,ctrl:C,ozoom:oz}; }); }
     if(OL==='l2'&&d.layer2){ d.blocks=[]; d.echoes=[]; d.gaps=null; }
     return d; });
 }
@@ -7426,6 +7430,7 @@ function renderLayerBar(){
       $$('#l2BBGroup [data-bbset]').forEach(b=>{ const [k,v]=b.dataset.bbset.split(':'); let on=false; const T=act==='l2'?D.timing:{}; if(k==='beats') on=v==='big'?T.kind==='strong':(T.kind!=='strong'&&+(T.every||1)===+v); else if(k==='speed') on=+B.speed===+v; else if(k==='rx') on=+B.rx===+v; else if(k==='band') on=(B.band||'any')===v; else if(k==='path') on=(B.path||'walk')===v; else if(k==='touch') on=(B.touch!==false)===(v==='1'); else if(k==='stay') on=(B.stay||'stay')===v; else if(k==='step') on=(B.step||'corner')===v; else if(k==='bias') on=(B.bias||'bounce')===v; else if(k==='ovl') on=bbOvl(B)===v; else if(k==='cam') on=(bbLine(B)?'line':'l1')===v; else if(k==='vf') on=(!!B.vf)===(v==='1'); else if(k==='move') on=(B.move||'glide')===v; else if(k==='anchor') on=(B.anchor||'c')===v; else if(k==='rows') on=v==='all'?(B.rowFrom==null||B.rowFrom===''):false; b.classList.toggle('on',on); });
       if(act==='l2'){ const SV=D.rand.sizeVar||{}, rn=!!SV.on, wl=$('#bbWLbl'), hl=$('#bbHLbl'), sn=$('#bbSizeNote'); if(wl) wl.textContent=rn?'Base W':'Block W'; if(hl) hl.textContent=rn?'Base H':'Block H';
         if(sn) sn.innerHTML=!rn?'':(+SV.keep||0)>=100?'<span style="color:#F5A524">Keep base size is 100% — every block uses the base size. Lower it for random sizes.</span>':(SV.mode&&SV.mode!=='free')?`Using <b>Size mix › ${({list:'a list',shape:'shapes',media:'fit the media'})[SV.mode]||SV.mode}</b> — the W/H ranges here apply to Free sizes.`:''; }
+      { const zs=$('#l2ZoomSrc'), zn=$('#l2ZoomNote'); if(zs) zs.hidden=act!=='l2'||!(D.L2&&D.L2.on); if(zn&&act==='l2') zn.innerHTML=D.L2.zoom===false?(D.anim.zoomOn?`Zooms around ${l2BB()?'the beat blocks’ point (Across'+(B.vf?' / Down':'')+')':'the frame centre'}. Layer 1 keeps its own zoom.`:'Turn the switch on to give layer 2 its own zoom.'):'Layer 2 follows layer 1’s zoom — the points below are ignored for layer 2.'; }
       const st=$('#l2BBState'); if(st&&act==='l2'){ const n=timingCues().length; st.innerHTML=B.on?(n?(D.timing.sync?`<b>${n}</b> beats → one block each, placed by the camera.`:'Turn on beats (choose which above).'):'<span style="color:#F5A524">No beats yet — load the song in <b>Song</b>.</span>'):'Off — layer 2 uses the classic walk below.'; } } }
     const cb=$('#l2Beat'); if(cb&&act==='l2'){ cb.checked=l2BeatOn(); const n=$('#l2BeatN'); if(n) n.textContent=cb.checked?`(${timingCues().length} cues)`:''; }
     { const pn=$('#l2PaceNote'); if(pn){ let t=''; try{ if(act==='l2'&&D.rand.pace&&D.rand.pace.on){ const P=plan(geom()), eff=P.paceEff||0, want=+D.rand.pace.speed||0; const skip=D.rand.pace.fit!=='push'?(()=>{ const T0=D.timing, off=Math.round(+T0.offset||0), allN=new Set(((T0.beats||[]).concat(T0.use!=='beats'?(T0.markers||[]):[])).map(f=>Math.round(f+off))).size, used=timingCues().length; return D.timing.sync&&used<allN?`<br><span style="color:#F5A524">Using ${used} of ${allN} beats</span> to hold this speed — raise the speed, use smaller blocks or more rows (Layer 2 rows) to fit more, or switch to “Every beat, go faster”.`:''; })():''; if(eff) t=(eff>want*1.15?`<span style="color:#F5A524">Actually moving ${eff.toFixed(1)} cells/s</span> — the blocks are too big to fit slower at this many beats. Use smaller blocks, more rows (Layer 2 rows), fewer beats (Sound › Big hits / every Nth), or turn on Size mix.`:`Moving ${eff.toFixed(1)} cells/s.`)+skip; } }catch(e){} pn.innerHTML=t; } }

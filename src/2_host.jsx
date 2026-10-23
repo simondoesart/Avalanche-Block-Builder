@@ -968,7 +968,7 @@ function GB_build(d){
       if(org.headers!==false&&nFront) GB_header(blockC,"LAYER 2 · IN FRONT ("+nFront+")",hdrF);
       out.push(L2.blocks.length+" layer-2 blocks");
       /* layer 2's camera (influence / own camera / no zoom): handled once the rig exists, below */
-      l2Info={kids:[],shift:L2.shift,abs:L2.abs,zoom:L2.zoom!==false,ctrl:L2.ctrl||null};
+      l2Info={kids:[],shift:L2.shift,abs:L2.abs,zoom:L2.zoom!==false,ctrl:L2.ctrl||null,ozoom:L2.ozoom||null};
       for(var q2=0;q2<l2groups.length;q2++){ var gq=l2groups[q2].grp; for(var q3=0;q3<gq.length;q3++) if(gq[q3]) l2Info.kids.push(gq[q3]); }
     }
     if(fillLayers.length||gapLayers.length) out.push((fillLayers.length+gapLayers.length)+" content layers");
@@ -1139,6 +1139,12 @@ function GB_build(d){
         try{ var cp2=GB_xf(ctl).property("ADBE Position"); cp2.setValue([base2[0]+(+CT.x||0),base2[1]+(+CT.y||0)]); if(+CT.r) GB_xf(ctl).property("ADBE Rotate Z").setValue(+CT.r); var cs=(CT.s!=null?+CT.s*100:100);   // payload: s and o are fractions if(Math.abs(cs-100)>1e-3) GB_xf(ctl).property("ADBE Scale").setValue([cs,cs]);
           if(CT.o!=null&&+CT.o<1){ for(var q7=0;q7<l2Info.kids.length;q7++){ try{ var op=GB_xf(l2Info.kids[q7]).property("ADBE Opacity"); if(op.numKeys>0) op.expression='value*'+(+CT.o)+';'; else op.setValue(op.value*(+CT.o)); }catch(eO){} } }
         }catch(eCt){} out.push("layer 2 control layer"); }
+      /* layer 2's own zoom: a null scaled around the zoom point, on top of layer 2's chain (After Effects looks through one camera, so a second camera can't zoom one layer) */
+      if(l2Info.ozoom&&l2Info.ozoom.keys&&l2Info.ozoom.keys.length){ try{ var OZ=l2Info.ozoom, zn=GB_null(blockC,"GB · Layer 2 zoom",false); zn.comment="GridBlocks:null"; zn.label=9;
+          GB_xf(zn).property("ADBE Anchor Point").setValue([OZ.cx,OZ.cy]); GB_xf(zn).property("ADBE Position").setValue([OZ.cx,OZ.cy]);
+          var topL=ctl||sh; if(topL) GB_jumpParent(topL,zn); else { for(var q8=0;q8<l2Info.kids.length;q8++){ var kd3=l2Info.kids[q8]; try{ if(!kd3.parent||(cam&&kd3.parent===cam)||(conv&&kd3.parent===conv)) GB_jumpParent(kd3,zn); }catch(eP3){} } }
+          GB_keys(GB_xf(zn).property("ADBE Scale"),OZ.keys,fps); shy.push(zn); out.push("layer 2 zoom");
+        }catch(eOz){} }
     }catch(eSh){} }
     if(d.lab){GB_labScreen(main,d.lab,fps);}
     if(d.trans){var belowL=blockPre?blockPre.layer:(blocks.length?blocks[0].L:null); var nt=GB_trans(main,d,fps,org,folder,comps,belowL,cam); if(nt) out.push(nt+" transition blocks");}

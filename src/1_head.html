@@ -1524,6 +1524,8 @@ body.nohelp .qm{display:none}
           </div>
           <div class="group" data-ctx="zoom" data-show="anim.mode=reveal|camera|push">
             <div class="group-h">Zoom<label class="switch hswitch" title="Zoom the view in or out"><input type="checkbox" data-bind="anim.zoomOn"><span></span></label></div>
+            <div id="l2ZoomSrc" hidden><div class="field stack"><span class="lbl">Layer 2 zoom</span><div class="seg" data-seg="L2.zoom"><button data-v="false" title="Layer 2 zooms on its own, with the points below (in After Effects: a 'GB · Layer 2 zoom' null)">Its own</button><button data-v="true" title="Layer 2 rides layer 1's camera zoom">Ride layer 1's zoom</button></div></div>
+              <div class="note" id="l2ZoomNote"></div></div>
             <div class="note" data-show="anim.zoomOn=false">Zoom the view in or out between two frames, with its own easing. It shows as a row on the timeline.</div>
             <div data-show="anim.zoomOn=true" style="display:grid;gap:9px">
               <div class="note">Points on the <b>Zoom</b> timeline row: drag them (left/right = time, up/down = zoom) and their handles to shape each move, double-click to add one, ⌥-click to switch a point between linear and eased, ⇧⌥-click to remove.</div>
