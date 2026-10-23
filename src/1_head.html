@@ -942,6 +942,8 @@ body.nohelp .qm{display:none}
 
         <!-- 4 CONTENT -->
         <div class="pane" data-pane="content">
+          <div class="group" id="cLayer" hidden style="gap:6px"><div class="field stack"><span class="lbl">Content for</span><div class="seg" id="cLayerSeg"><button data-cl="main">Layer 1</button><button data-cl="l2">Layer 2</button></div></div>
+            <div class="note">Each layer has its own Text HUD, text between blocks, numbers, echo and media — switch here to set the other layer’s.</div></div>
           <div class="ctabs" id="ctabs"><button data-ctab-btn="hud">Text HUD</button><button data-ctab-btn="gaps">Between blocks</button><button data-ctab-btn="numbers">Numbers</button><button data-ctab-btn="echo">Echo</button><button data-ctab-btn="text">Your text</button><button data-ctab-btn="media">Media</button></div>
           <div class="group" data-ctab="media">
             <div class="group-h">Media in blocks</div>
@@ -1156,7 +1158,7 @@ body.nohelp .qm{display:none}
               <div class="field" data-show="fill.anim.outMode=fade|typeoff"><span class="lbl scrub" title="Frames it takes to go">Off length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.anim.outDur" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
             </div></details>
           </div>
-          <div class="group" data-ctab="gaps" data-show="fill.on=true">
+          <div class="group" data-ctab="gaps">
             <div class="group-h">Text between blocks</div>
             <div class="layer" data-layer="fill.gap.on">
               <label class="switch"><input type="checkbox" data-bind="fill.gap.on"><span></span></label>
@@ -1170,7 +1172,7 @@ body.nohelp .qm{display:none}
               </div>
             </div>
           </div>
-          <div class="group" data-ctab="gaps" data-show="fill.on=true&fill.gap.on=true">
+          <div class="group" data-ctab="gaps" data-show="fill.gap.on=true">
             <div class="group-h"><span class="lcol" style="background:#F5A524"></span>Timing<label class="switch hswitch" title="Own timing for the between-blocks content (off = same as Text HUD)"><input type="checkbox" data-bind="fill.gap.anim.own"><span></span></label></div>
             <div class="note" data-show="fill.gap.anim.own=false">Uses the Text HUD timing. Switch on for its own on / hold / off.</div>
             <div data-show="fill.gap.anim.own=true" style="display:grid;gap:9px">
@@ -1193,7 +1195,7 @@ body.nohelp .qm{display:none}
               <div class="note">On the timeline (amber row): drag the left knob to move the start, the right knob to change the hold.</div>
             </div>
           </div>
-          <div class="group" data-ctab="gaps" data-show="fill.on=false"><div class="note">Text between blocks uses the Text HUD content settings. Turn on <b>Fill blocks with content</b> in the Text HUD tab first.</div></div>
+          <div class="group" data-ctab="gaps" data-show="fill.on=false"><div class="note">Works on its own — Text HUD in the blocks can stay off. Font comes from the Text HUD settings.</div></div>
           <div class="group" data-ctab="numbers">
             <div class="group-h">Block numbers<label class="switch hswitch" title="A number in the top-right corner of every block"><input type="checkbox" data-bind="num.on"><span></span></label></div>
             <div data-show="num.on=true" style="display:grid;gap:9px">
@@ -1533,6 +1535,7 @@ body.nohelp .qm{display:none}
             <div data-show="anim.zoomOn=true" style="display:grid;gap:9px">
               <div class="note">Points on the <b>Zoom</b> timeline row: drag them (left/right = time, up/down = zoom) and their handles to shape each move, double-click to add one, ⌥-click to switch a point between linear and eased, ⇧⌥-click to remove.</div>
               <div class="field stack"><span class="lbl">Quick timing</span><div class="seg"><button data-zpre="build" title="Zoom in while the line builds, back out after">During the build</button><button data-zpre="hold" title="Zoom in for the hold, back out as it leaves">For the hold</button><button data-zpre="walk" title="Zoom in as the walk-off starts and stay in">The walk-off</button><button data-zpre="all" title="Zoom in early and stay in">Whole scene</button></div></div>
+              <label class="check" data-nobb title="Zoomed out, more rows are in view — the walk can climb into them (and back as the zoom comes in). Zoomed in, it keeps to the rows still on screen"><input type="checkbox" data-bind="anim.zm.room"> Walk uses the extra room when zoomed out</label>
               <div id="zoomPts" style="display:grid;gap:5px"></div>
               <div class="row-btns"><button class="btn" id="btnZoomPt">+ Add point</button></div>
               <div class="zgraph"><div class="zg-h"><span class="lbl">Zoom over time</span><span class="zg-hint">dbl-click add · ⌥-click linear/eased · ⇧⌥-click remove</span></div><canvas id="zoomGraph" class="tgraph" data-track="zoom"></canvas><div class="cv-val"></div>
