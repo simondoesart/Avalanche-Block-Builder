@@ -7204,7 +7204,8 @@ function vidApply(d,v){ if(!v||v.mode==='set') return d;
   return d; }
 async function vidChoose(d){ const pref=vidPref(); const v=pref||await vidAsk(d); if(!v) return null; return vidApply(d,v); }
 function vidChoiceLabel(){ const p=vidPref(); return p?({shared:'one clip for every block',each:'a clip per block',set:'as set in Block media',none:'no video'})[p.mode]:'ask on build'; }
-async function build(){
+async function build(ev){
+  if(ev&&ev.altKey){ try{ localStorage.removeItem('gb.vidChoice'); }catch(x){} }   /* ⌥-click Build: ask about video in the blocks again */
   let d=payload();
   if(!d.bg&&!d.cells&&!d.lines&&!d.blocks.length) return toast('Nothing to build. Turn on a layer in Grid › Look, or add blocks.','err');
   if((d.blocks||[]).length||(d.layer2&&d.layer2.blocks&&d.layer2.blocks.length)){ d=await vidChoose(d); if(!d) return; }
@@ -7790,7 +7791,7 @@ async function exportVideo(o){
   }catch(e){ if(String(e&&e.message)==='stopped') toast('Export stopped'); else toast('Export failed: '+(e&&e.message||e),'err'); try{ if(sink&&sink.close&&inAE) await sink.close(); }catch(x){} }
   finally{ EXP=null; Object.assign(D.look,look); try{ enc&&enc.state!=='closed'&&enc.close(); }catch(x){} try{ aenc&&aenc.state!=='closed'&&aenc.close(); }catch(x){} U.exporting=false; $('#expModal').hidden=true; render(); }
 }
-$('#btnExportVid')&&($('#btnExportVid').onclick=expOpen);
+$('#btnExportVid')&&($('#btnExportVid').onclick=expOpen); $('#btnExportVidTop')&&($('#btnExportVidTop').onclick=expOpen);
 init().catch(e=>{if(window.__gbShowErr)window.__gbShowErr('startup: '+(e&&(e.stack||e.message)||e));});
 };
 /* start after the loading screen has painted, so a slow or stuck start shows where it is instead of a black panel */
