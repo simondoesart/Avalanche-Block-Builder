@@ -568,6 +568,7 @@ body.nohelp .qm{display:none}
   .step-body{overflow:visible}
   .logo span,.hide-sm{display:none}
 }
+  .expl{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}.expbar{height:6px;border-radius:3px;background:#2a2a2e;overflow:hidden}.expbar div{height:100%;width:0;background:#E6212F;transition:width .1s}
   .vidopts{display:grid;gap:6px}.vidopt{display:grid;grid-template-columns:18px 1fr;column-gap:8px;padding:8px 10px;border:1px solid #333;border-radius:8px;cursor:pointer}
   .vidopt input{grid-row:1/3;margin-top:2px}.vidopt span{color:#9a9aa3;font-size:11.5px;line-height:1.35}.vidopt.on{border-color:#E6212F;background:rgba(230,33,47,.07)}
   .wsec{display:grid;grid-template-columns:auto 1fr;gap:6px;align-items:center;padding:6px 8px;border:1px solid #333;border-radius:7px;font-size:11.5px}
@@ -1728,6 +1729,7 @@ body.nohelp .qm{display:none}
             <button class="btn primary big" id="btnBuild2"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg><span id="buildLabel2">Build in After Effects</span></button>
             <div class="row-btns">
               <button class="btn" id="btnExportJsx" title="Download a script you can run with File › Scripts › Run Script File">Export .jsx</button>
+              <button class="btn" id="btnExportVid" title="Render the preview to an MP4, or a MOV with transparency">Export video…</button>
               <button class="btn danger" id="btnRemoveAE" title="Delete every Grid Blocks layer from the active comp">Remove from comp</button>
             </div>
             <div class="note" id="buildNote"></div>
@@ -1747,6 +1749,22 @@ body.nohelp .qm{display:none}
   </main>
 </div>
 
+<div class="modal" id="expModal" hidden>
+  <div class="sheet" style="max-width:480px">
+    <div class="sheet-h"><h3>Export video</h3><div class="spacer"></div><button class="btn icon ghost" data-exp="cancel" title="Close">✕</button></div>
+    <div id="expBody" style="display:grid;gap:11px;padding:4px 2px">
+      <div class="field stack"><span class="lbl">Format</span><div class="seg" id="expFmt"><button data-v="mp4" class="on" title="H.264 video, with the song if one is loaded">MP4</button><button data-v="mov" title="QuickTime with transparency (PNG frames) — drops straight into After Effects or Premiere over other footage">MOV with alpha</button></div></div>
+      <div class="field stack"><span class="lbl">Include</span><div class="expl" id="expLayers"></div></div>
+      <div class="field2"><div class="field stack"><span class="lbl">Range</span><div class="seg" id="expRange"><button data-v="all" class="on">Whole scene</button><button data-v="io">In → Out</button></div></div>
+        <div class="field stack"><span class="lbl">Size</span><div class="seg" id="expSize"><button data-v="1" class="on">100%</button><button data-v="0.5">50%</button><button data-v="0.25">25%</button></div></div></div>
+      <label class="check" id="expAudioRow"><input type="checkbox" id="expAudio" checked> Song audio <span class="note" id="expAudioNote"></span></label>
+      <label class="check" id="expMbRow"><input type="checkbox" id="expMb"> Motion blur <span class="note">(slower)</span></label>
+      <div class="note" id="expInfo"></div>
+      <div class="expbar" id="expBar" hidden><div></div></div>
+    </div>
+    <div class="sheet-f"><button class="btn" data-exp="cancel" id="expCancel">Cancel</button><div class="spacer"></div><button class="btn primary" data-exp="go" id="expGo">Export</button></div>
+  </div>
+</div>
 <div class="modal" id="vidModal" hidden>
   <div class="sheet" style="max-width:460px">
     <div class="sheet-h"><h3>Video in the blocks</h3><div class="spacer"></div><button class="btn icon ghost" data-vid="cancel" title="Cancel">✕</button></div>
