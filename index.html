@@ -568,6 +568,7 @@ body.nohelp .qm{display:none}
   .step-body{overflow:visible}
   .logo span,.hide-sm{display:none}
 }
+  .expl{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}.expbar{height:6px;border-radius:3px;background:#2a2a2e;overflow:hidden}.expbar div{height:100%;width:0;background:#E6212F;transition:width .1s}
   .vidopts{display:grid;gap:6px}.vidopt{display:grid;grid-template-columns:18px 1fr;column-gap:8px;padding:8px 10px;border:1px solid #333;border-radius:8px;cursor:pointer}
   .vidopt input{grid-row:1/3;margin-top:2px}.vidopt span{color:#9a9aa3;font-size:11.5px;line-height:1.35}.vidopt.on{border-color:#E6212F;background:rgba(230,33,47,.07)}
   .wsec{display:grid;grid-template-columns:auto 1fr;gap:6px;align-items:center;padding:6px 8px;border:1px solid #333;border-radius:7px;font-size:11.5px}
@@ -1728,6 +1729,7 @@ body.nohelp .qm{display:none}
             <button class="btn primary big" id="btnBuild2"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg><span id="buildLabel2">Build in After Effects</span></button>
             <div class="row-btns">
               <button class="btn" id="btnExportJsx" title="Download a script you can run with File › Scripts › Run Script File">Export .jsx</button>
+              <button class="btn" id="btnExportVid" title="Render the preview to an MP4, or a MOV with transparency">Export video…</button>
               <button class="btn danger" id="btnRemoveAE" title="Delete every Grid Blocks layer from the active comp">Remove from comp</button>
             </div>
             <div class="note" id="buildNote"></div>
@@ -1747,6 +1749,22 @@ body.nohelp .qm{display:none}
   </main>
 </div>
 
+<div class="modal" id="expModal" hidden>
+  <div class="sheet" style="max-width:480px">
+    <div class="sheet-h"><h3>Export video</h3><div class="spacer"></div><button class="btn icon ghost" data-exp="cancel" title="Close">✕</button></div>
+    <div id="expBody" style="display:grid;gap:11px;padding:4px 2px">
+      <div class="field stack"><span class="lbl">Format</span><div class="seg" id="expFmt"><button data-v="mp4" class="on" title="H.264 video, with the song if one is loaded">MP4</button><button data-v="mov" title="QuickTime with transparency (PNG frames) — drops straight into After Effects or Premiere over other footage">MOV with alpha</button></div></div>
+      <div class="field stack"><span class="lbl">Include</span><div class="expl" id="expLayers"></div></div>
+      <div class="field2"><div class="field stack"><span class="lbl">Range</span><div class="seg" id="expRange"><button data-v="all" class="on">Whole scene</button><button data-v="io">In → Out</button></div></div>
+        <div class="field stack"><span class="lbl">Size</span><div class="seg" id="expSize"><button data-v="1" class="on">100%</button><button data-v="0.5">50%</button><button data-v="0.25">25%</button></div></div></div>
+      <label class="check" id="expAudioRow"><input type="checkbox" id="expAudio" checked> Song audio <span class="note" id="expAudioNote"></span></label>
+      <label class="check" id="expMbRow"><input type="checkbox" id="expMb"> Motion blur <span class="note">(slower)</span></label>
+      <div class="note" id="expInfo"></div>
+      <div class="expbar" id="expBar" hidden><div></div></div>
+    </div>
+    <div class="sheet-f"><button class="btn" data-exp="cancel" id="expCancel">Cancel</button><div class="spacer"></div><button class="btn primary" data-exp="go" id="expGo">Export</button></div>
+  </div>
+</div>
 <div class="modal" id="vidModal" hidden>
   <div class="sheet" style="max-width:460px">
     <div class="sheet-h"><h3>Video in the blocks</h3><div class="spacer"></div><button class="btn icon ghost" data-vid="cancel" title="Cancel">✕</button></div>
@@ -3045,6 +3063,72 @@ function GB_build(d){
 }
 </script>
 <script>
+/* ================================================================ VIDEO EXPORT: a small MP4 / QuickTime writer
+   One video track (H.264 'avc1' from WebCodecs, or PNG frames 'png ' — QuickTime, keeps alpha) and optionally one
+   audio track (AAC 'mp4a'). Samples are streamed out as they arrive (sink(bytes) in order); the moov goes at the end
+   and the mdat size is patched at finish via patch(offset, bytes) — or, without patch, the header is returned first. */
+const GBMux=(()=>{
+  const u8=n=>new Uint8Array(n);
+  const be32=v=>{const b=u8(4);new DataView(b.buffer).setUint32(0,v>>>0);return b;};
+  const be16=v=>{const b=u8(2);new DataView(b.buffer).setUint16(0,v&0xffff);return b;};
+  const be64=v=>{const b=u8(8),d=new DataView(b.buffer);d.setUint32(0,Math.floor(v/4294967296));d.setUint32(4,v>>>0);return b;};
+  const str=s=>{const b=u8(s.length);for(let i=0;i<s.length;i++)b[i]=s.charCodeAt(i)&255;return b;};
+  const cat=parts=>{let n=0;parts.forEach(p=>n+=p.length);const o=u8(n);let k=0;parts.forEach(p=>{o.set(p,k);k+=p.length;});return o;};
+  const box=(type,...parts)=>{const body=cat(parts.flat());return cat([be32(body.length+8),str(type),body]);};
+  const full=(type,ver,flags,...parts)=>box(type,u8([ver,(flags>>16)&255,(flags>>8)&255,flags&255]),...parts);
+  const zeros=n=>u8(n);
+  const MATRIX=cat([be32(0x00010000),be32(0),be32(0),be32(0),be32(0x00010000),be32(0),be32(0),be32(0),be32(0x40000000)]);
+  function create(o){
+    /* o: {qt:bool, width,height, fps, video:{codec:'avc1'|'png ', description?:Uint8Array, depth}, audio?:{sampleRate,channels,description}, sink(bytes), patch?(offset,bytes)} */
+    const qt=!!o.qt, vts=Math.max(1,Math.round(o.fps*1000)), vdur=1000;   // video timescale & per-frame duration
+    const V={sizes:[],offs:[],sync:[],n:0}, A=o.audio?{sizes:[],offs:[],n:0,durs:[]}:null;
+    let pos=0; const emit=b=>{o.sink(b);pos+=b.length;};
+    const ftyp=qt?box('ftyp',str('qt  '),be32(0x200),str('qt  ')):box('ftyp',str('isom'),be32(0x200),str('isom'),str('iso2'),str('avc1'),str('mp41'));
+    emit(ftyp); const mdatAt=pos; emit(cat([be32(1),str('mdat'),be64(0)]));   // 64-bit size, patched at the end
+    function addVideo(bytes,key){ V.offs.push(pos); V.sizes.push(bytes.length); if(key) V.sync.push(V.n+1); V.n++; emit(bytes); }
+    function addAudio(bytes,dur){ if(!A) return; A.offs.push(pos); A.sizes.push(bytes.length); A.durs.push(dur||1024); A.n++; emit(bytes); }
+    function stbl(T,entry,isV){
+      const stts=(()=>{ if(isV) return full('stts',0,0,be32(1),be32(T.n),be32(vdur)); const runs=[]; T.durs.forEach(d=>{ const r=runs[runs.length-1]; if(r&&r[1]===d) r[0]++; else runs.push([1,d]); });
+        return full('stts',0,0,be32(runs.length),...runs.map(r=>cat([be32(r[0]),be32(r[1])]))); })();
+      const stsc=full('stsc',0,0,be32(1),be32(1),be32(1),be32(1));   // one sample per chunk
+      const stsz=full('stsz',0,0,be32(0),be32(T.n),...T.sizes.map(be32));
+      const big=T.offs.some(x=>x>4294967295);
+      const stco=big?full('co64',0,0,be32(T.n),...T.offs.map(be64)):full('stco',0,0,be32(T.n),...T.offs.map(be32));
+      const parts=[full('stsd',0,0,be32(1),entry),stts,stsc,stsz,stco];
+      if(isV&&V.sync.length&&V.sync.length<T.n) parts.splice(2,0,full('stss',0,0,be32(V.sync.length),...V.sync.map(be32)));
+      return box('stbl',...parts); }
+    function hdlr(kind,name,ct){ return qt?full('hdlr',0,0,str(ct||'mhlr'),str(kind),str('appl'),be32(0),be32(0),u8([name.length]),str(name)):full('hdlr',0,0,be32(0),str(kind),zeros(12),str(name),u8([0])); }
+    function videoEntry(){ const v=o.video, nm=v.codec==='png '?'PNG':'AVC Coding', cn=u8(32); cn[0]=Math.min(31,nm.length); cn.set(str(nm).slice(0,31),1);
+      const parts=[zeros(6),be16(1),be16(0),be16(0),qt?str('appl'):be32(0),be32(qt?512:0),be32(qt?512:0),be16(o.width),be16(o.height),be32(0x00480000),be32(0x00480000),be32(0),be16(1),cn,be16(v.depth||24),be16(0xffff)];
+      if(v.codec==='avc1'&&v.description) parts.push(box('avcC',v.description));
+      return box(v.codec,...parts); }
+    function audioEntry(){ const a=o.audio, asc=a.description;
+      const desc=asc?cat([u8([0x05,asc.length]),asc]):u8(0);
+      const dcd=cat([u8([0x04,13+desc.length,0x40,0x15,0,0,0]),be32(0),be32(0),desc]);
+      const es=cat([u8([0x03,3+dcd.length+3]),be16(1),u8([0]),dcd,u8([0x06,1,2])]);
+      return box('mp4a',zeros(6),be16(1),zeros(8),be16(a.channels),be16(16),be16(0),be16(0),be32((a.sampleRate&0xffff)*65536),full('esds',0,0,es)); }
+    function trak(id,isV,ts,dur,mvDur){
+      const tk=full('tkhd',0,3,be32(0),be32(0),be32(id),be32(0),be32(mvDur),zeros(8),be16(0),be16(0),be16(isV?0:0x0100),be16(0),MATRIX,be32(isV?o.width*65536:0),be32(isV?o.height*65536:0));
+      const md=full('mdhd',0,0,be32(0),be32(0),be32(ts),be32(dur),be16(qt?0:0x55c4),be16(0));
+      const mh=isV?full('vmhd',0,1,be16(0),zeros(6)):full('smhd',0,0,be16(0),be16(0));
+      const dinf=box('dinf',full('dref',0,0,be32(1),full(qt?'alis':'url ',0,1)));
+      const minf=box('minf',mh,...(qt?[hdlr('alis','Data Handler','dhlr')]:[]),dinf,stbl(isV?V:A,isV?videoEntry():audioEntry(),isV));
+      return box('trak',tk,box('mdia',md,hdlr(isV?'vide':'soun',isV?'VideoHandler':'SoundHandler'),minf)); }
+    function finish(){
+      const mdatSize=pos-mdatAt, vDurMv=Math.round(V.n*vdur/vts*1000);
+      const aTot=A?A.durs.reduce((s,d)=>s+d,0):0, aDurMv=A?Math.round(aTot/o.audio.sampleRate*1000):0, mvDur=Math.max(vDurMv,aDurMv);
+      const mvhd=full('mvhd',0,0,be32(0),be32(0),be32(1000),be32(mvDur),be32(0x00010000),be16(0x0100),zeros(10),MATRIX,zeros(24),be32(A?3:2));
+      const moov=box('moov',mvhd,trak(1,true,vts,V.n*vdur,vDurMv),...(A&&A.n?[trak(2,false,o.audio.sampleRate,aTot,aDurMv)]:[]));
+      emit(moov); const hdr=cat([be32(1),str('mdat'),be64(mdatSize)]);
+      if(o.patch) o.patch(mdatAt,hdr); return {mdatAt,hdr,size:pos}; }
+    return {addVideo,addAudio,finish};
+  }
+  /* Annex B → AVCC (for tests and for encoders that hand out start codes) */
+  function annexToAvcc(b){ const out=[]; let i=0, st=-1; const nal=(a,z)=>{ let e=z; while(e>a&&b[e-1]===0) e--; if(e>a){ const n=b.subarray(a,e); out.push(be32(n.length),n); } };
+    while(i+3<=b.length){ const sc3=b[i]===0&&b[i+1]===0&&b[i+2]===1; if(sc3){ if(st>=0) nal(st,i); st=i+3; i+=3; } else i++; }
+    if(st>=0) nal(st,b.length); return cat(out); }
+  return {create,annexToAvcc,cat,str};
+})();
 window.__gbMain=function(){
 'use strict';
 /* =====================================================================
@@ -6610,7 +6694,7 @@ async function loadMediaFile(file,opt){
     const buf=await file.arrayBuffer(), AC=window.AudioContext||window.webkitAudioContext, ac=new AC(), ab=await ac.decodeAudioData(buf);
     const ch=ab.getChannelData(0), sr=ab.sampleRate, nF=Math.ceil(ab.duration*fps), env=new Array(nF).fill(0), per=sr/fps;
     for(let f=0;f<nF;f++){let s=0;const a0=Math.floor(f*per),a1=Math.min(ch.length,Math.floor((f+1)*per));for(let k=a0;k<a1;k+=2)s+=ch[k]*ch[k];env[f]=Math.sqrt(s/Math.max(1,(a1-a0)/2));}
-    const mx=Math.max(1e-6,...env); m.env=env.map(v=>v/mx); m.peaks=m.env; m.dur=ab.duration;
+    const mx=Math.max(1e-6,...env); m.env=env.map(v=>v/mx); m.peaks=m.env; m.dur=ab.duration; m.ab=ab;   /* kept for the video export's sound */
     { const k=Math.max(1,Math.round(sr/11025)), n=Math.floor(ch.length/k), pcm=new Float32Array(n); for(let i=0;i<n;i++){ let a=0; for(let j=0;j<k;j++) a+=ch[i*k+j]; pcm[i]=a/k; } m.pcm=pcm; m.psr=sr/k; m.pfps=fps; }   // for the melody (pitch at each cue)
     try{ac.close();}catch(e){}
   }catch(e){ m.peaks=null; }
@@ -6651,7 +6735,7 @@ function mediaSync(playing){
     else { if(!m.el.paused) m.el.pause(); if(m.kind==='video'&&t>=0&&t<m.dur) m.el.currentTime=t; }
   }catch(e){}
 }
-function drawMediaBg(g,G){
+function drawMediaBg(g,G){ if(EXP&&EXP.noRef) return;
   const m=U.media; if(!m||m.kind!=='video'||!D.timing.video||!m.el||m.el.readyState<2) return;
   g.save(); g.globalAlpha=clamp(+D.timing.videoOpacity||60,0,100)/100;
   const vw=m.el.videoWidth||16, vh=m.el.videoHeight||9, s=Math.max(G.W/vw,G.H/vh); g.drawImage(m.el,(G.W-vw*s)/2,(G.H-vh*s)/2,vw*s,vh*s); g.restore();
@@ -7468,7 +7552,7 @@ function renderFrame(target,overlays){
   ctx.setTransform(V.dpr,0,0,V.dpr,0,0);
   ctx.clearRect(0,0,V.cw,V.ch);
   ctx.save(); ctx.translate(V.ox,V.oy); ctx.scale(sc,sc);
-  drawWorld(ctx,G,{alpha:.2,sc,A,inside:false});
+  if(!EXP) drawWorld(ctx,G,{alpha:.2,sc,A,inside:false});   /* the dimmed world outside the frame — not in a video export */
   ctx.save(); ctx.beginPath(); ctx.rect(0,0,G.W,G.H); ctx.clip();
   drawWorld(ctx,G,{alpha:1,sc,A,inside:true});
   ctx.restore();
@@ -7477,7 +7561,7 @@ function renderFrame(target,overlays){
   // lab: ticker + momentum particles, in screen space
   if(A&&A.live&&labScreenOn()){ctx.save();ctx.beginPath();ctx.rect(0,0,G.W,G.H);ctx.clip();drawLabScreen(ctx,G,A.t);ctx.restore();}
   // transitions sit on top, in screen space (not affected by the camera)
-  if(transOn()&&(A&&A.live||STEPS[U.step].id==='transitions')){
+  if(transOn()&&!(EXP&&EXP.noTrans)&&(A&&A.live||STEPS[U.step].id==='transitions')){
     const TP=transP(G); ctx.save(); ctx.beginPath(); ctx.rect(0,0,G.W,G.H); ctx.clip();
     if(A&&A.live){ const base=ctx.getTransform?ctx.getTransform():null; ctx.save(); zoomXf(ctx,G,A.s,A.pan,A.zc); drawTransLayer(ctx,G,A,false,base); ctx.restore(); }
     TP.tiles.forEach(tl=>{ if(A&&A.live) return;   // live: drawn by drawTransLayer
@@ -7633,6 +7717,7 @@ function dimTimes(P){ const DM=D.L2&&D.L2.dim; if(!DM||!DM.on||!P||!P.seq) retur
   const H=P.hidden||new Set(), L=P.seq.map((b,i)=>[P.T[i],b]).filter(x=>x[0]!=null&&!H.has(x[1].id)&&!x[1].__rest&&!x[1].stack).sort((a,b)=>a[0]-b[0]), out={}, dl=Math.round(+DM.delay||0), nb=Math.max(1,Math.round(+DM.after||1));
   L.forEach((x,i)=>{ const nx=L[i+nb]; if(nx) out[x[1].id]=nx[0]+dl; }); P._dimK=key; P._dimT=out; return out; }
 function drawBlock(g,G,b,o,dx,dy,st,ghost){
+  if(EXP&&EXP.hide[curLayer()]) return;   /* video export: this layer left out */
   if(o.hidden&&o.hidden.has(b.id)){ if(st) return; const h=o.hidden; o.hidden=null; g.save(); g.globalAlpha*=0.22; try{ drawBlock(g,G,b,o,dx,dy,st,true); } finally{ g.restore(); o.hidden=h; } return; }
   if(o.zPass&&curLayer()==='l2'&&(blockZ(b)==='behind'?'back':'front')!==o.zPass) return;   // layer-2 blocks: drawn in their own pass
   if(o.zPass&&curLayer()==='main'){ const z=(D.anim.zord||{})[b.id], p=z==='front'?'mf':z==='behind'?'mb':'mid'; if(p!==o.zPass) return; }   // main blocks moved in front of / behind layer 2
@@ -7650,15 +7735,15 @@ function drawBlock(g,G,b,o,dx,dy,st,ghost){
   g.translate(cx,cy); g.scale(st.sx,st.sy); g.translate(-cx,-cy);
   if(isOutline(b)){const lw=Math.max(1/o.sc,+D.fill.outlineW||2);g.strokeStyle=b.color;g.lineWidth=lw;g.strokeRect(x+lw/2,y+lw/2,w-lw,h-lw);}
   else {g.fillStyle=b.color; g.fillRect(x,y,w,h);}
-  if(o.inside&&o.media&&o.media[b.id]) drawMedia(g,o.media[b.id],{x:q.x+dx,y:q.y+dy,w:q.w,h:q.h},{x,y,w,h},o.fillT,g.globalAlpha);
+  if(o.inside&&o.media&&o.media[b.id]&&!(EXP&&EXP.noMedia)) drawMedia(g,o.media[b.id],{x:q.x+dx,y:q.y+dy,w:q.w,h:q.h},{x,y,w,h},o.fillT,g.globalAlpha);
   if(o.inside&&(U.mediaPick||U.contentPick)&&STEPS[U.step].id==='content'&&!ghost){ const on=U.contentPick?fillOnFor(b):(D.bmedia.pick||[]).indexOf(b.id)>=0, r0=Math.max(6/o.sc,Math.min(q.h*.16,14/o.sc)), px=x+r0*1.6, py=y+h-r0*1.6;
     g.save(); g.globalAlpha=1; g.beginPath(); g.arc(px,py,r0,0,7); g.fillStyle=on?'#2BD98F':'rgba(0,0,0,.55)'; g.fill(); g.lineWidth=Math.max(1,r0*.18); g.strokeStyle='#fff'; g.stroke();
     if(on){ g.beginPath(); g.moveTo(px-r0*.45,py); g.lineTo(px-r0*.1,py+r0*.38); g.lineTo(px+r0*.5,py-r0*.38); g.stroke(); } g.restore(); }
-  if(o.inside&&!ghost&&D.fill.on){
+  if(o.inside&&!ghost&&D.fill.on&&!(EXP&&EXP.noContent)){
     const items=fillItems(G,b,q,false);
     if(items.length){g.save();g.beginPath();g.rect(x,y,w,h);g.clip();drawFillItems(g,items,dx,dy,o.fillT!=null&&o.fillBase?o.fillBase[b.id]:null,o.fillT,o.alpha*st.op,o.fillEnd?o.fillEnd[b.id]:undefined);g.restore();}
   }
-  if(o.inside&&!ghost&&o.nums&&o.nums[b.id]!=null&&numOn(b)){
+  if(o.inside&&!ghost&&o.nums&&o.nums[b.id]!=null&&numOn(b)&&!(EXP&&EXP.noContent)){
     const K=o.tracks?o.tracks[b.id]:null, na=K&&K.num&&K.num.length?ev(K.num,o.fillT,100)/100:1;
     if(na>0){
       const str=numStr(o.nums[b.id]), L=numLayout({x:q.x+dx,y:q.y+dy,w:q.w,h:q.h},str);
@@ -7669,7 +7754,7 @@ function drawBlock(g,G,b,o,dx,dy,st,ghost){
     }
   }
   if(ghost){g.globalAlpha=o.alpha*.8;g.setLineDash([5/o.sc,4/o.sc]);g.lineWidth=1.2/o.sc;g.strokeStyle='#fff';g.strokeRect(x,y,w,h);g.setLineDash([]);}
-  if(b.text&&o.inside&&st.tp>0&&!ghost){
+  if(b.text&&o.inside&&st.tp>0&&!ghost&&!(EXP&&EXP.noContent)){
     g.globalAlpha=o.alpha*st.op*st.tp;
     g.beginPath(); g.rect(x,y,w,h); g.clip();
     drawText(g,b,q.x+dx,q.y+dy,q.w,q.h);
@@ -7716,7 +7801,7 @@ function drawFillItems(g,items,dx,dy,base,tf,alpha,tEnd){
   });
   g.restore();
 }
-function drawEcho(g,r,st,o,dx,dy,ghost){
+function drawEcho(g,r,st,o,dx,dy,ghost){ if(EXP&&(EXP.noEcho||EXP.hide[curLayer()])) return;
   const E=D.echo;
   if(!st) st={op:clamp(+E.opacity||0,0,100)/100,sx:1,sy:1,x:r.x,y:r.y,w:r.w,h:r.h};
   if(r.src&&!st.src) st.src=r.src;
@@ -7836,7 +7921,7 @@ function drawWorld(g,G,o){
   }
   /* text between blocks — each layer with its own settings, drawn where that layer is (layer 2: its camera, zoom and control layer) */
   if(o.inside){ const PMg=A?(A.M||A.P):null;
-    const drawGaps=layer=>{ const run=()=>{ if(!(D.fill.gap&&D.fill.gap.on)) return; const G2=geom(), P2=layer===curLayer()&&A?A.P:(A?plan(G2):null);
+    const drawGaps=layer=>{ const run=()=>{ if(!(D.fill.gap&&D.fill.gap.on)||(EXP&&(EXP.noContent||EXP.hide[layer]))) return; const G2=geom(), P2=layer===curLayer()&&A?A.P:(A?plan(G2):null);
         const gl=live&&P2&&P2.gaps?P2.gaps:gapItems(G2,live&&P2?P2.seq:(P2&&(P2.lineShift||isGenerated())?P2.seq:D.blocks.filter(b=>valid(b,G2))));
         const o0=live?A.off:[0,0]; let ox=o0[0], oy=o0[1]; if(layer==='l2'&&live){ const d=l2ShiftAt(A.t,PMg,P2); ox+=d[0]; oy+=d[1]; }
         gl.forEach(it=>drawFillItems(g,[it],ox,oy,live&&it.t0!=null?it.t0-(it.slot||0)*Math.max(0,+D.fill.anim.stagger||0):null,live?A.t:null,o.alpha*(layer===curLayer()?1:(live?1:0.45)),live?it.tEnd:undefined)); };
@@ -10741,11 +10826,108 @@ async function init(){
   window.__gbReady=true;
   if(SAFE) setTimeout(()=>toast('Safe mode: started fresh — your last scene was not loaded (it is still saved). Open the normal Grid Blocks panel next time.','ok'),800);
 }
+/* ================================================================ VIDEO EXPORT (MP4 / MOV with alpha) */
+let EXP=null;   // while exporting: what to leave out {hide:{main,l2}, noContent, noMedia, noEcho, noTrans, noRef}
+const EXP_LAYERS=[['bg','Background',1,0],['cells','Grid cells & lines',1,1],['rules','Column rules',1,1],['main','Layer 1 blocks',1,1],['l2','Layer 2 blocks',1,1],['content','Text, numbers & between-blocks',1,1],['media','Media in blocks',1,1],['echo','Echo',1,1],['trans','Transitions',1,1],['ref','Reference video (Song)',0,0]];
+const expBytes=d=>d instanceof ArrayBuffer?new Uint8Array(d.slice(0)):new Uint8Array(d.buffer,d.byteOffset||0,d.byteLength).slice();   /* ArrayBuffer or a view of one */
+function expPrefs(){ try{ return JSON.parse(localStorage.getItem('gb.expPrefs')||'null')||{}; }catch(e){ return {}; } }
+function expSeg(id,v){ $$('#'+id+' [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===String(v))); }
+function expSegV(id){ const b=$('#'+id+' [data-v].on'); return b?b.dataset.v:null; }
+function expOpen(){ const M=$('#expModal'); if(!M) return; const pr=expPrefs(), fmt=pr.fmt||'mp4';
+  const drawL=f=>{ const lay=(pr.layers&&pr.layers[f])||{}; $('#expLayers').innerHTML=EXP_LAYERS.filter(x=>x[0]!=='l2'||l2On()).filter(x=>x[0]!=='ref'||U.media&&U.media.kind==='video').map(x=>`<label class="check"><input type="checkbox" data-expl="${x[0]}"${(lay[x[0]]!=null?lay[x[0]]:(f==='mov'?x[3]:x[2]))?' checked':''}> ${x[1]}</label>`).join(''); };
+  expSeg('expFmt',fmt); drawL(fmt); expSeg('expRange',pr.range||'all'); expSeg('expSize',pr.size||'1');
+  const IO=ioRange(); $('#expRange [data-v="io"]').disabled=IO.in==null&&IO.out==null;
+  const ab=U.media&&U.media.ab; $('#expAudio').checked=pr.audio!==false&&!!ab; $('#expAudio').disabled=!ab; $('#expAudioNote').textContent=ab?`(${U.media.name})`:'(load a song in Song to include it)';
+  $('#expMb').checked=!!pr.mb; $('#expMbRow').hidden=!(D.out&&D.out.mb);
+  const sync=()=>{ const f=expSegV('expFmt'); $('#expAudioRow').hidden=f!=='mp4'; const ok=f==='mov'||typeof VideoEncoder!=='undefined';
+    $('#expInfo').innerHTML=f==='mov'?'QuickTime with alpha (PNG frames): big files, but every pixel and the transparency come through. Unticked layers are left out — untick <b>Background</b> for a clear background.':(ok?'H.264 MP4, '+(D.comp.w)+'×'+(D.comp.h)+' at the chosen size.':'<span style="color:#F5A524">This browser / After Effects version can’t encode MP4 — use MOV with alpha, or the web app in Chrome.</span>');
+    $('#expGo').disabled=!ok; };
+  M.onclick=e=>{ const sb=e.target.closest('.seg [data-v]'); if(sb){ const sg=sb.parentElement; if(sb.disabled) return; $$('[data-v]',sg).forEach(x=>x.classList.toggle('on',x===sb)); if(sg.id==='expFmt') drawL(sb.dataset.v); sync(); return; }
+    const b=e.target.closest('[data-exp]'); if(e.target===M&&!U.exporting){ M.hidden=true; return; } if(!b) return;
+    if(b.dataset.exp==='cancel'){ if(U.exporting){ U.expCancel=true; return; } M.hidden=true; return; }
+    if(b.dataset.exp==='go'&&!U.exporting){ const lay={}; $$('#expLayers [data-expl]').forEach(c=>lay[c.dataset.expl]=c.checked); const f=expSegV('expFmt');
+      const o={fmt:f,layers:lay,range:expSegV('expRange')||'all',size:expSegV('expSize')||'1',audio:$('#expAudio').checked,mb:$('#expMb').checked};
+      try{ const pr2=expPrefs(); pr2.fmt=f; pr2.layers=Object.assign({},pr2.layers||{},{[f]:lay}); pr2.range=o.range; pr2.size=o.size; pr2.audio=o.audio; pr2.mb=o.mb; localStorage.setItem('gb.expPrefs',JSON.stringify(pr2)); }catch(x){}
+      exportVideo(o); } };
+  sync(); $('#expBar').hidden=true; $('#expGo').hidden=false; $('#expCancel').textContent='Cancel'; M.hidden=false; }
+/* draw one frame of the scene (no editor overlays) into canvas c at scale k */
+function expDraw(c,t,k,mbN){ const sv={sc:V.sc,ox:V.ox,oy:V.oy,cw:V.cw,ch:V.ch,dpr:V.dpr}, st={t:U.t,preview:U.preview,playing:U.playing}, g=c.getContext('2d');
+  V.sc=k; V.ox=0; V.oy=0; V.dpr=1; V.cw=c.width; V.ch=c.height; U.preview=true; U.playing=false;
+  try{ if(!(mbN>1)){ U.t=t; renderFrame(g,false); }
+    else { const oc=expDraw.oc||(expDraw.oc=document.createElement('canvas')); oc.width=c.width; oc.height=c.height; const sh=clamp((+D.out.mbAngle||180)/360,0,2);
+      g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,c.width,c.height);
+      for(let i=0;i<mbN;i++){ U.t=t+sh*((i+.5)/mbN-.5); renderFrame(oc.getContext('2d'),false); g.setTransform(1,0,0,1,0,0); g.globalAlpha=1/(i+1); g.drawImage(oc,0,0); } g.globalAlpha=1; } }
+  finally{ Object.assign(V,sv); U.t=st.t; U.preview=st.preview; U.playing=st.playing; } }
+/* where the file goes: the browser downloads it; in After Effects you pick a place and it's written as it renders */
+async function expSink(name){
+  if(inAE){ const r=String(await evalHost('(function(){var f=new File(Folder.myDocuments.fsName+"/'+name+'").saveDlg("Save video");return f?"OK|"+f.fsName:"CANCEL";})()')); if(r.indexOf('OK|')!==0) return null; const path=r.slice(3);
+    const req=(window.cep_node&&window.cep_node.require)||window.require;
+    if(req){ try{ const fs=req('fs'), Bf=(window.cep_node&&window.cep_node.Buffer)||req('buffer').Buffer, fd=fs.openSync(path,'w');
+      return {path,write:b=>fs.writeSync(fd,Bf.from(b.buffer,b.byteOffset,b.byteLength)),patch:(at,b)=>fs.writeSync(fd,Bf.from(b.buffer,b.byteOffset,b.byteLength),0,b.byteLength,at),close:()=>fs.closeSync(fd)}; }catch(e){} }
+    const parts=[]; return {path,write:b=>parts.push(b),patch:(at,b)=>{ let off=0; for(const p of parts){ if(at<off+p.length){ p.set(b,at-off); return; } off+=p.length; } },
+      close:async()=>{ const blob=new Blob(parts), b64=await new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); }); const w=window.cep.fs.writeFile(path,b64,window.cep.encoding.Base64); if(w&&w.err) throw new Error('could not write the file (error '+w.err+')'); }}; }
+  const parts=[]; return {path:name,write:b=>parts.push(b),patch:(at,b)=>{ let off=0; for(const p of parts){ if(at<off+p.length){ p.set(b,at-off); return; } off+=p.length; } },
+    close:()=>{ const url=URL.createObjectURL(new Blob(parts,{type:name.endsWith('.mov')?'video/quicktime':'video/mp4'})); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),60000); }}; }
+async function exportVideo(o){
+  const G=geom(), fps=D.comp.fps||30, k=+o.size||1, W=Math.max(2,Math.round(G.W*k/2)*2), H=Math.max(2,Math.round(G.H*k/2)*2), mov=o.fmt==='mov';
+  let P=null; try{ P=withLayer('main',()=>animOn()?plan(geom()):null); }catch(e){}
+  const IO=ioRange(), end=Math.max(1,Math.round(P?(P.end||D.comp.dur*fps):D.comp.dur*fps)), f0=o.range==='io'&&IO.in!=null?Math.max(0,IO.in):0, f1=o.range==='io'&&IO.out!=null?Math.min(end,IO.out):Math.max(end,Math.round((+D.comp.dur||0)*fps));
+  const N=Math.max(1,f1-f0), name=`GridBlocks_${D.comp.w}x${D.comp.h}${mov?'_alpha':''}.${mov?'mov':'mp4'}`;
+  const sink=await expSink(name); if(!sink) return;
+  const L=o.layers||{}, bar=$('#expBar'), info=$('#expInfo'), prog=(i,txt)=>{ bar.firstElementChild.style.width=Math.round(100*i/N)+'%'; info.textContent=txt||`Frame ${i} of ${N}`; };
+  U.exporting=true; U.expCancel=false; bar.hidden=false; $('#expGo').hidden=true; $('#expCancel').textContent='Stop'; stopPlay&&stopPlay();
+  /* leave out what's unticked (restored after) */
+  const look=Object.assign({},D.look); if(!L.bg) D.look.bgOn=false; if(!L.cells){ D.look.cellsMode='none'; D.look.linesOn=false; } if(!L.rules) D.look.rulesOn=false;
+  EXP={hide:{main:L.main===false,l2:L.l2===false},noContent:!L.content,noMedia:!L.media,noEcho:!L.echo,noTrans:!L.trans,noRef:!L.ref};
+  const c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
+  const mbN=o.mb&&D.out&&D.out.mb?8:1; let err=null, enc=null, aenc=null;
+  try{
+    let mux;
+    if(mov){ mux=GBMux.create({qt:true,width:W,height:H,fps,video:{codec:'png ',depth:32},sink:b=>sink.write(b),patch:(a,b)=>sink.patch(a,b)});
+      for(let i=0;i<N;i++){ if(U.expCancel) throw new Error('stopped');
+        expDraw(c,f0+i,k*W/(G.W*k),mbN);
+        const blob=await new Promise(res=>c.toBlob(res,'image/png')); mux.addVideo(new Uint8Array(await blob.arrayBuffer()),true);
+        if(i%3===0){ prog(i); await new Promise(r=>setTimeout(r,0)); } } }
+    else {
+      const cands=W*H>1920*1088?['avc1.640033','avc1.4d0033','avc1.42e033']:['avc1.640028','avc1.4d0028','avc1.42e028'];
+      let cfg=null; for(const cd of cands){ const t={codec:cd,width:W,height:H,bitrate:Math.round(W*H*fps*0.22),framerate:fps,avc:{format:'avc'},latencyMode:'realtime'}; try{ const r=await VideoEncoder.isConfigSupported(t); if(r&&r.supported){ cfg=t; break; } }catch(e){} }
+      if(!cfg) throw new Error('H.264 encoding isn’t available here — try MOV with alpha');
+      const ab=o.audio&&U.media&&U.media.ab?U.media.ab:null; let acfg=null;
+      if(ab&&typeof AudioEncoder!=='undefined'){ const t={codec:'mp4a.40.2',sampleRate:ab.sampleRate,numberOfChannels:Math.min(2,ab.numberOfChannels),bitrate:192000}; try{ const r=await AudioEncoder.isConfigSupported(t); if(r&&r.supported) acfg=t; }catch(e){} }
+      const vq=[], aq=[]; let vDesc=null, aDesc=null;
+      enc=new VideoEncoder({output:(ch,meta)=>{ if(meta&&meta.decoderConfig&&meta.decoderConfig.description&&!vDesc) vDesc=expBytes(meta.decoderConfig.description); const b=new Uint8Array(ch.byteLength); ch.copyTo(b); vq.push([b,ch.type==='key']); },error:e=>{ err=e; }});
+      enc.configure(cfg);
+      if(acfg){ aenc=new AudioEncoder({output:(ch,meta)=>{ if(meta&&meta.decoderConfig&&meta.decoderConfig.description&&!aDesc) aDesc=expBytes(meta.decoderConfig.description); const b=new Uint8Array(ch.byteLength); ch.copyTo(b); aq.push(b); },error:e=>{ acfg=null; }}); aenc.configure(acfg); }
+      const vid={codec:'avc1',description:null}, aud=acfg?{sampleRate:acfg.sampleRate,channels:acfg.numberOfChannels,description:null}:null;
+      mux=GBMux.create({qt:false,width:W,height:H,fps,video:vid,audio:aud,sink:b=>sink.write(b),patch:(a,b)=>sink.patch(a,b)});
+      /* sound: the song from the scene's first frame, lined up like the preview (Song offset) */
+      let aPos=0; const off=withLayer('main',()=>+D.timing.offset||0), sr=acfg?acfg.sampleRate:0, chs=acfg?acfg.numberOfChannels:0, aStart=acfg?Math.round((f0-off)/fps*sr):0, aTotal=acfg?Math.round(N/fps*sr):0;
+      const feedAudio=upTo=>{ if(!acfg||!aenc) return; const want=Math.min(aTotal,Math.round(upTo/fps*sr)); while(aPos<want){ const n=Math.min(4096,want-aPos), data=new Float32Array(n*chs);
+          for(let ch=0;ch<chs;ch++){ const src=ab.getChannelData(Math.min(ch,ab.numberOfChannels-1)); for(let j=0;j<n;j++){ const si=aStart+aPos+j; data[ch*n+j]=si>=0&&si<src.length?src[si]:0; } }
+          aenc.encode(new AudioData({format:'f32-planar',sampleRate:sr,numberOfFrames:n,numberOfChannels:chs,timestamp:Math.round(aPos/sr*1e6),data})); aPos+=n; } };
+      const flushQ=()=>{ while(vq.length){ const [b,key]=vq.shift(); mux.addVideo(b,key); } while(aq.length) mux.addAudio(aq.shift(),1024); };
+      for(let i=0;i<N;i++){ if(U.expCancel) throw new Error('stopped'); if(err) throw err;
+        expDraw(c,f0+i,k*W/(G.W*k),mbN);
+        if(!L.bg){ g.save(); g.globalCompositeOperation='destination-over'; g.fillStyle='#000'; g.fillRect(0,0,W,H); g.restore(); }   // no alpha in MP4: black behind
+        const fr=new VideoFrame(c,{timestamp:Math.round(i*1e6/fps),duration:Math.round(1e6/fps)}); enc.encode(fr,{keyFrame:i%Math.max(1,Math.round(fps*2))===0}); fr.close();
+        feedAudio(i+1);
+        while(enc.encodeQueueSize>4) await new Promise(r=>setTimeout(r,1));
+        vid.description=vDesc; if(aud) aud.description=aDesc; flushQ();
+        if(i%3===0){ prog(i); await new Promise(r=>setTimeout(r,0)); } }
+      await enc.flush(); if(aenc&&acfg){ feedAudio(N); await aenc.flush(); } vid.description=vDesc; if(aud) aud.description=aDesc; flushQ();
+      if(!vDesc) throw new Error('the encoder gave no H.264 header'); }
+    prog(N,'Finishing…'); mux.finish(); await sink.close();
+    toast(inAE?`Saved ${sink.path}`:`Exported ${name}`,'ok');
+  }catch(e){ if(String(e&&e.message)==='stopped') toast('Export stopped'); else toast('Export failed: '+(e&&e.message||e),'err'); try{ if(sink&&sink.close&&inAE) await sink.close(); }catch(x){} }
+  finally{ EXP=null; Object.assign(D.look,look); try{ enc&&enc.state!=='closed'&&enc.close(); }catch(x){} try{ aenc&&aenc.state!=='closed'&&aenc.close(); }catch(x){} U.exporting=false; $('#expModal').hidden=true; render(); }
+}
+$('#btnExportVid')&&($('#btnExportVid').onclick=expOpen);
 init().catch(e=>{if(window.__gbShowErr)window.__gbShowErr('startup: '+(e&&(e.stack||e.message)||e));});
 };
 /* start after the loading screen has painted, so a slow or stuck start shows where it is instead of a black panel */
 (function(){ let started=false; const go=function(){ if(started) return; started=true; try{ if(window.__gbPhase) window.__gbPhase('starting the panel script'); window.__gbMain(); }catch(e){ if(window.__gbShowErr) window.__gbShowErr('startup: '+(e&&(e.stack||e.message)||e)); } };
   try{ if(typeof requestAnimationFrame==='function') requestAnimationFrame(function(){ setTimeout(go,0); }); }catch(e){}
   setTimeout(go,40); })();   // whichever comes first (some hosts never fire animation frames for hidden panels)
+
 </script>
 </body></html>
