@@ -571,6 +571,7 @@ body.nohelp .qm{display:none}
   .expl{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}.expbar{height:6px;border-radius:3px;background:#2a2a2e;overflow:hidden}.expbar div{height:100%;width:0;background:#E6212F;transition:width .1s}
   .vidopts{display:grid;gap:6px}.vidopt{display:grid;grid-template-columns:18px 1fr;column-gap:8px;padding:8px 10px;border:1px solid #333;border-radius:8px;cursor:pointer}
   .vidopt input{grid-row:1/3;margin-top:2px}.vidopt span{color:#9a9aa3;font-size:11.5px;line-height:1.35}.vidopt.on{border-color:#E6212F;background:rgba(230,33,47,.07)}
+  .bldt{width:100%;border-collapse:collapse;font-size:12px}.bldt td,.bldt th{padding:5px 6px;border-bottom:1px solid #2a2a2e;text-align:left;vertical-align:middle}.bldt th{color:#9a9aa3;font-weight:500}.bldt select{width:100%;font-size:12px}
   .lockbar{display:grid;gap:7px;padding:9px 10px;border:1px solid #F5A52455;border-radius:8px;background:rgba(245,165,36,.06);font-size:12px}.lockbar.on{border-color:#2BD98F66;background:rgba(43,217,143,.06)}
   .wsec{display:grid;grid-template-columns:auto 1fr;gap:6px;align-items:center;padding:6px 8px;border:1px solid #333;border-radius:7px;font-size:11.5px}
   .wsec .wt{display:flex;gap:4px;align-items:center;flex-wrap:wrap}.wsec input{width:52px}.wsec select{font-size:11.5px}
@@ -1762,6 +1763,13 @@ body.nohelp .qm{display:none}
   </main>
 </div>
 
+<div class="modal" id="bldModal" hidden>
+  <div class="sheet" style="max-width:560px">
+    <div class="sheet-h"><h3 id="bldTitle">Build in After Effects</h3><div class="spacer"></div><button class="btn icon ghost" data-bld="cancel" title="Cancel">✕</button></div>
+    <div style="display:grid;gap:11px;padding:4px 2px;max-height:70vh;overflow:auto" id="bldBody"></div>
+    <div class="sheet-f"><label class="check"><input type="checkbox" id="bldRemember"> Don’t ask again <span class="note">(⌥-click Build to see this again)</span></label><div class="spacer"></div><button class="btn" data-bld="cancel">Cancel</button><button class="btn primary" data-bld="go" id="bldGo">Build</button></div>
+  </div>
+</div>
 <div class="modal" id="lockAsk" hidden>
   <div class="sheet" style="max-width:420px">
     <div class="sheet-h"><h3>Some blocks are locked</h3></div>
@@ -2587,7 +2595,7 @@ function GB_mediaSource(m,root,folder,main){
   if(folder){ try{c.parentFolder=folder;}catch(e6){} }
   GB_mediaItems[key]=c; return c;
 }
-function GB_mediaLayer(comp,B,b,m,root,folder,main,fps){
+function GB_mediaLayer(comp,B,b,m,root,folder,main,fps,noMatte){
   var src=GB_mediaSource(m,root,folder,main); if(!src) return null;
   var L=comp.layers.add(src); L.moveBefore(B);
   L.name=b.name+" · Media"; L.comment="GridBlocks:media"; L.label=14;
@@ -2627,6 +2635,7 @@ function GB_mediaLayer(comp,B,b,m,root,folder,main,fps){
     if(m.inMode&&m.inMode!="block"){ var ease=new KeyframeEase(0,60); try{ for(var pk=1;pk<=op.numKeys;pk++) op.setTemporalEaseAtKey(pk,[ease],[ease]); }catch(eE){} }
   }catch(eIn){}
   if(!m.audio){ try{ L.audioEnabled=false; }catch(eA){} }
+  if(noMatte) return {L:L,ok:true};
   var ok=false; try{ L.setTrackMatte(B,TrackMatteType.ALPHA); ok=true; }catch(eM){ ok=false; }
   return {L:L,ok:ok};
 }
@@ -2689,13 +2698,23 @@ function GB_blockKeys(blocks,fps){
     if(!k) continue;
     GB_keys(GB_xf(BL).property("ADBE Opacity"),k.op,fps);
     GB_keys(GB_xf(BL).property("ADBE Scale"),k.sc,fps);
-    if((k.rs&&k.rs.length)||(k.rp&&k.rp.length)){
+    if(blocks[i].pc){ if(k.rs&&k.rs.length){ try{ GB_maskWipe(BL,k.rs,k.rp,blocks[i].pc.w,blocks[i].pc.h,fps); }catch(eMw){} } }
+    else if((k.rs&&k.rs.length)||(k.rp&&k.rp.length)){
       var rect=GB_contents(BL).property("ADBE Vector Shape - Rect");
       GB_keys(rect.property("ADBE Vector Rect Size"),k.rs,fps);
       GB_keys(rect.property("ADBE Vector Rect Position"),k.rp,fps);
     }
     if(blocks[i].T) GB_keys(GB_xf(blocks[i].T).property("ADBE Opacity"),k.top,fps);
   }
+}
+/* a block precomp's wipe: a rectangle mask keyed like the block's own rect (size + offset from the centre) */
+function GB_maskWipe(L,rs,rp,w,h,fps){
+  var m=L.property("ADBE Mask Parade").addProperty("ADBE Mask Atom"); m.name="Wipe"; var mp=m.property("ADBE Mask Shape"), i, j;
+  for(i=0;i<rs.length;i++){ var t=rs[i][0], sz=rs[i][1], po=[0,0];
+    if(rp&&rp.length){ for(j=0;j<rp.length;j++){ if(rp[j][0]<=t) po=rp[j][1]; } }
+    var cx=w/2+(po[0]||0), cy=h/2+(po[1]||0), hw=Math.max(0,sz[0])/2, hh=Math.max(0,sz[1])/2, sh=new Shape();
+    sh.vertices=[[cx-hw,cy-hh],[cx+hw,cy-hh],[cx+hw,cy+hh],[cx-hw,cy+hh]]; sh.closed=true; mp.setValueAtTime(t/fps,sh); }
+  for(i=0;i<rs.length;i++){ try{ var ki=mp.nearestKeyIndex(rs[i][0]/fps), ty=rs[i][2]=="h"?KeyframeInterpolationType.HOLD:rs[i][2]=="l"?KeyframeInterpolationType.LINEAR:KeyframeInterpolationType.BEZIER; mp.setInterpolationTypeAtKey(ki,ty,ty); }catch(eK){} }
 }
 function GB_build(d){
   var comp, made=false, out=[], i, L;
@@ -2795,7 +2814,35 @@ function GB_build(d){
     }
     var nEcho=blocks.length;
     /* one block + everything inside it (media, text, number, content), trimmed and colour-grouped */
+    /* block precomps (comp mode C): Grid Blocks / <comp> / Layer 1 · Blocks, Layer 2 · Blocks, Media, Dim */
+    var pcRoot=folder||GB_folder("Grid Blocks",null), pcF={}, dimShared=null;
+    function pcFolder(pre){ var k=pre?"l2":"l1"; if(!pcF[k]) pcF[k]=GB_folder(pre?"Layer 2 · Blocks":"Layer 1 · Blocks",pcRoot); return pcF[k]; }
+    function dimComp(color){ if(dimShared) return dimShared; var dc=app.project.items.addComp(GB_uniqueName("GB · Dim colour (all layers)"),main.width,main.height,main.pixelAspect,main.duration,main.frameRate);
+      try{ dc.parentFolder=GB_folder("Dim",pcRoot); }catch(eF){} try{ dc.comment="Grid Blocks: change this solid's colour to recolour every block's dim at once"; }catch(eC){}
+      var so=dc.layers.addSolid(color||[0,0,0],"Dim colour",main.width,main.height,main.pixelAspect,main.duration); so.comment="GridBlocks:dim"; dimShared=dc; return dc; }
+    function addBlockPC(b,i,pre,lab2,mode){
+      var bw=Math.max(1,Math.round(b.bw)), bh=Math.max(1,Math.round(b.bh)), nm=(pre||"")+b.name;
+      var PC=app.project.items.addComp(GB_uniqueName("GB · "+(pre?"L2":"L1")+" · "+b.name),bw,bh,main.pixelAspect,main.duration,main.frameRate);
+      try{ PC.parentFolder=pcFolder(pre); }catch(eF){} comps.push(PC);
+      var off=GB_null(PC,"GB · place",false); GB_xf(off).property("ADBE Position").setValue([-b.x,-b.y]); off.comment="GridBlocks:null"; try{ off.shy=true; }catch(eS){}
+      var base=GB_box(PC,"Base · "+b.name,b.x,b.y,b.bw,b.bh,b.color,b.outline?b.outline.w:0); GB_jumpParent(base,off); base.comment="GridBlocks:base"; base.label=1;
+      if(b.media){ try{ var mr=GB_mediaLayer(PC,base,b,b.media,d.mediaRoot,mediaF||folder,main,fps,true); if(mr&&mr.L){ mr.L.label=14; } }catch(eMd){} }
+      if(b.dim&&b.dim.keys){ try{ var DLy; if(d.dimShared!==false){ DLy=PC.layers.add(dimComp(b.dim.color)); GB_xf(DLy).property("ADBE Position").setValue([bw/2,bh/2]); GB_xf(DLy).property("ADBE Scale").setValue([bw/main.width*100,bh/main.height*100]); }
+          else DLy=PC.layers.addSolid(b.dim.color,"Dim",bw,bh,main.pixelAspect,main.duration);
+          DLy.name="Dim"; DLy.comment="GridBlocks:dim"; GB_keys(GB_xf(DLy).property("ADBE Opacity"),b.dim.keys,fps); }catch(eDm){} }
+      var f0=fillLayers.length, own=[]; GB_fillItems(PC,b.fill,null,own); for(var q=0;q<own.length;q++){ try{ GB_jumpParent(own[q],off); }catch(eJ){} }
+      var NT=null; if(b.num){ try{ d_fps_hack=fps; NT=GB_numText(PC,base,b); NT.parent=null; GB_jumpParent(NT,off); }catch(eN){} }
+      var T=null; if(b.text){ try{ T=GB_text(PC,base,b); T.parent=null; GB_jumpParent(T,off); T.label=1; }catch(eT){} }
+      if(b.tOut!=null){ for(var q2=0;q2<own.length;q2++) trimOut(own[q2],b.tOut); }
+      var L=blockC.layers.add(PC); L.name=nm; L.comment="GridBlocks:block|order="+b.order+"|c="+b.c+"|r="+b.r+"|w="+b.w+"|h="+b.h+(pre?"|layer=2":"")+"|precomp=1";
+      GB_xf(L).property("ADBE Position").setValue([b.x+b.bw/2,b.y+b.bh/2]); L.label=lab2?(i%2?9:14):(i%2?11:1);
+      blocks.push({L:L,T:T,b:b,pc:{w:bw,h:bh}}); blockLayers.push(L);
+      if(b.tIn!=null) trimTo(L,b.tIn); if(b.tOut!=null) trimOut(L,b.tOut);
+      return {B:L,grp:[L,null,null,null],b:b}; }
     function addBlock(b,i,pre,lab2){
+      var mode=pre?(d.layer2&&d.layer2.compMode)||"B":d.compMode||"B";
+      if(mode=="C") return addBlockPC(b,i,pre,lab2,mode);
+      if(mode=="A") b.media=null;
       var B=GB_box(blockC,(pre||"")+b.name,b.x,b.y,b.bw,b.bh,b.color,b.outline?b.outline.w:0);
       B.comment="GridBlocks:block|order="+b.order+"|c="+b.c+"|r="+b.r+"|w="+b.w+"|h="+b.h+(pre?"|layer=2":"");
       B.label=1;
@@ -2815,7 +2862,7 @@ function GB_build(d){
       if(b.dim&&b.dim.keys){ try{ var DL=GB_box(blockC,(pre||"")+b.name+" · Dim",b.x,b.y,b.bw,b.bh,b.dim.color,0); DL.comment="GridBlocks:dim";
           GB_jumpParent(DL,B); GB_xf(DL).property("ADBE Anchor Point").setValue([0,0]); GB_xf(DL).property("ADBE Position").setValue([0,0]);
           var dr=GB_contents(DL).property("ADBE Vector Shape - Rect");
-          try{ dr.property("ADBE Vector Rect Size").expression="// Grid Blocks: same size as the block\ntry{ thisLayer.parent.content(1).size }catch(e){ value }"; dr.property("ADBE Vector Rect Position").expression="try{ thisLayer.parent.content(1).position }catch(e){ value }"; }catch(eDx){}
+          try{ dr.property("ADBE Vector Rect Size").expression="// Grid Blocks: same size as the block\ntry{ thisLayer.parent.content(1).content(1).size }catch(e){ value }"; dr.property("ADBE Vector Rect Position").expression="try{ thisLayer.parent.content(1).content(1).position }catch(e){ value }"; }catch(eDx){}
           var dop=GB_xf(DL).property("ADBE Opacity"); GB_keys(dop,b.dim.keys,fps); dop.expression="// Grid Blocks: fades with the block\nvalue*thisLayer.parent.transform.opacity/100";
           trimTo(DL,Math.max(0,b.dim.keys[0][0]-1)); if(b.tOut!=null) trimOut(DL,b.tOut); grp.push(DL); }catch(eDim){} }
       GB_labelAll(grp,lab2?(i%2?9:14):(i%2?11:1));
@@ -7769,7 +7816,7 @@ function drawMedia(g,s,q,clipR,t,alpha){
 }
 function blockZ(b){ return (D.anim.zord&&D.anim.zord[b.id])||(D.L2&&D.L2.z)||'front'; }
 /* layer 2 dim: when each block gets dimmed — when the next one lands (plus a delay); the newest block stays clear */
-function dimTimes(P){ const DM=D.L2&&D.L2.dim; if(!DM||!DM.on||!P||!P.seq) return null; const key=JSON.stringify(DM)+'|'+P.seq.length; if(P._dimK===key) return P._dimT;
+function dimTimes(P,force){ const DM=D.L2&&D.L2.dim; if(!DM||!(DM.on||force)||!P||!P.seq) return null; const key=JSON.stringify(DM)+'|'+P.seq.length; if(P._dimK===key) return P._dimT;
   const H=P.hidden||new Set(), L=P.seq.map((b,i)=>[P.T[i],b]).filter(x=>x[0]!=null&&!H.has(x[1].id)&&!x[1].__rest&&!x[1].stack).sort((a,b)=>a[0]-b[0]), out={}, dl=Math.round(+DM.delay||0), nb=Math.max(1,Math.round(+DM.after||1));
   L.forEach((x,i)=>{ const nx=L[i+nb]; if(nx) out[x[1].id]=nx[0]+dl; }); P._dimK=key; P._dimT=out; return out; }
 function drawBlock(g,G,b,o,dx,dy,st,ghost){
@@ -10200,7 +10247,7 @@ function payloadCore(inner){
       num:numOn(b)?(()=>{const s=numStr(NUMS[b.id]||0),q2=cellRect(G,b.c,b.r,b.w,b.h),L=numLayout(q2,s);return {text:s,x:r3(L.x),y:r3(L.y),size:L.size,color:hexRgb(D.num.color),font:D.fill.font,opacity:clamp(+D.num.opacity||100,0,100),keys:animOn&&P.tracks[b.id]&&P.tracks[b.id].num&&P.tracks[b.id].num.length?P.tracks[b.id].num.map(k=>[k[0],r3(k[1]*clamp(+D.num.opacity||100,0,100)/100),k[2],k[3]]):null};})():null,
       keys:animOn?P.tracks[b.id]:null, tIn:animOn?Math.round(P.T[P.seq.indexOf(b)]):null, tOut:exitEnd(P,P.seq.indexOf(b),animOn),
       xf:(()=>{ const X=D.anim.xf&&D.anim.xf[b.id]; if(!X) return null; const AN=xfPivot(); return (AN[0]!==0.5||AN[1]!==0.5)?Object.assign({},X,{px:r3((AN[0]-0.5)*q.w),py:r3((AN[1]-0.5)*q.h)}):X; })(), zz:(D.anim.zord&&D.anim.zord[b.id])||null, rz:(D.anim.rz&&D.anim.rz[b.id])||null,
-      dim:(()=>{ if(!animOn||curLayer()!=='l2') return null; const DT=dimTimes(P); if(!DT||DT[b.id]==null) return null; const DM=D.L2.dim, t0=DT[b.id], L=Math.max(1,Math.round(+DM.len||1)); return {color:hexRgb(DM.color||'#121212'),keys:[[t0,0,'e'],[t0+L,clamp(+DM.op||0,0,100),'e']]}; })()};
+      dim:(()=>{ const want=BLD_DIM?BLD_DIM[curLayer()]:curLayer()==='l2'; if(!animOn||!want) return null; const DT=dimTimes(P,!!BLD_DIM); if(!DT||DT[b.id]==null) return null; const DM=D.L2.dim, t0=DT[b.id], L=Math.max(1,Math.round(+DM.len||1)); return {color:hexRgb(DM.color||'#121212'),keys:[[t0,0,'e'],[t0+L,clamp(+DM.op||0,0,100),'e']]}; })()};
   });
   // ---- content: auto-fill items → AE-ready descriptions
   const F=D.fill, met=fillMetrics();
@@ -10393,13 +10440,71 @@ function vidApply(d,v){ if(!v||v.mode==='set') return d;
       {id:per?('gbph'+ln+'_'+i):'gbph',name:'Replace me',type:'video',file:'media/sample.mp4',path:null,precomp:true,
        compName:per?('GB · Replace me · '+(ln==='2'?'L2 · ':'')+(b.name||('Block '+(i+1)))):'GB · Replace me (all blocks)',startF:m0&&m0.startF!=null?m0.startF:(b.tIn||0)}); }));
   return d; }
+/* ---- Build / Export .jsx options: what goes to After Effects, per layer, and how blocks are comped ---- */
+let BLD_DIM=null;   // while the payload is made: which layers get a dim layer
+const BLD_COMP=[['A','A · Block only (no media)'],['B','B · Block + media precomp parented to it'],['C','C · Each block is its own precomp']];
+const BLD_MEDIA=[['none','No media'],['set','As set in Content › Media'],['sample','Sample clip in every block (to replace)']];
+function bldDefaults(){ const L2=l2On(); return {bg:!!D.look.bgOn,cells:D.look.cellsMode!=='none'||!!D.look.linesOn,rules:!!D.look.rulesOn,dimShared:true,
+  main:{on:true,text:true,num:true,gaps:true,echo:true,media:'set',dim:false,comp:'B',mediaPer:false},
+  l2:{on:L2,text:true,num:true,gaps:true,echo:true,media:'set',dim:!!(D.L2&&D.L2.dim&&D.L2.dim.on),comp:'B',mediaPer:false}}; }
+function bldPrefs(){ try{ return JSON.parse(localStorage.getItem('gb.bldOpts')||'null'); }catch(e){ return null; } }
+function bldAsk(isJsx){ return new Promise(res=>{ const M=$('#bldModal'); if(!M) return res(bldDefaults());
+  const pr=bldPrefs(), o=Object.assign(bldDefaults(),pr?{bg:pr.bg,cells:pr.cells,rules:pr.rules,dimShared:pr.dimShared}:{}); ['main','l2'].forEach(k=>{ if(pr&&pr[k]) o[k]=Object.assign(o[k],pr[k]); }); if(!l2On()) o.l2.on=false;
+  const L2=l2On(), ck=(p,v,dis)=>`<input type="checkbox" data-bo="${p}"${v?' checked':''}${dis?' disabled':''}>`, sel=(p,list,v)=>`<select data-bo="${p}">${list.map(x=>`<option value="${x[0]}"${x[0]===v?' selected':''}>${x[1]}</option>`).join('')}</select>`;
+  const row=(lab,f,tip)=>`<tr title="${tip||''}"><td>${lab}</td><td>${f('main')}</td>${L2?`<td>${f('l2')}</td>`:''}</tr>`;
+  const draw=()=>{ $('#bldBody').innerHTML=`<div class="field stack"><span class="lbl">Scene <span class="note">(these override the Setup toggles, just for this build)</span></span>
+      <div style="display:flex;gap:14px;flex-wrap:wrap"><label class="check">${ck('bg',o.bg)} Background</label><label class="check">${ck('cells',o.cells)} Grid (cells &amp; lines)</label><label class="check">${ck('rules',o.rules)} Column rules</label></div></div>
+    <table class="bldt"><tr><th></th><th>Layer 1</th>${L2?'<th>Layer 2</th>':''}</tr>
+      ${row('Blocks',k=>ck(k+'.on',o[k].on))}
+      ${row('Text in blocks',k=>ck(k+'.text',o[k].text),'Text HUD content and block text')}
+      ${row('Numbers',k=>ck(k+'.num',o[k].num))}
+      ${row('Between-blocks text',k=>ck(k+'.gaps',o[k].gaps))}
+      ${row('Echo',k=>ck(k+'.echo',o[k].echo))}
+      ${row('Media',k=>sel(k+'.media',BLD_MEDIA,o[k].media))}
+      ${row('Dim older blocks',k=>ck(k+'.dim',o[k].dim),'A colour layer fades over each block once the next lands (colour, opacity and timing from Content › Layer 2 · dim)')}
+      ${row('Comp blocks as',k=>sel(k+'.comp',BLD_COMP,o[k].comp))}
+      ${row('Media precomp per block',k=>ck(k+'.mediaPer',o[k].mediaPer,o[k].comp!=='C'),'Comp C: each block gets its own media precomp (off = one media precomp per layer, shared by its blocks)')}
+    </table>
+    <div class="field stack"><span class="lbl">Dim layers</span><div class="seg" id="bldDim"><button data-v="1"${o.dimShared?' class="on"':''} title="One 'GB · Dim colour' precomp used by every dim — change its colour once for all layers">One shared dim precomp</button><button data-v="0"${!o.dimShared?' class="on"':''} title="Each block has its own dim (a solid inside its block precomp in comp C)">A dim per block</button></div></div>
+    <div class="note"><b>A</b> plain shape blocks. <b>B</b> blocks with any media as a precomp parented to (and matted by) the block. <b>C</b> every block is a precomp holding its base colour, media, dim and text on top — organised under Grid Blocks › Layer 1 · Blocks / Layer 2 · Blocks / Media / Dim in the Project panel.</div>`; };
+  draw(); $('#bldTitle').textContent=isJsx?'Export .jsx for After Effects':'Build in After Effects'; $('#bldGo').textContent=isJsx?'Export':'Build'; $('#bldRemember').checked=false;
+  const setP=(p,v)=>{ const ks=p.split('.'); if(ks.length===1) o[ks[0]]=v; else o[ks[0]][ks[1]]=v; };
+  M.onchange=e=>{ const t=e.target; if(!t.dataset||!t.dataset.bo) return; setP(t.dataset.bo,t.type==='checkbox'?t.checked:t.value); if(/\.comp$/.test(t.dataset.bo)) draw(); };
+  M.onclick=e=>{ const sb=e.target.closest('#bldDim [data-v]'); if(sb){ o.dimShared=sb.dataset.v==='1'; draw(); return; }
+    const b=e.target.closest('[data-bld]'); if(e.target===M) { M.hidden=true; return res(null); } if(!b) return; M.hidden=true;
+    if(b.dataset.bld==='cancel') return res(null);
+    try{ localStorage.setItem('gb.bldOpts',JSON.stringify(o)); if($('#bldRemember').checked) localStorage.setItem('gb.bldRemember','1'); }catch(x){}
+    res(o); };
+  M.hidden=false; }); }
+async function bldChoose(isJsx,ev){ if(ev&&ev.altKey){ try{ localStorage.removeItem('gb.bldRemember'); }catch(x){} }
+  let rem=false; try{ rem=localStorage.getItem('gb.bldRemember')==='1'; }catch(x){}
+  const o=rem?(()=>{ const pr=bldPrefs()||{}, d0=bldDefaults(); const r=Object.assign(d0,{bg:pr.bg!=null?pr.bg:d0.bg,cells:pr.cells!=null?pr.cells:d0.cells,rules:pr.rules!=null?pr.rules:d0.rules,dimShared:pr.dimShared!==false}); ['main','l2'].forEach(k=>{ if(pr[k]) r[k]=Object.assign(r[k],pr[k]); }); if(!l2On()) r.l2.on=false; return r; })():await bldAsk(isJsx);
+  if(!o) return null; return bldMake(o); }
+function bldMake(o){
+  /* make the payload with the scene toggles overridden and dims where asked */
+  const lk={bgOn:D.look.bgOn,cellsMode:D.look.cellsMode,linesOn:D.look.linesOn,rulesOn:D.look.rulesOn};
+  D.look.bgOn=!!o.bg; if(!o.cells){ D.look.cellsMode='none'; D.look.linesOn=false; } else if(D.look.cellsMode==='none'&&!D.look.linesOn) D.look.linesOn=true; D.look.rulesOn=!!o.rules;
+  BLD_DIM={main:!!o.main.dim,l2:!!o.l2.dim}; let d;
+  try{ d=payload(); } finally{ BLD_DIM=null; Object.assign(D.look,lk); }
+  return bldApply(d,o); }
+function bldApply(d,o){ const per=(L,ln,c,blocks,set)=>{ if(!blocks) return;
+    blocks.forEach((b,i)=>{ if(!c.text){ b.text=''; b.fill=null; } if(!c.num) b.num=null; if(!c.dim) b.dim=null;
+      if(c.comp==='A'||c.media==='none'){ b.media=null; return; }
+      const m0=b.media, builtin=!m0||m0.id==='sample'||m0.id==='sample-still';
+      if(c.media==='sample'&&builtin){ b.media=Object.assign({fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,loop:'loop',inMode:'block',inLen:12,offset:0,audio:false},m0||{},{id:'sample',name:'Replace me',type:'video',file:'media/sample.mp4',path:null,startF:m0&&m0.startF!=null?m0.startF:(b.tIn||0)}); }
+      if(!b.media) return;
+      const shared=!(c.comp==='C'&&c.mediaPer);
+      b.media=Object.assign({},b.media,{precomp:true,id:shared?('gbm'+ln+'_'+b.media.id):('gbm'+ln+'_'+i+'_'+b.media.id),
+        compName:shared?`GB · L${ln} · Media${c.media==='sample'?' · Replace me':' · '+(b.media.name||'clip')}`:`GB · L${ln} · Media · ${b.name||('Block '+(i+1))}`}); }); };
+  if(!o.main.on){ d.blocks=[]; d.echoes=[]; d.gaps=null; } else { if(!o.main.echo) d.echoes=[]; if(!o.main.gaps) d.gaps=null; per(d,'1',o.main,d.blocks); }
+  d.compMode=o.main.comp; d.dimShared=o.dimShared!==false;
+  if(d.layer2){ if(!o.l2.on) d.layer2=null; else { const L=d.layer2; if(!o.l2.echo) L.echoes=null; if(!o.l2.gaps) L.gaps=null; per(L,'2',o.l2,L.blocks); L.compMode=o.l2.comp; } }
+  return d; }
 async function vidChoose(d){ const pref=vidPref(); const v=pref||await vidAsk(d); if(!v) return null; return vidApply(d,v); }
 function vidChoiceLabel(){ const p=vidPref(); return p?({shared:'one clip for every block',each:'a clip per block',set:'as set in Block media',none:'no video'})[p.mode]:'ask on build'; }
 async function build(ev){
-  if(ev&&ev.altKey){ try{ localStorage.removeItem('gb.vidChoice'); }catch(x){} }   /* ⌥-click Build: ask about video in the blocks again */
-  let d=payload();
-  if(!d.bg&&!d.cells&&!d.lines&&!d.blocks.length) return toast('Nothing to build. Turn on a layer in Grid › Look, or add blocks.','err');
-  if((d.blocks||[]).length||(d.layer2&&d.layer2.blocks&&d.layer2.blocks.length)){ d=await vidChoose(d); if(!d) return; }
+  let d=await bldChoose(!inAE,ev); if(!d) return;   /* what to build, per layer, and how (⌥-click Build: ask again) */
+  if(!d.bg&&!d.cells&&!d.lines&&!d.rules&&!d.blocks.length&&!(d.layer2&&d.layer2.blocks&&d.layer2.blocks.length)) return toast('Nothing to build — tick something in the options, or add blocks.','err');
   const json=JSON.stringify(d).split(LS1).join('\\u2028').split(LS2).join('\\u2029');
   if(inAE){
     $('#btnBuild').disabled=true;$('#btnBuild2').disabled=true;
@@ -10419,7 +10524,7 @@ async function build(ev){
 $('#btnBuild').onclick=build; $('#btnBuild2').onclick=build;
 document.addEventListener('click',e=>{ if(e.target&&e.target.id==='vidReset'){ e.preventDefault(); try{ localStorage.removeItem('gb.vidChoice'); }catch(x){} toast('Grid Blocks will ask about video on the next build'); try{ refresh(); }catch(x){} } });
 $('#btnExportJsx').onclick=async()=>{
-  let d=payload(); d=await vidChoose(d); if(!d) return; const json=JSON.stringify(d).split(LS1).join('\\u2028').split(LS2).join('\\u2029');
+  let d=await bldChoose(true); if(!d) return; const json=JSON.stringify(d).split(LS1).join('\\u2028').split(LS2).join('\\u2029');
   snapTake('Exported .jsx',true);
   const code='// Grid Blocks — generated build script\n// Open this file in Grid Blocks (Layouts › Open from file) to keep editing the layout.\n\n'+layoutBlock()+'\n'+HOST+'\n(function(){var r=GB_build('+json+');alert(r.replace(/^OK\\|/,"").replace(/^ERR\\|/,"Error: "));})();\n';
   evalHost('(function(){var f=new File(Folder.myDocuments.fsName+"/GridBlocks_build.jsx").saveDlg("Save build script");if(!f)return "CANCEL";f.encoding="UTF-8";f.open("w");f.write('+jsStr(code)+');f.close();return "OK|"+f.fsName;})()')

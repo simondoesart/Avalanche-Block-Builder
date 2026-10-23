@@ -4618,7 +4618,7 @@ function drawMedia(g,s,q,clipR,t,alpha){
 }
 function blockZ(b){ return (D.anim.zord&&D.anim.zord[b.id])||(D.L2&&D.L2.z)||'front'; }
 /* layer 2 dim: when each block gets dimmed — when the next one lands (plus a delay); the newest block stays clear */
-function dimTimes(P){ const DM=D.L2&&D.L2.dim; if(!DM||!DM.on||!P||!P.seq) return null; const key=JSON.stringify(DM)+'|'+P.seq.length; if(P._dimK===key) return P._dimT;
+function dimTimes(P,force){ const DM=D.L2&&D.L2.dim; if(!DM||!(DM.on||force)||!P||!P.seq) return null; const key=JSON.stringify(DM)+'|'+P.seq.length; if(P._dimK===key) return P._dimT;
   const H=P.hidden||new Set(), L=P.seq.map((b,i)=>[P.T[i],b]).filter(x=>x[0]!=null&&!H.has(x[1].id)&&!x[1].__rest&&!x[1].stack).sort((a,b)=>a[0]-b[0]), out={}, dl=Math.round(+DM.delay||0), nb=Math.max(1,Math.round(+DM.after||1));
   L.forEach((x,i)=>{ const nx=L[i+nb]; if(nx) out[x[1].id]=nx[0]+dl; }); P._dimK=key; P._dimT=out; return out; }
 function drawBlock(g,G,b,o,dx,dy,st,ghost){
@@ -7049,7 +7049,7 @@ function payloadCore(inner){
       num:numOn(b)?(()=>{const s=numStr(NUMS[b.id]||0),q2=cellRect(G,b.c,b.r,b.w,b.h),L=numLayout(q2,s);return {text:s,x:r3(L.x),y:r3(L.y),size:L.size,color:hexRgb(D.num.color),font:D.fill.font,opacity:clamp(+D.num.opacity||100,0,100),keys:animOn&&P.tracks[b.id]&&P.tracks[b.id].num&&P.tracks[b.id].num.length?P.tracks[b.id].num.map(k=>[k[0],r3(k[1]*clamp(+D.num.opacity||100,0,100)/100),k[2],k[3]]):null};})():null,
       keys:animOn?P.tracks[b.id]:null, tIn:animOn?Math.round(P.T[P.seq.indexOf(b)]):null, tOut:exitEnd(P,P.seq.indexOf(b),animOn),
       xf:(()=>{ const X=D.anim.xf&&D.anim.xf[b.id]; if(!X) return null; const AN=xfPivot(); return (AN[0]!==0.5||AN[1]!==0.5)?Object.assign({},X,{px:r3((AN[0]-0.5)*q.w),py:r3((AN[1]-0.5)*q.h)}):X; })(), zz:(D.anim.zord&&D.anim.zord[b.id])||null, rz:(D.anim.rz&&D.anim.rz[b.id])||null,
-      dim:(()=>{ if(!animOn||curLayer()!=='l2') return null; const DT=dimTimes(P); if(!DT||DT[b.id]==null) return null; const DM=D.L2.dim, t0=DT[b.id], L=Math.max(1,Math.round(+DM.len||1)); return {color:hexRgb(DM.color||'#121212'),keys:[[t0,0,'e'],[t0+L,clamp(+DM.op||0,0,100),'e']]}; })()};
+      dim:(()=>{ const want=BLD_DIM?BLD_DIM[curLayer()]:curLayer()==='l2'; if(!animOn||!want) return null; const DT=dimTimes(P,!!BLD_DIM); if(!DT||DT[b.id]==null) return null; const DM=D.L2.dim, t0=DT[b.id], L=Math.max(1,Math.round(+DM.len||1)); return {color:hexRgb(DM.color||'#121212'),keys:[[t0,0,'e'],[t0+L,clamp(+DM.op||0,0,100),'e']]}; })()};
   });
   // ---- content: auto-fill items → AE-ready descriptions
   const F=D.fill, met=fillMetrics();
@@ -7242,13 +7242,71 @@ function vidApply(d,v){ if(!v||v.mode==='set') return d;
       {id:per?('gbph'+ln+'_'+i):'gbph',name:'Replace me',type:'video',file:'media/sample.mp4',path:null,precomp:true,
        compName:per?('GB · Replace me · '+(ln==='2'?'L2 · ':'')+(b.name||('Block '+(i+1)))):'GB · Replace me (all blocks)',startF:m0&&m0.startF!=null?m0.startF:(b.tIn||0)}); }));
   return d; }
+/* ---- Build / Export .jsx options: what goes to After Effects, per layer, and how blocks are comped ---- */
+let BLD_DIM=null;   // while the payload is made: which layers get a dim layer
+const BLD_COMP=[['A','A · Block only (no media)'],['B','B · Block + media precomp parented to it'],['C','C · Each block is its own precomp']];
+const BLD_MEDIA=[['none','No media'],['set','As set in Content › Media'],['sample','Sample clip in every block (to replace)']];
+function bldDefaults(){ const L2=l2On(); return {bg:!!D.look.bgOn,cells:D.look.cellsMode!=='none'||!!D.look.linesOn,rules:!!D.look.rulesOn,dimShared:true,
+  main:{on:true,text:true,num:true,gaps:true,echo:true,media:'set',dim:false,comp:'B',mediaPer:false},
+  l2:{on:L2,text:true,num:true,gaps:true,echo:true,media:'set',dim:!!(D.L2&&D.L2.dim&&D.L2.dim.on),comp:'B',mediaPer:false}}; }
+function bldPrefs(){ try{ return JSON.parse(localStorage.getItem('gb.bldOpts')||'null'); }catch(e){ return null; } }
+function bldAsk(isJsx){ return new Promise(res=>{ const M=$('#bldModal'); if(!M) return res(bldDefaults());
+  const pr=bldPrefs(), o=Object.assign(bldDefaults(),pr?{bg:pr.bg,cells:pr.cells,rules:pr.rules,dimShared:pr.dimShared}:{}); ['main','l2'].forEach(k=>{ if(pr&&pr[k]) o[k]=Object.assign(o[k],pr[k]); }); if(!l2On()) o.l2.on=false;
+  const L2=l2On(), ck=(p,v,dis)=>`<input type="checkbox" data-bo="${p}"${v?' checked':''}${dis?' disabled':''}>`, sel=(p,list,v)=>`<select data-bo="${p}">${list.map(x=>`<option value="${x[0]}"${x[0]===v?' selected':''}>${x[1]}</option>`).join('')}</select>`;
+  const row=(lab,f,tip)=>`<tr title="${tip||''}"><td>${lab}</td><td>${f('main')}</td>${L2?`<td>${f('l2')}</td>`:''}</tr>`;
+  const draw=()=>{ $('#bldBody').innerHTML=`<div class="field stack"><span class="lbl">Scene <span class="note">(these override the Setup toggles, just for this build)</span></span>
+      <div style="display:flex;gap:14px;flex-wrap:wrap"><label class="check">${ck('bg',o.bg)} Background</label><label class="check">${ck('cells',o.cells)} Grid (cells &amp; lines)</label><label class="check">${ck('rules',o.rules)} Column rules</label></div></div>
+    <table class="bldt"><tr><th></th><th>Layer 1</th>${L2?'<th>Layer 2</th>':''}</tr>
+      ${row('Blocks',k=>ck(k+'.on',o[k].on))}
+      ${row('Text in blocks',k=>ck(k+'.text',o[k].text),'Text HUD content and block text')}
+      ${row('Numbers',k=>ck(k+'.num',o[k].num))}
+      ${row('Between-blocks text',k=>ck(k+'.gaps',o[k].gaps))}
+      ${row('Echo',k=>ck(k+'.echo',o[k].echo))}
+      ${row('Media',k=>sel(k+'.media',BLD_MEDIA,o[k].media))}
+      ${row('Dim older blocks',k=>ck(k+'.dim',o[k].dim),'A colour layer fades over each block once the next lands (colour, opacity and timing from Content › Layer 2 · dim)')}
+      ${row('Comp blocks as',k=>sel(k+'.comp',BLD_COMP,o[k].comp))}
+      ${row('Media precomp per block',k=>ck(k+'.mediaPer',o[k].mediaPer,o[k].comp!=='C'),'Comp C: each block gets its own media precomp (off = one media precomp per layer, shared by its blocks)')}
+    </table>
+    <div class="field stack"><span class="lbl">Dim layers</span><div class="seg" id="bldDim"><button data-v="1"${o.dimShared?' class="on"':''} title="One 'GB · Dim colour' precomp used by every dim — change its colour once for all layers">One shared dim precomp</button><button data-v="0"${!o.dimShared?' class="on"':''} title="Each block has its own dim (a solid inside its block precomp in comp C)">A dim per block</button></div></div>
+    <div class="note"><b>A</b> plain shape blocks. <b>B</b> blocks with any media as a precomp parented to (and matted by) the block. <b>C</b> every block is a precomp holding its base colour, media, dim and text on top — organised under Grid Blocks › Layer 1 · Blocks / Layer 2 · Blocks / Media / Dim in the Project panel.</div>`; };
+  draw(); $('#bldTitle').textContent=isJsx?'Export .jsx for After Effects':'Build in After Effects'; $('#bldGo').textContent=isJsx?'Export':'Build'; $('#bldRemember').checked=false;
+  const setP=(p,v)=>{ const ks=p.split('.'); if(ks.length===1) o[ks[0]]=v; else o[ks[0]][ks[1]]=v; };
+  M.onchange=e=>{ const t=e.target; if(!t.dataset||!t.dataset.bo) return; setP(t.dataset.bo,t.type==='checkbox'?t.checked:t.value); if(/\.comp$/.test(t.dataset.bo)) draw(); };
+  M.onclick=e=>{ const sb=e.target.closest('#bldDim [data-v]'); if(sb){ o.dimShared=sb.dataset.v==='1'; draw(); return; }
+    const b=e.target.closest('[data-bld]'); if(e.target===M) { M.hidden=true; return res(null); } if(!b) return; M.hidden=true;
+    if(b.dataset.bld==='cancel') return res(null);
+    try{ localStorage.setItem('gb.bldOpts',JSON.stringify(o)); if($('#bldRemember').checked) localStorage.setItem('gb.bldRemember','1'); }catch(x){}
+    res(o); };
+  M.hidden=false; }); }
+async function bldChoose(isJsx,ev){ if(ev&&ev.altKey){ try{ localStorage.removeItem('gb.bldRemember'); }catch(x){} }
+  let rem=false; try{ rem=localStorage.getItem('gb.bldRemember')==='1'; }catch(x){}
+  const o=rem?(()=>{ const pr=bldPrefs()||{}, d0=bldDefaults(); const r=Object.assign(d0,{bg:pr.bg!=null?pr.bg:d0.bg,cells:pr.cells!=null?pr.cells:d0.cells,rules:pr.rules!=null?pr.rules:d0.rules,dimShared:pr.dimShared!==false}); ['main','l2'].forEach(k=>{ if(pr[k]) r[k]=Object.assign(r[k],pr[k]); }); if(!l2On()) r.l2.on=false; return r; })():await bldAsk(isJsx);
+  if(!o) return null; return bldMake(o); }
+function bldMake(o){
+  /* make the payload with the scene toggles overridden and dims where asked */
+  const lk={bgOn:D.look.bgOn,cellsMode:D.look.cellsMode,linesOn:D.look.linesOn,rulesOn:D.look.rulesOn};
+  D.look.bgOn=!!o.bg; if(!o.cells){ D.look.cellsMode='none'; D.look.linesOn=false; } else if(D.look.cellsMode==='none'&&!D.look.linesOn) D.look.linesOn=true; D.look.rulesOn=!!o.rules;
+  BLD_DIM={main:!!o.main.dim,l2:!!o.l2.dim}; let d;
+  try{ d=payload(); } finally{ BLD_DIM=null; Object.assign(D.look,lk); }
+  return bldApply(d,o); }
+function bldApply(d,o){ const per=(L,ln,c,blocks,set)=>{ if(!blocks) return;
+    blocks.forEach((b,i)=>{ if(!c.text){ b.text=''; b.fill=null; } if(!c.num) b.num=null; if(!c.dim) b.dim=null;
+      if(c.comp==='A'||c.media==='none'){ b.media=null; return; }
+      const m0=b.media, builtin=!m0||m0.id==='sample'||m0.id==='sample-still';
+      if(c.media==='sample'&&builtin){ b.media=Object.assign({fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,loop:'loop',inMode:'block',inLen:12,offset:0,audio:false},m0||{},{id:'sample',name:'Replace me',type:'video',file:'media/sample.mp4',path:null,startF:m0&&m0.startF!=null?m0.startF:(b.tIn||0)}); }
+      if(!b.media) return;
+      const shared=!(c.comp==='C'&&c.mediaPer);
+      b.media=Object.assign({},b.media,{precomp:true,id:shared?('gbm'+ln+'_'+b.media.id):('gbm'+ln+'_'+i+'_'+b.media.id),
+        compName:shared?`GB · L${ln} · Media${c.media==='sample'?' · Replace me':' · '+(b.media.name||'clip')}`:`GB · L${ln} · Media · ${b.name||('Block '+(i+1))}`}); }); };
+  if(!o.main.on){ d.blocks=[]; d.echoes=[]; d.gaps=null; } else { if(!o.main.echo) d.echoes=[]; if(!o.main.gaps) d.gaps=null; per(d,'1',o.main,d.blocks); }
+  d.compMode=o.main.comp; d.dimShared=o.dimShared!==false;
+  if(d.layer2){ if(!o.l2.on) d.layer2=null; else { const L=d.layer2; if(!o.l2.echo) L.echoes=null; if(!o.l2.gaps) L.gaps=null; per(L,'2',o.l2,L.blocks); L.compMode=o.l2.comp; } }
+  return d; }
 async function vidChoose(d){ const pref=vidPref(); const v=pref||await vidAsk(d); if(!v) return null; return vidApply(d,v); }
 function vidChoiceLabel(){ const p=vidPref(); return p?({shared:'one clip for every block',each:'a clip per block',set:'as set in Block media',none:'no video'})[p.mode]:'ask on build'; }
 async function build(ev){
-  if(ev&&ev.altKey){ try{ localStorage.removeItem('gb.vidChoice'); }catch(x){} }   /* ⌥-click Build: ask about video in the blocks again */
-  let d=payload();
-  if(!d.bg&&!d.cells&&!d.lines&&!d.blocks.length) return toast('Nothing to build. Turn on a layer in Grid › Look, or add blocks.','err');
-  if((d.blocks||[]).length||(d.layer2&&d.layer2.blocks&&d.layer2.blocks.length)){ d=await vidChoose(d); if(!d) return; }
+  let d=await bldChoose(!inAE,ev); if(!d) return;   /* what to build, per layer, and how (⌥-click Build: ask again) */
+  if(!d.bg&&!d.cells&&!d.lines&&!d.rules&&!d.blocks.length&&!(d.layer2&&d.layer2.blocks&&d.layer2.blocks.length)) return toast('Nothing to build — tick something in the options, or add blocks.','err');
   const json=JSON.stringify(d).split(LS1).join('\\u2028').split(LS2).join('\\u2029');
   if(inAE){
     $('#btnBuild').disabled=true;$('#btnBuild2').disabled=true;
@@ -7268,7 +7326,7 @@ async function build(ev){
 $('#btnBuild').onclick=build; $('#btnBuild2').onclick=build;
 document.addEventListener('click',e=>{ if(e.target&&e.target.id==='vidReset'){ e.preventDefault(); try{ localStorage.removeItem('gb.vidChoice'); }catch(x){} toast('Grid Blocks will ask about video on the next build'); try{ refresh(); }catch(x){} } });
 $('#btnExportJsx').onclick=async()=>{
-  let d=payload(); d=await vidChoose(d); if(!d) return; const json=JSON.stringify(d).split(LS1).join('\\u2028').split(LS2).join('\\u2029');
+  let d=await bldChoose(true); if(!d) return; const json=JSON.stringify(d).split(LS1).join('\\u2028').split(LS2).join('\\u2029');
   snapTake('Exported .jsx',true);
   const code='// Grid Blocks — generated build script\n// Open this file in Grid Blocks (Layouts › Open from file) to keep editing the layout.\n\n'+layoutBlock()+'\n'+HOST+'\n(function(){var r=GB_build('+json+');alert(r.replace(/^OK\\|/,"").replace(/^ERR\\|/,"Error: "));})();\n';
   evalHost('(function(){var f=new File(Folder.myDocuments.fsName+"/GridBlocks_build.jsx").saveDlg("Save build script");if(!f)return "CANCEL";f.encoding="UTF-8";f.open("w");f.write('+jsStr(code)+');f.close();return "OK|"+f.fsName;})()')

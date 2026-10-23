@@ -717,7 +717,7 @@ function GB_mediaSource(m,root,folder,main){
   if(folder){ try{c.parentFolder=folder;}catch(e6){} }
   GB_mediaItems[key]=c; return c;
 }
-function GB_mediaLayer(comp,B,b,m,root,folder,main,fps){
+function GB_mediaLayer(comp,B,b,m,root,folder,main,fps,noMatte){
   var src=GB_mediaSource(m,root,folder,main); if(!src) return null;
   var L=comp.layers.add(src); L.moveBefore(B);
   L.name=b.name+" · Media"; L.comment="GridBlocks:media"; L.label=14;
@@ -757,6 +757,7 @@ function GB_mediaLayer(comp,B,b,m,root,folder,main,fps){
     if(m.inMode&&m.inMode!="block"){ var ease=new KeyframeEase(0,60); try{ for(var pk=1;pk<=op.numKeys;pk++) op.setTemporalEaseAtKey(pk,[ease],[ease]); }catch(eE){} }
   }catch(eIn){}
   if(!m.audio){ try{ L.audioEnabled=false; }catch(eA){} }
+  if(noMatte) return {L:L,ok:true};
   var ok=false; try{ L.setTrackMatte(B,TrackMatteType.ALPHA); ok=true; }catch(eM){ ok=false; }
   return {L:L,ok:ok};
 }
@@ -819,13 +820,23 @@ function GB_blockKeys(blocks,fps){
     if(!k) continue;
     GB_keys(GB_xf(BL).property("ADBE Opacity"),k.op,fps);
     GB_keys(GB_xf(BL).property("ADBE Scale"),k.sc,fps);
-    if((k.rs&&k.rs.length)||(k.rp&&k.rp.length)){
+    if(blocks[i].pc){ if(k.rs&&k.rs.length){ try{ GB_maskWipe(BL,k.rs,k.rp,blocks[i].pc.w,blocks[i].pc.h,fps); }catch(eMw){} } }
+    else if((k.rs&&k.rs.length)||(k.rp&&k.rp.length)){
       var rect=GB_contents(BL).property("ADBE Vector Shape - Rect");
       GB_keys(rect.property("ADBE Vector Rect Size"),k.rs,fps);
       GB_keys(rect.property("ADBE Vector Rect Position"),k.rp,fps);
     }
     if(blocks[i].T) GB_keys(GB_xf(blocks[i].T).property("ADBE Opacity"),k.top,fps);
   }
+}
+/* a block precomp's wipe: a rectangle mask keyed like the block's own rect (size + offset from the centre) */
+function GB_maskWipe(L,rs,rp,w,h,fps){
+  var m=L.property("ADBE Mask Parade").addProperty("ADBE Mask Atom"); m.name="Wipe"; var mp=m.property("ADBE Mask Shape"), i, j;
+  for(i=0;i<rs.length;i++){ var t=rs[i][0], sz=rs[i][1], po=[0,0];
+    if(rp&&rp.length){ for(j=0;j<rp.length;j++){ if(rp[j][0]<=t) po=rp[j][1]; } }
+    var cx=w/2+(po[0]||0), cy=h/2+(po[1]||0), hw=Math.max(0,sz[0])/2, hh=Math.max(0,sz[1])/2, sh=new Shape();
+    sh.vertices=[[cx-hw,cy-hh],[cx+hw,cy-hh],[cx+hw,cy+hh],[cx-hw,cy+hh]]; sh.closed=true; mp.setValueAtTime(t/fps,sh); }
+  for(i=0;i<rs.length;i++){ try{ var ki=mp.nearestKeyIndex(rs[i][0]/fps), ty=rs[i][2]=="h"?KeyframeInterpolationType.HOLD:rs[i][2]=="l"?KeyframeInterpolationType.LINEAR:KeyframeInterpolationType.BEZIER; mp.setInterpolationTypeAtKey(ki,ty,ty); }catch(eK){} }
 }
 function GB_build(d){
   var comp, made=false, out=[], i, L;
@@ -925,7 +936,35 @@ function GB_build(d){
     }
     var nEcho=blocks.length;
     /* one block + everything inside it (media, text, number, content), trimmed and colour-grouped */
+    /* block precomps (comp mode C): Grid Blocks / <comp> / Layer 1 · Blocks, Layer 2 · Blocks, Media, Dim */
+    var pcRoot=folder||GB_folder("Grid Blocks",null), pcF={}, dimShared=null;
+    function pcFolder(pre){ var k=pre?"l2":"l1"; if(!pcF[k]) pcF[k]=GB_folder(pre?"Layer 2 · Blocks":"Layer 1 · Blocks",pcRoot); return pcF[k]; }
+    function dimComp(color){ if(dimShared) return dimShared; var dc=app.project.items.addComp(GB_uniqueName("GB · Dim colour (all layers)"),main.width,main.height,main.pixelAspect,main.duration,main.frameRate);
+      try{ dc.parentFolder=GB_folder("Dim",pcRoot); }catch(eF){} try{ dc.comment="Grid Blocks: change this solid's colour to recolour every block's dim at once"; }catch(eC){}
+      var so=dc.layers.addSolid(color||[0,0,0],"Dim colour",main.width,main.height,main.pixelAspect,main.duration); so.comment="GridBlocks:dim"; dimShared=dc; return dc; }
+    function addBlockPC(b,i,pre,lab2,mode){
+      var bw=Math.max(1,Math.round(b.bw)), bh=Math.max(1,Math.round(b.bh)), nm=(pre||"")+b.name;
+      var PC=app.project.items.addComp(GB_uniqueName("GB · "+(pre?"L2":"L1")+" · "+b.name),bw,bh,main.pixelAspect,main.duration,main.frameRate);
+      try{ PC.parentFolder=pcFolder(pre); }catch(eF){} comps.push(PC);
+      var off=GB_null(PC,"GB · place",false); GB_xf(off).property("ADBE Position").setValue([-b.x,-b.y]); off.comment="GridBlocks:null"; try{ off.shy=true; }catch(eS){}
+      var base=GB_box(PC,"Base · "+b.name,b.x,b.y,b.bw,b.bh,b.color,b.outline?b.outline.w:0); GB_jumpParent(base,off); base.comment="GridBlocks:base"; base.label=1;
+      if(b.media){ try{ var mr=GB_mediaLayer(PC,base,b,b.media,d.mediaRoot,mediaF||folder,main,fps,true); if(mr&&mr.L){ mr.L.label=14; } }catch(eMd){} }
+      if(b.dim&&b.dim.keys){ try{ var DLy; if(d.dimShared!==false){ DLy=PC.layers.add(dimComp(b.dim.color)); GB_xf(DLy).property("ADBE Position").setValue([bw/2,bh/2]); GB_xf(DLy).property("ADBE Scale").setValue([bw/main.width*100,bh/main.height*100]); }
+          else DLy=PC.layers.addSolid(b.dim.color,"Dim",bw,bh,main.pixelAspect,main.duration);
+          DLy.name="Dim"; DLy.comment="GridBlocks:dim"; GB_keys(GB_xf(DLy).property("ADBE Opacity"),b.dim.keys,fps); }catch(eDm){} }
+      var f0=fillLayers.length, own=[]; GB_fillItems(PC,b.fill,null,own); for(var q=0;q<own.length;q++){ try{ GB_jumpParent(own[q],off); }catch(eJ){} }
+      var NT=null; if(b.num){ try{ d_fps_hack=fps; NT=GB_numText(PC,base,b); NT.parent=null; GB_jumpParent(NT,off); }catch(eN){} }
+      var T=null; if(b.text){ try{ T=GB_text(PC,base,b); T.parent=null; GB_jumpParent(T,off); T.label=1; }catch(eT){} }
+      if(b.tOut!=null){ for(var q2=0;q2<own.length;q2++) trimOut(own[q2],b.tOut); }
+      var L=blockC.layers.add(PC); L.name=nm; L.comment="GridBlocks:block|order="+b.order+"|c="+b.c+"|r="+b.r+"|w="+b.w+"|h="+b.h+(pre?"|layer=2":"")+"|precomp=1";
+      GB_xf(L).property("ADBE Position").setValue([b.x+b.bw/2,b.y+b.bh/2]); L.label=lab2?(i%2?9:14):(i%2?11:1);
+      blocks.push({L:L,T:T,b:b,pc:{w:bw,h:bh}}); blockLayers.push(L);
+      if(b.tIn!=null) trimTo(L,b.tIn); if(b.tOut!=null) trimOut(L,b.tOut);
+      return {B:L,grp:[L,null,null,null],b:b}; }
     function addBlock(b,i,pre,lab2){
+      var mode=pre?(d.layer2&&d.layer2.compMode)||"B":d.compMode||"B";
+      if(mode=="C") return addBlockPC(b,i,pre,lab2,mode);
+      if(mode=="A") b.media=null;
       var B=GB_box(blockC,(pre||"")+b.name,b.x,b.y,b.bw,b.bh,b.color,b.outline?b.outline.w:0);
       B.comment="GridBlocks:block|order="+b.order+"|c="+b.c+"|r="+b.r+"|w="+b.w+"|h="+b.h+(pre?"|layer=2":"");
       B.label=1;
@@ -945,7 +984,7 @@ function GB_build(d){
       if(b.dim&&b.dim.keys){ try{ var DL=GB_box(blockC,(pre||"")+b.name+" · Dim",b.x,b.y,b.bw,b.bh,b.dim.color,0); DL.comment="GridBlocks:dim";
           GB_jumpParent(DL,B); GB_xf(DL).property("ADBE Anchor Point").setValue([0,0]); GB_xf(DL).property("ADBE Position").setValue([0,0]);
           var dr=GB_contents(DL).property("ADBE Vector Shape - Rect");
-          try{ dr.property("ADBE Vector Rect Size").expression="// Grid Blocks: same size as the block\ntry{ thisLayer.parent.content(1).size }catch(e){ value }"; dr.property("ADBE Vector Rect Position").expression="try{ thisLayer.parent.content(1).position }catch(e){ value }"; }catch(eDx){}
+          try{ dr.property("ADBE Vector Rect Size").expression="// Grid Blocks: same size as the block\ntry{ thisLayer.parent.content(1).content(1).size }catch(e){ value }"; dr.property("ADBE Vector Rect Position").expression="try{ thisLayer.parent.content(1).content(1).position }catch(e){ value }"; }catch(eDx){}
           var dop=GB_xf(DL).property("ADBE Opacity"); GB_keys(dop,b.dim.keys,fps); dop.expression="// Grid Blocks: fades with the block\nvalue*thisLayer.parent.transform.opacity/100";
           trimTo(DL,Math.max(0,b.dim.keys[0][0]-1)); if(b.tOut!=null) trimOut(DL,b.tOut); grp.push(DL); }catch(eDim){} }
       GB_labelAll(grp,lab2?(i%2?9:14):(i%2?11:1));
