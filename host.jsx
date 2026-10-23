@@ -940,7 +940,15 @@ function GB_build(d){
       var f0=fillLayers.length; GB_fillItems(blockC,b.fill,B,fillLayers);
       if(b.tOut!=null){trimOut(B,b.tOut); if(T) trimOut(T,b.tOut); if(NT) trimOut(NT,b.tOut); for(var fb=f0;fb<fillLayers.length;fb++) trimOut(fillLayers[fb],b.tOut);}
       // one colour per block group (alternating), so each block and everything inside it reads as a band in the timeline
-      var grp=[B,T,NT,ML]; for(var fg=f0;fg<fillLayers.length;fg++) grp.push(fillLayers[fg]); GB_labelAll(grp,lab2?(i%2?9:14):(i%2?11:1));
+      var grp=[B,T,NT,ML]; for(var fg=f0;fg<fillLayers.length;fg++) grp.push(fillLayers[fg]);
+      /* layer 2 dim: a box over the block (and its content) that fades in once the next block lands — it follows the block's size, moves and fades */
+      if(b.dim&&b.dim.keys){ try{ var DL=GB_box(blockC,(pre||"")+b.name+" · Dim",b.x,b.y,b.bw,b.bh,b.dim.color,0); DL.comment="GridBlocks:dim";
+          GB_jumpParent(DL,B); GB_xf(DL).property("ADBE Anchor Point").setValue([0,0]); GB_xf(DL).property("ADBE Position").setValue([0,0]);
+          var dr=GB_contents(DL).property("ADBE Vector Shape - Rect");
+          try{ dr.property("ADBE Vector Rect Size").expression="// Grid Blocks: same size as the block\ntry{ thisLayer.parent.content(1).size }catch(e){ value }"; dr.property("ADBE Vector Rect Position").expression="try{ thisLayer.parent.content(1).position }catch(e){ value }"; }catch(eDx){}
+          var dop=GB_xf(DL).property("ADBE Opacity"); GB_keys(dop,b.dim.keys,fps); dop.expression="// Grid Blocks: fades with the block\nvalue*thisLayer.parent.transform.opacity/100";
+          trimTo(DL,Math.max(0,b.dim.keys[0][0]-1)); if(b.tOut!=null) trimOut(DL,b.tOut); grp.push(DL); }catch(eDim){} }
+      GB_labelAll(grp,lab2?(i%2?9:14):(i%2?11:1));
       return {B:B,grp:grp,b:b};
     }
     var firstMainB=null, mainGroups=[];
