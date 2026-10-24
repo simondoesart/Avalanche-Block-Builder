@@ -10775,10 +10775,11 @@ function cardMedia(ids){
   const asset=got?mAsset(got.asset):null;
   return `<details class="sub" data-sub="blk-media" open><summary>Media <span class="note">${got?(asset?esc(asset.name):'on'):'none'}${ids.length>1?' · '+ids.length+' blocks':''}</span></summary><div class="subbody">
     <div class="seg" data-bmon="1"><button data-v="auto"${mode==='auto'?' class="on"':''} title="Follow All blocks / Picked blocks (${got?(got.layer==='picked'?'picked':'all blocks'):'none'})">Layer rule</button><button data-v="on"${mode==='on'?' class="on"':''}>On</button><button data-v="off"${mode==='off'?' class="on"':''}>Off</button></div>
-    <div class="field stack"><span class="lbl">Media for ${ids.length>1?'these blocks':'this block'} <span class="note">(on top)</span></span><select class="msel" data-bmasset="1">${mOpts(mAssets(),per.asset||'','(global choice)')}</select></div>
-    <div class="field stack"><span class="lbl">More media in ${ids.length>1?'these blocks':'this block'} <span class="note">— under the top one; all of them go to After Effects</span></span>
-      ${(per.more||[]).map((id,k)=>{ const a=mAsset(id); return a?`<div class="mrow"><span class="nm">${a.type==='video'?'▶':'▣'} ${esc(a.name)}</span><button class="btn ghost" data-bmtop="${k}" title="Put this one on top">↑ top</button><button class="btn ghost" data-bmrm="${k}" title="Remove from the block">✕</button></div>`:''; }).join('')}
-      <select class="msel" data-bmmore="1">${mOpts(mAssets().filter(a=>!a.builtin),'','+ add another clip…')}</select></div>
+    <div class="field stack"><span class="lbl">Media in ${ids.length>1?'these blocks':'this block'} <span class="note">— the top one shows here; all go to After Effects</span></span>
+      <div class="mrow"><span class="st" style="min-width:34px">Top</span><select class="msel" data-bmswap="top" title="Swap the clip on top">${mOpts(mAssets(),per.asset||(got?got.asset:''),per.asset?'':'(follow the layer: '+(asset?esc(asset.name):'none')+')')}</select>${per.asset?'<button class="btn ghost" data-bmfollow="1" title="Go back to the layer’s media choice">↺</button>':''}</div>
+      ${(per.more||[]).map((id,k)=>`<div class="mrow"><span class="st" style="min-width:34px">${k+2}</span><select class="msel" data-bmswap="${k}" title="Swap this clip">${mOpts(mAssets(),id)}</select><button class="btn ghost" data-bmtop="${k}" title="Put this one on top">↑</button><button class="btn ghost" data-bmrm="${k}" title="Remove from the block">✕</button></div>`).join('')}
+      <select class="msel" data-bmmore="1">${mOpts(mAssets().filter(a=>a.id!==(got&&got.asset)&&(per.more||[]).indexOf(a.id)<0),'','+ add another clip…')}</select>
+      ${mAssets().filter(a=>!a.builtin).length?'':'<div class="note">Add your clips in <b>Content › Media</b> first (+ Add clips / + Add a folder).</div>'}</div>
     <div class="field stack"><span class="lbl">How it sits in ${ids.length>1?'these blocks':'this block'}</span>
       ${seg('fit',[['cover','Cover'],['contain','Contain'],['stretch','Stretch'],['tile','Tile'],['original','Original']])}
       <div class="field2">${num('scale','Scale','%',1,2000)}${num('opacity','Opacity','%',0,100)}${num('x','X','%',-500,500)}${num('y','Y','%',-500,500)}</div>
@@ -10798,6 +10799,7 @@ function cardMedia(ids){
 }
 function mPer(ids,fn){ const M=D.bmedia; M.per=Object.assign({},M.per||{}); ids.forEach(id=>{ const p=Object.assign({},M.per[id]||{}); fn(p); if(!Object.keys(p).length) delete M.per[id]; else M.per[id]=p; }); }
 $('#insp').addEventListener('click',e=>{
+  const bf=e.target.closest('[data-bmfollow]'); if(bf){ pushHist(true); mPer(mSelIds(),p=>{ delete p.asset; }); renderInsp(); render(); return; }
   const bt=e.target.closest('[data-bmtop]'), br=e.target.closest('[data-bmrm]');
   if(bt||br){ pushHist(true); const k=+(bt||br).dataset[bt?'bmtop':'bmrm']; mPer(mSelIds(),p=>{ const L=(p.more||[]).slice(), id=L[k]; if(id==null) return; L.splice(k,1); if(bt){ if(p.asset) L.unshift(p.asset); p.asset=id; p.on=true; } if(L.length) p.more=L; else delete p.more; }); renderInsp(); render(); return; }
   const ed=e.target.closest('[data-act="editmedia"]'); if(ed){ e.preventDefault(); U.ctab='media'; select([]); try{ const k=STEPS.findIndex(x=>x.id==='content'); if(k>=0&&U.step!==k) goStep(k); }catch(x){} refresh(); return; }
@@ -10813,7 +10815,10 @@ $('#insp').addEventListener('change',e=>{ const t=e.target, ds=t.dataset||{};
     else { D.num.per=Object.assign({},D.num.per||{}); ids.forEach(id=>{ const b=P.seq.find(x=>x.id===id)||byId(id); const def=b?!!(b.num===true||(b.num!==false&&D.num.on)):D.num.on; if(t.checked===def) delete D.num.per[id]; else D.num.per[id]=t.checked; }); }
     planCache.k=''; syncInputs(true); refresh(); renderCPick(); return; }
   if(ds.bmasset){ pushHist(true); mPer(mSelIds(),p=>{ if(t.value) p.asset=t.value; else delete p.asset; }); renderInsp(); render(); return; }
-  if(ds.bmmore){ const v=t.value; if(!v) return; pushHist(true); mPer(mSelIds(),p=>{ const L=(p.more||[]).filter(x=>x!==v); if(!p.asset){ p.asset=v; p.on=true; } else if(p.asset!==v) L.push(v); if(L.length) p.more=L; else delete p.more; }); renderInsp(); render(); return; }
+  if(ds.bmswap){ const v=t.value; pushHist(true); mPer(mSelIds(),p=>{ if(ds.bmswap==='top'){ if(v){ p.asset=v; p.on=true; p.more=(p.more||[]).filter(x=>x!==v); if(!p.more.length) delete p.more; } else delete p.asset; } else { const L=(p.more||[]).slice(), k=+ds.bmswap; if(v&&L[k]!=null&&v!==p.asset){ L[k]=v; p.more=L.filter((x,i)=>L.indexOf(x)===i); } } }); renderInsp(); render(); return; }
+  if(ds.bmmore){ const v=t.value; if(!v) return; pushHist(true); const mm=mediaMap(plan(geom()));
+    mSelIds().forEach(id=>mPer([id],p=>{ const L=(p.more||[]).filter(x=>x!==v), top=p.asset||(mm[id]&&mm[id].asset)||null;   /* the clip showing now stays on top */
+      if(!top){ p.asset=v; p.on=true; } else { p.asset=top; p.on=true; if(top!==v) L.push(v); } if(L.length) p.more=L; else delete p.more; })); renderInsp(); render(); return; }
   if(ds.bmown){ pushHist(true); const own=!t.checked; mPer(mSelIds(),p=>{ if(own){ p.own=true; MSPEC.forEach(k=>{ if(p[k]===undefined) p[k]=D.bmedia[k]; }); } else { delete p.own; MSPEC.forEach(k=>delete p[k]); } }); renderInsp(); render(); return; }
   if(ds.bmchk){ pushHist(true); mPer(mSelIds(),p=>{p[ds.bmchk]=t.checked;}); render(); return; }
   if(ds.bm){ U._bmEdit=false; renderInsp(); }
