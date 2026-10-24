@@ -8685,7 +8685,7 @@ function cardList(G){
     :'<div class="note">No blocks yet.</div>'}
   </div>`;
 }
-function renderInsp(){ setTimeout(()=>{ try{ paintThumbs($('#insp')); }catch(e){} },0);
+function renderInsp(){ if(U.mDragging) return; setTimeout(()=>{ try{ paintThumbs($('#insp')); }catch(e){} },0);
   const el=$('#insp'), st=STEPS[U.step], ids=tlSelIds();
   if(U.ctx||(!ids.length&&!U.sel)){el.innerHTML='';return;}
   const a=document.activeElement;
@@ -10651,13 +10651,14 @@ function setBlockClips(ids,fn){ pushHist(true); const mm=mediaMap(plan(geom()));
     if(L.length){ p.asset=L[0]; p.on=true; if(L.length>1) p.more=L.slice(1); else delete p.more; } else { delete p.asset; delete p.more; p.on=false; } }));
   planCache.k=''; try{ renderInsp(); }catch(e){} render(); try{ renderMediaUI(); }catch(e){} }
 /* drag a library clip (or files from your computer) onto a block on the canvas: it goes on top — ⇧ adds it underneath */
-document.addEventListener('dragstart',e=>{ const t=e.target&&e.target.closest&&e.target.closest('[data-mdrag]'); if(!t) return; try{ e.dataTransfer.setData('text/plain','gbmedia:'+t.dataset.mdrag); e.dataTransfer.effectAllowed='copy'; }catch(x){} });
+document.addEventListener('dragend',()=>{ U.mDragging=false; setTimeout(()=>{ try{ renderMediaUI(); }catch(e){} },0); });
+document.addEventListener('dragstart',e=>{ const t=e.target&&e.target.closest&&e.target.closest('[data-mdrag]'); if(!t) return; U.mDragging=true; try{ e.dataTransfer.setData('text/plain','gbmedia:'+t.dataset.mdrag); e.dataTransfer.effectAllowed='copy'; }catch(x){} });
 function dropClipIds(e){ const out=[]; try{ const s=e.dataTransfer.getData('text/plain')||''; if(/^gbmedia:/.test(s)) out.push(s.slice(8)); }catch(x){} return out; }
 async function dropToIds(e){ const ids=dropClipIds(e); if(ids.length) return ids; const fs=e.dataTransfer&&e.dataTransfer.files?[...e.dataTransfer.files].filter(f=>M_RE.test(f.name)):[]; if(!fs.length) return []; return (mAddFiles(fs)||[]).map(a=>a.id); }
 cv.addEventListener('dragover',e=>{ if(STEPS[U.step]&&e.dataTransfer){ e.preventDefault(); e.dataTransfer.dropEffect='copy'; } });
-cv.addEventListener('drop',async e=>{ e.preventDefault(); const G=geom(), w=localPt(G,toWorld(e)), xp=xfPick(G,w), cell=xp?{c:xp.c,r:xp.r}:cellAt(G,w), P=plan(G);
+cv.addEventListener('drop',async e=>{ e.preventDefault(); U.mDragging=false; const G=geom(), w=localPt(G,toWorld(e)), xp=xfPick(G,w), cell=xp?{c:xp.c,r:xp.r}:cellAt(G,w), P=plan(G);
   const b=P.seq.slice().reverse().find(x=>cell.c>=x.c&&cell.c<x.c+x.w&&cell.r>=x.r&&cell.r<x.r+x.h); if(!b) return toast('Drop the clip onto a block');
-  const ids=await dropToIds(e); if(!ids.length) return; const under=e.shiftKey; setBlockClips([b.id],L=>under?L.concat(ids):ids.concat(L.slice(1)));
+  const ids=await dropToIds(e); if(!ids.length) return toast('Couldn’t read that drop — try dragging the clip again'); const under=e.shiftKey; setBlockClips([b.id],L=>under?L.concat(ids):ids.concat(L.slice(1)));
   select([b.id]); refresh(); toast(under?'Added underneath':'Clip on the block','',true); });
 function renderMediaUI(){
   const M=D.bmedia, el=$('#mAsset'); if(!el) return; mRestore(); mCheckPaths(false);
@@ -10668,7 +10669,8 @@ function renderMediaUI(){
   const pool=M.pool||[];
   $('#mPool').innerHTML=mAssets().map(a=>`<label class="mrow"><input type="checkbox" data-mpool="${esc(a.id)}"${pool.indexOf(a.id)>=0?' checked':''}><span class="nm">${a.type==='video'?'▶':'▣'} ${esc(a.name)}</span>${pool.indexOf(a.id)>=0?`<span class="st">#${pool.indexOf(a.id)+1}</span>`:''}</label>`).join('');
   const user=mAssets().filter(a=>!a.builtin);
-  { const box=$('#mAssetList'); box.className='mlib'; box.innerHTML=mAssets().map(a=>`<div class="mtrow" draggable="true" data-mdrag="${esc(a.id)}" data-mlrow="${esc(a.id)}" title="${esc(a.path||a.name)} — drag onto a block · drag up/down to reorder · drop a file from your computer here to replace it">${thumbCv(a,96,54)}<div class="mtx"><span class="nm">${esc(a.name)}</span><span class="st">${a.type==='video'?'Video':'Image'}${a.builtin?' · built in':' · '+mStatus(a)}</span></div>${!a.builtin&&(!mUrl(a)||a.missing)?`<button class="btn ghost" data-mrelink="${esc(a.id)}">Relink</button>`:''}${a.builtin?'':`<button class="btn ghost" data-mdel="${esc(a.id)}" title="Remove from the library">×</button>`}</div>`).join(''); paintThumbs(box); }
+  { const box=$('#mAssetList'); box.className='mlib'; const html=mAssets().map(a=>`<div class="mtrow" draggable="true" data-mdrag="${esc(a.id)}" data-mlrow="${esc(a.id)}" title="${esc(a.path||a.name)} — drag onto a block · drag up/down to reorder · drop a file from your computer here to replace it">${thumbCv(a,96,54)}<div class="mtx"><span class="nm">${esc(a.name)}</span><span class="st">${a.type==='video'?'Video':'Image'}${a.builtin?' · built in':' · '+mStatus(a)}</span></div>${!a.builtin&&(!mUrl(a)||a.missing)?`<button class="btn ghost" data-mrelink="${esc(a.id)}">Relink</button>`:''}${a.builtin?'':`<button class="btn ghost" data-mdel="${esc(a.id)}" title="Remove from the library">×</button>`}</div>`).join('');
+    if(box._html!==html&&!U.mDragging){ box.innerHTML=html; box._html=html; } paintThumbs(box); }   /* rebuilt only when it changes — never mid-drag */
   if(false) $('#mAssetList').innerHTML=user.map(a=>`<div class="mrow"><span class="nm" title="${esc(a.path||a.name)}">${a.type==='video'?'▶':'▣'} ${esc(a.name)}</span><span class="st">${mStatus(a)}</span>${mUrl(a)&&!a.missing?'':`<button class="btn ghost" data-mrelink="${esc(a.id)}" title="Choose the file again (browser files don't survive a reload)">Relink</button>`}<button class="btn ghost" data-mdel="${esc(a.id)}" title="Remove from the list">×</button></div>`).join('');
   { const se=$('#mSelAsset'); if(se&&document.activeElement!==se) se.innerHTML=mOpts(mAssets(),M.selAsset||'','(same as All blocks)'); }
   const n=(M.pick||[]).length; if($('#mPickN')) $('#mPickN').textContent=n?`${n} picked`:'none picked yet';
