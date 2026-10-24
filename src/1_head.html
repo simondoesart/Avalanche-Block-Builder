@@ -977,7 +977,8 @@ body.nohelp .qm{display:none}
             <label class="check mlayer"><input type="checkbox" data-bind="bmedia.on"> <b>All blocks</b>&nbsp;get media</label>
             <div class="field stack"><span class="lbl">Type</span><div class="seg" data-seg="bmedia.kind"><button data-v="video">Video</button><button data-v="image">Image</button></div></div>
             <div class="field stack"><span class="lbl">Media</span><select id="mAsset" class="msel"></select></div>
-            <div class="row-btns"><button class="btn" id="mAdd" title="Add your own video or image files">+ Add video / image…</button><input type="file" id="mFile" accept="video/*,image/*" multiple hidden></div>
+            <div class="row-btns"><button class="btn" id="mAdd" title="Add your own video or image files — pick several at once">+ Add clips…</button><button class="btn" id="mAddDir" title="Pick a folder of footage and choose which clips to use">+ Add a folder…</button><input type="file" id="mFile" accept="video/*,image/*" multiple hidden><input type="file" id="mDir" webkitdirectory multiple hidden></div>
+            <div class="field stack" id="mLibRow"><span class="lbl">Footage folder on disk <span class="note">(so After Effects finds your clips)</span></span><input type="text" class="text-in" data-bind="mediaLib" placeholder="e.g. /Users/you/Projects/Footage"><div class="note" id="mLibNote"></div></div>
             <div id="mAssetList" class="mlist"></div>
             <label class="check" title="After Effects: the clip goes inside its own precomp (one per file), and the blocks use the precomp — swap or edit the footage in one place"><input type="checkbox" data-bind="bmedia.precomp"> Bring in as an After Effects precomp</label>
             <details class="sub" data-sub="m-picked" open><summary>Picked blocks <span class="note">override All blocks</span></summary><div class="subbody">
@@ -1763,6 +1764,14 @@ body.nohelp .qm{display:none}
   </main>
 </div>
 
+<div class="modal" id="mPickM" hidden>
+  <div class="sheet" style="max-width:520px">
+    <div class="sheet-h"><h3>Add clips</h3><span class="note" id="mPickWhere"></span><div class="spacer"></div><button class="btn icon ghost" data-mpk="cancel">✕</button></div>
+    <div style="display:grid;gap:8px;padding:4px 2px"><div class="row-btns"><button class="btn ghost" data-mpk="all">Select all</button><button class="btn ghost" data-mpk="none">None</button><input type="text" class="text-in" id="mPickFilter" placeholder="Filter…" style="flex:1"></div>
+      <div class="mlist" id="mPickList" style="max-height:52vh;overflow:auto"></div></div>
+    <div class="sheet-f"><span class="note" id="mPickN"></span><div class="spacer"></div><button class="btn" data-mpk="cancel">Cancel</button><button class="btn primary" data-mpk="go">Add selected</button></div>
+  </div>
+</div>
 <div class="modal" id="bldModal" hidden>
   <div class="sheet" style="max-width:560px">
     <div class="sheet-h"><h3 id="bldTitle">Build in After Effects</h3><div class="spacer"></div><button class="btn icon ghost" data-bld="cancel" title="Cancel">✕</button></div>

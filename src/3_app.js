@@ -87,6 +87,7 @@ const DEF={
   num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100,per:{}},
   io:{in:null,out:null},
   L2:{on:false,dim:{on:false,color:'#121212',op:60,len:12,delay:0,after:1},z:'front',active:'main',store:null,sound:'off',timing:null,cam:'main',camSrc:'main',infX:100,infY:100,zoom:true,revealBy:'own',ctrl:{x:0,y:0,r:0,s:100,o:100},bb:{on:false,cam:'line',smooth:8,anchor:'c',vf:false,vDamp:0,ry:50,bleed:0,ovRows:0,zoomRoom:true,per:{},adj:2,scale:100,move:'glide',stepLen:6,speed:100,rx:65,band:'any',rowFrom:null,rowTo:null,startRow:null,path:'walk',touch:true,step:'corner',sidePct:30,bias:'bounce',gap:0,overlap:false,slack:25,stay:'stay',stayN:8}},
+  mediaLib:'',
   bmedia:{on:false,selOn:false,selAsset:'',kind:'video',asset:'sample',precomp:false,fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,
     loop:'loop',start:'reveal',delay:0,at:0,offset:0,audio:'mute',inMode:'block',inLen:12,target:'all',pick:[],dirOn:{up:true,down:true,flat:true},
     assign:'same',pool:[],dir:{up:'',down:'',flat:''},seed:1,per:{},assets:[]},
@@ -4497,7 +4498,8 @@ function blockState(K,t,q){
 const MEDIA_SAMPLE={id:'sample',name:'Sample · green/blue screen',type:'video',file:'media/sample.mp4',w:1280,h:720,dur:9.44,fps:25,builtin:true};
 const MEDIA_STILL={id:'sample-still',name:'Sample still',type:'image',file:'media/sample.jpg',w:1280,h:720,builtin:true};
 const MSPEC=['precomp','fit','scale','x','y','flipX','flipY','opacity','loop','start','delay','at','offset','audio','inMode','inLen'];
-function mAssets(){ return [MEDIA_SAMPLE,MEDIA_STILL].concat(((D.bmedia&&D.bmedia.assets)||[]).filter(a=>a&&a.id&&!a.builtin)); }
+function mAssets(){ const own=((D.bmedia&&D.bmedia.assets)||[]).filter(a=>a&&a.id&&!a.builtin), st=D.L2&&D.L2.store&&D.L2.store.bmedia&&Array.isArray(D.L2.store.bmedia.assets)?D.L2.store.bmedia.assets:[], seen=new Set(own.map(a=>a.id));
+  return [MEDIA_SAMPLE,MEDIA_STILL].concat(own,st.filter(a=>a&&a.id&&!a.builtin&&!seen.has(a.id))); }   /* one library for both layers */
 function mAsset(id){ return mAssets().find(a=>a.id===id)||null; }
 function mDefault(kind){ return kind==='image'?'sample-still':'sample'; }
 function mKindAsset(kind,id){ const a=mAsset(id); return a&&a.type===kind?a.id:mDefault(kind); }
@@ -4546,7 +4548,8 @@ function mSrcTime(s,t,fps,dur){
 }
 /* ---- preview runtime: images load once; videos are decoded into a small frame cache */
 const MRT={};
-function mUrl(A){ if(!A) return null; if(A.url) return A.url; if(A.path){ let p=String(A.path).replace(/\\/g,'/'); if(/^[A-Za-z]:/.test(p)) p='/'+p; return 'file://'+encodeURI(p); } return A.file||null; }
+const LIVE_URLS=new Set();
+function mUrl(A){ if(!A) return null; if(A.url&&(!/^blob:/.test(A.url)||LIVE_URLS.has(A.url))) return A.url; if(A.path){ let p=String(A.path).replace(/\\/g,'/'); if(/^[A-Za-z]:/.test(p)) p='/'+p; return 'file://'+encodeURI(p); } return A.file||null; }
 let mRT=0; function mRedraw(){ if(mRT) return; mRT=setTimeout(()=>{ mRT=0; try{render();}catch(e){} try{renderMediaUI();}catch(e){} },80); }
 function mKeepDims(A,R){ if(A&&R&&R.w&&R.h&&(!A.w||!A.h)){ A.w=R.w; A.h=R.h; planCache.k=''; try{ refresh(); }catch(e){} } }
 function mRuntime(A){
@@ -7081,8 +7084,11 @@ function payloadCore(inner){
     pb.fill=blockFill(b,q,animOn?P.fillBase[b.id]:null,false,animOn&&P.fillEnd?P.fillEnd[b.id]:null);
     if(isOutline(b)) pb.outline={w:+F.outlineW||2};
     const ms=MM[b.id]; if(ms){ const A=mAsset(ms.asset)||MEDIA_SAMPLE;
-      pb.media={id:A.id,name:A.name,type:A.type,file:A.file||A.name,path:A.path||null,precomp:!!ms.precomp,fit:ms.fit,scale:+ms.scale||100,x:+ms.x||0,y:+ms.y||0,flipX:!!ms.flipX,flipY:!!ms.flipY,opacity:clamp(+ms.opacity,0,100),
-        loop:ms.loop,inMode:ms.inMode||'block',inLen:Math.max(1,+ms.inLen||12),startF:ms.start==='frame'?(+ms.at||0):(animOn?Math.round(P.T[i]):0)+(+ms.delay||0),offset:Math.max(0,+ms.offset||0),audio:ms.audio==='on'}; }
+      const lib=String(D.mediaLib||'').replace(/[\\\/]+$/,''), pth=A.path||(lib&&!A.builtin?lib+'/'+(A.rel||A.file||A.name):null);
+      pb.media={id:A.id,aid:A.id,name:A.name,type:A.type,file:A.file||A.name,rel:A.rel||null,path:pth,precomp:!!ms.precomp,fit:ms.fit,scale:+ms.scale||100,x:+ms.x||0,y:+ms.y||0,flipX:!!ms.flipX,flipY:!!ms.flipY,opacity:clamp(+ms.opacity,0,100),
+        loop:ms.loop,inMode:ms.inMode||'block',inLen:Math.max(1,+ms.inLen||12),startF:ms.start==='frame'?(+ms.at||0):(animOn?Math.round(P.T[i]):0)+(+ms.delay||0),offset:Math.max(0,+ms.offset||0),audio:ms.audio==='on'};
+      const more=(((D.bmedia.per||{})[b.id]||{}).more||[]).map(id=>mAsset(id)).filter(a=>a&&a.id!==A.id);   /* every other clip on this block: in AE under the top one */
+      if(more.length) pb.mediaMore=more.map(a2=>Object.assign({},pb.media,{id:a2.id,aid:a2.id,name:a2.name,type:a2.type,file:a2.file||a2.name,rel:a2.rel||null,path:a2.path||(lib&&!a2.builtin?lib+'/'+(a2.rel||a2.file||a2.name):null)})); }
   });
   // manual order: blocks you didn't pick but chose to keep visible
   P.statics.forEach(b=>{const q=cellRect(G,b.c,b.r,b.w,b.h);blocks.push({name:bname(b),order:0,c:b.c+1,r:b.r+1,w:b.w,h:b.h,x:r3(q.x),y:r3(q.y),bw:r3(q.w),bh:r3(q.h),
@@ -7120,7 +7126,7 @@ function payloadCore(inner){
     v:3, fps,
     comp:{w:G.W,h:G.H,name:'Grid Blocks '+G.W+'x'+G.H,dur:Math.max(D.comp.dur||10,D.out.fitDur?Math.ceil(Math.max(endSec,transOn()?transP(G).end/fps:0)*100)/100:0)},
     depth:(()=>{ const K=zdKeys(); return K.length&&D.anim.mode!=='static'?{keys:K,zoomK:CAM_ZOOM_K}:null; })(),
-    mediaRoot:inAE?(()=>{try{let p=decodeURI(location.pathname).replace(/\/[^\/]*$/,'');if(/^\/[A-Za-z]:/.test(p))p=p.slice(1);return p;}catch(e){return null;}})():null,
+    mediaLib:String(D.mediaLib||'')||null, mediaRoot:inAE?(()=>{try{let p=decodeURI(location.pathname).replace(/\/[^\/]*$/,'');if(/^\/[A-Za-z]:/.test(p))p=p.slice(1);return p;}catch(e){return null;}})():null,
     replace:D.out.replace, lock:D.out.lock, fitDur:D.out.fitDur, rig, mb:D.out.mb?{angle:+D.out.mbAngle||180}:null,
     bg:D.look.bgOn?{color:hexRgb(D.look.bg)}:null,
     cells, lines, rules, echoes, blocks, gaps,
@@ -7291,7 +7297,8 @@ function bldMake(o){
   return bldApply(d,o); }
 function bldApply(d,o){ const per=(L,ln,c,blocks,set)=>{ if(!blocks) return;
     blocks.forEach((b,i)=>{ if(!c.text){ b.text=''; b.fill=null; } if(!c.num) b.num=null; if(!c.dim) b.dim=null;
-      if(c.comp==='A'||c.media==='none'){ b.media=null; return; }
+      if(c.comp==='A'||c.media==='none'){ b.media=null; b.mediaMore=null; return; }
+      if(b.mediaMore) b.mediaMore=b.mediaMore.map((mm,j)=>Object.assign({},mm,{precomp:true,id:(c.comp==='C'&&c.mediaPer)?('gbm'+ln+'_'+i+'_'+j+'_'+mm.id):('gbm'+ln+'_'+mm.id),compName:(c.comp==='C'&&c.mediaPer)?`GB · L${ln} · Media · ${b.name||('Block '+(i+1))} · ${j+2}`:`GB · L${ln} · Media · ${mm.name||'clip'}`}));
       const m0=b.media, builtin=!m0||m0.id==='sample'||m0.id==='sample-still';
       if(c.media==='sample'&&builtin){ b.media=Object.assign({fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,loop:'loop',inMode:'block',inLen:12,offset:0,audio:false},m0||{},{id:'sample',name:'Replace me',type:'video',file:'media/sample.mp4',path:null,startF:m0&&m0.startF!=null?m0.startF:(b.tIn||0)}); }
       if(!b.media) return;
@@ -7313,7 +7320,8 @@ async function build(ev){
     const r=String(await evalHost('GB_build('+json+')'));
     $('#btnBuild').disabled=false;$('#btnBuild2').disabled=false;
     const p=r.split('|');
-    if(p[0]==='OK'){ toast(p.slice(1).join('|'),'ok'); snapTake('Built in After Effects',true); }
+    if(p[0]==='OK'){ toast(p.slice(1).join('|'),'ok'); snapTake('Built in After Effects',true);
+      try{ const fj=JSON.parse(String(await evalHost('GB_mediaFoundJSON()'))||'{}'); let n=0; mAssets().forEach(A=>{ if(A.builtin) return; const p2=fj[A.id]; if(p2&&A.path!==p2){ A.path=p2; n++; } }); if(n) toast(`Remembered where ${n} clip${n>1?'s are':' is'} — no more asking`,'',true); }catch(x){} }
     else toast(p[0]==='ERR'?p.slice(1).join('|'):'After Effects said: '+r,'err');
     detect();
   } else {
@@ -7367,9 +7375,10 @@ function registerKeys(){
 /* ------------------------------------------------------------------ init */
 /* ---- block media: global panel ---- */
 function mOpts(list,cur,blank){ return (blank?`<option value="">${blank}</option>`:'')+list.map(a=>`<option value="${esc(a.id)}"${a.id===cur?' selected':''}>${a.type==='video'?'▶':'▣'} ${esc(a.name)}</option>`).join(''); }
-function mStatus(A){ const R=MRT[A.id]; if(!mUrl(A)) return '⚠ relink'; if(!R) return ''; if(R.err) return '⚠ can’t load'; if(A.type==='video'&&!R.ready&&R.cf) return Math.round(100*R.got/Math.max(1,Math.round(R.dur*R.cf)))+'%'; return R.ready?'ready':'…'; }
+function mStatus(A){ const R=MRT[A.id]; if(!mUrlLive(A)&&!(inAE&&A.path)) return mRestoring?'…':'⚠ relink'; if(R&&R.ready&&!R.err) return A.path?'✓ on disk':A.kept?'✓ kept':'ready'; if(!R) return ''; if(R.err) return '⚠ can’t load'; if(A.type==='video'&&!R.ready&&R.cf) return Math.round(100*R.got/Math.max(1,Math.round(R.dur*R.cf)))+'%'; return R.ready?'ready':'…'; }
 function renderMediaUI(){
-  const M=D.bmedia, el=$('#mAsset'); if(!el) return;
+  const M=D.bmedia, el=$('#mAsset'); if(!el) return; mRestore();
+  { const ln=$('#mLibNote'); if(ln){ const user=mAssets().filter(a=>!a.builtin), noPath=user.filter(a=>!a.path).length; ln.innerHTML=!user.length?'Pick the folder your clips live in — Build finds them there.':D.mediaLib?`${user.length} clip${user.length>1?'s':''} · After Effects looks in this folder (and sub-folders by name).`:noPath?`${noPath} clip${noPath>1?'s have':' has'} no folder on disk yet — paste the folder's path here, or After Effects will ask once and remember.`:'Every clip has its place on disk.'; } }
   const kindList=mAssets().filter(a=>a.type===M.kind);
   if(document.activeElement!==el) el.innerHTML=mOpts(kindList,mKindAsset(M.kind,M.asset));
   $$('[data-mdir]').forEach(s=>{ if(document.activeElement!==s) s.innerHTML=mOpts(mAssets(),(M.dir||{})[s.dataset.mdir]||'','(same as above)'); });
@@ -7383,13 +7392,51 @@ function renderMediaUI(){
   if(mediaAny()||Object.keys(M.per||{}).length){ const used=new Set(Object.values(mediaMap(plan(geom()))).map(s=>s.asset)); used.add(mKindAsset(M.kind,M.asset)); if(M.selAsset) used.add(M.selAsset); used.forEach(id=>mRuntime(mAsset(id))); }
 }
 /* add files: in the browser they're session-only object URLs (relink after a reload); in After Effects, real paths */
+/* ---- the media library is kept: clips you add stay in this browser (IndexedDB); in After Effects they're real files ---- */
+let MDB=null; function mDB(){ if(MDB) return MDB; MDB=new Promise(res=>{ try{ const r=indexedDB.open('gridblocks-media',1); r.onupgradeneeded=()=>{ try{ r.result.createObjectStore('clips'); }catch(e){} }; r.onsuccess=()=>res(r.result); r.onerror=()=>res(null); }catch(e){ res(null); } }); return MDB; }
+async function mStore(id,blob){ try{ const db=await mDB(); if(!db||!blob) return false; return await new Promise(res=>{ const tx=db.transaction('clips','readwrite'); tx.objectStore('clips').put(blob,id); tx.oncomplete=()=>res(true); tx.onerror=()=>res(false); tx.onabort=()=>res(false); }); }catch(e){ return false; } }
+async function mLoad(id){ try{ const db=await mDB(); if(!db) return null; return await new Promise(res=>{ const q=db.transaction('clips','readonly').objectStore('clips').get(id); q.onsuccess=()=>res(q.result||null); q.onerror=()=>res(null); }); }catch(e){ return null; } }
+let mRestoring=false;
+async function mRestore(){ if(mRestoring) return; mRestoring=true; let n=0;
+  try{ for(const A of mAssets()){ if(A.builtin||mUrlLive(A)) continue; if(inAE&&A.path) continue; const b=await mLoad(A.id); if(b){ A.url=URL.createObjectURL(b); LIVE_URLS.add(A.url); A.kept=true; delete MRT[A.id]; n++; } } }
+  finally{ mRestoring=false; } if(n){ planCache.k=''; try{ renderMediaUI(); refresh(); }catch(e){} } }
+function mUrlLive(A){ return !!(A&&A.url&&(!/^blob:/.test(A.url)||LIVE_URLS.has(A.url))); }
+/* choose which clips to add (from several files, or a folder) */
+function mPickList(items,where){ return new Promise(res=>{ const M=$('#mPickM'); if(!M) return res(items); let sel=new Set(items.map((x,i)=>i)), filt='';
+  const fmt=n=>n>1e9?(n/1e9).toFixed(1)+' GB':n>1e6?Math.round(n/1e6)+' MB':n>1e3?Math.round(n/1e3)+' KB':'';
+  const draw=()=>{ $('#mPickList').innerHTML=items.map((x,i)=>!filt||x.name.toLowerCase().indexOf(filt)>=0||(x.rel||'').toLowerCase().indexOf(filt)>=0?`<label class="mrow"><input type="checkbox" data-mpi="${i}"${sel.has(i)?' checked':''}><span class="nm" title="${esc(x.rel||x.name)}">${/\.(png|jpe?g|gif|tiff?|psd)$/i.test(x.name)?'▣':'▶'} ${esc(x.rel||x.name)}</span><span class="st">${fmt(x.size||0)}</span></label>`:'').join('')||'<div class="note">No video or image files found.</div>'; $('#mPickN').textContent=`${sel.size} of ${items.length} selected`; };
+  $('#mPickWhere').textContent=where||''; $('#mPickFilter').value=''; draw();
+  $('#mPickFilter').oninput=e=>{ filt=e.target.value.toLowerCase(); draw(); };
+  M.onchange=e=>{ const i=e.target.dataset&&e.target.dataset.mpi; if(i==null) return; if(e.target.checked) sel.add(+i); else sel.delete(+i); $('#mPickN').textContent=`${sel.size} of ${items.length} selected`; };
+  M.onclick=e=>{ const b=e.target.closest('[data-mpk]'); if(e.target===M){ M.hidden=true; return res(null); } if(!b) return; const k=b.dataset.mpk;
+    if(k==='all'){ items.forEach((x,i)=>{ if(!filt||x.name.toLowerCase().indexOf(filt)>=0) sel.add(i); }); draw(); return; } if(k==='none'){ sel.clear(); draw(); return; }
+    M.hidden=true; res(k==='go'?items.filter((x,i)=>sel.has(i)):null); };
+  M.hidden=false; }); }
+const M_RE=/\.(mp4|mov|m4v|webm|avi|mxf|png|jpe?g|gif|tiff?|psd)$/i;
+async function mAddFolder(){
+  if(inAE){ const r=String(await evalHost('GB_listMediaFolder()')); if(!/^OK\|/.test(r)){ if(/^ERR/.test(r)) toast(r.slice(4),'err'); return; }
+    const lines=r.slice(3).split('\n'), root=lines.shift(), items=lines.filter(Boolean).map(l=>{ const [p,rel]=l.split('\t'); return {path:p,rel,name:rel.split('/').pop()}; });
+    const pick=await mPickList(items,root); if(!pick||!pick.length) return; mAddPaths(pick); if(!D.mediaLib){ D.mediaLib=root; syncInputs(true); } return; }
+  if(window.showDirectoryPicker){ let dir=null; try{ dir=await window.showDirectoryPicker({mode:'read'}); }catch(e){ return; } const items=[];
+    const walk=async(h,rel,depth)=>{ for await (const [nm,e] of h.entries()){ if(nm[0]==='.') continue; if(e.kind==='directory'){ if(depth<2) await walk(e,rel+nm+'/',depth+1); } else if(M_RE.test(nm)&&items.length<800){ items.push({handle:e,rel:rel+nm,name:nm}); } } };
+    try{ await walk(dir,'',0); }catch(e){} for(const it of items){ try{ const f=await it.handle.getFile(); it.file=f; it.size=f.size; }catch(e){} }
+    const pick=await mPickList(items.filter(x=>x.file),dir.name); if(!pick||!pick.length) return; mAddFiles(pick.map(x=>{ x.file.__rel=dir.name+'/'+x.rel; return x.file; }));
+    if(!D.mediaLib) toast(`Added ${pick.length} clip${pick.length>1?'s':''} — set “Footage folder on disk” to the “${dir.name}” folder's location so After Effects finds them`,'',true); return; }
+  const di=$('#mDir'); if(di){ di.value=''; di.click(); } }
+function mAddPaths(list){ const M=D.bmedia; pushHist(true); M.assets=M.assets||[]; let last=null;
+  list.forEach(x=>{ const p=x.path, n=x.name||String(p).split(/[\\\/]/).pop(), type=/\.(mp4|mov|m4v|webm|avi|mxf)$/i.test(n)?'video':'image';
+    let A=mAssets().find(a=>a.path===p); if(!A){ A={id:'m'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36),name:n,type,file:n,path:p,rel:x.rel||n}; M.assets.push(A); } delete MRT[A.id]; mRuntime(A); last=A; });
+  if(last){ if(!M.on&&M.selOn) M.selAsset=last.id; else { M.kind=last.type; M.asset=last.id; M.on=true; } }
+  syncInputs(true); refresh(); renderMediaUI(); toast(`Added ${list.length} clip${list.length>1?'s':''}`,'ok'); }
 function mAddFiles(files,relinkId){
   const M=D.bmedia; pushHist(true); M.assets=M.assets||[]; let last=null;
   [...files].forEach(f=>{
     const type=/^video\//.test(f.type)||/\.(mp4|mov|m4v|webm|avi|mxf)$/i.test(f.name)?'video':'image';
     let A=relinkId?M.assets.find(a=>a.id===relinkId):null;
     if(!A){ A={id:'m'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36),name:f.name,type,file:f.name}; M.assets.push(A); }
-    A.url=URL.createObjectURL(f); A.name=f.name; A.file=f.name; A.type=type; if(f.path) A.path=f.path;
+    A.url=URL.createObjectURL(f); LIVE_URLS.add(A.url); A.name=f.name; A.file=f.name; A.type=type; if(f.path) A.path=f.path;
+    const rel=f.__rel||f.webkitRelativePath||''; if(rel) A.rel=rel.split('/').slice(1).join('/')||f.name; A.size=f.size||0;
+    mStore(A.id,f).then(ok=>{ if(ok){ A.kept=true; mRedraw(); } });
     delete MRT[A.id]; mRuntime(A); last=A;
   });
   if(last&&!relinkId){ if(!M.on&&M.selOn){ M.selAsset=last.id; } else { M.kind=last.type; M.asset=last.id; M.on=true; } }
@@ -7398,9 +7445,14 @@ function mAddFiles(files,relinkId){
 (()=>{
   const fi=$('#mFile'); if(!fi) return; let relink=null;
   $('#mAdd').onclick=async()=>{
-    if(inAE){ const r=String(await evalHost('GB_pickMedia()')); if(/^OK\|/.test(r)){ const M=D.bmedia; pushHist(true); M.assets=M.assets||[]; r.slice(3).split('\n').filter(Boolean).forEach(line=>{ const [p,n]=line.split('\t'); const type=/\.(mp4|mov|m4v|webm|avi|mxf)$/i.test(n)?'video':'image'; const A={id:'m'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36),name:n,type,file:n,path:p}; M.assets.push(A); M.kind=type; M.asset=A.id; M.on=true; }); syncInputs(true); refresh(); renderMediaUI(); } return; }
+    if(inAE){ const r=String(await evalHost('GB_pickMedia()')); if(/^OK\|/.test(r)&&r.slice(3).split('\n').filter(Boolean).length>1){ const items=r.slice(3).split('\n').filter(Boolean).map(l=>{ const [p,n]=l.split('\t'); return {path:p,name:n,rel:n}; }); const pick=await mPickList(items,items.length+' files'); if(pick&&pick.length) mAddPaths(pick); return; }
+      if(/^OK\|/.test(r)){ const M=D.bmedia; pushHist(true); M.assets=M.assets||[]; r.slice(3).split('\n').filter(Boolean).forEach(line=>{ const [p,n]=line.split('\t'); const type=/\.(mp4|mov|m4v|webm|avi|mxf)$/i.test(n)?'video':'image'; const A={id:'m'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36),name:n,type,file:n,path:p}; M.assets.push(A); M.kind=type; M.asset=A.id; M.on=true; }); syncInputs(true); refresh(); renderMediaUI(); } return; }
     relink=null; fi.value=''; fi.click(); };
-  fi.onchange=()=>{ if(fi.files&&fi.files.length) mAddFiles(fi.files,relink); relink=null; };
+  fi.onchange=async()=>{ const fs=fi.files?[...fi.files]:[]; const rl=relink; relink=null; if(!fs.length) return;
+    if(fs.length>1&&!rl){ const pick=await mPickList(fs.map(f=>({file:f,name:f.name,size:f.size})),fs.length+' files'); if(!pick||!pick.length) return; mAddFiles(pick.map(x=>x.file)); } else mAddFiles(fs,rl); };
+  if($('#mAddDir')) $('#mAddDir').onclick=mAddFolder;
+  const di=$('#mDir'); if(di) di.onchange=async()=>{ const fs=di.files?[...di.files].filter(f=>M_RE.test(f.name)):[]; if(!fs.length) return toast('No video or image files in that folder');
+    const root=(fs[0].webkitRelativePath||'').split('/')[0]; const pick=await mPickList(fs.map(f=>({file:f,name:f.name,rel:(f.webkitRelativePath||f.name).split('/').slice(1).join('/'),size:f.size})),root); if(!pick||!pick.length) return; mAddFiles(pick.map(x=>x.file)); };
   $('#mAsset').onchange=e=>{ pushHist(true); D.bmedia.asset=e.target.value; refresh(); };
   if($('#mSelAsset')) $('#mSelAsset').onchange=e=>{ pushHist(true); D.bmedia.selAsset=e.target.value; D.bmedia.selOn=true; syncInputs(true); refresh(); renderMediaUI(); };
   $$('[data-mdir]').forEach(s=>s.onchange=e=>{ pushHist(true); D.bmedia.dir=Object.assign({},D.bmedia.dir||{}); D.bmedia.dir[s.dataset.mdir]=e.target.value; refresh(); });
@@ -7479,7 +7531,10 @@ function cardMedia(ids){
   const asset=got?mAsset(got.asset):null;
   return `<details class="sub" data-sub="blk-media" open><summary>Media <span class="note">${got?(asset?esc(asset.name):'on'):'none'}${ids.length>1?' · '+ids.length+' blocks':''}</span></summary><div class="subbody">
     <div class="seg" data-bmon="1"><button data-v="auto"${mode==='auto'?' class="on"':''} title="Follow All blocks / Picked blocks (${got?(got.layer==='picked'?'picked':'all blocks'):'none'})">Layer rule</button><button data-v="on"${mode==='on'?' class="on"':''}>On</button><button data-v="off"${mode==='off'?' class="on"':''}>Off</button></div>
-    <div class="field stack"><span class="lbl">Media for ${ids.length>1?'these blocks':'this block'}</span><select class="msel" data-bmasset="1">${mOpts(mAssets(),per.asset||'','(global choice)')}</select></div>
+    <div class="field stack"><span class="lbl">Media for ${ids.length>1?'these blocks':'this block'} <span class="note">(on top)</span></span><select class="msel" data-bmasset="1">${mOpts(mAssets(),per.asset||'','(global choice)')}</select></div>
+    <div class="field stack"><span class="lbl">More media in ${ids.length>1?'these blocks':'this block'} <span class="note">— under the top one; all of them go to After Effects</span></span>
+      ${(per.more||[]).map((id,k)=>{ const a=mAsset(id); return a?`<div class="mrow"><span class="nm">${a.type==='video'?'▶':'▣'} ${esc(a.name)}</span><button class="btn ghost" data-bmtop="${k}" title="Put this one on top">↑ top</button><button class="btn ghost" data-bmrm="${k}" title="Remove from the block">✕</button></div>`:''; }).join('')}
+      <select class="msel" data-bmmore="1">${mOpts(mAssets().filter(a=>!a.builtin),'','+ add another clip…')}</select></div>
     <div class="field stack"><span class="lbl">How it sits in ${ids.length>1?'these blocks':'this block'}</span>
       ${seg('fit',[['cover','Cover'],['contain','Contain'],['stretch','Stretch'],['tile','Tile'],['original','Original']])}
       <div class="field2">${num('scale','Scale','%',1,2000)}${num('opacity','Opacity','%',0,100)}${num('x','X','%',-500,500)}${num('y','Y','%',-500,500)}</div>
@@ -7499,6 +7554,8 @@ function cardMedia(ids){
 }
 function mPer(ids,fn){ const M=D.bmedia; M.per=Object.assign({},M.per||{}); ids.forEach(id=>{ const p=Object.assign({},M.per[id]||{}); fn(p); if(!Object.keys(p).length) delete M.per[id]; else M.per[id]=p; }); }
 $('#insp').addEventListener('click',e=>{
+  const bt=e.target.closest('[data-bmtop]'), br=e.target.closest('[data-bmrm]');
+  if(bt||br){ pushHist(true); const k=+(bt||br).dataset[bt?'bmtop':'bmrm']; mPer(mSelIds(),p=>{ const L=(p.more||[]).slice(), id=L[k]; if(id==null) return; L.splice(k,1); if(bt){ if(p.asset) L.unshift(p.asset); p.asset=id; p.on=true; } if(L.length) p.more=L; else delete p.more; }); renderInsp(); render(); return; }
   const ed=e.target.closest('[data-act="editmedia"]'); if(ed){ e.preventDefault(); U.ctab='media'; select([]); try{ const k=STEPS.findIndex(x=>x.id==='content'); if(k>=0&&U.step!==k) goStep(k); }catch(x){} refresh(); return; }
   const on=e.target.closest('[data-bmon] button[data-v]'); if(on){ pushHist(true); const v=on.dataset.v; mPer(mSelIds(),p=>{ if(v==='auto') delete p.on; else p.on=v==='on'; }); renderInsp(); render(); drawDope(); return; }
   const sg=e.target.closest('[data-bmseg] button[data-v]'); if(sg){ const k=sg.parentNode.dataset.bmseg; pushHist(true); mPer(mSelIds(),p=>{p[k]=sg.dataset.v;}); renderInsp(); render(); return; }
@@ -7512,6 +7569,7 @@ $('#insp').addEventListener('change',e=>{ const t=e.target, ds=t.dataset||{};
     else { D.num.per=Object.assign({},D.num.per||{}); ids.forEach(id=>{ const b=P.seq.find(x=>x.id===id)||byId(id); const def=b?!!(b.num===true||(b.num!==false&&D.num.on)):D.num.on; if(t.checked===def) delete D.num.per[id]; else D.num.per[id]=t.checked; }); }
     planCache.k=''; syncInputs(true); refresh(); renderCPick(); return; }
   if(ds.bmasset){ pushHist(true); mPer(mSelIds(),p=>{ if(t.value) p.asset=t.value; else delete p.asset; }); renderInsp(); render(); return; }
+  if(ds.bmmore){ const v=t.value; if(!v) return; pushHist(true); mPer(mSelIds(),p=>{ const L=(p.more||[]).filter(x=>x!==v); if(!p.asset){ p.asset=v; p.on=true; } else if(p.asset!==v) L.push(v); if(L.length) p.more=L; else delete p.more; }); renderInsp(); render(); return; }
   if(ds.bmown){ pushHist(true); const own=!t.checked; mPer(mSelIds(),p=>{ if(own){ p.own=true; MSPEC.forEach(k=>{ if(p[k]===undefined) p[k]=D.bmedia[k]; }); } else { delete p.own; MSPEC.forEach(k=>delete p[k]); } }); renderInsp(); render(); return; }
   if(ds.bmchk){ pushHist(true); mPer(mSelIds(),p=>{p[ds.bmchk]=t.checked;}); render(); return; }
   if(ds.bm){ U._bmEdit=false; renderInsp(); }

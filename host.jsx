@@ -673,7 +673,7 @@ function GB_fillItems(comp,items,parent,list){
 
 
 /* ---------- media clipped to blocks (video / image / precomp) ---------- */
-var GB_mediaItems={}, GB_mediaFiles={};
+var GB_mediaItems={}, GB_mediaFiles={}, GB_mediaFound={}, GB_mediaDir=null, GB_mediaLib=null;
 function GB_pickMedia(){
   try{
     var filt=GB_isWin()?"Video or image:*.mp4;*.mov;*.m4v;*.webm;*.avi;*.mxf;*.png;*.jpg;*.jpeg;*.gif;*.tif;*.tiff;*.psd;*.ai":function(f){return (f instanceof Folder)||/\.(mp4|mov|m4v|webm|avi|mxf|png|jpe?g|gif|tiff?|psd|ai)$/i.test(f.name);};
@@ -685,14 +685,24 @@ function GB_pickMedia(){
 }
 function GB_findMedia(m,root){
   var fk=String(m.path||m.file||m.name||""); if(GB_mediaFiles.hasOwnProperty(fk)) return GB_mediaFiles[fk];   /* ask about a missing file once, not once per block */
-  var r=GB_findMedia0(m,root); GB_mediaFiles[fk]=r; return r; }
+  var r=GB_findMedia0(m,root); GB_mediaFiles[fk]=r; if(r){ try{ GB_mediaFound[m.aid||m.id]=r.fsName; }catch(eF){} } return r; }
+/* the panel asks for this after a build: where each clip was found, so it never has to ask again */
+function GB_mediaFoundJSON(){ var o=[], k; for(k in GB_mediaFound){ if(GB_mediaFound.hasOwnProperty(k)) o.push('"'+GB_esc(k)+'":"'+GB_esc(String(GB_mediaFound[k]).replace(/\\/g,"/"))+'"'); } return "{"+o.join(",")+"}"; }
+/* pick a footage folder: every video / image inside (two levels deep) */
+function GB_listMediaFolder(){
+  try{ var F=Folder.selectDialog("Grid Blocks · pick a folder of footage"); if(!F) return "CANCEL"; var out=[], re=/\.(mp4|mov|m4v|webm|avi|mxf|png|jpe?g|gif|tiff?|psd)$/i;
+    function walk(fo,rel,depth){ var it=fo.getFiles(), i; for(i=0;i<it.length&&out.length<800;i++){ var f=it[i], nm=decodeURI(f.name); if(nm.charAt(0)==".") continue; if(f instanceof Folder){ if(depth<2) walk(f,rel+nm+"/",depth+1); } else if(re.test(nm)) out.push(f.fsName+"\t"+rel+nm); } }
+    walk(F,"",0); return "OK|"+F.fsName+"\n"+out.join("\n"); }catch(e){ return "ERR|"+e.toString(); } }
 function GB_findMedia0(m,root){
   var tries=[], base=root||null, nm=String(m.file||m.name||"").split("/").pop(), i;
   if(m.path) tries.push(m.path);
+  if(GB_mediaLib){ if(m.rel) tries.push(GB_mediaLib+"/"+m.rel); tries.push(GB_mediaLib+"/"+nm); }   /* the footage folder set in the panel */
+  if(GB_mediaDir){ if(m.rel) tries.push(GB_mediaDir+"/"+m.rel); tries.push(GB_mediaDir+"/"+nm); }   /* where the last missing clip turned up */
   try{ if(!base&&$.fileName) base=File($.fileName).parent.fsName; }catch(e0){}
   if(base){ if(m.file) tries.push(base+"/"+m.file); tries.push(base+"/"+nm); tries.push(base+"/media/"+nm); }
   for(i=0;i<tries.length;i++){ try{ var f=new File(tries[i]); if(f.exists) return f; }catch(e1){} }
   var p=File.openDialog("Grid Blocks: where is “"+(m.name||nm)+"”? (Cancel to skip it)");
+  if(p){ try{ var dir=p.parent; if(m.rel&&m.rel.indexOf("/")>0){ var up=m.rel.split("/").length-1; while(up-->0&&dir.parent) dir=dir.parent; } GB_mediaDir=dir.fsName; }catch(eD){} }
   return p||null;
 }
 function GB_mediaSource(m,root,folder,main){
@@ -920,7 +930,7 @@ function GB_build(d){
       blockPre.layer.name="GB · Blocks"; blockC=blockPre.comp; comps.push(blockC);
     }
     var camRefB=blockC===main?camRefMain:camRefPre;
-    var blocks=[], fillLayers=[], blockLayers=[], mediaL=[]; GB_mediaItems={}; GB_mediaFiles={}; GB_TRIM=!!org.trim; GB_FPS=fps;
+    var blocks=[], fillLayers=[], blockLayers=[], mediaL=[]; GB_mediaItems={}; GB_mediaFiles={}; GB_mediaFound={}; GB_mediaDir=null; GB_mediaLib=d.mediaLib||null; GB_TRIM=!!org.trim; GB_FPS=fps;
 
     function trimTo(Lr,t){ if(org.trim&&t>0){try{Lr.inPoint=Math.min(main.duration-1/fps,t/fps);}catch(eT){}} }
     function trimOut(Lr,t){ if(org.trim&&t!=null&&t/fps<main.duration){try{if(t/fps>Lr.inPoint)Lr.outPoint=t/fps;}catch(eT2){}} }
@@ -948,7 +958,8 @@ function GB_build(d){
       try{ PC.parentFolder=pcFolder(pre); }catch(eF){} comps.push(PC);
       var off=GB_null(PC,"GB · place",false); GB_xf(off).property("ADBE Position").setValue([-b.x,-b.y]); off.comment="GridBlocks:null"; try{ off.shy=true; }catch(eS){}
       var base=GB_box(PC,"Base · "+b.name,b.x,b.y,b.bw,b.bh,b.color,b.outline?b.outline.w:0); GB_jumpParent(base,off); base.comment="GridBlocks:base"; base.label=1;
-      if(b.media){ try{ var mr=GB_mediaLayer(PC,base,b,b.media,d.mediaRoot,mediaF||folder,main,fps,true); if(mr&&mr.L){ mr.L.label=14; } }catch(eMd){} }
+      if(b.mediaMore){ for(var mq=b.mediaMore.length-1;mq>=0;mq--){ try{ var mr2=GB_mediaLayer(PC,base,b,b.mediaMore[mq],d.mediaRoot,mediaF||folder,main,fps,true); if(mr2&&mr2.L){ mr2.L.label=14; mr2.L.name=b.name+" · Media "+(mq+2); mr2.L.moveToBeginning(); } }catch(eMm){} } }
+      if(b.media){ try{ var mr=GB_mediaLayer(PC,base,b,b.media,d.mediaRoot,mediaF||folder,main,fps,true); if(mr&&mr.L){ mr.L.label=14; mr.L.moveToBeginning(); } }catch(eMd){} }
       if(b.dim&&b.dim.keys){ try{ var DLy; if(d.dimShared!==false){ DLy=PC.layers.add(dimComp(b.dim.color)); GB_xf(DLy).property("ADBE Position").setValue([bw/2,bh/2]); GB_xf(DLy).property("ADBE Scale").setValue([bw/main.width*100,bh/main.height*100]); }
           else DLy=PC.layers.addSolid(b.dim.color,"Dim",bw,bh,main.pixelAspect,main.duration);
           DLy.name="Dim"; DLy.comment="GridBlocks:dim"; GB_keys(GB_xf(DLy).property("ADBE Opacity"),b.dim.keys,fps); }catch(eDm){} }
@@ -969,7 +980,8 @@ function GB_build(d){
       B.comment="GridBlocks:block|order="+b.order+"|c="+b.c+"|r="+b.r+"|w="+b.w+"|h="+b.h+(pre?"|layer=2":"");
       B.label=1;
       var ML=null; if(b.media){ var mr=null; try{ mr=GB_mediaLayer(blockC,B,b,b.media,d.mediaRoot,mediaF||folder,main,fps); }catch(eMd){ mr=null; }
-        if(mr){ ML=mr.L; mediaL.push({L:ML,B:B,ok:mr.ok}); fillLayers.push(ML); } }
+        if(mr){ ML=mr.L; mediaL.push({L:ML,B:B,ok:mr.ok}); fillLayers.push(ML); }
+        if(b.mediaMore){ for(var mq=0;mq<b.mediaMore.length;mq++){ try{ var mr2=GB_mediaLayer(blockC,B,b,b.mediaMore[mq],d.mediaRoot,mediaF||folder,main,fps); if(mr2){ mr2.L.name=b.name+" · Media "+(mq+2); mediaL.push({L:mr2.L,B:B,ok:mr2.ok}); fillLayers.push(mr2.L); } }catch(eMm){} } } }   /* every clip on the block, top one first */
       var T=b.text?GB_text(blockC,B,b):null;
       if(T) T.label=1;
       var NT=null; if(b.num){ d_fps_hack=fps; NT=GB_numText(blockC,B,b); fillLayers.push(NT); }
