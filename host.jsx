@@ -782,6 +782,17 @@ function GB_mediaLayer(comp,B,b,m,root,folder,main,fps,noMatte){
   var ok=false; try{ L.setTrackMatte(B,TrackMatteType.ALPHA); ok=true; }catch(eM){ ok=false; }
   return {L:L,ok:ok};
 }
+/* all of a block's clips in one precomp (block-sized): top clip on top, the rest underneath */
+function GB_blockMediaComp(b,root,folder,main,fps,pre){
+  var list=[], i; if(b.mediaMore) for(i=b.mediaMore.length-1;i>=0;i--) list.push(b.mediaMore[i]); if(b.media) list.push(b.media); if(!list.length) return null;
+  var bw=Math.max(1,Math.round(b.bw)), bh=Math.max(1,Math.round(b.bh));
+  var MC=app.project.items.addComp(GB_uniqueName("GB · "+(pre?"L2":"L1")+" · Media · "+b.name),bw,bh,main.pixelAspect,main.duration,main.frameRate);
+  try{ if(folder) MC.parentFolder=folder; }catch(eF){} try{ MC.comment="Grid Blocks: every clip on block "+b.name+" — the top layer is the one that shows"; }catch(eC){}
+  var fr=MC.layers.addNull(); fr.name="GB · frame"; GB_xf(fr).property("ADBE Anchor Point").setValue([0,0]); GB_xf(fr).property("ADBE Position").setValue([bw/2,bh/2]);
+  var bb={name:b.name,bw:bw,bh:bh};
+  for(i=0;i<list.length;i++){ try{ var m=list[i]; m.precomp=false; var r=GB_mediaLayer(MC,fr,bb,m,root,folder,main,fps,true); if(r&&r.L){ r.L.moveToBeginning(); r.L.name=(i==list.length-1?"Top · ":"")+(m.name||"clip"); } }catch(eL){} }
+  try{ fr.moveToEnd(); }catch(eE){}
+  return MC; }
 /* older After Effects (before track mattes could point at any layer): a copy of the block sits right above as the matte */
 function GB_mediaMattes(list){
   for(var i=0;i<list.length;i++){ var L=list[i].L, B=list[i].B; if(!L||list[i].ok) continue;
@@ -969,8 +980,10 @@ function GB_build(d){
       try{ PC.parentFolder=pcFolder(pre); }catch(eF){} comps.push(PC);
       var off=GB_null(PC,"GB · place",false); GB_xf(off).property("ADBE Position").setValue([-b.x,-b.y]); off.comment="GridBlocks:null"; try{ off.shy=true; }catch(eS){}
       var base=GB_box(PC,"Base · "+b.name,b.x,b.y,b.bw,b.bh,b.color,b.outline?b.outline.w:0); GB_jumpParent(base,off); base.comment="GridBlocks:base"; base.label=1;
-      if(b.mediaMore){ for(var mq=b.mediaMore.length-1;mq>=0;mq--){ try{ var mr2=GB_mediaLayer(PC,base,b,b.mediaMore[mq],d.mediaRoot,mediaF||folder,main,fps,true); if(mr2&&mr2.L){ mr2.L.label=14; mr2.L.name=b.name+" · Media "+(mq+2); mr2.L.moveToBeginning(); } }catch(eMm){} } }
-      if(b.media){ try{ var mr=GB_mediaLayer(PC,base,b,b.media,d.mediaRoot,mediaF||folder,main,fps,true); if(mr&&mr.L){ mr.L.label=14; mr.L.moveToBeginning(); } }catch(eMd){} }
+      var mDone=false;
+      if(b.mediaPre&&(b.media||b.mediaMore)){ try{ var MC2=GB_blockMediaComp(b,d.mediaRoot,mediaF||folder,main,fps,pre); if(MC2){ var MLc=PC.layers.add(MC2); GB_xf(MLc).property("ADBE Position").setValue([bw/2,bh/2]); MLc.name="Media"; MLc.label=14; MLc.moveBefore(base); } }catch(eMc){} mDone=true; }
+      if(!mDone&&b.mediaMore){ for(var mq=b.mediaMore.length-1;mq>=0;mq--){ try{ var mr2=GB_mediaLayer(PC,base,b,b.mediaMore[mq],d.mediaRoot,mediaF||folder,main,fps,true); if(mr2&&mr2.L){ mr2.L.label=14; mr2.L.name=b.name+" · Media "+(mq+2); mr2.L.moveToBeginning(); } }catch(eMm){} } }
+      if(!mDone&&b.media){ try{ var mr=GB_mediaLayer(PC,base,b,b.media,d.mediaRoot,mediaF||folder,main,fps,true); if(mr&&mr.L){ mr.L.label=14; mr.L.moveToBeginning(); } }catch(eMd){} }
       if(b.dim&&b.dim.keys){ try{ var DLy; if(d.dimShared!==false){ DLy=PC.layers.add(dimComp(b.dim.color)); GB_xf(DLy).property("ADBE Position").setValue([bw/2,bh/2]); GB_xf(DLy).property("ADBE Scale").setValue([bw/main.width*100,bh/main.height*100]); }
           else DLy=PC.layers.addSolid(b.dim.color,"Dim",bw,bh,main.pixelAspect,main.duration);
           DLy.name="Dim"; DLy.comment="GridBlocks:dim"; GB_keys(GB_xf(DLy).property("ADBE Opacity"),b.dim.keys,fps); }catch(eDm){} }
@@ -990,7 +1003,10 @@ function GB_build(d){
       var B=GB_box(blockC,(pre||"")+b.name,b.x,b.y,b.bw,b.bh,b.color,b.outline?b.outline.w:0);
       B.comment="GridBlocks:block|order="+b.order+"|c="+b.c+"|r="+b.r+"|w="+b.w+"|h="+b.h+(pre?"|layer=2":"");
       B.label=1;
-      var ML=null; if(b.media){ var mr=null; try{ mr=GB_mediaLayer(blockC,B,b,b.media,d.mediaRoot,mediaF||folder,main,fps); }catch(eMd){ mr=null; }
+      var ML=null;
+      if(b.mediaPre&&(b.media||b.mediaMore)){ try{ var MC=GB_blockMediaComp(b,d.mediaRoot,mediaF||folder,main,fps,pre); if(MC){ ML=blockC.layers.add(MC); ML.moveBefore(B); ML.parent=B; GB_xf(ML).property("ADBE Position").setValue([0,0]); ML.name=b.name+" · Media"; ML.comment="GridBlocks:media"; ML.label=14;
+          var okm=false; try{ ML.setTrackMatte(B,TrackMatteType.ALPHA); okm=true; }catch(eMt){} mediaL.push({L:ML,B:B,ok:okm}); fillLayers.push(ML); } }catch(eMp){} }
+      else if(b.media){ var mr=null; try{ mr=GB_mediaLayer(blockC,B,b,b.media,d.mediaRoot,mediaF||folder,main,fps); }catch(eMd){ mr=null; }
         if(mr){ ML=mr.L; mediaL.push({L:ML,B:B,ok:mr.ok}); fillLayers.push(ML); }
         if(b.mediaMore){ for(var mq=0;mq<b.mediaMore.length;mq++){ try{ var mr2=GB_mediaLayer(blockC,B,b,b.mediaMore[mq],d.mediaRoot,mediaF||folder,main,fps); if(mr2){ mr2.L.name=b.name+" · Media "+(mq+2); mediaL.push({L:mr2.L,B:B,ok:mr2.ok}); fillLayers.push(mr2.L); } }catch(eMm){} } } }   /* every clip on the block, top one first */
       var T=b.text?GB_text(blockC,B,b):null;

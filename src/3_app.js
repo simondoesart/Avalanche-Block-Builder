@@ -7253,7 +7253,7 @@ let BLD_DIM=null;   // while the payload is made: which layers get a dim layer
 const BLD_COMP=[['A','A · Block only (no media)'],['B','B · Block + media precomp parented to it'],['C','C · Each block is its own precomp']];
 const BLD_MEDIA=[['none','No media'],['set','As set in Content › Media'],['sample','Sample clip in every block (to replace)']];
 function bldDefaults(){ const L2=l2On(); return {bg:!!D.look.bgOn,cells:D.look.cellsMode!=='none'||!!D.look.linesOn,rules:!!D.look.rulesOn,dimShared:true,
-  main:{on:true,text:true,num:true,gaps:true,echo:true,media:'set',dim:false,comp:'B',mediaPer:false},
+  main:{on:true,text:true,num:true,gaps:true,echo:true,media:'set',dim:false,comp:'B',mediaPer:!!D.bmedia.precomp},
   l2:{on:L2,text:true,num:true,gaps:true,echo:true,media:'set',dim:!!(D.L2&&D.L2.dim&&D.L2.dim.on),comp:'B',mediaPer:false}}; }
 function bldPrefs(){ try{ return JSON.parse(localStorage.getItem('gb.bldOpts')||'null'); }catch(e){ return null; } }
 function bldAsk(isJsx){ return new Promise(res=>{ const M=$('#bldModal'); if(!M) return res(bldDefaults());
@@ -7271,7 +7271,7 @@ function bldAsk(isJsx){ return new Promise(res=>{ const M=$('#bldModal'); if(!M)
       ${row('Media',k=>sel(k+'.media',BLD_MEDIA,o[k].media))}
       ${row('Dim older blocks',k=>ck(k+'.dim',o[k].dim),'A colour layer fades over each block once the next lands (colour, opacity and timing from Content › Layer 2 · dim)')}
       ${row('Comp blocks as',k=>sel(k+'.comp',BLD_COMP,o[k].comp))}
-      ${row('Media precomp per block',k=>ck(k+'.mediaPer',o[k].mediaPer,o[k].comp!=='C'),'Comp C: each block gets its own media precomp (off = one media precomp per layer, shared by its blocks)')}
+      ${row('Media in one precomp per block',k=>ck(k+'.mediaPer',o[k].mediaPer,o[k].comp==='A'),'All the clips on a block go into one precomp (top clip on top). Off: the clips sit straight under the block')}
     </table>
     <div class="field stack"><span class="lbl">Dim layers</span><div class="seg" id="bldDim"><button data-v="1"${o.dimShared?' class="on"':''} title="One 'GB · Dim colour' precomp used by every dim — change its colour once for all layers">One shared dim precomp</button><button data-v="0"${!o.dimShared?' class="on"':''} title="Each block has its own dim (a solid inside its block precomp in comp C)">A dim per block</button></div></div>
     <div class="note"><b>A</b> plain shape blocks. <b>B</b> blocks with any media as a precomp parented to (and matted by) the block. <b>C</b> every block is a precomp holding its base colour, media, dim and text on top — organised under Grid Blocks › Layer 1 · Blocks / Layer 2 · Blocks / Media / Dim in the Project panel.</div>`; };
@@ -7298,13 +7298,12 @@ function bldMake(o){
 function bldApply(d,o){ const per=(L,ln,c,blocks,set)=>{ if(!blocks) return;
     blocks.forEach((b,i)=>{ if(!c.text){ b.text=''; b.fill=null; } if(!c.num) b.num=null; if(!c.dim) b.dim=null;
       if(c.comp==='A'||c.media==='none'){ b.media=null; b.mediaMore=null; return; }
-      if(b.mediaMore) b.mediaMore=b.mediaMore.map((mm,j)=>Object.assign({},mm,{precomp:true,id:(c.comp==='C'&&c.mediaPer)?('gbm'+ln+'_'+i+'_'+j+'_'+mm.id):('gbm'+ln+'_'+mm.id),compName:(c.comp==='C'&&c.mediaPer)?`GB · L${ln} · Media · ${b.name||('Block '+(i+1))} · ${j+2}`:`GB · L${ln} · Media · ${mm.name||'clip'}`}));
+      if(b.mediaMore) b.mediaMore=b.mediaMore.map(mm=>Object.assign({},mm,{precomp:false}));
       const m0=b.media, builtin=!m0||m0.id==='sample'||m0.id==='sample-still';
       if(c.media==='sample'&&builtin){ b.media=Object.assign({fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,loop:'loop',inMode:'block',inLen:12,offset:0,audio:false},m0||{},{id:'sample',name:'Replace me',type:'video',file:'media/sample.mp4',path:null,startF:m0&&m0.startF!=null?m0.startF:(b.tIn||0)}); }
       if(!b.media) return;
-      const shared=!(c.comp==='C'&&c.mediaPer);
-      b.media=Object.assign({},b.media,{precomp:true,id:shared?('gbm'+ln+'_'+b.media.id):('gbm'+ln+'_'+i+'_'+b.media.id),
-        compName:shared?`GB · L${ln} · Media${c.media==='sample'?' · Replace me':' · '+(b.media.name||'clip')}`:`GB · L${ln} · Media · ${b.name||('Block '+(i+1))}`}); }); };
+      b.media=Object.assign({},b.media,{precomp:false}); b.mediaPre=!!c.mediaPer;   /* all of a block's clips in one precomp, when asked */
+    }); };
   if(!o.main.on){ d.blocks=[]; d.echoes=[]; d.gaps=null; } else { if(!o.main.echo) d.echoes=[]; if(!o.main.gaps) d.gaps=null; per(d,'1',o.main,d.blocks); }
   d.compMode=o.main.comp; d.dimShared=o.dimShared!==false;
   if(d.layer2){ if(!o.l2.on) d.layer2=null; else { const L=d.layer2; if(!o.l2.echo) L.echoes=null; if(!o.l2.gaps) L.gaps=null; per(L,'2',o.l2,L.blocks); L.compMode=o.l2.comp; } }
@@ -7376,6 +7375,33 @@ function registerKeys(){
 /* ---- block media: global panel ---- */
 function mOpts(list,cur,blank){ return (blank?`<option value="">${blank}</option>`:'')+list.map(a=>`<option value="${esc(a.id)}"${a.id===cur?' selected':''}>${a.type==='video'?'▶':'▣'} ${esc(a.name)}</option>`).join(''); }
 function mStatus(A){ if(A.missing) return '⚠ missing'; const R=MRT[A.id]; if(!mUrlLive(A)&&!(inAE&&A.path)) return mRestoring?'…':'⚠ relink'; if(R&&R.ready&&!R.err) return A.path?'✓ on disk':A.kept?'✓ kept':'ready'; if(!R) return ''; if(R.err) return '⚠ can’t load'; if(A.type==='video'&&!R.ready&&R.cf) return Math.round(100*R.got/Math.max(1,Math.round(R.dur*R.cf)))+'%'; return R.ready?'ready':'…'; }
+/* ---- thumbnails (made once per clip, kept for the session) ---- */
+const THUMBS={}, THUMB_PH='data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="160" height="90"><rect width="160" height="90" fill="#1b1b1f"/><path d="M70 32v26l22-13z" fill="#555"/></svg>');
+let thumbBusy=0;
+function mThumb(A){ if(!A) return THUMB_PH; const t=THUMBS[A.id]; if(t&&t!=='…') return t; if(t==='…') return THUMB_PH; const url=mUrl(A); if(!url||(A.missing)) return THUMB_PH;
+  THUMBS[A.id]='…'; const done=src=>{ THUMBS[A.id]=src||THUMB_PH; clearTimeout(thumbBusy); thumbBusy=setTimeout(()=>{ try{ renderMediaUI(); }catch(e){} try{ if(selBlocks().length||tlSelIds().length) renderInsp(); }catch(e){} },120); };
+  const draw=(el,w,h)=>{ try{ const c=document.createElement('canvas'), k=Math.min(1,320/Math.max(1,w)); c.width=Math.max(1,Math.round(w*k)); c.height=Math.max(1,Math.round(h*k)); c.getContext('2d').drawImage(el,0,0,c.width,c.height); return c.toDataURL('image/jpeg',.7); }catch(e){ return null; } };
+  if(A.type==='image'){ const im=new Image(); im.onload=()=>done(draw(im,im.naturalWidth,im.naturalHeight)); im.onerror=()=>done(null); im.src=url; }
+  else { const v=document.createElement('video'); v.muted=true; v.preload='auto'; v.playsInline=true; let fired=false;
+    v.onloadedmetadata=()=>{ try{ v.currentTime=Math.min(1,(v.duration||2)/3); }catch(e){ done(null); } };
+    v.onseeked=()=>{ if(fired) return; fired=true; done(draw(v,v.videoWidth,v.videoHeight)); v.removeAttribute('src'); try{ v.load(); }catch(e){} };
+    v.onerror=()=>done(null); v.src=url; setTimeout(()=>{ if(!fired&&THUMBS[A.id]==='…') done(null); },8000); }
+  return THUMB_PH; }
+/* clips on a block, top first: [top, …more] (top = what shows on the canvas) */
+function blockClips(id){ const per=(D.bmedia.per||{})[id]||{}, mm=mediaMap(plan(geom())), top=per.asset||(mm[id]&&mm[id].asset)||null; return (top?[top]:[]).concat((per.more||[]).filter(x=>x!==top)); }
+function setBlockClips(ids,fn){ pushHist(true); const mm=mediaMap(plan(geom()));
+  ids.forEach(id=>mPer([id],p=>{ const cur=(p.asset||(mm[id]&&mm[id].asset))?[p.asset||mm[id].asset].concat((p.more||[]).filter(x=>x!==(p.asset||mm[id].asset))):[]; const L=fn(cur.slice()).filter((x,i,a)=>x&&a.indexOf(x)===i);
+    if(L.length){ p.asset=L[0]; p.on=true; if(L.length>1) p.more=L.slice(1); else delete p.more; } else { delete p.asset; delete p.more; p.on=false; } }));
+  planCache.k=''; try{ renderInsp(); }catch(e){} render(); try{ renderMediaUI(); }catch(e){} }
+/* drag a library clip (or files from your computer) onto a block on the canvas: it goes on top — ⇧ adds it underneath */
+document.addEventListener('dragstart',e=>{ const t=e.target&&e.target.closest&&e.target.closest('[data-mdrag]'); if(!t) return; try{ e.dataTransfer.setData('text/plain','gbmedia:'+t.dataset.mdrag); e.dataTransfer.effectAllowed='copy'; }catch(x){} });
+function dropClipIds(e){ const out=[]; try{ const s=e.dataTransfer.getData('text/plain')||''; if(/^gbmedia:/.test(s)) out.push(s.slice(8)); }catch(x){} return out; }
+async function dropToIds(e){ const ids=dropClipIds(e); if(ids.length) return ids; const fs=e.dataTransfer&&e.dataTransfer.files?[...e.dataTransfer.files].filter(f=>M_RE.test(f.name)):[]; if(!fs.length) return []; return (mAddFiles(fs)||[]).map(a=>a.id); }
+cv.addEventListener('dragover',e=>{ if(STEPS[U.step]&&e.dataTransfer){ e.preventDefault(); e.dataTransfer.dropEffect='copy'; } });
+cv.addEventListener('drop',async e=>{ e.preventDefault(); const G=geom(), w=localPt(G,toWorld(e)), xp=xfPick(G,w), cell=xp?{c:xp.c,r:xp.r}:cellAt(G,w), P=plan(G);
+  const b=P.seq.slice().reverse().find(x=>cell.c>=x.c&&cell.c<x.c+x.w&&cell.r>=x.r&&cell.r<x.r+x.h); if(!b) return toast('Drop the clip onto a block');
+  const ids=await dropToIds(e); if(!ids.length) return; const under=e.shiftKey; setBlockClips([b.id],L=>under?L.concat(ids):ids.concat(L.slice(1)));
+  select([b.id]); refresh(); toast(under?'Added underneath':'Clip on the block','',true); });
 function renderMediaUI(){
   const M=D.bmedia, el=$('#mAsset'); if(!el) return; mRestore(); mCheckPaths(false);
   { const ln=$('#mLibNote'); if(ln){ const user=mAssets().filter(a=>!a.builtin), noPath=user.filter(a=>!a.path).length; ln.innerHTML=!user.length?'Pick the folder your clips live in — Build finds them there.':D.mediaLib?`${user.length} clip${user.length>1?'s':''} · After Effects looks in this folder (and sub-folders by name).`:noPath?`${noPath} clip${noPath>1?'s have':' has'} no folder on disk yet — paste the folder's path here, or After Effects will ask once and remember.`:'Every clip has its place on disk.'; } }
@@ -7385,7 +7411,8 @@ function renderMediaUI(){
   const pool=M.pool||[];
   $('#mPool').innerHTML=mAssets().map(a=>`<label class="mrow"><input type="checkbox" data-mpool="${esc(a.id)}"${pool.indexOf(a.id)>=0?' checked':''}><span class="nm">${a.type==='video'?'▶':'▣'} ${esc(a.name)}</span>${pool.indexOf(a.id)>=0?`<span class="st">#${pool.indexOf(a.id)+1}</span>`:''}</label>`).join('');
   const user=mAssets().filter(a=>!a.builtin);
-  $('#mAssetList').innerHTML=user.map(a=>`<div class="mrow"><span class="nm" title="${esc(a.path||a.name)}">${a.type==='video'?'▶':'▣'} ${esc(a.name)}</span><span class="st">${mStatus(a)}</span>${mUrl(a)&&!a.missing?'':`<button class="btn ghost" data-mrelink="${esc(a.id)}" title="Choose the file again (browser files don't survive a reload)">Relink</button>`}<button class="btn ghost" data-mdel="${esc(a.id)}" title="Remove from the list">×</button></div>`).join('');
+  $('#mAssetList').className='mlib'; $('#mAssetList').innerHTML=mAssets().map(a=>`<div class="mtile" draggable="true" data-mdrag="${esc(a.id)}" title="${esc(a.path||a.name)} — drag onto a block"><img class="th" src="${mThumb(a)}" draggable="false"><span class="nm">${a.type==='video'?'▶':'▣'} ${esc(a.name)}</span>${a.builtin?'':`<span class="st">${mStatus(a)}</span><button class="x" data-mdel="${esc(a.id)}" title="Remove from the library">×</button>`}${!a.builtin&&(!mUrl(a)||a.missing)?`<button class="rl" data-mrelink="${esc(a.id)}">Relink</button>`:''}</div>`).join('');
+  if(false) $('#mAssetList').innerHTML=user.map(a=>`<div class="mrow"><span class="nm" title="${esc(a.path||a.name)}">${a.type==='video'?'▶':'▣'} ${esc(a.name)}</span><span class="st">${mStatus(a)}</span>${mUrl(a)&&!a.missing?'':`<button class="btn ghost" data-mrelink="${esc(a.id)}" title="Choose the file again (browser files don't survive a reload)">Relink</button>`}<button class="btn ghost" data-mdel="${esc(a.id)}" title="Remove from the list">×</button></div>`).join('');
   { const se=$('#mSelAsset'); if(se&&document.activeElement!==se) se.innerHTML=mOpts(mAssets(),M.selAsset||'','(same as All blocks)'); }
   const n=(M.pick||[]).length; if($('#mPickN')) $('#mPickN').textContent=n?`${n} picked`:'none picked yet';
   if($('#mPick')) { $('#mPick').classList.toggle('on',!!U.mediaPick); $('#mPick').textContent=U.mediaPick?'✓ Picking — click blocks':'Pick on the canvas'; }
@@ -7437,10 +7464,10 @@ async function mAddFolder(){
 function mAddPaths(list){ const M=D.bmedia; pushHist(true); M.assets=M.assets||[]; let last=null;
   list.forEach(x=>{ const p=x.path, n=x.name||String(p).split(/[\\\/]/).pop(), type=/\.(mp4|mov|m4v|webm|avi|mxf)$/i.test(n)?'video':'image';
     let A=mAssets().find(a=>a.path===p); if(!A){ A={id:'m'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36),name:n,type,file:n,path:p,rel:x.rel||n}; M.assets.push(A); } delete MRT[A.id]; mRuntime(A); last=A; });
-  if(last){ if(!M.on&&M.selOn) M.selAsset=last.id; else { M.kind=last.type; M.asset=last.id; M.on=true; } }
+  /* into the library only — blocks are untouched */
   syncInputs(true); refresh(); renderMediaUI(); toast(`Added ${list.length} clip${list.length>1?'s':''}`,'ok'); }
 function mAddFiles(files,relinkId){
-  const M=D.bmedia; pushHist(true); M.assets=M.assets||[]; let last=null;
+  const M=D.bmedia; pushHist(true); M.assets=M.assets||[]; let last=null; const made=[];
   [...files].forEach(f=>{
     const type=/^video\//.test(f.type)||/\.(mp4|mov|m4v|webm|avi|mxf)$/i.test(f.name)?'video':'image';
     let A=relinkId?M.assets.find(a=>a.id===relinkId):null;
@@ -7448,10 +7475,11 @@ function mAddFiles(files,relinkId){
     A.url=URL.createObjectURL(f); LIVE_URLS.add(A.url); A.name=f.name; A.file=f.name; A.type=type; if(f.path) A.path=f.path;
     const rel=f.__rel||f.webkitRelativePath||''; if(rel) A.rel=rel.split('/').slice(1).join('/')||f.name; A.size=f.size||0;
     mStore(A.id,f).then(ok=>{ if(ok){ A.kept=true; mRedraw(); } });
-    delete MRT[A.id]; mRuntime(A); last=A;
+    delete MRT[A.id]; mRuntime(A); last=A; made.push(A);
   });
-  if(last&&!relinkId){ if(!M.on&&M.selOn){ M.selAsset=last.id; } else { M.kind=last.type; M.asset=last.id; M.on=true; } }
+  if(!relinkId&&files.length) toast(`Added ${files.length} clip${files.length>1?'s':''} to the library — drag one onto a block, or select a block to pick it`,'',true);
   syncInputs(true); refresh(); renderMediaUI();
+  return made;
 }
 (()=>{
   const fi=$('#mFile'); if(!fi) return; let relink=null;
@@ -7545,11 +7573,10 @@ function cardMedia(ids){
   const asset=got?mAsset(got.asset):null;
   return `<details class="sub" data-sub="blk-media" open><summary>Media <span class="note">${got?(asset?esc(asset.name):'on'):'none'}${ids.length>1?' · '+ids.length+' blocks':''}</span></summary><div class="subbody">
     <div class="seg" data-bmon="1"><button data-v="auto"${mode==='auto'?' class="on"':''} title="Follow All blocks / Picked blocks (${got?(got.layer==='picked'?'picked':'all blocks'):'none'})">Layer rule</button><button data-v="on"${mode==='on'?' class="on"':''}>On</button><button data-v="off"${mode==='off'?' class="on"':''}>Off</button></div>
-    <div class="field stack"><span class="lbl">Media in ${ids.length>1?'these blocks':'this block'} <span class="note">— the top one shows here; all go to After Effects</span></span>
-      <div class="mrow"><span class="st" style="min-width:34px">Top</span><select class="msel" data-bmswap="top" title="Swap the clip on top">${mOpts(mAssets(),per.asset||(got?got.asset:''),per.asset?'':'(follow the layer: '+(asset?esc(asset.name):'none')+')')}</select>${per.asset?'<button class="btn ghost" data-bmfollow="1" title="Go back to the layer’s media choice">↺</button>':''}</div>
-      ${(per.more||[]).map((id,k)=>`<div class="mrow"><span class="st" style="min-width:34px">${k+2}</span><select class="msel" data-bmswap="${k}" title="Swap this clip">${mOpts(mAssets(),id)}</select><button class="btn ghost" data-bmtop="${k}" title="Put this one on top">↑</button><button class="btn ghost" data-bmrm="${k}" title="Remove from the block">✕</button></div>`).join('')}
-      <select class="msel" data-bmmore="1">${mOpts(mAssets().filter(a=>a.id!==(got&&got.asset)&&(per.more||[]).indexOf(a.id)<0),'','+ add another clip…')}</select>
-      ${mAssets().filter(a=>!a.builtin).length?'':'<div class="note">Add your clips in <b>Content › Media</b> first (+ Add clips / + Add a folder).</div>'}</div>
+    ${(()=>{ const clips=blockClips(ids[0]), topA=clips.length?mAsset(clips[0]):null;
+      return `<div class="mprev" data-mdropk="top" title="Drop a clip here to replace it"><img class="th" src="${topA?mThumb(topA):THUMB_PH}"><div><b>${topA?esc(topA.name):'No media'}</b><div class="note">${topA?'Showing on the canvas':'Drag a clip here, or pick one below'}</div></div></div>
+      <div class="field stack"><span class="lbl">Replace with <span class="note">— click a clip · ⇧-click adds it underneath</span></span><div class="mstrip">${mAssets().map(a=>`<img src="${mThumb(a)}" data-mput="${esc(a.id)}" draggable="true" data-mdrag="${esc(a.id)}" title="${esc(a.name)}">`).join('')||'<span class="note">Add clips in Content › Media first.</span>'}</div></div>
+      ${clips.length>1||clips.length?`<div class="field stack"><span class="lbl">All media on ${ids.length>1?'these blocks':'this block'} <span class="note">— top first; all go to After Effects</span></span><div class="mlist mdrop" data-mdropk="add">${clips.map((id,k)=>{ const a=mAsset(id); return `<div class="mrow"><img src="${a?mThumb(a):THUMB_PH}" style="width:44px;aspect-ratio:16/9;object-fit:cover;border-radius:4px"><span class="nm">${k===0?'<b>Top</b> · ':''}${a?esc(a.name):'missing'}</span>${k>0?`<button class="btn ghost" data-mup="${k}" title="Put on top">↑</button>`:''}<button class="btn ghost" data-mrmv="${k}" title="Remove from this block">🗑</button></div>`; }).join('')}<div class="note">Drop clips here to add them underneath.</div></div></div>`:''}`; })()}'}</div>
     <div class="field stack"><span class="lbl">How it sits in ${ids.length>1?'these blocks':'this block'}</span>
       ${seg('fit',[['cover','Cover'],['contain','Contain'],['stretch','Stretch'],['tile','Tile'],['original','Original']])}
       <div class="field2">${num('scale','Scale','%',1,2000)}${num('opacity','Opacity','%',0,100)}${num('x','X','%',-500,500)}${num('y','Y','%',-500,500)}</div>
@@ -7568,7 +7595,14 @@ function cardMedia(ids){
   </div></details>`;
 }
 function mPer(ids,fn){ const M=D.bmedia; M.per=Object.assign({},M.per||{}); ids.forEach(id=>{ const p=Object.assign({},M.per[id]||{}); fn(p); if(!Object.keys(p).length) delete M.per[id]; else M.per[id]=p; }); }
+$('#insp').addEventListener('dragover',e=>{ const z=e.target.closest&&e.target.closest('[data-mdropk]'); if(!z) return; e.preventDefault(); z.classList.add('drop'); });
+$('#insp').addEventListener('dragleave',e=>{ const z=e.target.closest&&e.target.closest('[data-mdropk]'); if(z) z.classList.remove('drop'); });
+$('#insp').addEventListener('drop',async e=>{ const z=e.target.closest&&e.target.closest('[data-mdropk]'); if(!z) return; e.preventDefault(); z.classList.remove('drop'); const ids=await dropToIds(e); if(!ids.length) return;
+  const add=z.dataset.mdropk==='add'||e.shiftKey; setBlockClips(mSelIds(),L=>add?L.concat(ids):ids.concat(L.slice(1))); });
 $('#insp').addEventListener('click',e=>{
+  const mp=e.target.closest('[data-mput]'); if(mp){ const id=mp.dataset.mput, sh=e.shiftKey; setBlockClips(mSelIds(),L=>sh?L.concat([id]):[id].concat(L.slice(1))); return; }
+  const mu=e.target.closest('[data-mup]'); if(mu){ const k=+mu.dataset.mup; setBlockClips(mSelIds(),L=>{ const x=L.splice(k,1)[0]; return [x].concat(L); }); return; }
+  const mr=e.target.closest('[data-mrmv]'); if(mr){ const k=+mr.dataset.mrmv; setBlockClips(mSelIds(),L=>{ L.splice(k,1); return L; }); return; }
   const bf=e.target.closest('[data-bmfollow]'); if(bf){ pushHist(true); mPer(mSelIds(),p=>{ delete p.asset; }); renderInsp(); render(); return; }
   const bt=e.target.closest('[data-bmtop]'), br=e.target.closest('[data-bmrm]');
   if(bt||br){ pushHist(true); const k=+(bt||br).dataset[bt?'bmtop':'bmrm']; mPer(mSelIds(),p=>{ const L=(p.more||[]).slice(), id=L[k]; if(id==null) return; L.splice(k,1); if(bt){ if(p.asset) L.unshift(p.asset); p.asset=id; p.on=true; } if(L.length) p.more=L; else delete p.more; }); renderInsp(); render(); return; }
