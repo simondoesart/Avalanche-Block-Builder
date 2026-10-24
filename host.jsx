@@ -688,6 +688,17 @@ function GB_findMedia(m,root){
   var r=GB_findMedia0(m,root); GB_mediaFiles[fk]=r; if(r){ try{ GB_mediaFound[m.aid||m.id]=r.fsName; }catch(eF){} } return r; }
 /* the panel asks for this after a build: where each clip was found, so it never has to ask again */
 function GB_mediaFoundJSON(){ var o=[], k; for(k in GB_mediaFound){ if(GB_mediaFound.hasOwnProperty(k)) o.push('"'+GB_esc(k)+'":"'+GB_esc(String(GB_mediaFound[k]).replace(/\\/g,"/"))+'"'); } return "{"+o.join(",")+"}"; }
+/* which saved clip paths are missing on this computer — "id\tpath" lines in, the missing ids out */
+function GB_checkPaths(txt){ try{ var L=String(txt).split("\n"), out=[], i; for(i=0;i<L.length;i++){ if(!L[i]) continue; var t=L[i].split("\t"); try{ if(!(new File(t[1])).exists) out.push(t[0]); }catch(e1){ out.push(t[0]); } } return "OK|"+out.join(","); }catch(e){ return "ERR|"+e.toString(); } }
+/* pick the footage folder's new home: each clip is found there by its place in the folder, or by name anywhere inside (3 levels) */
+function GB_relinkFolder(txt){ try{ var F=Folder.selectDialog("Grid Blocks · where is your footage folder now?"); if(!F) return "CANCEL";
+    var byName={}; function walk(fo,depth){ var it=fo.getFiles(), i; for(i=0;i<it.length;i++){ var f=it[i]; if(f instanceof Folder){ if(depth<3) walk(f,depth+1); } else { var nm=decodeURI(f.name).toLowerCase(); if(!byName[nm]) byName[nm]=f.fsName; } } }
+    walk(F,0); var L=String(txt).split("\n"), out=[], i;
+    for(i=0;i<L.length;i++){ if(!L[i]) continue; var t=L[i].split("\t"), id=t[0], rel=t[1]||"", nm=(t[2]||"").toLowerCase(), hit=null;
+      if(rel){ var f1=new File(F.fsName+"/"+rel); if(f1.exists) hit=f1.fsName; }
+      if(!hit&&nm&&byName[nm]) hit=byName[nm];
+      if(hit) out.push(id+"\t"+String(hit).replace(/\\/g,"/")); }
+    return "OK|"+String(F.fsName).replace(/\\/g,"/")+"\n"+out.join("\n"); }catch(e){ return "ERR|"+e.toString(); } }
 /* pick a footage folder: every video / image inside (two levels deep) */
 function GB_listMediaFolder(){
   try{ var F=Folder.selectDialog("Grid Blocks · pick a folder of footage"); if(!F) return "CANCEL"; var out=[], re=/\.(mp4|mov|m4v|webm|avi|mxf|png|jpe?g|gif|tiff?|psd)$/i;

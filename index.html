@@ -978,7 +978,7 @@ body.nohelp .qm{display:none}
             <div class="field stack"><span class="lbl">Type</span><div class="seg" data-seg="bmedia.kind"><button data-v="video">Video</button><button data-v="image">Image</button></div></div>
             <div class="field stack"><span class="lbl">Media</span><select id="mAsset" class="msel"></select></div>
             <div class="row-btns"><button class="btn" id="mAdd" title="Add your own video or image files — pick several at once">+ Add clips…</button><button class="btn" id="mAddDir" title="Pick a folder of footage and choose which clips to use">+ Add a folder…</button><input type="file" id="mFile" accept="video/*,image/*" multiple hidden><input type="file" id="mDir" webkitdirectory multiple hidden></div>
-            <div class="field stack" id="mLibRow"><span class="lbl">Footage folder on disk <span class="note">(so After Effects finds your clips)</span></span><input type="text" class="text-in" data-bind="mediaLib" placeholder="e.g. /Users/you/Projects/Footage"><div class="note" id="mLibNote"></div></div>
+            <div class="field stack" id="mLibRow"><span class="lbl">Footage folder on disk <span class="note">(so After Effects finds your clips)</span></span><input type="text" class="text-in" data-bind="mediaLib" placeholder="e.g. /Users/you/Projects/Footage"><button class="btn" id="mRelinkDir" title="Your footage folder moved or was renamed: pick its new location and every clip is found again">Footage moved? Relink the folder…</button><div class="note" id="mLibNote"></div></div>
             <div id="mAssetList" class="mlist"></div>
             <label class="check" title="After Effects: the clip goes inside its own precomp (one per file), and the blocks use the precomp — swap or edit the footage in one place"><input type="checkbox" data-bind="bmedia.precomp"> Bring in as an After Effects precomp</label>
             <details class="sub" data-sub="m-picked" open><summary>Picked blocks <span class="note">override All blocks</span></summary><div class="subbody">
@@ -2575,6 +2575,17 @@ function GB_findMedia(m,root){
   var r=GB_findMedia0(m,root); GB_mediaFiles[fk]=r; if(r){ try{ GB_mediaFound[m.aid||m.id]=r.fsName; }catch(eF){} } return r; }
 /* the panel asks for this after a build: where each clip was found, so it never has to ask again */
 function GB_mediaFoundJSON(){ var o=[], k; for(k in GB_mediaFound){ if(GB_mediaFound.hasOwnProperty(k)) o.push('"'+GB_esc(k)+'":"'+GB_esc(String(GB_mediaFound[k]).replace(/\\/g,"/"))+'"'); } return "{"+o.join(",")+"}"; }
+/* which saved clip paths are missing on this computer — "id\tpath" lines in, the missing ids out */
+function GB_checkPaths(txt){ try{ var L=String(txt).split("\n"), out=[], i; for(i=0;i<L.length;i++){ if(!L[i]) continue; var t=L[i].split("\t"); try{ if(!(new File(t[1])).exists) out.push(t[0]); }catch(e1){ out.push(t[0]); } } return "OK|"+out.join(","); }catch(e){ return "ERR|"+e.toString(); } }
+/* pick the footage folder's new home: each clip is found there by its place in the folder, or by name anywhere inside (3 levels) */
+function GB_relinkFolder(txt){ try{ var F=Folder.selectDialog("Grid Blocks · where is your footage folder now?"); if(!F) return "CANCEL";
+    var byName={}; function walk(fo,depth){ var it=fo.getFiles(), i; for(i=0;i<it.length;i++){ var f=it[i]; if(f instanceof Folder){ if(depth<3) walk(f,depth+1); } else { var nm=decodeURI(f.name).toLowerCase(); if(!byName[nm]) byName[nm]=f.fsName; } } }
+    walk(F,0); var L=String(txt).split("\n"), out=[], i;
+    for(i=0;i<L.length;i++){ if(!L[i]) continue; var t=L[i].split("\t"), id=t[0], rel=t[1]||"", nm=(t[2]||"").toLowerCase(), hit=null;
+      if(rel){ var f1=new File(F.fsName+"/"+rel); if(f1.exists) hit=f1.fsName; }
+      if(!hit&&nm&&byName[nm]) hit=byName[nm];
+      if(hit) out.push(id+"\t"+String(hit).replace(/\\/g,"/")); }
+    return "OK|"+String(F.fsName).replace(/\\/g,"/")+"\n"+out.join("\n"); }catch(e){ return "ERR|"+e.toString(); } }
 /* pick a footage folder: every video / image inside (two levels deep) */
 function GB_listMediaFolder(){
   try{ var F=Folder.selectDialog("Grid Blocks · pick a folder of footage"); if(!F) return "CANCEL"; var out=[], re=/\.(mp4|mov|m4v|webm|avi|mxf|png|jpe?g|gif|tiff?|psd)$/i;
@@ -10594,9 +10605,9 @@ function registerKeys(){
 /* ------------------------------------------------------------------ init */
 /* ---- block media: global panel ---- */
 function mOpts(list,cur,blank){ return (blank?`<option value="">${blank}</option>`:'')+list.map(a=>`<option value="${esc(a.id)}"${a.id===cur?' selected':''}>${a.type==='video'?'▶':'▣'} ${esc(a.name)}</option>`).join(''); }
-function mStatus(A){ const R=MRT[A.id]; if(!mUrlLive(A)&&!(inAE&&A.path)) return mRestoring?'…':'⚠ relink'; if(R&&R.ready&&!R.err) return A.path?'✓ on disk':A.kept?'✓ kept':'ready'; if(!R) return ''; if(R.err) return '⚠ can’t load'; if(A.type==='video'&&!R.ready&&R.cf) return Math.round(100*R.got/Math.max(1,Math.round(R.dur*R.cf)))+'%'; return R.ready?'ready':'…'; }
+function mStatus(A){ if(A.missing) return '⚠ missing'; const R=MRT[A.id]; if(!mUrlLive(A)&&!(inAE&&A.path)) return mRestoring?'…':'⚠ relink'; if(R&&R.ready&&!R.err) return A.path?'✓ on disk':A.kept?'✓ kept':'ready'; if(!R) return ''; if(R.err) return '⚠ can’t load'; if(A.type==='video'&&!R.ready&&R.cf) return Math.round(100*R.got/Math.max(1,Math.round(R.dur*R.cf)))+'%'; return R.ready?'ready':'…'; }
 function renderMediaUI(){
-  const M=D.bmedia, el=$('#mAsset'); if(!el) return; mRestore();
+  const M=D.bmedia, el=$('#mAsset'); if(!el) return; mRestore(); mCheckPaths(false);
   { const ln=$('#mLibNote'); if(ln){ const user=mAssets().filter(a=>!a.builtin), noPath=user.filter(a=>!a.path).length; ln.innerHTML=!user.length?'Pick the folder your clips live in — Build finds them there.':D.mediaLib?`${user.length} clip${user.length>1?'s':''} · After Effects looks in this folder (and sub-folders by name).`:noPath?`${noPath} clip${noPath>1?'s have':' has'} no folder on disk yet — paste the folder's path here, or After Effects will ask once and remember.`:'Every clip has its place on disk.'; } }
   const kindList=mAssets().filter(a=>a.type===M.kind);
   if(document.activeElement!==el) el.innerHTML=mOpts(kindList,mKindAsset(M.kind,M.asset));
@@ -10604,7 +10615,7 @@ function renderMediaUI(){
   const pool=M.pool||[];
   $('#mPool').innerHTML=mAssets().map(a=>`<label class="mrow"><input type="checkbox" data-mpool="${esc(a.id)}"${pool.indexOf(a.id)>=0?' checked':''}><span class="nm">${a.type==='video'?'▶':'▣'} ${esc(a.name)}</span>${pool.indexOf(a.id)>=0?`<span class="st">#${pool.indexOf(a.id)+1}</span>`:''}</label>`).join('');
   const user=mAssets().filter(a=>!a.builtin);
-  $('#mAssetList').innerHTML=user.map(a=>`<div class="mrow"><span class="nm" title="${esc(a.path||a.name)}">${a.type==='video'?'▶':'▣'} ${esc(a.name)}</span><span class="st">${mStatus(a)}</span>${mUrl(a)?'':`<button class="btn ghost" data-mrelink="${esc(a.id)}" title="Choose the file again (browser files don't survive a reload)">Relink</button>`}<button class="btn ghost" data-mdel="${esc(a.id)}" title="Remove from the list">×</button></div>`).join('');
+  $('#mAssetList').innerHTML=user.map(a=>`<div class="mrow"><span class="nm" title="${esc(a.path||a.name)}">${a.type==='video'?'▶':'▣'} ${esc(a.name)}</span><span class="st">${mStatus(a)}</span>${mUrl(a)&&!a.missing?'':`<button class="btn ghost" data-mrelink="${esc(a.id)}" title="Choose the file again (browser files don't survive a reload)">Relink</button>`}<button class="btn ghost" data-mdel="${esc(a.id)}" title="Remove from the list">×</button></div>`).join('');
   { const se=$('#mSelAsset'); if(se&&document.activeElement!==se) se.innerHTML=mOpts(mAssets(),M.selAsset||'','(same as All blocks)'); }
   const n=(M.pick||[]).length; if($('#mPickN')) $('#mPickN').textContent=n?`${n} picked`:'none picked yet';
   if($('#mPick')) { $('#mPick').classList.toggle('on',!!U.mediaPick); $('#mPick').textContent=U.mediaPick?'✓ Picking — click blocks':'Pick on the canvas'; }
@@ -10632,6 +10643,17 @@ function mPickList(items,where){ return new Promise(res=>{ const M=$('#mPickM');
     M.hidden=true; res(k==='go'?items.filter((x,i)=>sel.has(i)):null); };
   M.hidden=false; }); }
 const M_RE=/\.(mp4|mov|m4v|webm|avi|mxf|png|jpe?g|gif|tiff?|psd)$/i;
+/* After Effects: are the saved paths still there? (checked when the Media tab opens) */
+let mChecked=0; async function mCheckPaths(force){ if(!inAE) return; if(!force&&Date.now()-mChecked<8000) return; mChecked=Date.now();
+  const list=mAssets().filter(a=>!a.builtin&&a.path); if(!list.length) return; const r=String(await evalHost('GB_checkPaths('+jsStr(list.map(a=>a.id+'\t'+a.path).join('\n'))+')')); if(!/^OK\|/.test(r)) return;
+  const miss=new Set(r.slice(3).split(',').filter(Boolean)); let ch=false; list.forEach(a=>{ const m=miss.has(a.id); if(!!a.missing!==m){ a.missing=m; ch=true; } }); if(ch) renderMediaUI(); }
+/* After Effects: the footage folder moved — pick its new home and every clip is found again by its place in it (or its name) */
+async function mRelinkFolder(){ const list=mAssets().filter(a=>!a.builtin); if(!list.length) return toast('No clips in the library yet');
+  if(!inAE){ toast('Paste the folder’s new location into “Footage folder on disk” — Build looks there for every clip'); const f=$('[data-bind="mediaLib"]'); if(f) f.focus(); return; }
+  const r=String(await evalHost('GB_relinkFolder('+jsStr(list.map(a=>a.id+'\t'+(a.rel||'')+'\t'+(a.file||a.name)).join('\n'))+')')); if(!/^OK\|/.test(r)){ if(/^ERR/.test(r)) toast(r.slice(4),'err'); return; }
+  const lines=r.slice(3).split('\n'), root=lines.shift(); pushHist(true); let n=0; lines.filter(Boolean).forEach(l=>{ const [id,p]=l.split('\t'); const A=list.find(a=>a.id===id); if(A&&p){ A.path=p; A.missing=false; delete MRT[A.id]; n++; } });
+  D.mediaLib=root; syncInputs(true); refresh(); renderMediaUI(); list.forEach(a=>{ if(!a.builtin) try{ mRuntime(a); }catch(e){} });
+  toast(`Found ${n} of ${list.length} clip${list.length>1?'s':''} in the new folder`+(n<list.length?' — relink the rest one by one (⚠ missing)':''),n<list.length?'err':'ok'); }
 async function mAddFolder(){
   if(inAE){ const r=String(await evalHost('GB_listMediaFolder()')); if(!/^OK\|/.test(r)){ if(/^ERR/.test(r)) toast(r.slice(4),'err'); return; }
     const lines=r.slice(3).split('\n'), root=lines.shift(), items=lines.filter(Boolean).map(l=>{ const [p,rel]=l.split('\t'); return {path:p,rel,name:rel.split('/').pop()}; });
@@ -10670,6 +10692,7 @@ function mAddFiles(files,relinkId){
   fi.onchange=async()=>{ const fs=fi.files?[...fi.files]:[]; const rl=relink; relink=null; if(!fs.length) return;
     if(fs.length>1&&!rl){ const pick=await mPickList(fs.map(f=>({file:f,name:f.name,size:f.size})),fs.length+' files'); if(!pick||!pick.length) return; mAddFiles(pick.map(x=>x.file)); } else mAddFiles(fs,rl); };
   if($('#mAddDir')) $('#mAddDir').onclick=mAddFolder;
+  if($('#mRelinkDir')) $('#mRelinkDir').onclick=mRelinkFolder;
   const di=$('#mDir'); if(di) di.onchange=async()=>{ const fs=di.files?[...di.files].filter(f=>M_RE.test(f.name)):[]; if(!fs.length) return toast('No video or image files in that folder');
     const root=(fs[0].webkitRelativePath||'').split('/')[0]; const pick=await mPickList(fs.map(f=>({file:f,name:f.name,rel:(f.webkitRelativePath||f.name).split('/').slice(1).join('/'),size:f.size})),root); if(!pick||!pick.length) return; mAddFiles(pick.map(x=>x.file)); };
   $('#mAsset').onchange=e=>{ pushHist(true); D.bmedia.asset=e.target.value; refresh(); };
@@ -10678,7 +10701,9 @@ function mAddFiles(files,relinkId){
   $('#mPool').addEventListener('change',e=>{ const id=e.target.dataset&&e.target.dataset.mpool; if(!id) return; pushHist(true); const P2=(D.bmedia.pool||[]).filter(x=>x!==id); if(e.target.checked) P2.push(id); D.bmedia.pool=P2; refresh(); renderMediaUI(); });
   $('#mAssetList').addEventListener('click',e=>{ const d=e.target.closest('[data-mdel]'), r=e.target.closest('[data-mrelink]');
     if(d){ pushHist(true); const id=d.dataset.mdel, M=D.bmedia; M.assets=(M.assets||[]).filter(a=>a.id!==id); M.pool=(M.pool||[]).filter(x=>x!==id); if(M.asset===id) M.asset=mDefault(M.kind); Object.values(M.per||{}).forEach(p=>{if(p.asset===id) delete p.asset;}); refresh(); renderMediaUI(); }
-    if(r){ relink=r.dataset.mrelink; fi.value=''; fi.click(); } });
+    if(r){ const id=r.dataset.mrelink;
+      if(inAE){ (async()=>{ const rr=String(await evalHost('GB_pickMedia()')); if(!/^OK\|/.test(rr)) return; const p=rr.slice(3).split('\n')[0].split('\t')[0]; const A=mAssets().find(a=>a.id===id); if(A&&p){ pushHist(true); A.path=p; A.missing=false; delete MRT[A.id]; mRuntime(A); refresh(); renderMediaUI(); toast('Relinked '+A.name,'ok'); } })(); return; }
+      relink=id; fi.value=''; fi.click(); } });
   $('#mPick').onclick=()=>{ U.mediaPick=!U.mediaPick; if(U.mediaPick){ U.contentPick=false; U.tool='select'; if(!D.bmedia.selOn){pushHist(true);D.bmedia.selOn=true;syncInputs(true);} toast('Click blocks to pick them · picked blocks get the Picked media · click again to unpick'); } renderMediaUI(); render(); };
   $('#mWalk').onclick=()=>{ U.mediaPick=true; if(!D.bmedia.selOn){pushHist(true);D.bmedia.selOn=true;syncInputs(true);} renderMediaUI(); if(U.playing) stopPlay(); else { if(U.t==null) tlSetT(0); play(); } toast('Playing the walk — pause anytime and click blocks to pick them'); };
   $('#mPickAll').onclick=()=>{ pushHist(true); D.bmedia.pick=plan(geom()).seq.map(b=>b.id); D.bmedia.selOn=true; syncInputs(true); refresh(); renderMediaUI(); };
