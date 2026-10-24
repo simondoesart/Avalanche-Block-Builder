@@ -4550,7 +4550,7 @@ function mSrcTime(s,t,fps,dur){
 const MRT={};
 const LIVE_URLS=new Set();
 function mUrl(A){ if(!A) return null; if(A.url&&(!/^blob:/.test(A.url)||LIVE_URLS.has(A.url))) return A.url; if(A.path){ let p=String(A.path).replace(/\\/g,'/'); if(/^[A-Za-z]:/.test(p)) p='/'+p; return 'file://'+encodeURI(p); } return A.file||null; }
-let mRT=0; function mRedraw(){ if(mRT) return; mRT=setTimeout(()=>{ mRT=0; try{render();}catch(e){} try{renderMediaUI();}catch(e){} },80); }
+let mRT=0; function mRedraw(){ if(mRT) return; mRT=setTimeout(()=>{ mRT=0; try{render();}catch(e){} try{renderMediaUI();}catch(e){} paintThumbsSoon(); },80); }
 function mKeepDims(A,R){ if(A&&R&&R.w&&R.h&&(!A.w||!A.h)){ A.w=R.w; A.h=R.h; planCache.k=''; try{ refresh(); }catch(e){} } }
 function mRuntime(A){
   if(!A||typeof document==='undefined') return null; const url=mUrl(A); if(!url) return null;
@@ -5435,7 +5435,7 @@ function cardList(G){
     :'<div class="note">No blocks yet.</div>'}
   </div>`;
 }
-function renderInsp(){
+function renderInsp(){ setTimeout(()=>{ try{ paintThumbs($('#insp')); }catch(e){} },0);
   const el=$('#insp'), st=STEPS[U.step], ids=tlSelIds();
   if(U.ctx||(!ids.length&&!U.sel)){el.innerHTML='';return;}
   const a=document.activeElement;
@@ -7378,15 +7378,22 @@ function mStatus(A){ if(A.missing) return '⚠ missing'; const R=MRT[A.id]; if(!
 /* ---- thumbnails (made once per clip, kept for the session) ---- */
 const THUMBS={}, THUMB_PH='data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="160" height="90"><rect width="160" height="90" fill="#1b1b1f"/><path d="M70 32v26l22-13z" fill="#555"/></svg>');
 let thumbBusy=0;
-function mThumb(A){ if(!A) return THUMB_PH; const t=THUMBS[A.id]; if(t&&t!=='…') return t; if(t==='…') return THUMB_PH; const url=mUrl(A); if(!url||(A.missing)) return THUMB_PH;
-  THUMBS[A.id]='…'; const done=src=>{ THUMBS[A.id]=src||THUMB_PH; clearTimeout(thumbBusy); thumbBusy=setTimeout(()=>{ try{ renderMediaUI(); }catch(e){} try{ if(selBlocks().length||tlSelIds().length) renderInsp(); }catch(e){} },120); };
-  const draw=(el,w,h)=>{ try{ const c=document.createElement('canvas'), k=Math.min(1,320/Math.max(1,w)); c.width=Math.max(1,Math.round(w*k)); c.height=Math.max(1,Math.round(h*k)); c.getContext('2d').drawImage(el,0,0,c.width,c.height); return c.toDataURL('image/jpeg',.7); }catch(e){ return null; } };
-  if(A.type==='image'){ const im=new Image(); im.onload=()=>done(draw(im,im.naturalWidth,im.naturalHeight)); im.onerror=()=>done(null); im.src=url; }
-  else { const v=document.createElement('video'); v.muted=true; v.preload='auto'; v.playsInline=true; let fired=false;
-    v.onloadedmetadata=()=>{ try{ v.currentTime=Math.min(1,(v.duration||2)/3); }catch(e){ done(null); } };
-    v.onseeked=()=>{ if(fired) return; fired=true; done(draw(v,v.videoWidth,v.videoHeight)); v.removeAttribute('src'); try{ v.load(); }catch(e){} };
-    v.onerror=()=>done(null); v.src=url; setTimeout(()=>{ if(!fired&&THUMBS[A.id]==='…') done(null); },8000); }
-  return THUMB_PH; }
+/* thumbnails: a frame of the clip, painted straight into small canvases (no data URLs — works with local files in After Effects too) */
+const THUMBC={};
+function thumbSrc(A){ if(!A) return null; const R=MRT[A.id]; if(R&&R.img) return R.img; if(R&&R.frames&&R.got){ return R.frames[Math.min(R.got-1,Math.floor((R.cf?R.cf*R.dur:R.got)/2))]||R.frames[R.got-1]; }
+  const t=THUMBC[A.id]; if(t&&t!=='…') return t; if(t==='…') return null; const url=mUrl(A); if(!url||A.missing) return null; THUMBC[A.id]='…';
+  const keep=el=>{ try{ const c=document.createElement('canvas'), w=el.videoWidth||el.naturalWidth||320, h=el.videoHeight||el.naturalHeight||180, k=Math.min(1,320/Math.max(1,w)); c.width=Math.max(1,Math.round(w*k)); c.height=Math.max(1,Math.round(h*k)); c.getContext('2d').drawImage(el,0,0,c.width,c.height); THUMBC[A.id]=c; }catch(e){ THUMBC[A.id]=null; } paintThumbsSoon(); };
+  if(A.type==='image'){ const im=new Image(); im.onload=()=>keep(im); im.onerror=()=>{ THUMBC[A.id]=null; }; im.src=url; }
+  else { const v=document.createElement('video'); v.muted=true; v.preload='auto'; v.playsInline=true; let got=false;
+    v.onloadeddata=()=>{ try{ v.currentTime=Math.max(.05,(v.duration||2)/2); }catch(e){ keep(v); } };
+    v.onseeked=()=>{ if(got) return; got=true; keep(v); v.removeAttribute('src'); try{ v.load(); }catch(e){} }; v.onerror=()=>{ THUMBC[A.id]=null; }; v.src=url; try{ v.load(); }catch(e){} }
+  return null; }
+function paintThumbs(root){ $$('canvas[data-thumb]',root||document).forEach(c=>{ const A=mAsset(c.dataset.thumb), src=thumbSrc(A), g=c.getContext('2d'), W=c.width, H=c.height; g.fillStyle='#1b1b1f'; g.fillRect(0,0,W,H);
+  if(src){ const sw=src.width||src.naturalWidth||1, sh=src.height||src.naturalHeight||1, k=Math.max(W/sw,H/sh); try{ g.drawImage(src,(W-sw*k)/2,(H-sh*k)/2,sw*k,sh*k); }catch(e){} }
+  else { g.fillStyle='#555'; g.beginPath(); g.moveTo(W*.44,H*.33); g.lineTo(W*.44,H*.67); g.lineTo(W*.6,H*.5); g.closePath(); g.fill(); } }); }
+let ptT=0; function paintThumbsSoon(){ clearTimeout(ptT); ptT=setTimeout(()=>paintThumbs(),60); }
+const thumbCv=(A,w,h,cls)=>`<canvas class="${cls||'th'}" data-thumb="${A?esc(A.id):''}" width="${w||160}" height="${h||90}"></canvas>`;
+function mThumb(A){ return THUMB_PH; }
 /* clips on a block, top first: [top, …more] (top = what shows on the canvas) */
 function blockClips(id){ const per=(D.bmedia.per||{})[id]||{}, mm=mediaMap(plan(geom())), top=per.asset||(mm[id]&&mm[id].asset)||null; return (top?[top]:[]).concat((per.more||[]).filter(x=>x!==top)); }
 function setBlockClips(ids,fn){ pushHist(true); const mm=mediaMap(plan(geom()));
@@ -7411,7 +7418,7 @@ function renderMediaUI(){
   const pool=M.pool||[];
   $('#mPool').innerHTML=mAssets().map(a=>`<label class="mrow"><input type="checkbox" data-mpool="${esc(a.id)}"${pool.indexOf(a.id)>=0?' checked':''}><span class="nm">${a.type==='video'?'▶':'▣'} ${esc(a.name)}</span>${pool.indexOf(a.id)>=0?`<span class="st">#${pool.indexOf(a.id)+1}</span>`:''}</label>`).join('');
   const user=mAssets().filter(a=>!a.builtin);
-  $('#mAssetList').className='mlib'; $('#mAssetList').innerHTML=mAssets().map(a=>`<div class="mtile" draggable="true" data-mdrag="${esc(a.id)}" title="${esc(a.path||a.name)} — drag onto a block"><img class="th" src="${mThumb(a)}" draggable="false"><span class="nm">${a.type==='video'?'▶':'▣'} ${esc(a.name)}</span>${a.builtin?'':`<span class="st">${mStatus(a)}</span><button class="x" data-mdel="${esc(a.id)}" title="Remove from the library">×</button>`}${!a.builtin&&(!mUrl(a)||a.missing)?`<button class="rl" data-mrelink="${esc(a.id)}">Relink</button>`:''}</div>`).join('');
+  { const box=$('#mAssetList'); box.className='mlib'; box.innerHTML=mAssets().map(a=>`<div class="mtrow" draggable="true" data-mdrag="${esc(a.id)}" data-mlrow="${esc(a.id)}" title="${esc(a.path||a.name)} — drag onto a block · drag up/down to reorder · drop a file from your computer here to replace it">${thumbCv(a,96,54)}<div class="mtx"><span class="nm">${esc(a.name)}</span><span class="st">${a.type==='video'?'Video':'Image'}${a.builtin?' · built in':' · '+mStatus(a)}</span></div>${!a.builtin&&(!mUrl(a)||a.missing)?`<button class="btn ghost" data-mrelink="${esc(a.id)}">Relink</button>`:''}${a.builtin?'':`<button class="btn ghost" data-mdel="${esc(a.id)}" title="Remove from the library">×</button>`}</div>`).join(''); paintThumbs(box); }
   if(false) $('#mAssetList').innerHTML=user.map(a=>`<div class="mrow"><span class="nm" title="${esc(a.path||a.name)}">${a.type==='video'?'▶':'▣'} ${esc(a.name)}</span><span class="st">${mStatus(a)}</span>${mUrl(a)&&!a.missing?'':`<button class="btn ghost" data-mrelink="${esc(a.id)}" title="Choose the file again (browser files don't survive a reload)">Relink</button>`}<button class="btn ghost" data-mdel="${esc(a.id)}" title="Remove from the list">×</button></div>`).join('');
   { const se=$('#mSelAsset'); if(se&&document.activeElement!==se) se.innerHTML=mOpts(mAssets(),M.selAsset||'','(same as All blocks)'); }
   const n=(M.pick||[]).length; if($('#mPickN')) $('#mPickN').textContent=n?`${n} picked`:'none picked yet';
@@ -7490,6 +7497,17 @@ function mAddFiles(files,relinkId){
   fi.onchange=async()=>{ const fs=fi.files?[...fi.files]:[]; const rl=relink; relink=null; if(!fs.length) return;
     if(fs.length>1&&!rl){ const pick=await mPickList(fs.map(f=>({file:f,name:f.name,size:f.size})),fs.length+' files'); if(!pick||!pick.length) return; mAddFiles(pick.map(x=>x.file)); } else mAddFiles(fs,rl); };
   if($('#mAddDir')) $('#mAddDir').onclick=mAddFolder;
+  /* library list: drag rows up/down to reorder; drop a file from your computer on a row to replace that clip everywhere it's used */
+  { const box=$('#mAssetList'); const rowAt=e=>e.target&&e.target.closest&&e.target.closest('[data-mlrow]'); const clear=()=>$$('.mtrow.before,.mtrow.after,.mtrow.repl',box).forEach(r=>r.classList.remove('before','after','repl'));
+    box.addEventListener('dragover',e=>{ const r=rowAt(e); if(!r) return; e.preventDefault(); clear(); const files=e.dataTransfer&&[...(e.dataTransfer.types||[])].indexOf('Files')>=0;
+      if(files) r.classList.add('repl'); else { const bb=r.getBoundingClientRect(); r.classList.add(e.clientY<bb.top+bb.height/2?'before':'after'); } });
+    box.addEventListener('dragleave',e=>{ if(!box.contains(e.relatedTarget)) clear(); });
+    box.addEventListener('drop',e=>{ const r=rowAt(e); if(!r) return; e.preventDefault(); const tgt=r.dataset.mlrow, before=r.classList.contains('before'); clear();
+      const fs=e.dataTransfer&&e.dataTransfer.files?[...e.dataTransfer.files].filter(f=>M_RE.test(f.name)):[];
+      if(fs.length){ const A=mAssets().find(a=>a.id===tgt); if(!A||A.builtin) return toast('Built-in samples can’t be replaced — drop it on one of your clips'); delete THUMBC[A.id]; if(inAE&&!fs[0].path) A.path=null; mAddFiles([fs[0]],A.id); toast(`Replaced ${A.name} with ${fs[0].name} — every block using it updates`,'ok'); return; }
+      const src=dropClipIds(e)[0]; if(!src||src===tgt) return; const all=mAssets().filter(a=>!a.builtin), moving=all.find(a=>a.id===src); if(!moving) return;
+      const rest=all.filter(a=>a.id!==src); let k=rest.findIndex(a=>a.id===tgt); if(k<0) k=rest.length; else if(!before) k++; rest.splice(k,0,moving);
+      pushHist(true); D.bmedia.assets=rest; if(D.L2&&D.L2.store&&D.L2.store.bmedia) D.L2.store.bmedia.assets=[]; renderMediaUI(); try{ renderInsp(); }catch(x){} }); }
   if($('#mRelinkDir')) $('#mRelinkDir').onclick=mRelinkFolder;
   const di=$('#mDir'); if(di) di.onchange=async()=>{ const fs=di.files?[...di.files].filter(f=>M_RE.test(f.name)):[]; if(!fs.length) return toast('No video or image files in that folder');
     const root=(fs[0].webkitRelativePath||'').split('/')[0]; const pick=await mPickList(fs.map(f=>({file:f,name:f.name,rel:(f.webkitRelativePath||f.name).split('/').slice(1).join('/'),size:f.size})),root); if(!pick||!pick.length) return; mAddFiles(pick.map(x=>x.file)); };
@@ -7574,9 +7592,9 @@ function cardMedia(ids){
   return `<details class="sub" data-sub="blk-media" open><summary>Media <span class="note">${got?(asset?esc(asset.name):'on'):'none'}${ids.length>1?' · '+ids.length+' blocks':''}</span></summary><div class="subbody">
     <div class="seg" data-bmon="1"><button data-v="auto"${mode==='auto'?' class="on"':''} title="Follow All blocks / Picked blocks (${got?(got.layer==='picked'?'picked':'all blocks'):'none'})">Layer rule</button><button data-v="on"${mode==='on'?' class="on"':''}>On</button><button data-v="off"${mode==='off'?' class="on"':''}>Off</button></div>
     ${(()=>{ const clips=blockClips(ids[0]), topA=clips.length?mAsset(clips[0]):null;
-      return `<div class="mprev" data-mdropk="top" title="Drop a clip here to replace it"><img class="th" src="${topA?mThumb(topA):THUMB_PH}"><div><b>${topA?esc(topA.name):'No media'}</b><div class="note">${topA?'Showing on the canvas':'Drag a clip here, or pick one below'}</div></div></div>
-      <div class="field stack"><span class="lbl">Replace with <span class="note">— click a clip · ⇧-click adds it underneath</span></span><div class="mstrip">${mAssets().map(a=>`<img src="${mThumb(a)}" data-mput="${esc(a.id)}" draggable="true" data-mdrag="${esc(a.id)}" title="${esc(a.name)}">`).join('')||'<span class="note">Add clips in Content › Media first.</span>'}</div></div>
-      ${clips.length>1||clips.length?`<div class="field stack"><span class="lbl">All media on ${ids.length>1?'these blocks':'this block'} <span class="note">— top first; all go to After Effects</span></span><div class="mlist mdrop" data-mdropk="add">${clips.map((id,k)=>{ const a=mAsset(id); return `<div class="mrow"><img src="${a?mThumb(a):THUMB_PH}" style="width:44px;aspect-ratio:16/9;object-fit:cover;border-radius:4px"><span class="nm">${k===0?'<b>Top</b> · ':''}${a?esc(a.name):'missing'}</span>${k>0?`<button class="btn ghost" data-mup="${k}" title="Put on top">↑</button>`:''}<button class="btn ghost" data-mrmv="${k}" title="Remove from this block">🗑</button></div>`; }).join('')}<div class="note">Drop clips here to add them underneath.</div></div></div>`:''}`; })()}'}</div>
+      return `<div class="mprev" data-mdropk="top" title="Drop a clip here to replace it">${thumbCv(topA,240,135)}<div><b>${topA?esc(topA.name):'No media'}</b><div class="note">${topA?'Showing on the canvas':'Drag a clip here, or pick one below'}</div></div></div>
+      <div class="field stack"><span class="lbl">Replace with <span class="note">— click a clip · ⇧-click adds it underneath</span></span><div class="mstrip">${mAssets().map(a=>`<canvas class="mst" data-thumb="${esc(a.id)}" width="128" height="72" data-mput="${esc(a.id)}" draggable="true" data-mdrag="${esc(a.id)}" title="${esc(a.name)}"></canvas>`).join('')||'<span class="note">Add clips in Content › Media first.</span>'}</div></div>
+      ${clips.length>1||clips.length?`<div class="field stack"><span class="lbl">All media on ${ids.length>1?'these blocks':'this block'} <span class="note">— top first; all go to After Effects</span></span><div class="mlist mdrop" data-mdropk="add">${clips.map((id,k)=>{ const a=mAsset(id); return `<div class="mrow">${thumbCv(a,88,50,'mli')}<span class="nm">${k===0?'<b>Top</b> · ':''}${a?esc(a.name):'missing'}</span>${k>0?`<button class="btn ghost" data-mup="${k}" title="Put on top">↑</button>`:''}<button class="btn ghost" data-mrmv="${k}" title="Remove from this block">🗑</button></div>`; }).join('')}<div class="note">Drop clips here to add them underneath.</div></div></div>`:''}`; })()}'}</div>
     <div class="field stack"><span class="lbl">How it sits in ${ids.length>1?'these blocks':'this block'}</span>
       ${seg('fit',[['cover','Cover'],['contain','Contain'],['stretch','Stretch'],['tile','Tile'],['original','Original']])}
       <div class="field2">${num('scale','Scale','%',1,2000)}${num('opacity','Opacity','%',0,100)}${num('x','X','%',-500,500)}${num('y','Y','%',-500,500)}</div>
