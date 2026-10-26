@@ -6983,7 +6983,7 @@ function importText(s,name){
   toast(rebuilt?'Layout rebuilt from an older build script — check the settings':'Layout opened','ok',true);
 }
 function importFile(){
-  if(inAE){evalHost('GB_openDialog()').then(r=>{r=String(r);if(r.indexOf('OK|')===0)importText(r.slice(3));else if(r.indexOf('ERR|')===0)toast(r.slice(4),'err');});}
+  if(inAE){evalHost('GB_openDialog()').then(async r=>{r=String(r);if(r.indexOf('OK|')===0){ importText(r.slice(3)); const dir=String(await evalHost('GB_openedDirGet()')); if(dir) relinkFromFolder(dir,true); } else if(r.indexOf('ERR|')===0)toast(r.slice(4),'err');});}
   else $('#fileIn').click();
 }
 $('#fileIn').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>importText(String(rd.result),f.name);rd.readAsText(f);e.target.value='';});
@@ -7101,7 +7101,7 @@ function payloadCore(inner){
         loop:ms.loop,inMode:ms.inMode||'block',inLen:Math.max(1,+ms.inLen||12),startF:ms.start==='frame'?(+ms.at||0):(animOn?Math.round(P.T[i]):0)+(+ms.delay||0),offset:Math.max(0,+ms.offset||0),audio:ms.audio==='on'};
       const more=(((D.bmedia.per||{})[b.id]||{}).more||[]).map(id=>mAsset(id)).filter(a=>a&&a.id!==A.id);   /* every other clip on this block: in AE under the top one */
       const offs=(((D.bmedia.per||{})[b.id]||{}).offs)||{};
-      if(more.length) pb.mediaMore=more.map(a2=>Object.assign({},pb.media,{offset:offs[a2.id]!=null?Math.max(0,+offs[a2.id]||0):pb.media.offset,id:a2.id,aid:a2.id,name:a2.name,type:a2.type,file:a2.file||a2.name,rel:a2.rel||null,path:a2.path||(lib&&!a2.builtin?lib+'/'+(a2.rel||a2.file||a2.name):null)})); }
+      if(more.length) pb.mediaMore=more.map(a2=>Object.assign({},pb.media,{offset:offs[a2.id]!=null?Math.max(0,+offs[a2.id]||0):0,id:a2.id,aid:a2.id,name:a2.name,type:a2.type,file:a2.file||a2.name,rel:a2.rel||null,path:a2.path||(lib&&!a2.builtin?lib+'/'+(a2.rel||a2.file||a2.name):null)})); }
   });
   // manual order: blocks you didn't pick but chose to keep visible
   P.statics.forEach(b=>{const q=cellRect(G,b.c,b.r,b.w,b.h);blocks.push({name:bname(b),order:0,c:b.c+1,r:b.r+1,w:b.w,h:b.h,x:r3(q.x),y:r3(q.y),bw:r3(q.w),bh:r3(q.h),
@@ -7270,7 +7270,7 @@ function bldDefaults(){ const L2=l2On(); return {bg:!!D.look.bgOn,cells:D.look.c
   l2:{on:L2,text:true,num:true,gaps:true,echo:true,media:'set',dim:!!(D.L2&&D.L2.dim&&D.L2.dim.on),comp:'B',mediaPer:false}}; }
 function bldPrefs(){ try{ return JSON.parse(localStorage.getItem('gb.bldOpts')||'null'); }catch(e){ return null; } }
 function bldAsk(isJsx){ return new Promise(res=>{ const M=$('#bldModal'); if(!M) return res(bldDefaults());
-  const pr=bldPrefs(), o=Object.assign(bldDefaults(),pr?{bg:pr.bg,cells:pr.cells,rules:pr.rules,dimShared:pr.dimShared}:{}); ['main','l2'].forEach(k=>{ if(pr&&pr[k]) o[k]=Object.assign(o[k],pr[k]); }); if(!l2On()) o.l2.on=false;
+  const pr=bldPrefs(), o=Object.assign(bldDefaults(),pr?{bg:pr.bg,cells:pr.cells,rules:pr.rules,dimShared:pr.dimShared,manifest:!!pr.manifest}:{}); ['main','l2'].forEach(k=>{ if(pr&&pr[k]) o[k]=Object.assign(o[k],pr[k]); }); if(!l2On()) o.l2.on=false;
   const L2=l2On(), ck=(p,v,dis)=>`<input type="checkbox" data-bo="${p}"${v?' checked':''}${dis?' disabled':''}>`, sel=(p,list,v)=>`<select data-bo="${p}">${list.map(x=>`<option value="${x[0]}"${x[0]===v?' selected':''}>${x[1]}</option>`).join('')}</select>`;
   const row=(lab,f,tip)=>`<tr title="${tip||''}"><td>${lab}</td><td>${f('main')}</td>${L2?`<td>${f('l2')}</td>`:''}</tr>`;
   const draw=()=>{ $('#bldBody').innerHTML=`<div class="field stack"><span class="lbl">Scene <span class="note">(these override the Setup toggles, just for this build)</span></span>
@@ -7284,6 +7284,7 @@ function bldAsk(isJsx){ return new Promise(res=>{ const M=$('#bldModal'); if(!M)
       ${row('Media',k=>sel(k+'.media',BLD_MEDIA,o[k].media))}
       ${row('Dim older blocks',k=>ck(k+'.dim',o[k].dim),'A colour layer fades over each block once the next lands (colour, opacity and timing from Content › Layer 2 · dim)')}
       ${row('Comp blocks as',k=>sel(k+'.comp',BLD_COMP,o[k].comp))}
+      ${row('Save a media list (.txt)',k=>k==='main'?ck('manifest',o.manifest):'','A text file listing every clip used — block by block, top first, with offsets and file paths — plus your whole library')}
       ${row('Media in one precomp per block',k=>ck(k+'.mediaPer',o[k].mediaPer,o[k].comp==='A'),'All the clips on a block go into one precomp (top clip on top). Off: the clips sit straight under the block')}
     </table>
     <div class="field stack"><span class="lbl">Dim layers</span><div class="seg" id="bldDim"><button data-v="1"${o.dimShared?' class="on"':''} title="One 'GB · Dim colour' precomp used by every dim — change its colour once for all layers">One shared dim precomp</button><button data-v="0"${!o.dimShared?' class="on"':''} title="Each block has its own dim (a solid inside its block precomp in comp C)">A dim per block</button></div></div>
@@ -7299,7 +7300,7 @@ function bldAsk(isJsx){ return new Promise(res=>{ const M=$('#bldModal'); if(!M)
   M.hidden=false; }); }
 async function bldChoose(isJsx,ev){ if(ev&&ev.altKey){ try{ localStorage.removeItem('gb.bldRemember'); }catch(x){} }
   let rem=false; try{ rem=localStorage.getItem('gb.bldRemember')==='1'; }catch(x){}
-  const o=rem?(()=>{ const pr=bldPrefs()||{}, d0=bldDefaults(); const r=Object.assign(d0,{bg:pr.bg!=null?pr.bg:d0.bg,cells:pr.cells!=null?pr.cells:d0.cells,rules:pr.rules!=null?pr.rules:d0.rules,dimShared:pr.dimShared!==false}); ['main','l2'].forEach(k=>{ if(pr[k]) r[k]=Object.assign(r[k],pr[k]); }); if(!l2On()) r.l2.on=false; return r; })():await bldAsk(isJsx);
+  const o=rem?(()=>{ const pr=bldPrefs()||{}, d0=bldDefaults(); const r=Object.assign(d0,{manifest:!!pr.manifest,bg:pr.bg!=null?pr.bg:d0.bg,cells:pr.cells!=null?pr.cells:d0.cells,rules:pr.rules!=null?pr.rules:d0.rules,dimShared:pr.dimShared!==false}); ['main','l2'].forEach(k=>{ if(pr[k]) r[k]=Object.assign(r[k],pr[k]); }); if(!l2On()) r.l2.on=false; return r; })():await bldAsk(isJsx);
   if(!o) return null; return bldMake(o); }
 function bldMake(o){
   /* make the payload with the scene toggles overridden and dims where asked */
@@ -7307,7 +7308,19 @@ function bldMake(o){
   D.look.bgOn=!!o.bg; if(!o.cells){ D.look.cellsMode='none'; D.look.linesOn=false; } else if(D.look.cellsMode==='none'&&!D.look.linesOn) D.look.linesOn=true; D.look.rulesOn=!!o.rules;
   BLD_DIM={main:!!o.main.dim,l2:!!o.l2.dim}; let d;
   try{ d=payload(); } finally{ BLD_DIM=null; Object.assign(D.look,lk); }
-  return bldApply(d,o); }
+  const out=bldApply(d,o); if(o.manifest) setTimeout(()=>saveManifest(out),0); return out; }
+/* a plain-text list of every clip the build uses: per block (top first, with offsets) and the whole library */
+function mediaManifest(d){ const L=[], n=projName(), dt=new Date().toLocaleString(); L.push(`Grid Blocks — media list`,`Project: ${n}`,`Comp: ${d.comp.w}×${d.comp.h} @ ${d.fps||D.comp.fps}fps`,`Made: ${dt}`,`Footage folder: ${D.mediaLib||'(not set)'}`,'');
+  const lay=(title,blocks)=>{ const bs=(blocks||[]).filter(b=>b.media||b.mediaMore); L.push(`== ${title} — ${bs.length} block${bs.length===1?'':'s'} with media ==`); if(!bs.length) L.push('  (none)');
+    bs.forEach(b=>{ const all=(b.media?[b.media]:[]).concat(b.mediaMore||[]); L.push(`${b.name}  (col ${b.c}, row ${b.r}, ${b.w}×${b.h}${b.tIn!=null?', appears f'+b.tIn:''})${b.mediaPre?'  [one media precomp]':''}`);
+      all.forEach((m,k)=>L.push(`   ${k===0?'top  ':'under'}  ${m.name}${m.offset?'  · offset '+m.offset+'f':''}${m.fit&&m.fit!=='cover'?'  · '+m.fit:''}${(+m.scale||100)!==100?'  · '+m.scale+'%':''}\n          ${m.path||m.rel||m.file||''}`)); }); L.push(''); };
+  lay('Layer 1',d.blocks); if(d.layer2) lay('Layer 2',d.layer2.blocks);
+  const used=new Set(); [].concat(d.blocks||[],(d.layer2&&d.layer2.blocks)||[]).forEach(b=>{ if(b.media) used.add(b.media.aid||b.media.id); (b.mediaMore||[]).forEach(m=>used.add(m.aid||m.id)); });
+  L.push('== Library =='); mAssets().filter(a=>!a.builtin).forEach(a=>L.push(`${used.has(a.id)?'●':'○'} ${a.name}   ${a.path||(D.mediaLib?D.mediaLib+'/'+(a.rel||a.file||a.name):a.rel||a.file||a.name)}`)); L.push('','● used in this build   ○ in the library, not used');
+  return L.join('\n'); }
+async function saveManifest(d){ const txt=mediaManifest(d), nm=projFile('media','txt');
+  if(inAE){ const dir=saveDir(); const r=String(await evalHost(dir?'GB_writeTo('+jsStr(dir+'/'+projName()+'/'+nm)+','+jsStr(txt)+')':'GB_saveDialog('+jsStr(txt)+','+jsStr(nm)+')')); if(r.indexOf('OK|')===0) toast('Media list saved: '+r.slice(3).split(/[\\\/]/).pop(),'ok'); }
+  else download(nm,txt,'text/plain'); }
 function bldApply(d,o){ const per=(L,ln,c,blocks,set)=>{ if(!blocks) return;
     blocks.forEach((b,i)=>{ if(!c.text){ b.text=''; b.fill=null; } if(!c.num) b.num=null; if(!c.dim) b.dim=null;
       if(c.comp==='A'||c.media==='none'){ b.media=null; b.mediaMore=null; return; }
@@ -7475,6 +7488,19 @@ async function mRelinkFolder(){ const list=mAssets().filter(a=>!a.builtin); if(!
   const lines=r.slice(3).split('\n'), root=lines.shift(); pushHist(true); let n=0; lines.filter(Boolean).forEach(l=>{ const [id,p]=l.split('\t'); const A=list.find(a=>a.id===id); if(A&&p){ A.path=p; A.missing=false; delete MRT[A.id]; n++; } });
   D.mediaLib=root; syncInputs(true); refresh(); renderMediaUI(); list.forEach(a=>{ if(!a.builtin) try{ mRuntime(a); }catch(e){} });
   toast(`Found ${n} of ${list.length} clip${list.length>1?'s':''} in the new folder`+(n<list.length?' — relink the rest one by one (⚠ missing)':''),n<list.length?'err':'ok'); }
+/* After Effects: look for missing clips in a folder and its sub-folders (the opened layout's folder, then the footage folder) */
+async function relinkFromFolder(dir,quiet){ if(!inAE) return 0; const list=mAssets().filter(a=>!a.builtin); if(!list.length) return 0;
+  let missing=new Set(list.filter(a=>!a.path).map(a=>a.id)); const withP=list.filter(a=>a.path);
+  if(withP.length){ const r0=String(await evalHost('GB_checkPaths('+jsStr(withP.map(a=>a.id+'\t'+a.path).join('\n'))+')')); if(/^OK\|/.test(r0)) r0.slice(3).split(',').filter(Boolean).forEach(id=>missing.add(id)); }
+  if(!missing.size) return 0; const need=list.filter(a=>missing.has(a.id)); let found=0;
+  for(const d0 of [dir,D.mediaLib].filter((x,i,a)=>x&&a.indexOf(x)===i)){ const left=need.filter(a=>missing.has(a.id)); if(!left.length) break;
+    const r=String(await evalHost('GB_relinkIn('+jsStr(d0)+','+jsStr(left.map(a=>a.id+'\t'+(a.rel||'')+'\t'+(a.file||a.name)).join('\n'))+',4)')); if(!/^OK\|/.test(r)) continue;
+    r.slice(3).split('\n').slice(1).filter(Boolean).forEach(l=>{ const [id,p]=l.split('\t'); const A=list.find(a=>a.id===id); if(A&&p&&missing.has(id)){ A.path=p; A.missing=false; delete MRT[A.id]; delete THUMBC[A.id]; missing.delete(id); found++; } }); }
+  need.forEach(a=>{ a.missing=missing.has(a.id); });
+  if(found||!quiet){ planCache.k=''; try{ refresh(); renderMediaUI(); }catch(e){} }
+  if(found) toast(`Relinked ${found} clip${found>1?'s':''} found next to the layout${missing.size?` — ${missing.size} still missing (relink them in Content › Media)`:''}`,missing.size?'err':'ok');
+  else if(missing.size) toast(`${missing.size} clip${missing.size>1?'s are':' is'} missing — relink in Content › Media`,'err');
+  return found; }
 async function mAddFolder(){
   if(inAE){ const r=String(await evalHost('GB_listMediaFolder()')); if(!/^OK\|/.test(r)){ if(/^ERR/.test(r)) toast(r.slice(4),'err'); return; }
     const lines=r.slice(3).split('\n'), root=lines.shift(), items=lines.filter(Boolean).map(l=>{ const [p,rel]=l.split('\t'); return {path:p,rel,name:rel.split('/').pop()}; });

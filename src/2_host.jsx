@@ -107,17 +107,19 @@ function GB_saveDialog(s,defName,dir){
     var f=new File(((dir&&(new Folder(dir)).exists)?dir:Folder.myDocuments.fsName)+"/"+(defName||"GridBlocks.json"));
     f=f.saveDlg("Save Grid Blocks layout",GB_isWin()?"JSON:*.json":undefined);
     if(!f) return "CANCEL";
-    if(!/\.json$/i.test(f.name)) f=new File(f.fsName+".json");
+    var ext=(String(defName||"").match(/\.[a-z0-9]+$/i)||[".json"])[0]; if(f.name.toLowerCase().slice(-ext.length)!=ext.toLowerCase()) f=new File(f.fsName+ext);
     f.encoding="UTF-8"; f.open("w"); f.write(s); f.close();
     return "OK|"+f.fsName;
   }catch(e){return "ERR|"+e.toString();}
 }
+var GB_openedDir=null;
+function GB_openedDirGet(){ return GB_openedDir?String(GB_openedDir).replace(/\\/g,"/"):""; }
 function GB_openDialog(){
   try{
     var filt=GB_isWin()?"Grid Blocks layout:*.json;*.jsx":function(f){return (f instanceof Folder)||/\.(json|jsx)$/i.test(f.name);};
     var f=File.openDialog("Open Grid Blocks layout",filt,false);
     if(!f) return "CANCEL";
-    f.encoding="UTF-8"; f.open("r"); var s=f.read(); f.close();
+    f.encoding="UTF-8"; f.open("r"); var s=f.read(); f.close(); try{ GB_openedDir=f.parent.fsName; }catch(eD){}
     return "OK|"+s;
   }catch(e){return "ERR|"+e.toString();}
 }
@@ -696,8 +698,10 @@ function GB_mediaFoundJSON(){ var o=[], k; for(k in GB_mediaFound){ if(GB_mediaF
 /* which saved clip paths are missing on this computer — "id\tpath" lines in, the missing ids out */
 function GB_checkPaths(txt){ try{ var L=String(txt).split("\n"), out=[], i; for(i=0;i<L.length;i++){ if(!L[i]) continue; var t=L[i].split("\t"); try{ if(!(new File(t[1])).exists) out.push(t[0]); }catch(e1){ out.push(t[0]); } } return "OK|"+out.join(","); }catch(e){ return "ERR|"+e.toString(); } }
 /* pick the footage folder's new home: each clip is found there by its place in the folder, or by name anywhere inside (3 levels) */
-function GB_relinkFolder(txt){ try{ var F=Folder.selectDialog("Grid Blocks · where is your footage folder now?"); if(!F) return "CANCEL";
-    var byName={}; function walk(fo,depth){ var it=fo.getFiles(), i; for(i=0;i<it.length;i++){ var f=it[i]; if(f instanceof Folder){ if(depth<3) walk(f,depth+1); } else { var nm=decodeURI(f.name).toLowerCase(); if(!byName[nm]) byName[nm]=f.fsName; } } }
+function GB_relinkFolder(txt){ try{ var F=Folder.selectDialog("Grid Blocks · where is your footage folder now?"); if(!F) return "CANCEL"; return GB_relinkIn(F.fsName,txt,3); }catch(e){ return "ERR|"+e.toString(); } }
+/* find clips inside a folder and its sub-folders — by their place in the footage folder, else by file name */
+function GB_relinkIn(dir,txt,maxDepth){ try{ var F=new Folder(dir); if(!F.exists) return "ERR|folder not found"; var md=maxDepth||4, seen=0;
+    var byName={}; function walk(fo,depth){ var it=fo.getFiles(), i; for(i=0;i<it.length&&seen<20000;i++){ var f=it[i]; seen++; if(f instanceof Folder){ if(depth<md&&decodeURI(f.name).charAt(0)!=".") walk(f,depth+1); } else { var nm=decodeURI(f.name).toLowerCase(); if(!byName[nm]) byName[nm]=f.fsName; } } }
     walk(F,0); var L=String(txt).split("\n"), out=[], i;
     for(i=0;i<L.length;i++){ if(!L[i]) continue; var t=L[i].split("\t"), id=t[0], rel=t[1]||"", nm=(t[2]||"").toLowerCase(), hit=null;
       if(rel){ var f1=new File(F.fsName+"/"+rel); if(f1.exists) hit=f1.fsName; }
