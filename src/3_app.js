@@ -5448,6 +5448,7 @@ function renderInsp(){ if(U.mDragging) return; setTimeout(()=>{ try{ paintThumbs
       else { const P=plan(G), px=ids.map(id=>P.seq.find(x=>x.id===id)).filter(Boolean); if(px.length===1) h+=cardContent(px[0],true); else if(px.length>1) h+=cardContentMulti(px,true); } }
     else { if(sel.length===1) h+=cardBlock(G,sel[0]); else if(sel.length>1) h+=cardMulti(sel);
       else { const P=plan(G), b0=P.seq.find(x=>x.id===ids[0]); h+=`<div class="card"><div class="card-h">Colour<span class="r note">${ids.length>1?ids.length+' blocks':''}</span></div><div class="swatches">${swatchHTML(b0?b0.color:D.block.color,'sel.color')}</div>${Object.keys(D.blockColors||{}).some(k=>ids.indexOf(+k)>=0)?'<button class="btn ghost" data-act="colreset">Back to the line colour</button>':''}</div>`; } }
+    if(st.id!=='content'){ const mids=ids.length?ids:sel.map(b=>b.id); if(mids.length) h+=`<div class="card">${cardMedia(mids)}</div>`; }   /* the block's media (preview, replace, add, remove) in every step */
     h+=cardL2(ids.length?ids:selBlocks().map(b=>b.id)); h+=cardRule(ids.length?ids:selBlocks().map(b=>b.id));
     h+=cardTiming(G,ids);
   }
