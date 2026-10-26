@@ -97,9 +97,14 @@ function GB_writeText(name,s){
   }catch(e){return "ERR|"+e.toString();}
 }
 function GB_isWin(){return $.os.indexOf("Windows")>=0;}
-function GB_saveDialog(s,defName){
+/* save straight into a folder (made if needed) — the panel picks versioned names, so no dialog every time */
+function GB_writeTo(path,s){ try{ var f=new File(path); if(!f.parent.exists) f.parent.create(); if(f.exists){ var b=path.replace(/(\.[^.\/]+)$/,""), ext=(path.match(/(\.[^.\/]+)$/)||["",""])[1], n=2; while(f.exists){ f=new File(b+"-"+n+ext); n++; } }
+    f.encoding="UTF-8"; f.open("w"); f.write(s); f.close(); return "OK|"+f.fsName; }catch(e){ return "ERR|"+e.toString(); } }
+/* pick the folder saves go to (the project's own folder is made inside it) */
+function GB_pickSaveFolder(cur){ try{ var F=(cur?new Folder(cur):Folder.myDocuments).selectDlg("Grid Blocks · where should saves go?"); return F?"OK|"+F.fsName:"CANCEL"; }catch(e){ return "ERR|"+e.toString(); } }
+function GB_saveDialog(s,defName,dir){
   try{
-    var f=new File(Folder.myDocuments.fsName+"/"+(defName||"GridBlocks.json"));
+    var f=new File(((dir&&(new Folder(dir)).exists)?dir:Folder.myDocuments.fsName)+"/"+(defName||"GridBlocks.json"));
     f=f.saveDlg("Save Grid Blocks layout",GB_isWin()?"JSON:*.json":undefined);
     if(!f) return "CANCEL";
     if(!/\.json$/i.test(f.name)) f=new File(f.fsName+".json");

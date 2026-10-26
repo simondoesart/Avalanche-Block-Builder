@@ -1827,6 +1827,7 @@ body.nohelp .qm{display:none}
 <div class="modal" id="libModal" hidden>
   <div class="sheet">
     <div class="sheet-h"><h3>Layouts</h3><span class="note" id="libWhere"></span><div class="spacer"></div><button class="btn icon ghost" id="libClose" title="Close">✕</button></div>
+    <div class="field stack" style="padding:0 2px 8px"><span class="lbl">Project name <span class="note">— used for every saved file: Project_v03_date.json, Project_v03_build.jsx, Project_v03_video.mp4</span></span><input class="text-in" data-bind="projName" placeholder="e.g. Avalanche Q4 Launch" maxlength="60"><div class="note" id="saveInfo"></div></div>
     <div class="save-row"><input class="text-in" id="libName" placeholder="Name this layout…" maxlength="60"><button class="btn primary" id="libSave">Save current</button></div>
     <div class="lib" id="libList"></div>
     <div class="sheet-f">
@@ -1989,9 +1990,14 @@ function GB_writeText(name,s){
   }catch(e){return "ERR|"+e.toString();}
 }
 function GB_isWin(){return $.os.indexOf("Windows")>=0;}
-function GB_saveDialog(s,defName){
+/* save straight into a folder (made if needed) — the panel picks versioned names, so no dialog every time */
+function GB_writeTo(path,s){ try{ var f=new File(path); if(!f.parent.exists) f.parent.create(); if(f.exists){ var b=path.replace(/(\.[^.\/]+)$/,""), ext=(path.match(/(\.[^.\/]+)$/)||["",""])[1], n=2; while(f.exists){ f=new File(b+"-"+n+ext); n++; } }
+    f.encoding="UTF-8"; f.open("w"); f.write(s); f.close(); return "OK|"+f.fsName; }catch(e){ return "ERR|"+e.toString(); } }
+/* pick the folder saves go to (the project's own folder is made inside it) */
+function GB_pickSaveFolder(cur){ try{ var F=(cur?new Folder(cur):Folder.myDocuments).selectDlg("Grid Blocks · where should saves go?"); return F?"OK|"+F.fsName:"CANCEL"; }catch(e){ return "ERR|"+e.toString(); } }
+function GB_saveDialog(s,defName,dir){
   try{
-    var f=new File(Folder.myDocuments.fsName+"/"+(defName||"GridBlocks.json"));
+    var f=new File(((dir&&(new Folder(dir)).exists)?dir:Folder.myDocuments.fsName)+"/"+(defName||"GridBlocks.json"));
     f=f.saveDlg("Save Grid Blocks layout",GB_isWin()?"JSON:*.json":undefined);
     if(!f) return "CANCEL";
     if(!/\.json$/i.test(f.name)) f=new File(f.fsName+".json");
@@ -3338,7 +3344,7 @@ const DEF={
   num:{on:true,fmt:'01',start:1,color:'#121212',size:12,opacity:100,per:{}},
   io:{in:null,out:null},
   L2:{on:false,dim:{on:false,color:'#121212',op:60,len:12,delay:0,after:1},z:'front',active:'main',store:null,sound:'off',timing:null,cam:'main',camSrc:'main',infX:100,infY:100,zoom:true,revealBy:'own',ctrl:{x:0,y:0,r:0,s:100,o:100},bb:{on:false,cam:'line',smooth:8,anchor:'c',vf:false,vDamp:0,ry:50,bleed:0,ovRows:0,zoomRoom:true,per:{},adj:2,scale:100,move:'glide',stepLen:6,speed:100,rx:65,band:'any',rowFrom:null,rowTo:null,startRow:null,path:'walk',touch:true,step:'corner',sidePct:30,bias:'bounce',gap:0,overlap:false,slack:25,stay:'stay',stayN:8}},
-  mediaLib:'',
+  mediaLib:'',projName:'',saveN:0,
   bmedia:{on:false,selOn:false,selAsset:'',kind:'video',asset:'sample',precomp:false,fit:'cover',scale:100,x:0,y:0,flipX:false,flipY:false,opacity:100,
     loop:'loop',start:'reveal',delay:0,at:0,offset:0,audio:'mute',inMode:'block',inLen:12,target:'all',pick:[],dirOn:{up:true,down:true,flat:true},
     assign:'same',pool:[],dir:{up:'',down:'',flat:''},seed:1,per:{},assets:[]},
@@ -8792,6 +8798,7 @@ $('#insp').addEventListener('click',e=>{
 
 /* ------------------------------------------------------------------ bindings */
 function onChange(path){
+  if(path==='projName') setTimeout(()=>{ try{ renderSaveInfo(); }catch(e){} },0);
   if(/^(block\.(w|h)$|rand\.sizeVar\.|L2\.bb\.scale$)/.test(path)&&lockedCount()&&!U.lockAskSkip) setTimeout(()=>lockAsk(path),0);   /* base size changed while blocks are locked: ask */
   if(path==='rand.sizeVar.on'&&D.rand.sizeVar&&D.rand.sizeVar.on&&(+D.rand.sizeVar.keep||0)>=100){ D.rand.sizeVar.keep=0; syncInputs(true); }   /* turning random sizes on: don't leave every block at the base size */
   if(/^rand\.sizeVar|^L2\.|^anim\.zoomOn/.test(path)&&curLayer()==='l2') setTimeout(()=>{ try{ renderLayerBar(); }catch(e){} },0);
@@ -10091,7 +10098,7 @@ function snapTake(label,force){
 window.__gbUndo=()=>{ try{ undo(); toast('Undid the last change','⌘Z again to keep going back',true); }catch(e){} };
 window.__gbSnapshots=()=>{ try{ openLib(); }catch(e){} };
 function openLib(focusName){
-  $('#libModal').hidden=false;
+  $('#libModal').hidden=false; try{ renderSaveInfo(); }catch(e){}
   $('#libWhere').textContent=inAE?'Stored on this computer':inWeb?'Saved in this browser. Save to a file to share or back up.':'Kept until you close this tab. Save to a file to keep a copy.';
   renderLib(); if(focusName) setTimeout(()=>$('#libName').focus(),20);
 }
@@ -10129,13 +10136,22 @@ $('#libModal').addEventListener('pointerdown',e=>{if(e.target.id==='libModal')cl
 $('#btnLib').onclick=()=>openLib(false);
 $('#btnSaveLib').onclick=()=>openLib(true);
 
-function exportFile(){
-  lockOnSave(); refresh();
-  const json=JSON.stringify({app:'GridBlocks',v:2,doc:D},null,1);
-  const name=`GridBlocks_${D.comp.w}x${D.comp.h}.json`;
-  if(inAE){evalHost('GB_saveDialog('+jsStr(json)+','+jsStr(name)+')').then(r=>{const p=String(r).split('|');if(p[0]==='OK')toast('Saved to '+p.slice(1).join('|'),'ok');else if(p[0]==='ERR')toast(p.slice(1).join('|'),'err');});}
+/* ---- file names made for you: <Project>_v03_2026-10-26_1432.json — every save a new version, all in one project folder ---- */
+function projName(){ const n=String(D.projName||'').trim()||String((D.timing&&D.timing.media&&D.timing.media.name)||'').replace(/\.[^.]+$/,'').trim()||'GridBlocks'; return n.replace(/[\\\/:*?"<>|]+/g,'-').replace(/\s+/g,' ').slice(0,60); }
+function projFile(kind,ext){ const d=new Date(), p2=n=>String(n).padStart(2,'0'), v='v'+p2(D.saveN||1), stamp=`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}_${p2(d.getHours())}${p2(d.getMinutes())}`;
+  return `${projName()}_${v}${kind?'_'+kind:''}${kind?'':'_'+stamp}.${ext}`; }
+function saveDir(){ try{ return localStorage.getItem('gb.saveDir')||''; }catch(e){ return ''; } }
+async function pickSaveDir(){ const r=String(await evalHost('GB_pickSaveFolder('+jsStr(saveDir())+')')); if(r.indexOf('OK|')!==0) return null; try{ localStorage.setItem('gb.saveDir',r.slice(3)); }catch(e){} renderSaveInfo(); return r.slice(3); }
+function renderSaveInfo(){ const el=$('#saveInfo'); if(!el) return; const dir=saveDir(); el.innerHTML=`Next save: <b>${esc(projFile('', 'json').replace(/_\d{4}-\d\d-\d\d_\d{4}/,'_<date>'))}</b>${inAE?(dir?`<br>into <b>${esc(dir)}/${esc(projName())}</b> · <a href="#" id="saveDirPick">change folder</a>`:'<br><a href="#" id="saveDirPick">Pick a folder for saves</a> — then saving needs no dialog'):'<br>to your Downloads folder'}`; }
+document.addEventListener('click',e=>{ if(e.target&&e.target.id==='saveDirPick'){ e.preventDefault(); pickSaveDir(); } });
+async function exportFile(ev){
+  lockOnSave(); D.saveN=(+D.saveN||0)+1; refresh();
+  const json=JSON.stringify({app:'GridBlocks',v:2,doc:D},null,1), name=projFile('','json');
+  if(inAE){ let dir=saveDir(); if(!dir||(ev&&ev.shiftKey)) dir=await pickSaveDir(); if(!dir){ D.saveN--; return; }
+    const r=String(await evalHost('GB_writeTo('+jsStr(dir+'/'+projName()+'/'+name)+','+jsStr(json)+')')); const p=r.split('|');
+    if(p[0]==='OK') toast('Saved '+p.slice(1).join('|').split(/[\\\/]/).pop()+' — in '+projName()+' (⇧-click Save to pick another folder)','ok'); else { D.saveN--; toast(p.slice(1).join('|')||r,'err'); } }
   else download(name,json,'application/json');
-}
+  renderSaveInfo(); }
 /* the layout travels inside every exported .jsx, between these markers */
 const LAYOUT_BEGIN='// GRIDBLOCKS_LAYOUT_BEGIN', LAYOUT_END='// GRIDBLOCKS_LAYOUT_END';
 function layoutBlock(){return LAYOUT_BEGIN+'\nvar GB_LAYOUT='+JSON.stringify({app:'GridBlocks',v:2,doc:D}).split(LS1).join('\\u2028').split(LS2).join('\\u2029')+';\n'+LAYOUT_END+'\n';}
@@ -10580,7 +10596,7 @@ async function build(ev){
   } else {
     const code='// Grid Blocks — generated build script\n// After Effects: File › Scripts › Run Script File…\n// Builds into the active comp if it is '+d.comp.w+'×'+d.comp.h+', otherwise makes a new comp.\n// Open this file in Grid Blocks (Layouts › Open from file) to keep editing the layout.\n\n'
       +layoutBlock()+'\n'+HOST+'\n(function(){var r=GB_build('+json+');alert(r.replace(/^OK\\|/,"").replace(/^ERR\\|/,"Error: "));})();\n';
-    download(`GridBlocks_${d.comp.w}x${d.comp.h}.jsx`,code);
+    download(projFile('build','jsx'),code);
     toast('Exported. In AE: File › Scripts › Run Script File…','ok');
   }
 }
@@ -10590,7 +10606,9 @@ $('#btnExportJsx').onclick=async()=>{
   let d=await bldChoose(true); if(!d) return; const json=JSON.stringify(d).split(LS1).join('\\u2028').split(LS2).join('\\u2029');
   snapTake('Exported .jsx',true);
   const code='// Grid Blocks — generated build script\n// Open this file in Grid Blocks (Layouts › Open from file) to keep editing the layout.\n\n'+layoutBlock()+'\n'+HOST+'\n(function(){var r=GB_build('+json+');alert(r.replace(/^OK\\|/,"").replace(/^ERR\\|/,"Error: "));})();\n';
-  evalHost('(function(){var f=new File(Folder.myDocuments.fsName+"/GridBlocks_build.jsx").saveDlg("Save build script");if(!f)return "CANCEL";f.encoding="UTF-8";f.open("w");f.write('+jsStr(code)+');f.close();return "OK|"+f.fsName;})()')
+  const dir=saveDir(), nm=projFile('build','jsx');
+  if(dir) evalHost('GB_writeTo('+jsStr(dir+'/'+projName()+'/'+nm)+','+jsStr(code)+')').then(r=>{r=String(r);if(r.indexOf('OK|')===0)toast('Saved '+r.slice(3).split(/[\\\/]/).pop()+' — in '+projName(),'ok'); else toast(r,'err');});
+  else evalHost('(function(){var f=new File(Folder.myDocuments.fsName+"/'+nm.replace(/"/g,'')+'").saveDlg("Save build script");if(!f)return "CANCEL";f.encoding="UTF-8";f.open("w");f.write('+jsStr(code)+');f.close();return "OK|"+f.fsName;})()')
     .then(r=>{r=String(r);if(r.indexOf('OK|')===0)toast('Saved '+r.slice(3),'ok');});
 };
 function removeFromComp(){
@@ -11237,7 +11255,8 @@ function expDraw(c,t,k,mbN){ const sv={sc:V.sc,ox:V.ox,oy:V.oy,cw:V.cw,ch:V.ch,d
   finally{ Object.assign(V,sv); U.t=st.t; U.preview=st.preview; U.playing=st.playing; } }
 /* where the file goes: the browser downloads it; in After Effects you pick a place and it's written as it renders */
 async function expSink(name){
-  if(inAE){ const r=String(await evalHost('(function(){var f=new File(Folder.myDocuments.fsName+"/'+name+'").saveDlg("Save video");return f?"OK|"+f.fsName:"CANCEL";})()')); if(r.indexOf('OK|')!==0) return null; const path=r.slice(3);
+  if(inAE){ const sd=saveDir(), base=sd?(sd+'/'+projName()).replace(/"/g,''):null; if(base) await evalHost('(function(){var F=new Folder("'+base.replace(/\\/g,'/')+'");if(!F.exists)F.create();return "OK";})()');
+    const r=String(await evalHost('(function(){var f=new File('+(base?'"'+base.replace(/\\/g,'/')+'/'+name+'"':'Folder.myDocuments.fsName+"/'+name+'"')+').saveDlg("Save video");return f?"OK|"+f.fsName:"CANCEL";})()')); if(r.indexOf('OK|')!==0) return null; const path=r.slice(3);
     const req=(window.cep_node&&window.cep_node.require)||window.require;
     if(req){ try{ const fs=req('fs'), Bf=(window.cep_node&&window.cep_node.Buffer)||req('buffer').Buffer, fd=fs.openSync(path,'w');
       return {path,write:b=>fs.writeSync(fd,Bf.from(b.buffer,b.byteOffset,b.byteLength)),patch:(at,b)=>fs.writeSync(fd,Bf.from(b.buffer,b.byteOffset,b.byteLength),0,b.byteLength,at),close:()=>fs.closeSync(fd)}; }catch(e){} }
@@ -11249,7 +11268,7 @@ async function exportVideo(o){
   const G=geom(), fps=D.comp.fps||30, k=+o.size||1, W=Math.max(2,Math.round(G.W*k/2)*2), H=Math.max(2,Math.round(G.H*k/2)*2), mov=o.fmt==='mov';
   let P=null; try{ P=withLayer('main',()=>animOn()?plan(geom()):null); }catch(e){}
   const IO=ioRange(), end=Math.max(1,Math.round(P?(P.end||D.comp.dur*fps):D.comp.dur*fps)), f0=o.range==='io'&&IO.in!=null?Math.max(0,IO.in):0, f1=o.range==='io'&&IO.out!=null?Math.min(end,IO.out):Math.max(end,Math.round((+D.comp.dur||0)*fps));
-  const N=Math.max(1,f1-f0), name=`GridBlocks_${D.comp.w}x${D.comp.h}${mov?'_alpha':''}.${mov?'mov':'mp4'}`;
+  const N=Math.max(1,f1-f0), name=projFile(mov?'alpha':'video',mov?'mov':'mp4');
   const sink=await expSink(name); if(!sink) return;
   const L=o.layers||{}, bar=$('#expBar'), info=$('#expInfo'), prog=(i,txt)=>{ bar.firstElementChild.style.width=Math.round(100*i/N)+'%'; info.textContent=txt||`Frame ${i} of ${N}`; };
   U.exporting=true; U.expCancel=false; bar.hidden=false; $('#expGo').hidden=true; $('#expCancel').textContent='Stop'; stopPlay&&stopPlay();
