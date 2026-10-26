@@ -4525,6 +4525,7 @@ function mediaSpecAt(seq,i,T){
   if(inSel&&M.selAsset&&mAsset(M.selAsset)) a=M.selAsset;
   if(per) MSPEC.forEach(k=>{ if(per[k]!==undefined&&(per.own||['fit','scale','x','y','flipX','flipY','opacity'].indexOf(k)>=0)) s[k]=per[k]; });
   if(per&&per.asset&&mAsset(per.asset)) a=per.asset;
+  if(per&&per.offs&&per.offs[a]!=null) s.offset=Math.max(0,+per.offs[a]||0);   /* this clip's own start offset on this block */
   s.layer=per&&(per.on===true||per.asset)?'block':inSel?'picked':'all';
   const A=mAsset(a)||MEDIA_SAMPLE; s.asset=A.id; s.kind=A.type; s.dir=dir; s.i=i; s.tRev=T&&T[i]!=null?T[i]:0;
   return s;
@@ -7089,7 +7090,8 @@ function payloadCore(inner){
       pb.media={id:A.id,aid:A.id,name:A.name,type:A.type,file:A.file||A.name,rel:A.rel||null,path:pth,precomp:!!ms.precomp,fit:ms.fit,scale:+ms.scale||100,x:+ms.x||0,y:+ms.y||0,flipX:!!ms.flipX,flipY:!!ms.flipY,opacity:clamp(+ms.opacity,0,100),
         loop:ms.loop,inMode:ms.inMode||'block',inLen:Math.max(1,+ms.inLen||12),startF:ms.start==='frame'?(+ms.at||0):(animOn?Math.round(P.T[i]):0)+(+ms.delay||0),offset:Math.max(0,+ms.offset||0),audio:ms.audio==='on'};
       const more=(((D.bmedia.per||{})[b.id]||{}).more||[]).map(id=>mAsset(id)).filter(a=>a&&a.id!==A.id);   /* every other clip on this block: in AE under the top one */
-      if(more.length) pb.mediaMore=more.map(a2=>Object.assign({},pb.media,{id:a2.id,aid:a2.id,name:a2.name,type:a2.type,file:a2.file||a2.name,rel:a2.rel||null,path:a2.path||(lib&&!a2.builtin?lib+'/'+(a2.rel||a2.file||a2.name):null)})); }
+      const offs=(((D.bmedia.per||{})[b.id]||{}).offs)||{};
+      if(more.length) pb.mediaMore=more.map(a2=>Object.assign({},pb.media,{offset:offs[a2.id]!=null?Math.max(0,+offs[a2.id]||0):pb.media.offset,id:a2.id,aid:a2.id,name:a2.name,type:a2.type,file:a2.file||a2.name,rel:a2.rel||null,path:a2.path||(lib&&!a2.builtin?lib+'/'+(a2.rel||a2.file||a2.name):null)})); }
   });
   // manual order: blocks you didn't pick but chose to keep visible
   P.statics.forEach(b=>{const q=cellRect(G,b.c,b.r,b.w,b.h);blocks.push({name:bname(b),order:0,c:b.c+1,r:b.r+1,w:b.w,h:b.h,x:r3(q.x),y:r3(q.y),bw:r3(q.w),bh:r3(q.h),
@@ -7598,7 +7600,7 @@ function cardMedia(ids){
       return `<div class="mprev" data-mdropk="top" title="Drop a clip here to replace it">${thumbCv(topA,240,135)}<div><b>${topA?esc(topA.name):'No media'}</b><div class="note">${topA?'Showing on the canvas':'Drag a clip here, or pick one below'}</div></div></div>
       <div class="field stack"><span class="lbl">Replace with <span class="note">— click a clip · ⇧-click adds it underneath</span></span><div class="mstrip">${mAssets().map(a=>`<canvas class="mst" data-thumb="${esc(a.id)}" width="128" height="72" data-mput="${esc(a.id)}" draggable="true" data-mdrag="${esc(a.id)}" title="${esc(a.name)}"></canvas>`).join('')||'<span class="note">Add clips in Content › Media first.</span>'}</div></div>
       <div class="field stack"><span class="lbl">Media on ${ids.length>1?'these blocks':'this block'} <span class="note">— top first · drop a file on a clip to replace it · all go to After Effects</span></span>
-      <div class="mlist">${clips.map((id,k)=>{ const a=mAsset(id); return `<div class="mrow mdrow" data-mdropk="row:${k}" title="Drop a clip or a file here to replace this one">${thumbCv(a,88,50,'mli')}<span class="nm">${k===0?'<b>Top</b> · ':''}${a?esc(a.name):'missing'}</span>${k>0?`<button class="btn ghost" data-mup="${k}" title="Put on top">↑</button>`:''}<button class="btn ghost" data-mrmv="${k}" title="Remove this clip from ${ids.length>1?'these blocks':'the block'}">Remove</button></div>`; }).join('')||'<div class="note">No media on this block yet.</div>'}</div>
+      <div class="mlist">${clips.map((id,k)=>{ const a=mAsset(id); return `<div class="mrow mdrow" data-mdropk="row:${k}" title="Drop a clip or a file here to replace this one">${thumbCv(a,88,50,'mli')}<span class="nm">${k===0?'<b>Top</b> · ':''}${a?esc(a.name):'missing'}</span><span class="num" style="width:auto" title="Frame offset — how many frames into the clip it starts"><input type="number" data-moff="${esc(id)}" value="${(()=>{ const pp=(D.bmedia.per||{})[ids[0]]||{}; return pp.offs&&pp.offs[id]!=null?pp.offs[id]:(k===0?(+((pp.own&&pp.offset!=null)?pp.offset:D.bmedia.offset)||0):0); })()}" min="0" step="1" style="width:52px"><span class="unit">fr</span></span>${k>0?`<button class="btn ghost" data-mup="${k}" title="Put on top">↑</button>`:''}<button class="btn ghost" data-mrmv="${k}" title="Remove this clip from ${ids.length>1?'these blocks':'the block'}">Remove</button></div>`; }).join('')||'<div class="note">No media on this block yet.</div>'}</div>
       <div class="mdropzone" data-mdropk="add"><span>＋ Drop a clip here to <b>add another</b></span><button class="btn" data-maddfile="1" title="Pick a file from your computer and add it to this block (underneath)">Add a clip…</button></div>
       <input type="file" id="mFileBlk" accept="video/*,image/*" multiple hidden></div>`; })()}
     <div class="field stack"><span class="lbl">How it sits in ${ids.length>1?'these blocks':'this block'}</span>
@@ -7647,6 +7649,7 @@ $('#insp').addEventListener('change',e=>{ const t=e.target, ds=t.dataset||{};
     else { D.num.per=Object.assign({},D.num.per||{}); ids.forEach(id=>{ const b=P.seq.find(x=>x.id===id)||byId(id); const def=b?!!(b.num===true||(b.num!==false&&D.num.on)):D.num.on; if(t.checked===def) delete D.num.per[id]; else D.num.per[id]=t.checked; }); }
     planCache.k=''; syncInputs(true); refresh(); renderCPick(); return; }
   if(ds.bmasset){ pushHist(true); mPer(mSelIds(),p=>{ if(t.value) p.asset=t.value; else delete p.asset; }); renderInsp(); render(); return; }
+  if(ds.moff){ const v=Math.max(0,Math.round(+t.value||0)), aid=ds.moff; pushHist(true); mPer(mSelIds(),p=>{ p.offs=Object.assign({},p.offs||{}); p.offs[aid]=v; }); planCache.k=''; render(); return; }
   if(ds.bmswap){ const v=t.value; pushHist(true); mPer(mSelIds(),p=>{ if(ds.bmswap==='top'){ if(v){ p.asset=v; p.on=true; p.more=(p.more||[]).filter(x=>x!==v); if(!p.more.length) delete p.more; } else delete p.asset; } else { const L=(p.more||[]).slice(), k=+ds.bmswap; if(v&&L[k]!=null&&v!==p.asset){ L[k]=v; p.more=L.filter((x,i)=>L.indexOf(x)===i); } } }); renderInsp(); render(); return; }
   if(ds.bmmore){ const v=t.value; if(!v) return; pushHist(true); const mm=mediaMap(plan(geom()));
     mSelIds().forEach(id=>mPer([id],p=>{ const L=(p.more||[]).filter(x=>x!==v), top=p.asset||(mm[id]&&mm[id].asset)||null;   /* the clip showing now stays on top */
