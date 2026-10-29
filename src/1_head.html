@@ -241,6 +241,9 @@ textarea{height:auto;min-height:64px;padding:7px 8px;resize:vertical;line-height
 .swatch.custom{background:conic-gradient(#f33,#fd3,#3f6,#3df,#36f,#f3f,#f33)}
 
 /* size picker */
+#left .pane.gapedit [data-blkonly]{display:none!important}
+.gaponly{display:none}#left .pane.gapedit .gaponly{display:block}
+#fillEditSeg button{flex:1}
 .picker{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:2px;padding:8px;background:var(--bg);border:1px solid var(--line);border-radius:9px;cursor:pointer}
 .picker i{display:block;aspect-ratio:1/1;border-radius:3px;background:#2b2b31;transition:background .06s}
 .picker i.h{background:rgba(230,33,47,.45)}
@@ -1033,17 +1036,21 @@ body.nohelp .qm{display:none}
                 <div class="row-btns" data-show="bmedia.assign=random"><button class="btn ghost" id="mReseed">↻ Shuffle</button></div></div>
             </div></details>
           </div>
+          <div class="group" data-ctab="hud" id="fillEditBar" data-show="fill.gap.ownLook=true">
+            <div class="field stack"><span class="lbl">These controls set the look of</span><div class="seg" id="fillEditSeg"><button data-fe="block">Text in blocks</button><button data-fe="gap">Text between blocks</button></div></div>
+            <div class="note" id="fillEditNote"></div>
+          </div>
           <div class="group" data-ctab="hud">
-            <div class="group-h">Auto-fill blocks</div>
-            <div class="layer" data-layer="fill.on">
+            <div class="group-h" id="fillHudH">Auto-fill blocks</div>
+            <div class="layer" data-layer="fill.on" data-blkonly>
               <label class="switch"><input type="checkbox" data-bind="fill.on"><span></span></label>
               <div><div class="ln">Fill blocks with content</div><div class="ls">Blockchain HUD text, counters &amp; patterns</div></div>
               <span></span>
             </div>
             <div data-show="fill.on=true" style="display:grid;gap:9px">
-              <div class="field stack"><span class="lbl">Which blocks get content</span><div class="seg" data-seg="fill.target"><button data-v="all" title="Every block, except ones you switch off">All blocks</button><button data-v="pick" title="Only the blocks you switch on">Only picked blocks</button></div></div>
-              <div class="row-btns"><button class="btn" id="cPick" title="Click blocks (generated ones too) to switch their content, click an empty cell to add content there, click between-blocks content to remove it">Pick on the canvas</button><button class="btn" id="cWalk" title="Play the walk — pause and click blocks to switch content on/off">▶ Preview the walk</button></div>
-              <div class="row-btns"><button class="btn ghost" id="cPickReset" title="Forget every per-block on/off choice">Reset picks</button><span class="note" id="cPickN"></span></div>
+              <div class="field stack" data-blkonly><span class="lbl">Which blocks get content</span><div class="seg" data-seg="fill.target"><button data-v="all" title="Every block, except ones you switch off">All blocks</button><button data-v="pick" title="Only the blocks you switch on">Only picked blocks</button></div></div>
+              <div class="row-btns" data-blkonly><button class="btn" id="cPick" title="Click blocks (generated ones too) to switch their content, click an empty cell to add content there, click between-blocks content to remove it">Pick on the canvas</button><button class="btn" id="cWalk" title="Play the walk — pause and click blocks to switch content on/off">▶ Preview the walk</button></div>
+              <div class="row-btns" data-blkonly><button class="btn ghost" id="cPickReset" title="Forget every per-block on/off choice">Reset picks</button><span class="note" id="cPickN"></span></div>
               <div class="row-btns"><button class="btn" id="btnFillShuffle" title="New random content in every block (same settings)">↻ Shuffle content</button></div>
               <details class="sub" data-sub="fill-what" open><summary>What appears <span class="note" id="lookName"></span></summary><div class="subbody">
               <div class="looks" id="lookRow"></div>
@@ -1100,9 +1107,9 @@ body.nohelp .qm{display:none}
               </div>
               <div class="field stack"><span class="lbl">Case</span><div class="seg" data-seg="fill.caps"><button data-v="upper">UPPERCASE</button><button data-v="none">As written</button></div></div>
               <div class="field stack"><span class="lbl">Text on solid blocks</span><div class="swatches" data-pal="fill.textColor"></div></div>
-              <div class="note">Text on outline blocks and echoes uses the block / echo colour.</div>
+              <div class="note" data-blkonly>Text on outline blocks and echoes uses the block / echo colour.</div><div class="note gaponly">Between blocks: this is the colour of all its text, icons and patterns.</div>
               </div></details>
-                            <details class="sub" data-sub="fill-extra"><summary>Extras &amp; effects <span class="note">outlines, pulses, tickers</span></summary><div class="subbody">
+                            <details class="sub" data-sub="fill-extra" data-blkonly><summary>Extras &amp; effects <span class="note">outlines, pulses, tickers</span></summary><div class="subbody">
               <div class="field2">
                 <div class="field"><span class="lbl scrub" title="Share of blocks drawn as outlines instead of solid">Outline</span><div class="num"><input type="number" data-bind="fill.outlinePct" min="0" max="100" step="5"><span class="unit">%</span></div></div>
                 <div class="field"><span class="lbl scrub">Stroke</span><div class="num"><input type="number" data-bind="fill.outlineW" min="1" max="40" step="1"><span class="unit">px</span></div></div>
@@ -1142,7 +1149,7 @@ body.nohelp .qm{display:none}
               </div></details>
             </div>
           </div>
-          <div class="group" data-ctab="hud" data-show="fill.on=true">
+          <div class="group" data-ctab="hud" data-show="fill.on=true" data-blkonly>
             <div class="group-h">Content animation</div>
             <div class="phases"><span>Animate on</span><i></i><span>Hold</span><i></i><span>Animate off</span></div>
             <details class="sub" data-sub="anim-on" open><summary>Animate on</summary><div class="subbody">
@@ -1197,9 +1204,11 @@ body.nohelp .qm{display:none}
               <div><div class="ln">Fill empty grid areas</div><div class="ls">Log lines, tags, barcodes &amp; dots in the gaps</div></div>
               <span></span>
               <div class="extra" data-show="fill.gap.on=true">
-                <div class="checkgrid" id="modGridGap"></div>
+                <label class="check" title="Style the text between blocks with every Text HUD control — what appears, mix, density, font, size and colour — separately from the text in the blocks"><input type="checkbox" data-bind="fill.gap.ownLook"> <b>Own look</b> — the full Text HUD controls</label>
+                <div data-show="fill.gap.ownLook=true" style="display:grid;gap:8px"><button class="btn primary" id="btnGapLook">Edit the between-blocks look →</button><div class="note">Opens the Text HUD controls set to <b>Text between blocks</b>.</div></div>
+                <div class="checkgrid" id="modGridGap" data-show="fill.gap.ownLook=false"></div>
                 <div class="field"><span class="lbl scrub" title="Items per 10 columns">Amount</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.gap.amount" min="0" max="30" step="1"><button data-d="1">+</button></div></div>
-                <div class="field stack"><span class="lbl">Colour</span><div class="swatches" data-pal="fill.gap.color"></div></div>
+                <div class="field stack" data-show="fill.gap.ownLook=false"><span class="lbl">Colour</span><div class="swatches" data-pal="fill.gap.color"></div></div>
                 <button class="btn" id="btnGapShuffle">Shuffle placement</button>
               </div>
             </div>

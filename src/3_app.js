@@ -68,7 +68,7 @@ const DEF={
         mods:{kv:true,status:true,hashes:true,block:true,log:false,counter:true,dev:true,barcode:true,phrase:true,term:true,mempool:true,validator:true,latency:true,rpc:false,progress:true,consensus:true,stream:false,dots:true,ring:false,logo:true,icons:true},
         iconSet:{node:true,cube:true,chain:true,check:true,chevrons:true,peak:true,lock:false,network:true,signal:true,target:false,snow:true,arrow:true,plus:false,bars:true},dotSize:2.2,dotShape:'circle',
         anim:{inMode:'type',inDur:8,outMode:'typeoff',hold:36,outDur:12,typeAll:true,cps:69,ellipsis:true,count:true,countDur:36,scramble:true,scrMode:'settle',scrDur:30,scrRate:12,stagger:4,delay:9,live:false,liveTick:true,liveHash:true,liveGlitch:false,liveRate:6,glitchAmt:15,liveGraph:true,liveBlink:true,anchor:'block'},win:{on:null,off:null},
-        gap:{off:{},on:true,amount:3,seed:0,color:'#E6212F',win:{on:null,off:null},anim:{own:true,anchor:'block',delay:12,jitter:10,leaveWith:true,inMode:'type',cps:60,inDur:8,buildDur:12,outMode:'fade',hold:48,outDur:12},mods:{log:true,phrase:true,barcode:true,hashes:false,dots:true,logo:true,icons:true,graph:true,stream:false,rpc:false}}},
+        gap:{off:{},on:true,amount:3,seed:0,color:'#E6212F',ownLook:false,style:null,win:{on:null,off:null},anim:{own:true,anchor:'block',delay:12,jitter:10,leaveWith:true,inMode:'type',cps:60,inDur:8,buildDur:12,outMode:'fade',hold:48,outDur:12},mods:{log:true,phrase:true,barcode:true,hashes:false,dots:true,logo:true,icons:true,graph:true,stream:false,rpc:false}}},
   echo:{on:false,dx:0,dy:2,last:0,fill:true,color:'#A2AFB2',opacity:100,stroke:false,sw:4,scolor:'#A2AFB2',align:'center',dash:false,dashL:12,dashG:8,content:false,
         timing:'with',offset:6,appear:'fade',out:'stay',hold:12,outF:8},
   rand:{pace:{on:false,speed:2,fit:'push'},connect:true,pitch:{on:false,mode:'contour',semis:2,maxStep:2,amount:100},sizeVar:{on:false,mode:'free',wMin:1,wMax:6,hMin:1,hMax:4,min:1,max:3,aMin:0.5,aMax:3,list:'1x1, 2x1, 3x1, 2x2, 4x2, 3x3, 6x3, 1x2',keep:0},endSingle:true,pattern:'walk',count:0,gap:0,rise:1,gapMin:0,gapMax:2,startRow:0,startCol:null,startR:null,bleed:true,mode:'replace',echo:false,echoDX:0,echoDY:2,echoLast:0,seed:1337,
@@ -758,22 +758,22 @@ function fillMetrics(){
 const fillCache=new Map();
 /* items for one block/echo rect: corners for text, the middle for a pattern */
 function fillItems(G,b,rect,isEcho){
-  const F=D.fill; if(!F||!F.on) return [];
-  if(!isEcho&&(!fillOnFor(b)||(F.skipText&&b.text&&(F.per||{})[b.id]!==true))) return [];
+  const F=D.fill; if(!F||(!F.on&&!GAPV)) return [];
+  if(!isEcho&&!GAPV&&(!fillOnFor(b)||(F.skipText&&b.text&&(F.per||{})[b.id]!==true))) return [];
   const mods=FILL_MODULES.map(m=>m[0]).filter(m=>F.mods[m]);
   const gOn=GRAPHS.map(g=>g[0]).filter(k=>F.graphs&&F.graphs[k]), cOn=COMBOS.map(c=>c[0]).filter(k=>F.combos&&F.combos[k]);
   const pOn=(F.mods.dots?['dots']:[]).concat(PATTERNS.map(q=>q[0]).filter(k=>k!=='dots'&&F.pats&&F.pats[k]));
   if(!mods.length&&!gOn.length&&!cOn.length&&!pOn.length) return [];
-  const solid=!isEcho&&!isOutline(b);
+  const solid=!isEcho&&!GAPV&&!isOutline(b);
   const color=isEcho?(D.echo.stroke?D.echo.scolor:D.echo.color):solid?F.textColor:b.color;
   const inv=isEcho?(D.echo.fill?D.echo.color:D.look.bg):solid?b.color:(D.look.bg||'#1F1F1F');
-  const key=[b.id,b.fillSeed||0,rect.x|0,rect.y|0,rect.w|0,rect.h|0,isEcho?1:0,color,inv,JSON.stringify(F),!isEcho&&numOn(b)?JSON.stringify(D.num):''].join('|');
+  const key=[b.id,b.fillSeed||0,rect.x|0,rect.y|0,rect.w|0,rect.h|0,isEcho?1:0,color,inv,JSON.stringify(F),!isEcho&&!GAPV&&numOn(b)?JSON.stringify(D.num):'',GAPV?'gap':''].join('|');
   const hit=fillCache.get(key); if(hit) return hit;
   const rnd=rng(fillHash(b.id+(isEcho?77777:0),(F.seed|0)+(b.fillSeed||0)*131));
   const met=fillMetrics(), pad=Math.max(8,Math.min(28,Math.min(rect.w,rect.h)*.08));
   const W=rect.w-2*pad, H=rect.h-2*pad; if(W<met.cw*5||H<met.lh) {fillCache.set(key,[]);return [];}
   const two=W>met.cw*30, tall=H>met.lh*6;
-  const nb=!isEcho&&numOn(b)?numLayout(rect,numStr(88)):null, nW=nb?nb.w+met.cw*2:0;
+  const nb=!isEcho&&!GAPV&&numOn(b)?numLayout(rect,numStr(88)):null, nW=nb?nb.w+met.cw*2:0;
   const slots=[{x:0,y:0,w:two?W*.46:Math.max(0,W-nW),h:tall?H*.45:H,ax:'l',ay:'t'}];
   if(two&&!nb) slots.push({x:W*.54,y:0,w:W*.46,h:tall?H*.45:H,ax:'r',ay:'t'});
   if(tall){slots.push({x:0,y:H*.55,w:two?W*.46:W,h:H*.45,ax:'l',ay:'b'}); if(two) slots.push({x:W*.54,y:H*.55,w:W*.46,h:H*.45,ax:'r',ay:'b'});}
@@ -864,12 +864,26 @@ function freeRects(x0,y0,W,H,sp,items,met){
 /* Between-blocks timing: its own on / hold / off, or the Text HUD's */
 function gapA(){ const GA=(D.fill.gap&&D.fill.gap.anim)||{}; if(GA.own===false) return D.fill.anim;
   return Object.assign({},D.fill.anim,{anchor:GA.anchor||'block',inMode:GA.inMode,cps:GA.cps,inDur:GA.inDur,buildDur:GA.buildDur,outMode:GA.outMode,hold:GA.hold,outDur:GA.outDur}); }
+/* Text between blocks can have its own look: the same settings as the Text HUD (what appears, mix, density, font, size, colour…) */
+const FILL_STYLE_KEYS=['family','style','font','size','leading','caps','textColor','textPct','patternPct','dotSpacing','iconPct','iconSize','iconLib','graphW','look','mix','graphs','combos','pats','pxSet','mods','iconSet','dotSize','dotShape','density','buildDur'];
+function gapOwnLook(){ const g=D.fill&&D.fill.gap; return !!(g&&g.ownLook); }
+function gapStyleInit(){ const g=D.fill.gap; if(!g.style||typeof g.style!=='object'){ const s={}; FILL_STYLE_KEYS.forEach(k=>{ if(D.fill[k]!==undefined) s[k]=clone(D.fill[k]); }); s.textColor=g.color||s.textColor; s.look='custom'; g.style=s; }
+  FILL_STYLE_KEYS.forEach(k=>{ if(g.style[k]===undefined&&D.fill[k]!==undefined) g.style[k]=clone(D.fill[k]); }); return g.style; }
+let GAPSTYLE=false, GAPV=false;   /* GAPSTYLE: D.fill holds the between-blocks look right now · GAPV: filling an empty area (not a block) */
+function withGapStyle(fn){ if(!gapOwnLook()||GAPSTYLE) return fn(); const S=gapStyleInit(), F=D.fill, sv={}; FILL_STYLE_KEYS.forEach(k=>{ sv[k]=F[k]; if(S[k]!==undefined) F[k]=S[k]; }); GAPSTYLE=true;
+  try{ return fn(); } finally{ GAPSTYLE=false; FILL_STYLE_KEYS.forEach(k=>{ F[k]=sv[k]; }); } }
+/* the Text HUD generator run on an empty grid area */
+function gapFillArea(G,c,r,wc,hc,q,seedX){ const F=D.fill, Gp=F.gap, met=fillMetrics(), vb={id:9000000+(c+5000)*97+r*7+(seedX|0),c,r,w:wc,h:hc,color:F.textColor||Gp.color||D.block.color,fillSeed:(Gp.seed|0)};
+  let its; GAPV=true; try{ its=fillItems(G,vb,q,false); } finally{ GAPV=false; }
+  return its.map(it=>Object.assign({},it,{col:c,gf:{font:F.font,size:met.size,lh:met.lh}})); }
 /* one colour per timeline layer */
 const LAYER_COL={media:'#5AC8FA',hud:'#E6212F',gaps:'#F5A524',numbers:'#8FA2FF',echo:'#3FC7B5',text:'#EBF0FA',none:'#686871'};
 /* text in empty grid areas between blocks */
 function gapItems(G,list){
+  if(gapOwnLook()&&!GAPSTYLE) return withGapStyle(()=>gapItems(G,list));
   const F=D.fill, Gp=F.gap; if(!Gp||!Gp.on||!list.length) return [];   /* works without the Text HUD in the blocks */
-  const mods=GAP_MODULES.map(m=>m[0]).filter(m=>Gp.mods[m]); if(!mods.length) return [];
+  const own=gapOwnLook();
+  const mods=GAP_MODULES.map(m=>m[0]).filter(m=>Gp.mods[m]); if(!mods.length&&!own) return [];
   const occ=new Set(); list.forEach(b=>{for(let c=b.c;c<b.c+b.w;c++)for(let r=b.r;r<b.r+b.h;r++)occ.add(c+','+r);});
   if(D.echo.on) list.forEach(b=>{const dx=Math.round(+D.echo.dx||0),dy=Math.round(+D.echo.dy||0);for(let c=b.c+dx;c<b.c+dx+b.w;c++)for(let r=b.r+dy;r<b.r+dy+b.h;r++)occ.add(c+','+r);});
   const c0=Math.min(...list.map(b=>b.c)), c1=Math.max(...list.map(b=>b.c+b.w-1));
@@ -881,18 +895,20 @@ function gapItems(G,list){
     if(!free) return; for(let x=c;x<c+wc;x++)for(let y=r;y<r+hc;y++) occ.add(x+','+y);
     const r2=rng(fillHash(c*131+r*7+1,(F.seed|0)+(Gp.seed|0)+(a[4]|0))), q=cellRect(G,c,r,wc,hc), pad=Math.max(8,G.s*.1), color=Gp.color||D.block.color, n0=out.length;
     const txt=mods.filter(m=>['icons','logo','dots','graph'].indexOf(m)<0), m=pickR(r2,txt.length?txt:['log']);
-    if(mods.indexOf('graph')>=0&&r2()<0.35){ const gs=GRAPHS.map(g=>g[0]).filter(t=>F.graphs&&F.graphs[t]&&t!=='network'&&t!=='depth'); const it=graphItem(gs.length?pickR(r2,gs):'line',{x:q.x+pad,y:q.y+pad,w:q.w-2*pad,h:Math.max(6,q.h-2*pad)},r2,color); it.col=c; it.slot=0; out.push(it); }
+    if(own) gapFillArea(G,c,r,wc,hc,q,(a[4]|0)+1).forEach(it=>{ it.slot=it.slot||0; out.push(it); });
+    else if(mods.indexOf('graph')>=0&&r2()<0.35){ const gs=GRAPHS.map(g=>g[0]).filter(t=>F.graphs&&F.graphs[t]&&t!=='network'&&t!=='depth'); const it=graphItem(gs.length?pickR(r2,gs):'line',{x:q.x+pad,y:q.y+pad,w:q.w-2*pad,h:Math.max(6,q.h-2*pad)},r2,color); it.col=c; it.slot=0; out.push(it); }
     else buildModule(m,{x:q.x+pad,y:q.y+pad,w:q.w-2*pad,h:q.h-2*pad,ax:'l',ay:'t'},r2,met,color).forEach(it=>{ it.col=c; it.slot=0; out.push(it); });
     const ga=[c,r,wc,hc]; ga.manual=key; for(let z=n0;z<out.length;z++) out[z].ga=ga; });
   for(let k=0,tries=0;k<n&&tries<n*30;tries++){
     tagG();
-    const m=pickR(rnd,mods), wc=m==='dots'?2+Math.floor(rnd()*3):m==='log'?3+Math.floor(rnd()*2):2+Math.floor(rnd()*2), hc=m==='dots'?1+Math.floor(rnd()*2):1;
+    const m=own?'hud':pickR(rnd,mods), wc=own?3+Math.floor(rnd()*3):m==='dots'?2+Math.floor(rnd()*3):m==='log'?3+Math.floor(rnd()*2):2+Math.floor(rnd()*2), hc=own?Math.min(G.R,1+Math.floor(rnd()*2)):m==='dots'?1+Math.floor(rnd()*2):1;
     const c=c0+Math.floor(rnd()*(c1-c0+1)), r=Math.floor(rnd()*Math.max(1,G.R-hc+1));
     let free=true; for(let x=c;x<c+wc&&free;x++)for(let y=r;y<r+hc;y++) if(occ.has(x+','+y)) {free=false;break;}
     if(!free) continue;
     for(let x=c;x<c+wc;x++)for(let y=r;y<r+hc;y++) occ.add(x+','+y);
     const gk=c+','+r; gA=[c,r,wc,hc]; if((Gp.off||{})[gk]){ k++; continue; }   // switched off by hand (keeps the rest of the layout the same)
     const q=cellRect(G,c,r,wc,hc), pad=Math.max(8,G.s*.1), color=Gp.color||D.block.color;
+    if(own){ gapFillArea(G,c,r,wc,hc,q,0).forEach(it=>out.push(it)); k++; continue; }
     if(m==='icons'&&F.iconLib!=='line'){const on=pxOn(),isz=Math.min(pxSnap(F.iconSize),Math.max(12,Math.floor((q.h-pad*2)/12)*12));if(on.length){const it=pxIcon(pickR(rnd,on),q.x+pad,q.y+pad,isz,color,rnd);it.col=c;it.slot=0;out.push(it);k++;}continue;}
     if(m==='graph'){const gs=GRAPHS.map(g=>g[0]).filter(t=>F.graphs&&F.graphs[t]&&t!=='network'&&t!=='depth'),it=graphItem(gs.length?pickR(rnd,gs):'line',{x:q.x+pad,y:q.y+pad,w:q.w-2*pad,h:Math.max(6,q.h-2*pad)},rnd,color);it.col=c;it.slot=0;out.push(it);k++;continue;}
     if(m==='icons'){const isz=Math.min(Math.max(8,+F.iconSize||28),q.h-pad*2),on=ICON_KEYS.filter(k=>!F.iconSet||F.iconSet[k]!==false);if(on.length){out.push({kind:'icon',name:pickR(rnd,on),x:q.x+pad,y:q.y+pad,w:isz,h:isz,s:isz,color,col:c,slot:0});k++;}continue;}
@@ -1059,8 +1075,11 @@ function timeFill(items,base,fps){
 }
 
 /* ------------------------------------------------------------------ path helpers */
-const getP=p=>p.split('.').reduce((o,k)=>o==null?o:o[k],D);
-const setP=(p,v)=>{const k=p.split('.'),l=k.pop();k.reduce((o,x)=>o[x],D)[l]=v;};
+/* while 'Text between blocks' is the look being edited, the Text HUD controls read / write its own style */
+const FPATH=p=>{ if(U.fillEdit==='gap'&&gapOwnLook()){ const m=/^fill\.([^.]+)(.*)$/.exec(p); if(m){ if(m[1]==='on') return 'fill.gap.on'; if(m[1]==='seed') return 'fill.gap.seed'; if(FILL_STYLE_KEYS.indexOf(m[1])>=0){ gapStyleInit(); return 'fill.gap.style.'+m[1]+m[2]; } } } return p; };
+const getP=p=>FPATH(p).split('.').reduce((o,k)=>o==null?o:o[k],D);
+const setP=(p,v)=>{const k=FPATH(p).split('.'),l=k.pop();k.reduce((o,x)=>o[x],D)[l]=v;};
+const FS=()=>U.fillEdit==='gap'&&gapOwnLook()?gapStyleInit():D.fill;   /* the look the Text HUD panel is editing */
 /* a saved layout over the defaults: every saved value comes back — including per-block maps (front / behind, moves,
    sizes, colours…) and settings newer than the defaults list; missing ones get the default */
 function merge(def,src){
@@ -4839,11 +4858,11 @@ function drawWorld(g,G,o){
   }
   /* text between blocks — each layer with its own settings, drawn where that layer is (layer 2: its camera, zoom and control layer) */
   if(o.inside){ const PMg=A?(A.M||A.P):null;
-    const drawGaps=layer=>{ const run=()=>{ if(!(D.fill.gap&&D.fill.gap.on)||(EXP&&(EXP.noContent||EXP.hide[layer]))) return; const G2=geom(), P2=layer===curLayer()&&A?A.P:(A?plan(G2):null);
+    const drawGaps=layer=>{ const isCur=layer===curLayer(); /* decided before switching layers: inside withLayer every layer is 'current' */ const run=()=>{ if(!(D.fill.gap&&D.fill.gap.on)||(EXP&&(EXP.noContent||EXP.hide[layer]))) return; const G2=geom(), P2=isCur&&A?A.P:(A?(staticWalk(G2)||plan(G2)):null);
         const gl=live&&P2&&P2.gaps?P2.gaps:gapItems(G2,live&&P2?P2.seq:(P2&&(P2.lineShift||isGenerated())?P2.seq:D.blocks.filter(b=>valid(b,G2))));
         const o0=live?A.off:[0,0]; let ox=o0[0], oy=o0[1]; if(layer==='l2'&&live){ const d=l2ShiftAt(A.t,PMg,P2); ox+=d[0]; oy+=d[1]; }
-        gl.forEach(it=>drawFillItems(g,[it],ox,oy,live&&it.t0!=null?it.t0-(it.slot||0)*Math.max(0,+D.fill.anim.stagger||0):null,live?A.t:null,o.alpha*(layer===curLayer()?1:(live?1:0.45)),live?it.tEnd:undefined)); };
-      if(layer===curLayer()) run(); else withLayer(layer,run); };
+        withGapStyle(()=>gl.forEach(it=>drawFillItems(g,[it],ox,oy,live&&it.t0!=null?it.t0-(it.slot||0)*Math.max(0,+D.fill.anim.stagger||0):null,live?A.t:null,o.alpha*(isCur?1:(live?1:0.45)),live?it.tEnd:undefined))); };
+      if(isCur) run(); else withLayer(layer,run); };
     drawGaps('main');
     if(l2On()){ const L2C=l2Ctrl(), fz=live&&D.L2&&D.L2.zoom===false&&baseXf&&g.setTransform;
       if(!fz&&!L2C) drawGaps('l2'); else { g.save(); const zk=ZK; if(fz){ g.setTransform(baseXf); ZK=null; try{ const P2z=curLayer()==='l2'?A.P:withLayer('l2',()=>plan(geom())), Z=l2OwnZoom(G,P2z,A.t); if(Z) zoomXf(g,G,Z.s,null,Z.c); }catch(e){} } ctrlApply(g,G,L2C); try{ drawGaps('l2'); } finally{ ZK=zk; g.restore(); } } } }
@@ -5243,24 +5262,24 @@ const LOOKS={
   minimal:{name:'Minimal',sub:'one thing each',text:['status','phrase','counter'],graph:['line','meter'],combo:['frame','stat'],pat:[],mix:[45,25,30],density:'light',iconPct:20,patternPct:0}
 };
 function catKeys(cat){return cat==='text'?TEXT_MODS.map(m=>m[0]):cat==='graph'?GRAPHS.map(g=>g[0]):cat==='combo'?COMBOS.map(c=>c[0]):cat==='pat'?PATTERNS.map(q=>q[0]):cat==='icons'?(D.fill.iconLib==='line'?ICON_KEYS:PX_KEYS):[];}
-function catGet(cat,k){const F=D.fill;return cat==='text'?!!F.mods[k]:cat==='graph'?!!F.graphs[k]:cat==='combo'?!!F.combos[k]:cat==='pat'?(k==='dots'?!!F.mods.dots:!!F.pats[k]):cat==='icons'?(D.fill.iconLib==='line'?(!F.iconSet||F.iconSet[k]!==false):(!F.pxSet||F.pxSet[k]!==false)):false;}
-function catSet(cat,k,v){const F=D.fill;if(cat==='text')F.mods[k]=v;else if(cat==='graph')F.graphs[k]=v;else if(cat==='combo')F.combos[k]=v;else if(cat==='pat'){if(k==='dots')F.mods.dots=v;else F.pats[k]=v;}
+function catGet(cat,k){const F=FS();return cat==='text'?!!F.mods[k]:cat==='graph'?!!F.graphs[k]:cat==='combo'?!!F.combos[k]:cat==='pat'?(k==='dots'?!!F.mods.dots:!!F.pats[k]):cat==='icons'?(FS().iconLib==='line'?(!F.iconSet||F.iconSet[k]!==false):(!F.pxSet||F.pxSet[k]!==false)):false;}
+function catSet(cat,k,v){const F=FS();if(cat==='text')F.mods[k]=v;else if(cat==='graph')F.graphs[k]=v;else if(cat==='combo')F.combos[k]=v;else if(cat==='pat'){if(k==='dots')F.mods.dots=v;else F.pats[k]=v;}
   else if(cat==='icons'){if(F.iconLib==='line'){F.iconSet=F.iconSet||{};F.iconSet[k]=v;}else{F.pxSet=F.pxSet||{};F.pxSet[k]=v;}}}
 function rollCat(cat,r){
   const keys=catKeys(cat), R=r||Math.random, sh=keys.slice().sort(()=>R()-.5);
   const n=cat==='text'?3+Math.floor(R()*6):cat==='graph'?2+Math.floor(R()*4):cat==='combo'?1+Math.floor(R()*3):cat==='pat'?(R()<.25?0:1+(R()<.3?1:0)):cat==='icons'?6+Math.floor(R()*12):keys.length;
   keys.forEach(k=>catSet(cat,k,sh.indexOf(k)<n));
-  if(cat==='pat') D.fill.patternPct=n?Math.round(20+R()*45):D.fill.patternPct;
-  if(cat==='icons'){D.fill.iconPct=Math.round(10+R()*55);D.fill.mods.icons=true;}
+  if(cat==='pat') FS().patternPct=n?Math.round(20+R()*45):FS().patternPct;
+  if(cat==='icons'){FS().iconPct=Math.round(10+R()*55);FS().mods.icons=true;}
 }
 function rollAll(){
-  const R=Math.random, F=D.fill; ['text','graph','combo','pat','icons'].forEach(c=>rollCat(c,R));
+  const R=Math.random, F=FS(); ['text','graph','combo','pat','icons'].forEach(c=>rollCat(c,R));
   const m=[R(),R(),R()].map(v=>Math.round(10+v*60/5)*5); F.mix={text:m[0],graph:m[1],combo:m[2]};
-  F.density=['light','medium','medium','busy'][Math.floor(R()*4)]; F.textPct=Math.round(55+R()*45/5)*5; F.seed=Math.floor(R()*99999);
+  F.density=['light','medium','medium','busy'][Math.floor(R()*4)]; F.textPct=Math.round(55+R()*45/5)*5; setP('fill.seed',Math.floor(R()*99999));
   F.look='custom';
 }
 function applyLook(id){
-  const L=LOOKS[id]; if(!L) return; const F=D.fill;
+  const L=LOOKS[id]; if(!L) return; const F=FS();
   ['text','graph','combo','pat'].forEach(c=>catKeys(c).forEach(k=>catSet(c,k,L[c].indexOf(k)>=0)));
   F.mix={text:L.mix[0],graph:L.mix[1],combo:L.mix[2]}; F.density=L.density; F.iconPct=L.iconPct; F.patternPct=L.patternPct; F.mods.icons=true; F.look=id;
 }
@@ -5276,18 +5295,18 @@ function buildModUI(){
   buildIconSet();
 }
 function buildIconSet(){
-  const is=$('#iconSet'); if(!is) return; const px=D.fill.iconLib!=='line'; is.classList.toggle('px',px); is.dataset.lib=px?'px':'line';
+  const is=$('#iconSet'); if(!is) return; const px=FS().iconLib!=='line'; is.classList.toggle('px',px); is.dataset.lib=px?'px':'line';
   is.innerHTML=px?PX_KEYS.map(k=>`<button data-icon="${k}" title="${PX_ICONS[k].name}">${pxSVG(k)}<span>${PX_ICONS[k].name}</span></button>`).join('')
                  :ICON_KEYS.map(k=>`<button data-icon="${k}" title="${ICONS[k].name}">${iconSVG(k)}<span>${ICONS[k].name}</span></button>`).join('');
 }
 function syncIconSet(){
-  const is=$('#iconSet'); if(is&&is.dataset.lib!==(D.fill.iconLib!=='line'?'px':'line')) buildIconSet();
+  const is=$('#iconSet'); if(is&&is.dataset.lib!==(FS().iconLib!=='line'?'px':'line')) buildIconSet();
   $$('#iconSet [data-icon]').forEach(b=>b.classList.toggle('on',catGet('icons',b.dataset.icon)));
   $$('[data-chip]').forEach(b=>{const p=b.dataset.chip.split(':');b.classList.toggle('on',catGet(p[0],p[1]));});
   $$('[data-cnt]').forEach(el=>{const c=el.dataset.cnt, ks=catKeys(c==='pat'?'pat':c); el.textContent=ks.filter(k=>catGet(c,k)).length+'/'+ks.length;});
-  $$('#lookRow [data-look]').forEach(b=>b.classList.toggle('on',D.fill.look===b.dataset.look));
-  const ln=$('#lookName'); if(ln) ln.textContent=LOOKS[D.fill.look]?LOOKS[D.fill.look].name:'custom';
-  const mb=$('#mixBar'); if(mb){const M=D.fill.mix||{}, t=(+M.text||0)+(+M.graph||0)+(+M.combo||0)||1; mb.innerHTML=[['text','var(--muted)'],['graph','var(--accent)'],['combo','#0061E2']].map(c=>`<i style="width:${(+M[c[0]]||0)/t*100}%;background:${c[1]}"></i>`).join('');}
+  $$('#lookRow [data-look]').forEach(b=>b.classList.toggle('on',FS().look===b.dataset.look));
+  const ln=$('#lookName'); if(ln) ln.textContent=LOOKS[FS().look]?LOOKS[FS().look].name:'custom';
+  const mb=$('#mixBar'); if(mb){const M=FS().mix||{}, t=(+M.text||0)+(+M.graph||0)+(+M.combo||0)||1; mb.innerHTML=[['text','var(--muted)'],['graph','var(--accent)'],['combo','#0061E2']].map(c=>`<i style="width:${(+M[c[0]]||0)/t*100}%;background:${c[1]}"></i>`).join('');}
 }
 function syncPalettes(){
   $$('[data-pal]').forEach(el=>{el.innerHTML=swatchHTML(getP(el.dataset.pal),el.dataset.pal);});
@@ -5550,6 +5569,7 @@ $('#insp').addEventListener('click',e=>{
 
 /* ------------------------------------------------------------------ bindings */
 function onChange(path){
+  if(path==='fill.gap.ownLook'){ if(D.fill.gap.ownLook) gapStyleInit(); else U.fillEdit='block'; fillCache.clear(); try{ buildIconSet(); }catch(e){} }
   if(path==='projName') setTimeout(()=>{ try{ renderSaveInfo(); }catch(e){} },0);
   if(/^(block\.(w|h)$|rand\.sizeVar\.|L2\.bb\.scale$)/.test(path)&&lockedCount()&&!U.lockAskSkip) setTimeout(()=>lockAsk(path),0);   /* base size changed while blocks are locked: ask */
   if(path==='rand.sizeVar.on'&&D.rand.sizeVar&&D.rand.sizeVar.on&&(+D.rand.sizeVar.keep||0)>=100){ D.rand.sizeVar.keep=0; syncInputs(true); }   /* turning random sizes on: don't leave every block at the base size */
@@ -5665,6 +5685,10 @@ function syncInputs(force){
   $$('[data-show]').forEach(el=>{
     el.hidden=!el.dataset.show.split('&').every(cond=>{const parts=cond.split('=');return parts[1].split('|').indexOf(String(getP(parts[0])))>=0;});
   });
+  { const ge=U.fillEdit==='gap'&&gapOwnLook(), cp=$('#left .pane[data-pane="content"]'); if(cp) cp.classList.toggle('gapedit',ge);   /* Text HUD controls → the between-blocks look */
+    $$('#fillEditSeg [data-fe]').forEach(b=>b.classList.toggle('on',b.dataset.fe===(ge?'gap':'block')));
+    const h=$('#fillHudH'); if(h) h.textContent=ge?'Text between blocks · look':'Auto-fill blocks';
+    const n=$('#fillEditNote'); if(n) n.innerHTML=ge?'Everything below styles the <b>text between blocks</b> on this layer. Amount, placement and timing are in the <b>Between blocks</b> tab.':'Everything below styles the <b>text in the blocks</b> on this layer.'; }
   renderCurves(); renderFontUI(); renderFillFont();
   const en=$('#endNote'); if(en) en.textContent=`Ends on row ${D.anim.endRow}`;
   const lp=$('#chkLoop'); if(lp) lp.checked=U.loop;
@@ -5995,11 +6019,13 @@ function renderTransPresets(){ $$('.tpre[data-tk]').forEach(el=>{ const k=el.dat
     $$('[data-tpre]',el).forEach(b=>b.classList.toggle('on',!!T.on&&T.preset===b.dataset.tpre)); }); }
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-tpre]'); if(!b) return; const k=b.closest('.tpre').dataset.tk; pushHist(true); applyTransPreset(k,b.dataset.tpre); transCache.k=''; syncInputs(true); refresh(); toast((k==='in'?'Transition in: ':'Transition out: ')+TRANS_PRESETS.find(p=>p.id===b.dataset.tpre).name,'',true);});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-transshuffle]');if(!b)return;pushHist(true);D.trans[b.dataset.transshuffle].seed=Math.floor(Math.random()*99999);refresh();});
-$('#fillFam').addEventListener('change',e=>{pushHist(true);setFamily(D.fill,e.target.value.trim());fillCache.clear();renderFillFont();refresh();});
-$('#fillStyle').addEventListener('change',e=>{pushHist(true);setStyle(D.fill,e.target.value);fillCache.clear();renderFillFont();refresh();});
-$('#btnFillShuffle').onclick=()=>{pushHist(true);D.fill.seed=Math.floor(Math.random()*99999);fillCache.clear();refresh();toast('New content','',true);};
+$('#fillFam').addEventListener('change',e=>{pushHist(true);setFamily(FS(),e.target.value.trim());fillCache.clear();renderFillFont();refresh();});
+$('#fillStyle').addEventListener('change',e=>{pushHist(true);setStyle(FS(),e.target.value);fillCache.clear();renderFillFont();refresh();});
+$('#btnFillShuffle').onclick=()=>{pushHist(true);if(U.fillEdit==='gap'&&gapOwnLook()){D.fill.gap.seed=Math.floor(Math.random()*99999);fillCache.clear();refresh();return;}D.fill.seed=Math.floor(Math.random()*99999);fillCache.clear();refresh();toast('New content','',true);};
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('#fillEditSeg [data-fe]'); if(!b) return; U.fillEdit=b.dataset.fe; if(U.fillEdit==='gap') gapStyleInit(); try{ buildIconSet(); }catch(x){} fillCache.clear(); syncInputs(true); refresh(); });
+$('#btnGapLook').onclick=()=>{ pushHist(true); gapStyleInit(); U.fillEdit='gap'; U.ctab='hud'; try{ buildIconSet(); }catch(x){} fillCache.clear(); syncInputs(true); refresh(); try{ drawDope(); }catch(x){} };
 $('#btnGapShuffle').onclick=()=>{pushHist(true);D.fill.gap.seed=Math.floor(Math.random()*99999);refresh();};
-function renderFillFont(){const f=$('#fillFam'),st=$('#fillStyle');if(f&&document.activeElement!==f)f.value=D.fill.family;if(st)st.innerHTML=fontStyleOptions(D.fill.family,D.fill.style);}
+function renderFillFont(){const f=$('#fillFam'),st=$('#fillStyle');if(f&&document.activeElement!==f)f.value=FS().family;if(st)st.innerHTML=fontStyleOptions(FS().family,FS().style);}
 $('#btnPalAdd').onclick=()=>{const c=D.block.color.toUpperCase();if(D.palette.indexOf(c)>=0)return toast('Already in the palette');pushHist(true);D.palette.push(c);syncPalettes();renderInsp();};
 $('#btnPalReset').onclick=()=>{pushHist(true);D.palette=PALETTE.slice();syncPalettes();renderInsp();};
 $('#paletteEdit').addEventListener('click',e=>{const b=e.target.closest('[data-pal-i]');if(!b)return;const i=+b.dataset.palI;
@@ -6008,17 +6034,17 @@ $('#paletteEdit').addEventListener('click',e=>{const b=e.target.closest('[data-p
 $('#btnPickEnd').onclick=startPick;
 $('#chkMB').onchange=e=>{U.mbPrev=e.target.checked;savePrefs();render();};
 $('#chkLoop').onchange=e=>{U.loop=e.target.checked;savePrefs();toast(U.loop?'Preview will loop':'Preview plays once');};
-$('#iconSet').addEventListener('click',e=>{const b=e.target.closest('[data-icon]');if(!b)return;pushHist(true);const k=b.dataset.icon;catSet('icons',k,!catGet('icons',k));D.fill.look='custom';fillCache.clear();syncIconSet();refresh();});
+$('#iconSet').addEventListener('click',e=>{const b=e.target.closest('[data-icon]');if(!b)return;pushHist(true);const k=b.dataset.icon;catSet('icons',k,!catGet('icons',k));FS().look='custom';fillCache.clear();syncIconSet();refresh();});
 /* What appears: chips, looks, dice, all/none */
 document.addEventListener('click',e=>{
   const t=e.target.closest&&e.target.closest('[data-chip],[data-look],[data-dice],[data-all],#btnRollAll'); if(!t||!t.closest('#left')) return;
   if(t.closest('summary')){e.preventDefault();e.stopPropagation();}
   pushHist(true);
   if(t.id==='btnRollAll'){ rollAll(); toast('New look rolled','',true); }
-  else if(t.dataset.chip){ const p=t.dataset.chip.split(':'); catSet(p[0],p[1],!catGet(p[0],p[1])); D.fill.look='custom'; }
+  else if(t.dataset.chip){ const p=t.dataset.chip.split(':'); catSet(p[0],p[1],!catGet(p[0],p[1])); FS().look='custom'; }
   else if(t.dataset.look){ applyLook(t.dataset.look); toast(LOOKS[t.dataset.look].name+' look','',true); }
-  else if(t.dataset.dice){ rollCat(t.dataset.dice); D.fill.seed=Math.floor(Math.random()*99999); D.fill.look='custom'; }
-  else if(t.dataset.all){ const c=t.dataset.all, ks=catKeys(c), on=ks.every(k=>catGet(c,k)); ks.forEach(k=>catSet(c,k,!on)); D.fill.look='custom'; }
+  else if(t.dataset.dice){ rollCat(t.dataset.dice); setP('fill.seed',Math.floor(Math.random()*99999)); FS().look='custom'; }
+  else if(t.dataset.all){ const c=t.dataset.all, ks=catKeys(c), on=ks.every(k=>catGet(c,k)); ks.forEach(k=>catSet(c,k,!on)); FS().look='custom'; }
   fillCache.clear(); syncInputs(true); refresh();
 },true);
 ($('#camPreset')||{addEventListener(){}}).addEventListener('click',e=>{const b=e.target.closest('[data-p]');if(!b)return;const p=b.dataset.p.split(',').map(Number);pushHist(true);Object.assign(D.anim,{smooth:p[0],motionBlurF:p[1],settle:p[2]});syncInputs();refresh();});
@@ -7092,7 +7118,7 @@ function payloadCore(inner){
     if(it.kind==='ring') return {kind:'ring',cx:r3(it.cx),cy:r3(it.cy),r:r3(it.r),w:r3(it.w),color:hexRgb(it.color),t0:r3(Math.max(0,t0)/fps),opx:fillOpacityExpr(t,fps,false)};
     if(it.kind==='logo') return {kind:'logo',x:r3(it.x),y:r3(it.y),s:r3(it.s),paths:AVAX_AE,color:hexRgb(it.color),t0:r3(Math.max(0,t0)/fps),opx:fillOpacityExpr(t,fps,false)};
     const FA=it.A||F.anim; const animd=t.tEnd!=null||(FA.live&&(FA.liveGlitch||(FA.liveTick&&it.count)||(FA.liveHash&&it.scr)))||(FA.inMode==='type'&&(it.type||FA.typeAll))||(FA.count&&it.count)||(FA.scramble&&it.scr)||(FA.ellipsis&&it.ell)||t0>0||FA.outMode==='cut'||FA.outMode==='typeoff';
-    return {kind:'text',t0:r3(Math.max(0,t0)/fps),text:it.lines.join('\r'),x:r3(it.x),y:r3(it.y),align:it.align,size:it.sz?r3(it.sz):met.size,leading:r3(it.sz?met.lh*it.sz/met.size:met.lh),font:F.font,color:hexRgb(it.color),expr:animd?fillExpr(t,fps):null,opx:fillOpacityExpr(t,fps,true)};
+    return {kind:'text',t0:r3(Math.max(0,t0)/fps),text:it.lines.join('\r'),x:r3(it.x),y:r3(it.y),align:it.align,size:it.sz?r3(it.sz):(it.gf||met).size,leading:r3(it.sz?(it.gf||met).lh*it.sz/(it.gf||met).size:(it.gf||met).lh),font:it.gf?it.gf.font:F.font,color:hexRgb(it.color),expr:animd?fillExpr(t,fps):null,opx:fillOpacityExpr(t,fps,true)};
   };
   const blockFill=(b,rect,base,isEcho,tEnd)=>{
     if(!F.on) return null;
