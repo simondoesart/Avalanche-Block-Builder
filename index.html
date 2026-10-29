@@ -3290,27 +3290,30 @@ function GBSvgCtx(W,H){
     bezierCurveTo(c1x,c1y,c2x,c2y,x,y){ const [x0,y0]=cur; for(let i=1;i<=16;i++){ const t=i/16, u=1-t; seg(u*u*u*x0+3*u*u*t*c1x+3*u*t*t*c2x+t*t*t*x,u*u*u*y0+3*u*u*t*c1y+3*u*t*t*c2y+t*t*t*y); } },
     fill(){ if(!path.length||off(bb())) return; out.push(`<path d="${pd()}" fill="${col(st.fillStyle)}"${op()}${clipA()}/>`); },
     stroke(){ if(!path.length||off(bb())) return; out.push(`<path d="${pd()}" fill="none" stroke="${col(st.strokeStyle)}" stroke-width="${f(st.lineWidth*sc())}"${st.dash.length?` stroke-dasharray="${st.dash.map(v=>f(v*sc())).join(' ')}"`:''} stroke-linecap="${st.lineCap}" stroke-linejoin="${st.lineJoin}"${op()}${clipA()}/>`); },
-    clip(){ const b=bb(); if(path.length&&b[0]<=0.5&&b[1]<=0.5&&b[2]>=W-0.5&&b[3]>=H-0.5) return;   /* the whole frame: nothing to clip */
-      const id='c'+(++clipN); defs.push(`<clipPath id="${id}"><path d="${pd()||'M0 0Z'}"/></clipPath>`); st.clip=id; },
+    clip(){ const b=bb(); if(!path.length) return; const c=st.clipBox; st.clipBox=c?[Math.max(c[0],b[0]),Math.max(c[1],b[1]),Math.min(c[2],b[2]),Math.min(c[3],b[3])]:b; },   /* no clip groups on shapes or text — only pictures (media) are cropped to their block */
     fillRect(x,y,w,h){ const p0=path; path=[]; ctx.rect(x,y,w,h); ctx.fill(); path=p0; },
     strokeRect(x,y,w,h){ const p0=path; path=[]; ctx.rect(x,y,w,h); ctx.stroke(); path=p0; },
     clearRect(){},
     setLineDash(a){ st.dash=(a||[]).slice(); }, getLineDash(){ return st.dash.slice(); },
     measureText(t){ if(meas){ meas.font=st.font; return meas.measureText(t); } return {width:String(t).length*6}; },
-    fillText(t,x,y){ const m=mul(st.m,[1,0,0,1,x,y]); if(m[4]<-4000||m[5]<-4000||m[4]>W+4000||m[5]>H+4000) return; const fm=/(italic\s+)?(\d{3}|bold|normal)?\s*([\d.]+)px\s+(.+)/.exec(st.font)||[], size=fm[3]||10, fam=(fm[4]||'sans-serif').replace(/"/g,"'");
-      const anc=st.textAlign==='center'?'middle':(st.textAlign==='right'||st.textAlign==='end')?'end':'start', bl=st.textBaseline==='top'?'hanging':st.textBaseline==='middle'?'central':st.textBaseline==='bottom'?'text-after-edge':'alphabetic';
-      out.push(`<text transform="matrix(${m.map(f).join(' ')})" font-family="${esc(fam)}" font-size="${size}"${fm[2]&&fm[2]!=='normal'?` font-weight="${fm[2]}"`:''}${fm[1]?' font-style="italic"':''} text-anchor="${anc}" dominant-baseline="${bl}" fill="${col(st.fillStyle)}"${op()}${clipA()} xml:space="preserve">${esc(t)}</text>`); },
+    fillText(t,x,y){ t=String(t); if(!t.trim()) return; const fm=/(italic\s+)?(\d{3}|bold|normal)?\s*([\d.]+)px\s+(.+)/.exec(st.font)||[], size=+fm[3]||10, fam=String(fm[4]||'sans-serif').split(',')[0].trim().replace(/^["']|["']$/g,'');
+      let w=t.length*size*0.6, asc=size*0.8, desc=size*0.2; if(meas){ meas.font=st.font; try{ if(st.letterSpacing) meas.letterSpacing=st.letterSpacing; }catch(e){} const mt=meas.measureText(t), mh=meas.measureText('Hg'); w=mt.width; asc=mh.fontBoundingBoxAscent!=null?mh.fontBoundingBoxAscent:(mh.actualBoundingBoxAscent||asc); desc=mh.fontBoundingBoxDescent!=null?mh.fontBoundingBoxDescent:(mh.actualBoundingBoxDescent||desc); }
+      const al=st.textAlign, dx=al==='center'?-w/2:(al==='right'||al==='end')?-w:0, bl=st.textBaseline, dy=bl==='top'||bl==='hanging'?asc:bl==='middle'?(asc-desc)/2:bl==='bottom'||bl==='ideographic'?-desc:0;
+      const m=mul(st.m,[1,0,0,1,x+dx,y+dy]); { const k=Math.hypot(m[0],m[1])||1, x1=m[4]+w*k, yT=m[5]-asc*k, yB=m[5]+desc*k; if(x1<0||m[4]>W||yB<0||yT>H) return; }   /* outside the frame */
+      const ls=parseFloat(st.letterSpacing)||0, plain=Math.abs(m[0]-1)<1e-6&&Math.abs(m[3]-1)<1e-6&&!m[1]&&!m[2];
+      out.push(`<text ${plain?`x="${f(m[4])}" y="${f(m[5])}"`:`transform="matrix(${m.map(f).join(' ')})"`} font-family="${esc(fam)}" font-size="${f(size)}"${fm[2]&&fm[2]!=='normal'?` font-weight="${fm[2]}"`:''}${fm[1]?' font-style="italic"':''}${ls?` letter-spacing="${f(ls)}"`:''} fill="${col(st.fillStyle)}"${op()} xml:space="preserve">${esc(t)}</text>`); },
     strokeText(t,x,y){ const fs=st.fillStyle; st.fillStyle='none'; ctx.fillText(t,x,y); st.fillStyle=fs; },
     drawImage(img,a,b,c,d,e,g,h,i){ let sx=0,sy=0,sw=img.width||img.videoWidth||img.naturalWidth,sh=img.height||img.videoHeight||img.naturalHeight,dx,dy,dw,dh;
       if(e===undefined){ dx=a; dy=b; dw=c===undefined?sw:c; dh=d===undefined?sh:d; } else { sx=a; sy=b; sw=c; sh=d; dx=e; dy=g; dw=h; dh=i; }
       let url=null; try{ const cv=document.createElement('canvas'); cv.width=Math.max(1,Math.round(Math.min(sw,1600))); cv.height=Math.max(1,Math.round(sh*cv.width/Math.max(1,sw))); cv.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,cv.width,cv.height); url=cv.toDataURL('image/jpeg',.85); }catch(err){ url=null; }
       const m=mul(st.m,[1,0,0,1,dx,dy]);
-      if(url) out.push(`<image transform="matrix(${m.map(f).join(' ')})" width="${f(dw)}" height="${f(dh)}" preserveAspectRatio="none" href="${url}"${op()}${clipA()}/>`);
+      let ca=''; const cb=st.clipBox; if(cb&&!(cb[0]<=0.5&&cb[1]<=0.5&&cb[2]>=W-0.5&&cb[3]>=H-0.5)){ const id='c'+(++clipN); defs.push(`<clipPath id="${id}"><rect x="${f(cb[0])}" y="${f(cb[1])}" width="${f(Math.max(0,cb[2]-cb[0]))}" height="${f(Math.max(0,cb[3]-cb[1]))}"/></clipPath>`); ca=` clip-path="url(#${id})"`; }
+      if(url) out.push(`<g${ca}><image transform="matrix(${m.map(f).join(' ')})" width="${f(dw)}" height="${f(dh)}" preserveAspectRatio="none" href="${url}"${op()}/></g>`);
       else out.push(`<rect transform="matrix(${m.map(f).join(' ')})" width="${f(dw)}" height="${f(dh)}" fill="#3a3a3a"${op()}${clipA()}><title>media</title></rect>`); },
     createLinearGradient(){ return {addColorStop(){}}; }, createRadialGradient(){ return {addColorStop(){}}; }, createPattern(){ return null; },
     toSVG(bg){ return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">\n<defs>${defs.join('')}</defs>\n${out.join('\n')}\n</svg>`; } };
-  ['fillStyle','strokeStyle','lineWidth','globalAlpha','font','textAlign','textBaseline','lineCap','lineJoin'].forEach(k=>Object.defineProperty(ctx,k,{get:()=>st[k],set:v=>{ st[k]=v; }}));
-  ['globalCompositeOperation','imageSmoothingEnabled','shadowBlur','shadowColor','miterLimit','lineDashOffset','filter','letterSpacing'].forEach(k=>{ let v; Object.defineProperty(ctx,k,{get:()=>v,set:x=>{ v=x; }}); });
+  ['fillStyle','strokeStyle','lineWidth','globalAlpha','font','textAlign','textBaseline','lineCap','lineJoin','letterSpacing'].forEach(k=>Object.defineProperty(ctx,k,{get:()=>st[k],set:v=>{ st[k]=v; }}));
+  ['globalCompositeOperation','imageSmoothingEnabled','shadowBlur','shadowColor','miterLimit','lineDashOffset','filter'].forEach(k=>{ let v; Object.defineProperty(ctx,k,{get:()=>v,set:x=>{ v=x; }}); });
   return ctx; }
 window.__gbMain=function(){
 'use strict';
