@@ -4376,7 +4376,15 @@ function exitTimes(P,G,seq,done){
 function animOn(){return D.anim.mode!=='static'||transOn();}
 function animActive(){return animOn()&&U.t!==null&&!(STEPS[U.step].id==='layout'&&!U.playing&&!U.preview);}
 /* current preview state: null (editing), ghost (animate step, layout view), or live (scrubbing/playing) */
+/* Static: no camera, no reveal — but a generated walk is still shown, fully built, so stills and the canvas have the blocks */
+let SWALK={k:'',v:null};
+function staticWalk(G){ if(D.anim.mode!=='static'||!D.anim.extendOn||D.anim.order==='manual') return null;
+  const k=JSON.stringify(D)+'|'+G.W+'|'+G.H+'|'+curLayer(); if(SWALK.k===k) return SWALK.v; let v=null;
+  const sv=D.anim.mode; try{ D.anim.mode='reveal'; const P=plan(G); if(P&&P.seq&&P.seq.length){ const tr=Math.max(1,+D.anim.trans||12), last=Math.max(0,...P.T.filter(isFinite));
+      let t=Math.round(last+tr+1); if(P.walkT!=null) t=Math.min(t,Math.max(0,Math.round(P.walkT)-1)); v=Object.assign({},P,{tFull:t,mode:'static'}); } }catch(e){ v=null; } finally{ D.anim.mode=sv; }
+  SWALK={k,v}; return v; }
 function animState(G){
+  { const SW=staticWalk(G); if(SW) return {P:SW,M:SW,live:true,t:SW.tFull,off:[0,0],s:1,pan:[0,0],zc:null}; }
   if(!animOn()) return null;
   const P=plan(G);
   if(STEPS[U.step].id==='layout'&&!U.playing&&!U.preview) return {P,live:false,t:0,off:[0,0],s:1,pan:[0,0]};   // Blocks step: see every block, wherever the playhead is
@@ -5763,7 +5771,7 @@ $('#btnNext').onclick=()=>{const j=nextVisible(U.step,1);if(j>=0){U.ctx=null;goS
 /* size picker (Blocks step) */
 function buildPicker(){
   const p=$('#picker'); let h='';
-  for(let r=0;r<4;r++)for(let c=0;c<8;c++)h+=`<i data-c="${c+1}" data-r="${r+1}"></i>`;
+  for(let r=0;r<6;r++)for(let c=0;c<12;c++)h+=`<i data-c="${c+1}" data-r="${r+1}"></i>`;
   p.innerHTML=h;
   const paint=(w,hh,cls)=>$$('i',p).forEach(i=>i.classList.toggle(cls,+i.dataset.c<=w&&+i.dataset.r<=hh));
   p.addEventListener('mousemove',e=>{const i=e.target.closest('i');if(i)paint(+i.dataset.c,+i.dataset.r,'h');});
