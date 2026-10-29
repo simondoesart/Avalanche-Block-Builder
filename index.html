@@ -243,7 +243,6 @@ textarea{height:auto;min-height:64px;padding:7px 8px;resize:vertical;line-height
 /* size picker */
 #left .pane.gapedit [data-blkonly]{display:none!important}
 .gaponly{display:none}#left .pane.gapedit .gaponly{display:block}
-#fillEditSeg button{flex:1}
 .picker{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:2px;padding:8px;background:var(--bg);border:1px solid var(--line);border-radius:9px;cursor:pointer}
 .picker i{display:block;aspect-ratio:1/1;border-radius:3px;background:#2b2b31;transition:background .06s}
 .picker i.h{background:rgba(230,33,47,.45)}
@@ -1036,11 +1035,8 @@ body.nohelp .qm{display:none}
                 <div class="row-btns" data-show="bmedia.assign=random"><button class="btn ghost" id="mReseed">↻ Shuffle</button></div></div>
             </div></details>
           </div>
-          <div class="group" data-ctab="hud" id="fillEditBar" data-show="fill.gap.ownLook=true">
-            <div class="field stack"><span class="lbl">These controls set the look of</span><div class="seg" id="fillEditSeg"><button data-fe="block">Text in blocks</button><button data-fe="gap">Text between blocks</button></div></div>
-            <div class="note" id="fillEditNote"></div>
-          </div>
-          <div class="group" data-ctab="hud">
+          <span id="hudStyleHome" hidden></span>
+          <div class="group" data-ctab="hud" id="hudStyleGroup">
             <div class="group-h" id="fillHudH">Auto-fill blocks</div>
             <div class="layer" data-layer="fill.on" data-blkonly>
               <label class="switch"><input type="checkbox" data-bind="fill.on"><span></span></label>
@@ -1197,7 +1193,7 @@ body.nohelp .qm{display:none}
               <div class="field" data-show="fill.anim.outMode=fade|typeoff"><span class="lbl scrub" title="Frames it takes to go">Off length</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.anim.outDur" min="1" max="600" step="1"><span class="unit">fr</span><button data-d="1">+</button></div></div>
             </div></details>
           </div>
-          <div class="group" data-ctab="gaps">
+          <div class="group" data-ctab="gaps" id="gapMainGroup">
             <div class="group-h">Text between blocks</div>
             <div class="layer" data-layer="fill.gap.on">
               <label class="switch"><input type="checkbox" data-bind="fill.gap.on"><span></span></label>
@@ -1205,7 +1201,7 @@ body.nohelp .qm{display:none}
               <span></span>
               <div class="extra" data-show="fill.gap.on=true">
                 <label class="check" title="Style the text between blocks with every Text HUD control — what appears, mix, density, font, size and colour — separately from the text in the blocks"><input type="checkbox" data-bind="fill.gap.ownLook"> <b>Own look</b> — the full Text HUD controls</label>
-                <div data-show="fill.gap.ownLook=true" style="display:grid;gap:8px"><button class="btn primary" id="btnGapLook">Edit the between-blocks look →</button><div class="note">Opens the Text HUD controls set to <b>Text between blocks</b>.</div></div>
+                <div class="note" data-show="fill.gap.ownLook=true">Its look is set below — the same controls as Text HUD, just for the text between blocks on this layer.</div>
                 <div class="checkgrid" id="modGridGap" data-show="fill.gap.ownLook=false"></div>
                 <div class="field"><span class="lbl scrub" title="Items per 10 columns">Amount</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.gap.amount" min="0" max="30" step="1"><button data-d="1">+</button></div></div>
                 <div class="field stack" data-show="fill.gap.ownLook=false"><span class="lbl">Colour</span><div class="swatches" data-pal="fill.gap.color"></div></div>
@@ -1236,7 +1232,7 @@ body.nohelp .qm{display:none}
               <div class="note">On the timeline (amber row): drag the left knob to move the start, the right knob to change the hold.</div>
             </div>
           </div>
-          <div class="group" data-ctab="gaps" data-show="fill.on=false"><div class="note">Works on its own — Text HUD in the blocks can stay off. Font comes from the Text HUD settings.</div></div>
+          <div class="group" data-ctab="gaps" data-show="fill.on=false&fill.gap.ownLook=false"><div class="note">Works on its own — Text HUD in the blocks can stay off. Font comes from the Text HUD settings.</div></div>
           <div class="group" data-ctab="numbers">
             <div class="group-h">Block numbers<label class="switch hswitch" title="A number in the top-right corner of every block"><input type="checkbox" data-bind="num.on"><span></span></label></div>
             <div data-show="num.on=true" style="display:grid;gap:9px">
@@ -4406,10 +4402,11 @@ function timeFill(items,base,fps){
 
 /* ------------------------------------------------------------------ path helpers */
 /* while 'Text between blocks' is the look being edited, the Text HUD controls read / write its own style */
-const FPATH=p=>{ if(U.fillEdit==='gap'&&gapOwnLook()){ const m=/^fill\.([^.]+)(.*)$/.exec(p); if(m){ if(m[1]==='on') return 'fill.gap.on'; if(m[1]==='seed') return 'fill.gap.seed'; if(FILL_STYLE_KEYS.indexOf(m[1])>=0){ gapStyleInit(); return 'fill.gap.style.'+m[1]+m[2]; } } } return p; };
+const gapEditing=()=>U.ctab==='gaps'&&gapOwnLook();   /* the Between blocks tab is open and it has its own look */
+const FPATH=p=>{ if(gapEditing()){ const m=/^fill\.([^.]+)(.*)$/.exec(p); if(m){ if(m[1]==='on') return 'fill.gap.on'; if(m[1]==='seed') return 'fill.gap.seed'; if(FILL_STYLE_KEYS.indexOf(m[1])>=0){ gapStyleInit(); return 'fill.gap.style.'+m[1]+m[2]; } } } return p; };
 const getP=p=>FPATH(p).split('.').reduce((o,k)=>o==null?o:o[k],D);
 const setP=(p,v)=>{const k=FPATH(p).split('.'),l=k.pop();k.reduce((o,x)=>o[x],D)[l]=v;};
-const FS=()=>U.fillEdit==='gap'&&gapOwnLook()?gapStyleInit():D.fill;   /* the look the Text HUD panel is editing */
+const FS=()=>gapEditing()?gapStyleInit():D.fill;   /* the look the Text HUD panel is editing */
 /* a saved layout over the defaults: every saved value comes back — including per-block maps (front / behind, moves,
    sizes, colours…) and settings newer than the defaults list; missing ones get the default */
 function merge(def,src){
@@ -8899,7 +8896,7 @@ $('#insp').addEventListener('click',e=>{
 
 /* ------------------------------------------------------------------ bindings */
 function onChange(path){
-  if(path==='fill.gap.ownLook'){ if(D.fill.gap.ownLook) gapStyleInit(); else U.fillEdit='block'; fillCache.clear(); try{ buildIconSet(); }catch(e){} }
+  if(path==='fill.gap.ownLook'){ if(D.fill.gap.ownLook) gapStyleInit(); fillCache.clear(); try{ buildIconSet(); }catch(e){} }
   if(path==='projName') setTimeout(()=>{ try{ renderSaveInfo(); }catch(e){} },0);
   if(/^(block\.(w|h)$|rand\.sizeVar\.|L2\.bb\.scale$)/.test(path)&&lockedCount()&&!U.lockAskSkip) setTimeout(()=>lockAsk(path),0);   /* base size changed while blocks are locked: ask */
   if(path==='rand.sizeVar.on'&&D.rand.sizeVar&&D.rand.sizeVar.on&&(+D.rand.sizeVar.keep||0)>=100){ D.rand.sizeVar.keep=0; syncInputs(true); }   /* turning random sizes on: don't leave every block at the base size */
@@ -9015,10 +9012,10 @@ function syncInputs(force){
   $$('[data-show]').forEach(el=>{
     el.hidden=!el.dataset.show.split('&').every(cond=>{const parts=cond.split('=');return parts[1].split('|').indexOf(String(getP(parts[0])))>=0;});
   });
-  { const ge=U.fillEdit==='gap'&&gapOwnLook(), cp=$('#left .pane[data-pane="content"]'); if(cp) cp.classList.toggle('gapedit',ge);   /* Text HUD controls → the between-blocks look */
-    $$('#fillEditSeg [data-fe]').forEach(b=>b.classList.toggle('on',b.dataset.fe===(ge?'gap':'block')));
-    const h=$('#fillHudH'); if(h) h.textContent=ge?'Text between blocks · look':'Auto-fill blocks';
-    const n=$('#fillEditNote'); if(n) n.innerHTML=ge?'Everything below styles the <b>text between blocks</b> on this layer. Amount, placement and timing are in the <b>Between blocks</b> tab.':'Everything below styles the <b>text in the blocks</b> on this layer.'; }
+  { const ge=gapEditing(), cp=$('#left .pane[data-pane="content"]'); if(cp) cp.classList.toggle('gapedit',ge);   /* the look controls follow the open content tab */
+    const sg=$('#hudStyleGroup'), home=$('#hudStyleHome'), gm=$('#gapMainGroup');
+    if(sg&&home&&gm&&!!sg._ge!==ge){ sg._ge=ge; if(ge){ sg.dataset.ctab='gaps'; gm.after(sg); } else { sg.dataset.ctab='hud'; home.after(sg); } try{ buildIconSet(); }catch(e){} }
+    const h=$('#fillHudH'); if(h) h.textContent=ge?'Look of the text between blocks':'Auto-fill blocks'; }
   renderCurves(); renderFontUI(); renderFillFont();
   const en=$('#endNote'); if(en) en.textContent=`Ends on row ${D.anim.endRow}`;
   const lp=$('#chkLoop'); if(lp) lp.checked=U.loop;
@@ -9070,7 +9067,7 @@ function renderProps(){
     $$('#ctabs [data-ctab-btn]').forEach(b=>{const k=b.dataset.ctabBtn; b.classList.toggle('on',U.ctab===k); if(!b._lab) b._lab=b.textContent; b.innerHTML=`<span class="d${on[k]?' on':''}"></span>${b._lab}`;}); }
 }
 $('#ctxBack').onclick=()=>{U.ctx=null;U.dopeSel=[];U.selIds=[];U.sel=null;refresh();};
-document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-ctab-btn]'); if(!b) return; U.ctab=b.dataset.ctabBtn; refresh(); drawDope();});
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-ctab-btn]'); if(!b) return; U.ctab=b.dataset.ctabBtn; fillCache.clear(); syncInputs(true); refresh(); drawDope();});
 /* saved step → index (older saves had a separate Block size step at index 1) */
 function savedStep(o){if(o.stepId&&SI(o.stepId)>=0)return SI(o.stepId);const i=o.step|0;return clamp(i>=2?i-1:i,0,STEPS.length-1);}
 function goStep(i){ U._mediaUI=0;
@@ -9351,9 +9348,7 @@ document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest
 document.addEventListener('click',e=>{const b=e.target.closest('[data-transshuffle]');if(!b)return;pushHist(true);D.trans[b.dataset.transshuffle].seed=Math.floor(Math.random()*99999);refresh();});
 $('#fillFam').addEventListener('change',e=>{pushHist(true);setFamily(FS(),e.target.value.trim());fillCache.clear();renderFillFont();refresh();});
 $('#fillStyle').addEventListener('change',e=>{pushHist(true);setStyle(FS(),e.target.value);fillCache.clear();renderFillFont();refresh();});
-$('#btnFillShuffle').onclick=()=>{pushHist(true);if(U.fillEdit==='gap'&&gapOwnLook()){D.fill.gap.seed=Math.floor(Math.random()*99999);fillCache.clear();refresh();return;}D.fill.seed=Math.floor(Math.random()*99999);fillCache.clear();refresh();toast('New content','',true);};
-document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('#fillEditSeg [data-fe]'); if(!b) return; U.fillEdit=b.dataset.fe; if(U.fillEdit==='gap') gapStyleInit(); try{ buildIconSet(); }catch(x){} fillCache.clear(); syncInputs(true); refresh(); });
-$('#btnGapLook').onclick=()=>{ pushHist(true); gapStyleInit(); U.fillEdit='gap'; U.ctab='hud'; try{ buildIconSet(); }catch(x){} fillCache.clear(); syncInputs(true); refresh(); try{ drawDope(); }catch(x){} };
+$('#btnFillShuffle').onclick=()=>{pushHist(true);if(gapEditing()){D.fill.gap.seed=Math.floor(Math.random()*99999);fillCache.clear();refresh();return;}D.fill.seed=Math.floor(Math.random()*99999);fillCache.clear();refresh();toast('New content','',true);};
 $('#btnGapShuffle').onclick=()=>{pushHist(true);D.fill.gap.seed=Math.floor(Math.random()*99999);refresh();};
 function renderFillFont(){const f=$('#fillFam'),st=$('#fillStyle');if(f&&document.activeElement!==f)f.value=FS().family;if(st)st.innerHTML=fontStyleOptions(FS().family,FS().style);}
 $('#btnPalAdd').onclick=()=>{const c=D.block.color.toUpperCase();if(D.palette.indexOf(c)>=0)return toast('Already in the palette');pushHist(true);D.palette.push(c);syncPalettes();renderInsp();};

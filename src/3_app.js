@@ -1076,10 +1076,11 @@ function timeFill(items,base,fps){
 
 /* ------------------------------------------------------------------ path helpers */
 /* while 'Text between blocks' is the look being edited, the Text HUD controls read / write its own style */
-const FPATH=p=>{ if(U.fillEdit==='gap'&&gapOwnLook()){ const m=/^fill\.([^.]+)(.*)$/.exec(p); if(m){ if(m[1]==='on') return 'fill.gap.on'; if(m[1]==='seed') return 'fill.gap.seed'; if(FILL_STYLE_KEYS.indexOf(m[1])>=0){ gapStyleInit(); return 'fill.gap.style.'+m[1]+m[2]; } } } return p; };
+const gapEditing=()=>U.ctab==='gaps'&&gapOwnLook();   /* the Between blocks tab is open and it has its own look */
+const FPATH=p=>{ if(gapEditing()){ const m=/^fill\.([^.]+)(.*)$/.exec(p); if(m){ if(m[1]==='on') return 'fill.gap.on'; if(m[1]==='seed') return 'fill.gap.seed'; if(FILL_STYLE_KEYS.indexOf(m[1])>=0){ gapStyleInit(); return 'fill.gap.style.'+m[1]+m[2]; } } } return p; };
 const getP=p=>FPATH(p).split('.').reduce((o,k)=>o==null?o:o[k],D);
 const setP=(p,v)=>{const k=FPATH(p).split('.'),l=k.pop();k.reduce((o,x)=>o[x],D)[l]=v;};
-const FS=()=>U.fillEdit==='gap'&&gapOwnLook()?gapStyleInit():D.fill;   /* the look the Text HUD panel is editing */
+const FS=()=>gapEditing()?gapStyleInit():D.fill;   /* the look the Text HUD panel is editing */
 /* a saved layout over the defaults: every saved value comes back — including per-block maps (front / behind, moves,
    sizes, colours…) and settings newer than the defaults list; missing ones get the default */
 function merge(def,src){
@@ -5569,7 +5570,7 @@ $('#insp').addEventListener('click',e=>{
 
 /* ------------------------------------------------------------------ bindings */
 function onChange(path){
-  if(path==='fill.gap.ownLook'){ if(D.fill.gap.ownLook) gapStyleInit(); else U.fillEdit='block'; fillCache.clear(); try{ buildIconSet(); }catch(e){} }
+  if(path==='fill.gap.ownLook'){ if(D.fill.gap.ownLook) gapStyleInit(); fillCache.clear(); try{ buildIconSet(); }catch(e){} }
   if(path==='projName') setTimeout(()=>{ try{ renderSaveInfo(); }catch(e){} },0);
   if(/^(block\.(w|h)$|rand\.sizeVar\.|L2\.bb\.scale$)/.test(path)&&lockedCount()&&!U.lockAskSkip) setTimeout(()=>lockAsk(path),0);   /* base size changed while blocks are locked: ask */
   if(path==='rand.sizeVar.on'&&D.rand.sizeVar&&D.rand.sizeVar.on&&(+D.rand.sizeVar.keep||0)>=100){ D.rand.sizeVar.keep=0; syncInputs(true); }   /* turning random sizes on: don't leave every block at the base size */
@@ -5685,10 +5686,10 @@ function syncInputs(force){
   $$('[data-show]').forEach(el=>{
     el.hidden=!el.dataset.show.split('&').every(cond=>{const parts=cond.split('=');return parts[1].split('|').indexOf(String(getP(parts[0])))>=0;});
   });
-  { const ge=U.fillEdit==='gap'&&gapOwnLook(), cp=$('#left .pane[data-pane="content"]'); if(cp) cp.classList.toggle('gapedit',ge);   /* Text HUD controls → the between-blocks look */
-    $$('#fillEditSeg [data-fe]').forEach(b=>b.classList.toggle('on',b.dataset.fe===(ge?'gap':'block')));
-    const h=$('#fillHudH'); if(h) h.textContent=ge?'Text between blocks · look':'Auto-fill blocks';
-    const n=$('#fillEditNote'); if(n) n.innerHTML=ge?'Everything below styles the <b>text between blocks</b> on this layer. Amount, placement and timing are in the <b>Between blocks</b> tab.':'Everything below styles the <b>text in the blocks</b> on this layer.'; }
+  { const ge=gapEditing(), cp=$('#left .pane[data-pane="content"]'); if(cp) cp.classList.toggle('gapedit',ge);   /* the look controls follow the open content tab */
+    const sg=$('#hudStyleGroup'), home=$('#hudStyleHome'), gm=$('#gapMainGroup');
+    if(sg&&home&&gm&&!!sg._ge!==ge){ sg._ge=ge; if(ge){ sg.dataset.ctab='gaps'; gm.after(sg); } else { sg.dataset.ctab='hud'; home.after(sg); } try{ buildIconSet(); }catch(e){} }
+    const h=$('#fillHudH'); if(h) h.textContent=ge?'Look of the text between blocks':'Auto-fill blocks'; }
   renderCurves(); renderFontUI(); renderFillFont();
   const en=$('#endNote'); if(en) en.textContent=`Ends on row ${D.anim.endRow}`;
   const lp=$('#chkLoop'); if(lp) lp.checked=U.loop;
@@ -5740,7 +5741,7 @@ function renderProps(){
     $$('#ctabs [data-ctab-btn]').forEach(b=>{const k=b.dataset.ctabBtn; b.classList.toggle('on',U.ctab===k); if(!b._lab) b._lab=b.textContent; b.innerHTML=`<span class="d${on[k]?' on':''}"></span>${b._lab}`;}); }
 }
 $('#ctxBack').onclick=()=>{U.ctx=null;U.dopeSel=[];U.selIds=[];U.sel=null;refresh();};
-document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-ctab-btn]'); if(!b) return; U.ctab=b.dataset.ctabBtn; refresh(); drawDope();});
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-ctab-btn]'); if(!b) return; U.ctab=b.dataset.ctabBtn; fillCache.clear(); syncInputs(true); refresh(); drawDope();});
 /* saved step → index (older saves had a separate Block size step at index 1) */
 function savedStep(o){if(o.stepId&&SI(o.stepId)>=0)return SI(o.stepId);const i=o.step|0;return clamp(i>=2?i-1:i,0,STEPS.length-1);}
 function goStep(i){ U._mediaUI=0;
@@ -6021,9 +6022,7 @@ document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest
 document.addEventListener('click',e=>{const b=e.target.closest('[data-transshuffle]');if(!b)return;pushHist(true);D.trans[b.dataset.transshuffle].seed=Math.floor(Math.random()*99999);refresh();});
 $('#fillFam').addEventListener('change',e=>{pushHist(true);setFamily(FS(),e.target.value.trim());fillCache.clear();renderFillFont();refresh();});
 $('#fillStyle').addEventListener('change',e=>{pushHist(true);setStyle(FS(),e.target.value);fillCache.clear();renderFillFont();refresh();});
-$('#btnFillShuffle').onclick=()=>{pushHist(true);if(U.fillEdit==='gap'&&gapOwnLook()){D.fill.gap.seed=Math.floor(Math.random()*99999);fillCache.clear();refresh();return;}D.fill.seed=Math.floor(Math.random()*99999);fillCache.clear();refresh();toast('New content','',true);};
-document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('#fillEditSeg [data-fe]'); if(!b) return; U.fillEdit=b.dataset.fe; if(U.fillEdit==='gap') gapStyleInit(); try{ buildIconSet(); }catch(x){} fillCache.clear(); syncInputs(true); refresh(); });
-$('#btnGapLook').onclick=()=>{ pushHist(true); gapStyleInit(); U.fillEdit='gap'; U.ctab='hud'; try{ buildIconSet(); }catch(x){} fillCache.clear(); syncInputs(true); refresh(); try{ drawDope(); }catch(x){} };
+$('#btnFillShuffle').onclick=()=>{pushHist(true);if(gapEditing()){D.fill.gap.seed=Math.floor(Math.random()*99999);fillCache.clear();refresh();return;}D.fill.seed=Math.floor(Math.random()*99999);fillCache.clear();refresh();toast('New content','',true);};
 $('#btnGapShuffle').onclick=()=>{pushHist(true);D.fill.gap.seed=Math.floor(Math.random()*99999);refresh();};
 function renderFillFont(){const f=$('#fillFam'),st=$('#fillStyle');if(f&&document.activeElement!==f)f.value=FS().family;if(st)st.innerHTML=fontStyleOptions(FS().family,FS().style);}
 $('#btnPalAdd').onclick=()=>{const c=D.block.color.toUpperCase();if(D.palette.indexOf(c)>=0)return toast('Already in the palette');pushHist(true);D.palette.push(c);syncPalettes();renderInsp();};
