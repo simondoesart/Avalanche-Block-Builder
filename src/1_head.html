@@ -615,7 +615,7 @@ body.nohelp .qm{display:none}
     <button class="btn ghost" id="btnLib" title="Saved layouts (⌘S to save)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2.5h7.5L13 5v8.5H3z"/><path d="M5.5 2.5v3h4v-3M5.5 13.5v-4h5v4"/></svg><span class="hide-sm">Layouts</span></button>
     <button class="btn ghost" id="btnClear" title="Clear & reset"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg><span class="hide-sm">Clear</span><svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor"><path d="M1 2.5h6L4 6z"/></svg></button>
     <a class="btn ghost" id="btnPanel" href="GridBlocks-panel.zip" download hidden title="Download the After Effects panel (installs into AE 2022 or newer)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8m-3-3 3 3 3-3M3 13h10"/></svg><span class="hide-sm">AE panel</span></a>
-    <button class="btn ghost" id="btnExportVidTop" title="Export the preview as an MP4, or a MOV with transparency — pick which layers go in"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="1.5" y="3.5" width="9.5" height="9" rx="1.5"/><path d="M11 6.5l3.5-2v7l-3.5-2"/></svg><span class="hide-sm">Export video</span></button>
+    <button class="btn ghost" id="btnExportVidTop" title="Export the preview as an MP4, or a MOV with transparency — pick which layers go in"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="1.5" y="3.5" width="9.5" height="9" rx="1.5"/><path d="M11 6.5l3.5-2v7l-3.5-2"/></svg><span class="hide-sm">Export</span></button>
     <button class="btn primary" id="btnBuild"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg><span id="buildLabel">Build</span></button>
   </header>
 
@@ -1793,9 +1793,9 @@ body.nohelp .qm{display:none}
 </div>
 <div class="modal" id="expModal" hidden>
   <div class="sheet" style="max-width:480px">
-    <div class="sheet-h"><h3>Export video</h3><div class="spacer"></div><button class="btn icon ghost" data-exp="cancel" title="Close">✕</button></div>
+    <div class="sheet-h"><h3>Export</h3><div class="spacer"></div><button class="btn icon ghost" data-exp="cancel" title="Close">✕</button></div>
     <div id="expBody" style="display:grid;gap:11px;padding:4px 2px">
-      <div class="field stack"><span class="lbl">Format</span><div class="seg" id="expFmt"><button data-v="mp4" class="on" title="H.264 video, with the song if one is loaded">MP4</button><button data-v="mov" title="QuickTime with transparency (PNG frames) — drops straight into After Effects or Premiere over other footage">MOV with alpha</button></div></div>
+      <div class="field stack"><span class="lbl">Format</span><div class="seg" id="expFmt"><button data-v="mp4" class="on" title="H.264 video, with the song if one is loaded">MP4</button><button data-v="mov" title="QuickTime with transparency (PNG frames) — drops straight into After Effects or Premiere over other footage">MOV with alpha</button><button data-v="png" title="The frame at the playhead, as a PNG">PNG frame</button><button data-v="svg" title="The frame at the playhead, as a vector SVG">SVG frame</button></div></div>
       <div class="field stack"><span class="lbl">Include</span><div class="expl" id="expLayers"></div></div>
       <div class="field2"><div class="field stack"><span class="lbl">Range</span><div class="seg" id="expRange"><button data-v="all" class="on">Whole scene</button><button data-v="io">In → Out</button></div></div>
         <div class="field stack"><span class="lbl">Size</span><div class="seg" id="expSize"><button data-v="1" class="on">100%</button><button data-v="0.5">50%</button><button data-v="0.25">25%</button></div></div></div>

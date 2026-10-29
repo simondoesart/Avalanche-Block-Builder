@@ -7998,12 +7998,14 @@ function expPrefs(){ try{ return JSON.parse(localStorage.getItem('gb.expPrefs')|
 function expSeg(id,v){ $$('#'+id+' [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===String(v))); }
 function expSegV(id){ const b=$('#'+id+' [data-v].on'); return b?b.dataset.v:null; }
 function expOpen(){ const M=$('#expModal'); if(!M) return; const pr=expPrefs(), fmt=pr.fmt||'mp4';
-  const drawL=f=>{ const lay=(pr.layers&&pr.layers[f])||{}; $('#expLayers').innerHTML=EXP_LAYERS.filter(x=>x[0]!=='l2'||l2On()).filter(x=>x[0]!=='ref'||U.media&&U.media.kind==='video').map(x=>`<label class="check"><input type="checkbox" data-expl="${x[0]}"${(lay[x[0]]!=null?lay[x[0]]:(f==='mov'?x[3]:x[2]))?' checked':''}> ${x[1]}</label>`).join(''); };
+  const drawL=f=>{ const lay=(pr.layers&&pr.layers[f])||{}; $('#expLayers').innerHTML=EXP_LAYERS.filter(x=>x[0]!=='l2'||l2On()).filter(x=>x[0]!=='ref'||U.media&&U.media.kind==='video').map(x=>`<label class="check"><input type="checkbox" data-expl="${x[0]}"${(lay[x[0]]!=null?lay[x[0]]:(f==='mp4'||f==='svg'?x[2]:x[3]))?' checked':''}> ${x[1]}</label>`).join(''); };
   expSeg('expFmt',fmt); drawL(fmt); expSeg('expRange',pr.range||'all'); expSeg('expSize',pr.size||'1');
   const IO=ioRange(); $('#expRange [data-v="io"]').disabled=IO.in==null&&IO.out==null;
   const ab=U.media&&U.media.ab; $('#expAudio').checked=pr.audio!==false&&!!ab; $('#expAudio').disabled=!ab; $('#expAudioNote').textContent=ab?`(${U.media.name})`:'(load a song in Song to include it)';
   $('#expMb').checked=!!pr.mb; $('#expMbRow').hidden=!(D.out&&D.out.mb);
-  const sync=()=>{ const f=expSegV('expFmt'); $('#expAudioRow').hidden=f!=='mp4'; const ok=f==='mov'||typeof VideoEncoder!=='undefined';
+  const sync=()=>{ const f=expSegV('expFmt'), still=f==='png'||f==='svg'; $('#expAudioRow').hidden=f!=='mp4'; $('#expRange').parentElement.hidden=still; $('#expSize').parentElement.hidden=f==='svg'; $('#expMbRow').hidden=!(D.out&&D.out.mb)||f==='svg';
+    if(still){ $('#expInfo').innerHTML=f==='png'?`The frame at the playhead (f${Math.round(U.t||0)}) as a PNG — untick <b>Background</b> for transparency.`:`The frame at the playhead (f${Math.round(U.t||0)}) as an SVG — blocks, grid, rules and text as vectors (editable in Illustrator / Figma); media as embedded pictures.`; $('#expGo').disabled=false; $('#expGo').textContent='Export'; return; }
+    $('#expGo').textContent='Export'; const ok=f==='mov'||typeof VideoEncoder!=='undefined';
     $('#expInfo').innerHTML=f==='mov'?'QuickTime with alpha (PNG frames): big files, but every pixel and the transparency come through. Unticked layers are left out — untick <b>Background</b> for a clear background.':(ok?'H.264 MP4, '+(D.comp.w)+'×'+(D.comp.h)+' at the chosen size.':'<span style="color:#F5A524">This browser / After Effects version can’t encode MP4 — use MOV with alpha, or the web app in Chrome.</span>');
     $('#expGo').disabled=!ok; };
   M.onclick=e=>{ const sb=e.target.closest('.seg [data-v]'); if(sb){ const sg=sb.parentElement; if(sb.disabled) return; $$('[data-v]',sg).forEach(x=>x.classList.toggle('on',x===sb)); if(sg.id==='expFmt') drawL(sb.dataset.v); sync(); return; }
@@ -8032,8 +8034,20 @@ async function expSink(name){
     const parts=[]; return {path,write:b=>parts.push(b),patch:(at,b)=>{ let off=0; for(const p of parts){ if(at<off+p.length){ p.set(b,at-off); return; } off+=p.length; } },
       close:async()=>{ const blob=new Blob(parts), b64=await new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); }); const w=window.cep.fs.writeFile(path,b64,window.cep.encoding.Base64); if(w&&w.err) throw new Error('could not write the file (error '+w.err+')'); }}; }
   const parts=[]; return {path:name,write:b=>parts.push(b),patch:(at,b)=>{ let off=0; for(const p of parts){ if(at<off+p.length){ p.set(b,at-off); return; } off+=p.length; } },
-    close:()=>{ const url=URL.createObjectURL(new Blob(parts,{type:name.endsWith('.mov')?'video/quicktime':'video/mp4'})); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),60000); }}; }
+    close:()=>{ const url=URL.createObjectURL(new Blob(parts,{type:({mov:'video/quicktime',mp4:'video/mp4',png:'image/png',svg:'image/svg+xml',txt:'text/plain'})[name.split('.').pop()]||'application/octet-stream'})); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),60000); }}; }
+/* the frame at the playhead as a PNG (pixels, transparent background when Background is off) or an SVG (vector) */
+async function exportStill(o){ const G=geom(), fmt=o.fmt, k=fmt==='svg'?1:(+o.size||1), W=Math.max(1,Math.round(G.W*k)), H=Math.max(1,Math.round(G.H*k)), f=Math.round(U.t||0);
+  const L=o.layers||{}, look=Object.assign({},D.look); if(!L.bg) D.look.bgOn=false; if(!L.cells){ D.look.cellsMode='none'; D.look.linesOn=false; } if(!L.rules) D.look.rulesOn=false;
+  EXP={hide:{main:L.main===false,l2:L.l2===false},noContent:!L.content,noMedia:!L.media,noEcho:!L.echo,noTrans:!L.trans,noRef:!L.ref};
+  const name=projFile('frame'+f,fmt);
+  try{ let bytes;
+    if(fmt==='svg'){ const g=GBSvgCtx(W,H); const fake={width:W,height:H,getContext:()=>g}; expDraw(fake,f,1,1); bytes=new TextEncoder().encode(g.toSVG()); }
+    else { const c=document.createElement('canvas'); c.width=W; c.height=H; expDraw(c,f,W/G.W,(o.mb&&D.out&&D.out.mb)?8:1); bytes=new Uint8Array(await (await new Promise(r=>c.toBlob(r,'image/png'))).arrayBuffer()); }
+    const sink=await expSink(name); if(!sink) return; sink.write(bytes); await sink.close(); toast(`${inAE?'Saved':'Exported'} ${name}`,'ok');
+  }catch(e){ toast('Export failed: '+(e&&e.message||e),'err'); }
+  finally{ EXP=null; Object.assign(D.look,look); $('#expModal').hidden=true; render(); } }
 async function exportVideo(o){
+  if(o.fmt==='png'||o.fmt==='svg') return exportStill(o);
   const G=geom(), fps=D.comp.fps||30, k=+o.size||1, W=Math.max(2,Math.round(G.W*k/2)*2), H=Math.max(2,Math.round(G.H*k/2)*2), mov=o.fmt==='mov';
   let P=null; try{ P=withLayer('main',()=>animOn()?plan(geom()):null); }catch(e){}
   const IO=ioRange(), end=Math.max(1,Math.round(P?(P.end||D.comp.dur*fps):D.comp.dur*fps)), f0=o.range==='io'&&IO.in!=null?Math.max(0,IO.in):0, f1=o.range==='io'&&IO.out!=null?Math.min(end,IO.out):Math.max(end,Math.round((+D.comp.dur||0)*fps));

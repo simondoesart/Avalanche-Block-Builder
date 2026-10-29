@@ -615,7 +615,7 @@ body.nohelp .qm{display:none}
     <button class="btn ghost" id="btnLib" title="Saved layouts (⌘S to save)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2.5h7.5L13 5v8.5H3z"/><path d="M5.5 2.5v3h4v-3M5.5 13.5v-4h5v4"/></svg><span class="hide-sm">Layouts</span></button>
     <button class="btn ghost" id="btnClear" title="Clear & reset"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg><span class="hide-sm">Clear</span><svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor"><path d="M1 2.5h6L4 6z"/></svg></button>
     <a class="btn ghost" id="btnPanel" href="GridBlocks-panel.zip" download hidden title="Download the After Effects panel (installs into AE 2022 or newer)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8m-3-3 3 3 3-3M3 13h10"/></svg><span class="hide-sm">AE panel</span></a>
-    <button class="btn ghost" id="btnExportVidTop" title="Export the preview as an MP4, or a MOV with transparency — pick which layers go in"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="1.5" y="3.5" width="9.5" height="9" rx="1.5"/><path d="M11 6.5l3.5-2v7l-3.5-2"/></svg><span class="hide-sm">Export video</span></button>
+    <button class="btn ghost" id="btnExportVidTop" title="Export the preview as an MP4, or a MOV with transparency — pick which layers go in"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="1.5" y="3.5" width="9.5" height="9" rx="1.5"/><path d="M11 6.5l3.5-2v7l-3.5-2"/></svg><span class="hide-sm">Export</span></button>
     <button class="btn primary" id="btnBuild"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg><span id="buildLabel">Build</span></button>
   </header>
 
@@ -1793,9 +1793,9 @@ body.nohelp .qm{display:none}
 </div>
 <div class="modal" id="expModal" hidden>
   <div class="sheet" style="max-width:480px">
-    <div class="sheet-h"><h3>Export video</h3><div class="spacer"></div><button class="btn icon ghost" data-exp="cancel" title="Close">✕</button></div>
+    <div class="sheet-h"><h3>Export</h3><div class="spacer"></div><button class="btn icon ghost" data-exp="cancel" title="Close">✕</button></div>
     <div id="expBody" style="display:grid;gap:11px;padding:4px 2px">
-      <div class="field stack"><span class="lbl">Format</span><div class="seg" id="expFmt"><button data-v="mp4" class="on" title="H.264 video, with the song if one is loaded">MP4</button><button data-v="mov" title="QuickTime with transparency (PNG frames) — drops straight into After Effects or Premiere over other footage">MOV with alpha</button></div></div>
+      <div class="field stack"><span class="lbl">Format</span><div class="seg" id="expFmt"><button data-v="mp4" class="on" title="H.264 video, with the song if one is loaded">MP4</button><button data-v="mov" title="QuickTime with transparency (PNG frames) — drops straight into After Effects or Premiere over other footage">MOV with alpha</button><button data-v="png" title="The frame at the playhead, as a PNG">PNG frame</button><button data-v="svg" title="The frame at the playhead, as a vector SVG">SVG frame</button></div></div>
       <div class="field stack"><span class="lbl">Include</span><div class="expl" id="expLayers"></div></div>
       <div class="field2"><div class="field stack"><span class="lbl">Range</span><div class="seg" id="expRange"><button data-v="all" class="on">Whole scene</button><button data-v="io">In → Out</button></div></div>
         <div class="field stack"><span class="lbl">Size</span><div class="seg" id="expSize"><button data-v="1" class="on">100%</button><button data-v="0.5">50%</button><button data-v="0.25">25%</button></div></div></div>
@@ -3259,6 +3259,59 @@ const GBMux=(()=>{
     if(st>=0) nal(st,b.length); return cat(out); }
   return {create,annexToAvcc,cat,str};
 })();
+
+/* ================================================================ SVG CANVAS: a Canvas 2D look-alike that writes SVG
+   The preview draws into it exactly as it draws on screen; shapes, text and transforms become vector SVG. */
+function GBSvgCtx(W,H){
+  const M=()=>[1,0,0,1,0,0], mul=(m,n)=>[m[0]*n[0]+m[2]*n[1],m[1]*n[0]+m[3]*n[1],m[0]*n[2]+m[2]*n[3],m[1]*n[2]+m[3]*n[3],m[0]*n[4]+m[2]*n[5]+m[4],m[1]*n[4]+m[3]*n[5]+m[5]];
+  const ap=(m,x,y)=>[m[0]*x+m[2]*y+m[4],m[1]*x+m[3]*y+m[5]], f=v=>Math.round(v*100)/100, esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const out=[], defs=[]; let clipN=0, path=[], st={m:M(),fillStyle:'#000',strokeStyle:'#000',lineWidth:1,globalAlpha:1,font:'10px sans-serif',textAlign:'start',textBaseline:'alphabetic',dash:[],clip:null,lineCap:'butt',lineJoin:'miter'}; const stack=[];
+  const meas=(()=>{ try{ return document.createElement('canvas').getContext('2d'); }catch(e){ return null; } })();
+  const col=c=>typeof c==='string'?c:'#888';
+  const clipA=()=>st.clip?` clip-path="url(#${st.clip})"`:'';
+  const op=()=>st.globalAlpha<0.999?` opacity="${f(st.globalAlpha)}"`:'';
+  const sc=()=>Math.sqrt(Math.abs(st.m[0]*st.m[3]-st.m[1]*st.m[2]))||1;
+  const bb=()=>{ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9; path.forEach(p=>{ if(p[0]==='Z') return; x0=Math.min(x0,p[1]); y0=Math.min(y0,p[2]); x1=Math.max(x1,p[1]); y1=Math.max(y1,p[2]); }); return [x0,y0,x1,y1]; };
+  const off=b=>b[2]<-2||b[3]<-2||b[0]>W+2||b[1]>H+2;   /* entirely outside the frame: left out of the file */
+  const pd=()=>path.map(s=>s[0]==='Z'?'Z':s[0]+f(s[1])+' '+f(s[2])).join('');
+  const arcPts=(cx,cy,r,a0,a1,ccw)=>{ let d=a1-a0; if(ccw){ while(d>0) d-=Math.PI*2; } else { while(d<0) d+=Math.PI*2; } if(Math.abs(a1-a0)>=Math.PI*2-1e-6) d=ccw?-Math.PI*2:Math.PI*2; const n=Math.max(4,Math.ceil(Math.abs(d)/(Math.PI/24))), o=[]; for(let i=0;i<=n;i++){ const a=a0+d*i/n; o.push([cx+r*Math.cos(a),cy+r*Math.sin(a)]); } return o; };
+  let cur=[0,0]; const seg=(x,y,move)=>{ const p=ap(st.m,x,y); path.push([move?'M':'L',p[0],p[1]]); cur=[x,y]; };
+  const ctx={ canvas:{width:W,height:H},
+    save(){ stack.push(Object.assign({},st,{m:st.m.slice(),dash:st.dash.slice()})); }, restore(){ if(stack.length) st=stack.pop(); },
+    setTransform(a,b,c,d,e,g){ if(a&&typeof a==='object') st.m=[a.a,a.b,a.c,a.d,a.e,a.f]; else st.m=[a,b,c,d,e,g]; }, resetTransform(){ st.m=M(); },
+    transform(a,b,c,d,e,g){ st.m=mul(st.m,[a,b,c,d,e,g]); }, translate(x,y){ st.m=mul(st.m,[1,0,0,1,x,y]); }, scale(x,y){ st.m=mul(st.m,[x,0,0,y,0,0]); }, rotate(r){ const c=Math.cos(r),s=Math.sin(r); st.m=mul(st.m,[c,s,-s,c,0,0]); },
+    getTransform(){ try{ return new DOMMatrix(st.m); }catch(e){ return {a:st.m[0],b:st.m[1],c:st.m[2],d:st.m[3],e:st.m[4],f:st.m[5]}; } },
+    beginPath(){ path=[]; }, moveTo(x,y){ seg(x,y,true); }, lineTo(x,y){ seg(x,y,!path.length); }, closePath(){ path.push(['Z']); },
+    rect(x,y,w,h){ seg(x,y,true); seg(x+w,y); seg(x+w,y+h); seg(x,y+h); path.push(['Z']); },
+    arc(cx,cy,r,a0,a1,ccw){ arcPts(cx,cy,r,a0,a1,ccw).forEach((p,i)=>seg(p[0],p[1],i===0&&!path.length)); },
+    ellipse(cx,cy,rx,ry,rot,a0,a1,ccw){ ctx.save(); ctx.translate(cx,cy); ctx.rotate(rot||0); ctx.scale(rx,ry); ctx.arc(0,0,1,a0,a1,ccw); ctx.restore(); },
+    arcTo(x1,y1,x2,y2){ seg(x1,y1); seg(x2,y2); },
+    quadraticCurveTo(cx,cy,x,y){ const [x0,y0]=cur; for(let i=1;i<=12;i++){ const t=i/12, u=1-t; seg(u*u*x0+2*u*t*cx+t*t*x,u*u*y0+2*u*t*cy+t*t*y); } },
+    bezierCurveTo(c1x,c1y,c2x,c2y,x,y){ const [x0,y0]=cur; for(let i=1;i<=16;i++){ const t=i/16, u=1-t; seg(u*u*u*x0+3*u*u*t*c1x+3*u*t*t*c2x+t*t*t*x,u*u*u*y0+3*u*u*t*c1y+3*u*t*t*c2y+t*t*t*y); } },
+    fill(){ if(!path.length||off(bb())) return; out.push(`<path d="${pd()}" fill="${col(st.fillStyle)}"${op()}${clipA()}/>`); },
+    stroke(){ if(!path.length||off(bb())) return; out.push(`<path d="${pd()}" fill="none" stroke="${col(st.strokeStyle)}" stroke-width="${f(st.lineWidth*sc())}"${st.dash.length?` stroke-dasharray="${st.dash.map(v=>f(v*sc())).join(' ')}"`:''} stroke-linecap="${st.lineCap}" stroke-linejoin="${st.lineJoin}"${op()}${clipA()}/>`); },
+    clip(){ const b=bb(); if(path.length&&b[0]<=0.5&&b[1]<=0.5&&b[2]>=W-0.5&&b[3]>=H-0.5) return;   /* the whole frame: nothing to clip */
+      const id='c'+(++clipN); defs.push(`<clipPath id="${id}"><path d="${pd()||'M0 0Z'}"/></clipPath>`); st.clip=id; },
+    fillRect(x,y,w,h){ const p0=path; path=[]; ctx.rect(x,y,w,h); ctx.fill(); path=p0; },
+    strokeRect(x,y,w,h){ const p0=path; path=[]; ctx.rect(x,y,w,h); ctx.stroke(); path=p0; },
+    clearRect(){},
+    setLineDash(a){ st.dash=(a||[]).slice(); }, getLineDash(){ return st.dash.slice(); },
+    measureText(t){ if(meas){ meas.font=st.font; return meas.measureText(t); } return {width:String(t).length*6}; },
+    fillText(t,x,y){ const m=mul(st.m,[1,0,0,1,x,y]); if(m[4]<-4000||m[5]<-4000||m[4]>W+4000||m[5]>H+4000) return; const fm=/(italic\s+)?(\d{3}|bold|normal)?\s*([\d.]+)px\s+(.+)/.exec(st.font)||[], size=fm[3]||10, fam=(fm[4]||'sans-serif').replace(/"/g,"'");
+      const anc=st.textAlign==='center'?'middle':(st.textAlign==='right'||st.textAlign==='end')?'end':'start', bl=st.textBaseline==='top'?'hanging':st.textBaseline==='middle'?'central':st.textBaseline==='bottom'?'text-after-edge':'alphabetic';
+      out.push(`<text transform="matrix(${m.map(f).join(' ')})" font-family="${esc(fam)}" font-size="${size}"${fm[2]&&fm[2]!=='normal'?` font-weight="${fm[2]}"`:''}${fm[1]?' font-style="italic"':''} text-anchor="${anc}" dominant-baseline="${bl}" fill="${col(st.fillStyle)}"${op()}${clipA()} xml:space="preserve">${esc(t)}</text>`); },
+    strokeText(t,x,y){ const fs=st.fillStyle; st.fillStyle='none'; ctx.fillText(t,x,y); st.fillStyle=fs; },
+    drawImage(img,a,b,c,d,e,g,h,i){ let sx=0,sy=0,sw=img.width||img.videoWidth||img.naturalWidth,sh=img.height||img.videoHeight||img.naturalHeight,dx,dy,dw,dh;
+      if(e===undefined){ dx=a; dy=b; dw=c===undefined?sw:c; dh=d===undefined?sh:d; } else { sx=a; sy=b; sw=c; sh=d; dx=e; dy=g; dw=h; dh=i; }
+      let url=null; try{ const cv=document.createElement('canvas'); cv.width=Math.max(1,Math.round(Math.min(sw,1600))); cv.height=Math.max(1,Math.round(sh*cv.width/Math.max(1,sw))); cv.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,cv.width,cv.height); url=cv.toDataURL('image/jpeg',.85); }catch(err){ url=null; }
+      const m=mul(st.m,[1,0,0,1,dx,dy]);
+      if(url) out.push(`<image transform="matrix(${m.map(f).join(' ')})" width="${f(dw)}" height="${f(dh)}" preserveAspectRatio="none" href="${url}"${op()}${clipA()}/>`);
+      else out.push(`<rect transform="matrix(${m.map(f).join(' ')})" width="${f(dw)}" height="${f(dh)}" fill="#3a3a3a"${op()}${clipA()}><title>media</title></rect>`); },
+    createLinearGradient(){ return {addColorStop(){}}; }, createRadialGradient(){ return {addColorStop(){}}; }, createPattern(){ return null; },
+    toSVG(bg){ return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">\n<defs>${defs.join('')}</defs>\n${out.join('\n')}\n</svg>`; } };
+  ['fillStyle','strokeStyle','lineWidth','globalAlpha','font','textAlign','textBaseline','lineCap','lineJoin'].forEach(k=>Object.defineProperty(ctx,k,{get:()=>st[k],set:v=>{ st[k]=v; }}));
+  ['globalCompositeOperation','imageSmoothingEnabled','shadowBlur','shadowColor','miterLimit','lineDashOffset','filter','letterSpacing'].forEach(k=>{ let v; Object.defineProperty(ctx,k,{get:()=>v,set:x=>{ v=x; }}); });
+  return ctx; }
 window.__gbMain=function(){
 'use strict';
 /* =====================================================================
@@ -11259,12 +11312,14 @@ function expPrefs(){ try{ return JSON.parse(localStorage.getItem('gb.expPrefs')|
 function expSeg(id,v){ $$('#'+id+' [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===String(v))); }
 function expSegV(id){ const b=$('#'+id+' [data-v].on'); return b?b.dataset.v:null; }
 function expOpen(){ const M=$('#expModal'); if(!M) return; const pr=expPrefs(), fmt=pr.fmt||'mp4';
-  const drawL=f=>{ const lay=(pr.layers&&pr.layers[f])||{}; $('#expLayers').innerHTML=EXP_LAYERS.filter(x=>x[0]!=='l2'||l2On()).filter(x=>x[0]!=='ref'||U.media&&U.media.kind==='video').map(x=>`<label class="check"><input type="checkbox" data-expl="${x[0]}"${(lay[x[0]]!=null?lay[x[0]]:(f==='mov'?x[3]:x[2]))?' checked':''}> ${x[1]}</label>`).join(''); };
+  const drawL=f=>{ const lay=(pr.layers&&pr.layers[f])||{}; $('#expLayers').innerHTML=EXP_LAYERS.filter(x=>x[0]!=='l2'||l2On()).filter(x=>x[0]!=='ref'||U.media&&U.media.kind==='video').map(x=>`<label class="check"><input type="checkbox" data-expl="${x[0]}"${(lay[x[0]]!=null?lay[x[0]]:(f==='mp4'||f==='svg'?x[2]:x[3]))?' checked':''}> ${x[1]}</label>`).join(''); };
   expSeg('expFmt',fmt); drawL(fmt); expSeg('expRange',pr.range||'all'); expSeg('expSize',pr.size||'1');
   const IO=ioRange(); $('#expRange [data-v="io"]').disabled=IO.in==null&&IO.out==null;
   const ab=U.media&&U.media.ab; $('#expAudio').checked=pr.audio!==false&&!!ab; $('#expAudio').disabled=!ab; $('#expAudioNote').textContent=ab?`(${U.media.name})`:'(load a song in Song to include it)';
   $('#expMb').checked=!!pr.mb; $('#expMbRow').hidden=!(D.out&&D.out.mb);
-  const sync=()=>{ const f=expSegV('expFmt'); $('#expAudioRow').hidden=f!=='mp4'; const ok=f==='mov'||typeof VideoEncoder!=='undefined';
+  const sync=()=>{ const f=expSegV('expFmt'), still=f==='png'||f==='svg'; $('#expAudioRow').hidden=f!=='mp4'; $('#expRange').parentElement.hidden=still; $('#expSize').parentElement.hidden=f==='svg'; $('#expMbRow').hidden=!(D.out&&D.out.mb)||f==='svg';
+    if(still){ $('#expInfo').innerHTML=f==='png'?`The frame at the playhead (f${Math.round(U.t||0)}) as a PNG — untick <b>Background</b> for transparency.`:`The frame at the playhead (f${Math.round(U.t||0)}) as an SVG — blocks, grid, rules and text as vectors (editable in Illustrator / Figma); media as embedded pictures.`; $('#expGo').disabled=false; $('#expGo').textContent='Export'; return; }
+    $('#expGo').textContent='Export'; const ok=f==='mov'||typeof VideoEncoder!=='undefined';
     $('#expInfo').innerHTML=f==='mov'?'QuickTime with alpha (PNG frames): big files, but every pixel and the transparency come through. Unticked layers are left out — untick <b>Background</b> for a clear background.':(ok?'H.264 MP4, '+(D.comp.w)+'×'+(D.comp.h)+' at the chosen size.':'<span style="color:#F5A524">This browser / After Effects version can’t encode MP4 — use MOV with alpha, or the web app in Chrome.</span>');
     $('#expGo').disabled=!ok; };
   M.onclick=e=>{ const sb=e.target.closest('.seg [data-v]'); if(sb){ const sg=sb.parentElement; if(sb.disabled) return; $$('[data-v]',sg).forEach(x=>x.classList.toggle('on',x===sb)); if(sg.id==='expFmt') drawL(sb.dataset.v); sync(); return; }
@@ -11293,8 +11348,20 @@ async function expSink(name){
     const parts=[]; return {path,write:b=>parts.push(b),patch:(at,b)=>{ let off=0; for(const p of parts){ if(at<off+p.length){ p.set(b,at-off); return; } off+=p.length; } },
       close:async()=>{ const blob=new Blob(parts), b64=await new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); }); const w=window.cep.fs.writeFile(path,b64,window.cep.encoding.Base64); if(w&&w.err) throw new Error('could not write the file (error '+w.err+')'); }}; }
   const parts=[]; return {path:name,write:b=>parts.push(b),patch:(at,b)=>{ let off=0; for(const p of parts){ if(at<off+p.length){ p.set(b,at-off); return; } off+=p.length; } },
-    close:()=>{ const url=URL.createObjectURL(new Blob(parts,{type:name.endsWith('.mov')?'video/quicktime':'video/mp4'})); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),60000); }}; }
+    close:()=>{ const url=URL.createObjectURL(new Blob(parts,{type:({mov:'video/quicktime',mp4:'video/mp4',png:'image/png',svg:'image/svg+xml',txt:'text/plain'})[name.split('.').pop()]||'application/octet-stream'})); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),60000); }}; }
+/* the frame at the playhead as a PNG (pixels, transparent background when Background is off) or an SVG (vector) */
+async function exportStill(o){ const G=geom(), fmt=o.fmt, k=fmt==='svg'?1:(+o.size||1), W=Math.max(1,Math.round(G.W*k)), H=Math.max(1,Math.round(G.H*k)), f=Math.round(U.t||0);
+  const L=o.layers||{}, look=Object.assign({},D.look); if(!L.bg) D.look.bgOn=false; if(!L.cells){ D.look.cellsMode='none'; D.look.linesOn=false; } if(!L.rules) D.look.rulesOn=false;
+  EXP={hide:{main:L.main===false,l2:L.l2===false},noContent:!L.content,noMedia:!L.media,noEcho:!L.echo,noTrans:!L.trans,noRef:!L.ref};
+  const name=projFile('frame'+f,fmt);
+  try{ let bytes;
+    if(fmt==='svg'){ const g=GBSvgCtx(W,H); const fake={width:W,height:H,getContext:()=>g}; expDraw(fake,f,1,1); bytes=new TextEncoder().encode(g.toSVG()); }
+    else { const c=document.createElement('canvas'); c.width=W; c.height=H; expDraw(c,f,W/G.W,(o.mb&&D.out&&D.out.mb)?8:1); bytes=new Uint8Array(await (await new Promise(r=>c.toBlob(r,'image/png'))).arrayBuffer()); }
+    const sink=await expSink(name); if(!sink) return; sink.write(bytes); await sink.close(); toast(`${inAE?'Saved':'Exported'} ${name}`,'ok');
+  }catch(e){ toast('Export failed: '+(e&&e.message||e),'err'); }
+  finally{ EXP=null; Object.assign(D.look,look); $('#expModal').hidden=true; render(); } }
 async function exportVideo(o){
+  if(o.fmt==='png'||o.fmt==='svg') return exportStill(o);
   const G=geom(), fps=D.comp.fps||30, k=+o.size||1, W=Math.max(2,Math.round(G.W*k/2)*2), H=Math.max(2,Math.round(G.H*k/2)*2), mov=o.fmt==='mov';
   let P=null; try{ P=withLayer('main',()=>animOn()?plan(geom()):null); }catch(e){}
   const IO=ioRange(), end=Math.max(1,Math.round(P?(P.end||D.comp.dur*fps):D.comp.dur*fps)), f0=o.range==='io'&&IO.in!=null?Math.max(0,IO.in):0, f1=o.range==='io'&&IO.out!=null?Math.min(end,IO.out):Math.max(end,Math.round((+D.comp.dur||0)*fps));

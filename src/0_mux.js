@@ -64,3 +64,56 @@ const GBMux=(()=>{
     if(st>=0) nal(st,b.length); return cat(out); }
   return {create,annexToAvcc,cat,str};
 })();
+
+/* ================================================================ SVG CANVAS: a Canvas 2D look-alike that writes SVG
+   The preview draws into it exactly as it draws on screen; shapes, text and transforms become vector SVG. */
+function GBSvgCtx(W,H){
+  const M=()=>[1,0,0,1,0,0], mul=(m,n)=>[m[0]*n[0]+m[2]*n[1],m[1]*n[0]+m[3]*n[1],m[0]*n[2]+m[2]*n[3],m[1]*n[2]+m[3]*n[3],m[0]*n[4]+m[2]*n[5]+m[4],m[1]*n[4]+m[3]*n[5]+m[5]];
+  const ap=(m,x,y)=>[m[0]*x+m[2]*y+m[4],m[1]*x+m[3]*y+m[5]], f=v=>Math.round(v*100)/100, esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const out=[], defs=[]; let clipN=0, path=[], st={m:M(),fillStyle:'#000',strokeStyle:'#000',lineWidth:1,globalAlpha:1,font:'10px sans-serif',textAlign:'start',textBaseline:'alphabetic',dash:[],clip:null,lineCap:'butt',lineJoin:'miter'}; const stack=[];
+  const meas=(()=>{ try{ return document.createElement('canvas').getContext('2d'); }catch(e){ return null; } })();
+  const col=c=>typeof c==='string'?c:'#888';
+  const clipA=()=>st.clip?` clip-path="url(#${st.clip})"`:'';
+  const op=()=>st.globalAlpha<0.999?` opacity="${f(st.globalAlpha)}"`:'';
+  const sc=()=>Math.sqrt(Math.abs(st.m[0]*st.m[3]-st.m[1]*st.m[2]))||1;
+  const bb=()=>{ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9; path.forEach(p=>{ if(p[0]==='Z') return; x0=Math.min(x0,p[1]); y0=Math.min(y0,p[2]); x1=Math.max(x1,p[1]); y1=Math.max(y1,p[2]); }); return [x0,y0,x1,y1]; };
+  const off=b=>b[2]<-2||b[3]<-2||b[0]>W+2||b[1]>H+2;   /* entirely outside the frame: left out of the file */
+  const pd=()=>path.map(s=>s[0]==='Z'?'Z':s[0]+f(s[1])+' '+f(s[2])).join('');
+  const arcPts=(cx,cy,r,a0,a1,ccw)=>{ let d=a1-a0; if(ccw){ while(d>0) d-=Math.PI*2; } else { while(d<0) d+=Math.PI*2; } if(Math.abs(a1-a0)>=Math.PI*2-1e-6) d=ccw?-Math.PI*2:Math.PI*2; const n=Math.max(4,Math.ceil(Math.abs(d)/(Math.PI/24))), o=[]; for(let i=0;i<=n;i++){ const a=a0+d*i/n; o.push([cx+r*Math.cos(a),cy+r*Math.sin(a)]); } return o; };
+  let cur=[0,0]; const seg=(x,y,move)=>{ const p=ap(st.m,x,y); path.push([move?'M':'L',p[0],p[1]]); cur=[x,y]; };
+  const ctx={ canvas:{width:W,height:H},
+    save(){ stack.push(Object.assign({},st,{m:st.m.slice(),dash:st.dash.slice()})); }, restore(){ if(stack.length) st=stack.pop(); },
+    setTransform(a,b,c,d,e,g){ if(a&&typeof a==='object') st.m=[a.a,a.b,a.c,a.d,a.e,a.f]; else st.m=[a,b,c,d,e,g]; }, resetTransform(){ st.m=M(); },
+    transform(a,b,c,d,e,g){ st.m=mul(st.m,[a,b,c,d,e,g]); }, translate(x,y){ st.m=mul(st.m,[1,0,0,1,x,y]); }, scale(x,y){ st.m=mul(st.m,[x,0,0,y,0,0]); }, rotate(r){ const c=Math.cos(r),s=Math.sin(r); st.m=mul(st.m,[c,s,-s,c,0,0]); },
+    getTransform(){ try{ return new DOMMatrix(st.m); }catch(e){ return {a:st.m[0],b:st.m[1],c:st.m[2],d:st.m[3],e:st.m[4],f:st.m[5]}; } },
+    beginPath(){ path=[]; }, moveTo(x,y){ seg(x,y,true); }, lineTo(x,y){ seg(x,y,!path.length); }, closePath(){ path.push(['Z']); },
+    rect(x,y,w,h){ seg(x,y,true); seg(x+w,y); seg(x+w,y+h); seg(x,y+h); path.push(['Z']); },
+    arc(cx,cy,r,a0,a1,ccw){ arcPts(cx,cy,r,a0,a1,ccw).forEach((p,i)=>seg(p[0],p[1],i===0&&!path.length)); },
+    ellipse(cx,cy,rx,ry,rot,a0,a1,ccw){ ctx.save(); ctx.translate(cx,cy); ctx.rotate(rot||0); ctx.scale(rx,ry); ctx.arc(0,0,1,a0,a1,ccw); ctx.restore(); },
+    arcTo(x1,y1,x2,y2){ seg(x1,y1); seg(x2,y2); },
+    quadraticCurveTo(cx,cy,x,y){ const [x0,y0]=cur; for(let i=1;i<=12;i++){ const t=i/12, u=1-t; seg(u*u*x0+2*u*t*cx+t*t*x,u*u*y0+2*u*t*cy+t*t*y); } },
+    bezierCurveTo(c1x,c1y,c2x,c2y,x,y){ const [x0,y0]=cur; for(let i=1;i<=16;i++){ const t=i/16, u=1-t; seg(u*u*u*x0+3*u*u*t*c1x+3*u*t*t*c2x+t*t*t*x,u*u*u*y0+3*u*u*t*c1y+3*u*t*t*c2y+t*t*t*y); } },
+    fill(){ if(!path.length||off(bb())) return; out.push(`<path d="${pd()}" fill="${col(st.fillStyle)}"${op()}${clipA()}/>`); },
+    stroke(){ if(!path.length||off(bb())) return; out.push(`<path d="${pd()}" fill="none" stroke="${col(st.strokeStyle)}" stroke-width="${f(st.lineWidth*sc())}"${st.dash.length?` stroke-dasharray="${st.dash.map(v=>f(v*sc())).join(' ')}"`:''} stroke-linecap="${st.lineCap}" stroke-linejoin="${st.lineJoin}"${op()}${clipA()}/>`); },
+    clip(){ const b=bb(); if(path.length&&b[0]<=0.5&&b[1]<=0.5&&b[2]>=W-0.5&&b[3]>=H-0.5) return;   /* the whole frame: nothing to clip */
+      const id='c'+(++clipN); defs.push(`<clipPath id="${id}"><path d="${pd()||'M0 0Z'}"/></clipPath>`); st.clip=id; },
+    fillRect(x,y,w,h){ const p0=path; path=[]; ctx.rect(x,y,w,h); ctx.fill(); path=p0; },
+    strokeRect(x,y,w,h){ const p0=path; path=[]; ctx.rect(x,y,w,h); ctx.stroke(); path=p0; },
+    clearRect(){},
+    setLineDash(a){ st.dash=(a||[]).slice(); }, getLineDash(){ return st.dash.slice(); },
+    measureText(t){ if(meas){ meas.font=st.font; return meas.measureText(t); } return {width:String(t).length*6}; },
+    fillText(t,x,y){ const m=mul(st.m,[1,0,0,1,x,y]); if(m[4]<-4000||m[5]<-4000||m[4]>W+4000||m[5]>H+4000) return; const fm=/(italic\s+)?(\d{3}|bold|normal)?\s*([\d.]+)px\s+(.+)/.exec(st.font)||[], size=fm[3]||10, fam=(fm[4]||'sans-serif').replace(/"/g,"'");
+      const anc=st.textAlign==='center'?'middle':(st.textAlign==='right'||st.textAlign==='end')?'end':'start', bl=st.textBaseline==='top'?'hanging':st.textBaseline==='middle'?'central':st.textBaseline==='bottom'?'text-after-edge':'alphabetic';
+      out.push(`<text transform="matrix(${m.map(f).join(' ')})" font-family="${esc(fam)}" font-size="${size}"${fm[2]&&fm[2]!=='normal'?` font-weight="${fm[2]}"`:''}${fm[1]?' font-style="italic"':''} text-anchor="${anc}" dominant-baseline="${bl}" fill="${col(st.fillStyle)}"${op()}${clipA()} xml:space="preserve">${esc(t)}</text>`); },
+    strokeText(t,x,y){ const fs=st.fillStyle; st.fillStyle='none'; ctx.fillText(t,x,y); st.fillStyle=fs; },
+    drawImage(img,a,b,c,d,e,g,h,i){ let sx=0,sy=0,sw=img.width||img.videoWidth||img.naturalWidth,sh=img.height||img.videoHeight||img.naturalHeight,dx,dy,dw,dh;
+      if(e===undefined){ dx=a; dy=b; dw=c===undefined?sw:c; dh=d===undefined?sh:d; } else { sx=a; sy=b; sw=c; sh=d; dx=e; dy=g; dw=h; dh=i; }
+      let url=null; try{ const cv=document.createElement('canvas'); cv.width=Math.max(1,Math.round(Math.min(sw,1600))); cv.height=Math.max(1,Math.round(sh*cv.width/Math.max(1,sw))); cv.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,cv.width,cv.height); url=cv.toDataURL('image/jpeg',.85); }catch(err){ url=null; }
+      const m=mul(st.m,[1,0,0,1,dx,dy]);
+      if(url) out.push(`<image transform="matrix(${m.map(f).join(' ')})" width="${f(dw)}" height="${f(dh)}" preserveAspectRatio="none" href="${url}"${op()}${clipA()}/>`);
+      else out.push(`<rect transform="matrix(${m.map(f).join(' ')})" width="${f(dw)}" height="${f(dh)}" fill="#3a3a3a"${op()}${clipA()}><title>media</title></rect>`); },
+    createLinearGradient(){ return {addColorStop(){}}; }, createRadialGradient(){ return {addColorStop(){}}; }, createPattern(){ return null; },
+    toSVG(bg){ return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">\n<defs>${defs.join('')}</defs>\n${out.join('\n')}\n</svg>`; } };
+  ['fillStyle','strokeStyle','lineWidth','globalAlpha','font','textAlign','textBaseline','lineCap','lineJoin'].forEach(k=>Object.defineProperty(ctx,k,{get:()=>st[k],set:v=>{ st[k]=v; }}));
+  ['globalCompositeOperation','imageSmoothingEnabled','shadowBlur','shadowColor','miterLimit','lineDashOffset','filter','letterSpacing'].forEach(k=>{ let v; Object.defineProperty(ctx,k,{get:()=>v,set:x=>{ v=x; }}); });
+  return ctx; }
