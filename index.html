@@ -1800,6 +1800,7 @@ body.nohelp .qm{display:none}
       <div class="field2"><div class="field stack"><span class="lbl">Range</span><div class="seg" id="expRange"><button data-v="all" class="on">Whole scene</button><button data-v="io">In → Out</button></div></div>
         <div class="field stack"><span class="lbl">Size</span><div class="seg" id="expSize"><button data-v="1" class="on">100%</button><button data-v="0.5">50%</button><button data-v="0.25">25%</button></div></div></div>
       <label class="check" id="expAudioRow"><input type="checkbox" id="expAudio" checked> Song audio <span class="note" id="expAudioNote"></span></label>
+      <label class="check" id="expCentreRow" title="Slides the frame sideways (less than one rule gap) so the space between each edge and its nearest column rule is the same — every still you save lines up"><input type="checkbox" id="expCentre" checked> Centre the column rules <span class="note" id="expCentreNote"></span></label>
       <label class="check" id="expMbRow"><input type="checkbox" id="expMb"> Motion blur <span class="note">(slower)</span></label>
       <div class="note" id="expInfo"></div>
       <div class="expbar" id="expBar" hidden><div></div></div>
@@ -7702,6 +7703,7 @@ function animState(G){
   if(STEPS[U.step].id==='layout'&&!U.playing&&!U.preview) return {P,live:false,t:0,off:[0,0],s:1,pan:[0,0]};   // Blocks step: see every block, wherever the playhead is
   if(U.t===null) return {P,live:false,t:0,off:[0,0],s:1,pan:[0,0]};
   const M=curLayer()==='l2'?(withLayer('main',()=>animOn()?plan(geom()):null)||P):P;   // the camera (and zoom) always come from the layer 1
+  if(EXP&&EXP.shiftX){ const o=ev(M.cam,U.t,[0,0]); return {P,M,live:true,t:U.t,off:[o[0]+EXP.shiftX,o[1]],s:ev(M.zs,U.t,100)/100,pan:ev(M.pan,U.t,[0,0]),zc:M.zc&&M.zc.length?ev(M.zc,U.t,null):null}; }   /* export: framing nudge (rules centred) */
   return {P,M,live:true,t:U.t,off:ev(M.cam,U.t,[0,0]),s:ev(M.zs,U.t,100)/100,pan:ev(M.pan,U.t,[0,0]),zc:M.zc&&M.zc.length?ev(M.zc,U.t,null):null};
 }
 
@@ -11322,8 +11324,9 @@ function expOpen(){ const M=$('#expModal'); if(!M) return; const pr=expPrefs(), 
   expSeg('expFmt',fmt); drawL(fmt); expSeg('expRange',pr.range||'all'); expSeg('expSize',pr.size||'1');
   const IO=ioRange(); $('#expRange [data-v="io"]').disabled=IO.in==null&&IO.out==null;
   const ab=U.media&&U.media.ab; $('#expAudio').checked=pr.audio!==false&&!!ab; $('#expAudio').disabled=!ab; $('#expAudioNote').textContent=ab?`(${U.media.name})`:'(load a song in Song to include it)';
-  $('#expMb').checked=!!pr.mb; $('#expMbRow').hidden=!(D.out&&D.out.mb);
+  $('#expMb').checked=!!pr.mb; try{ $('#expCentre').checked=localStorage.getItem('gb.expCentre')!=='0'; }catch(x){ $('#expCentre').checked=true; } $('#expMbRow').hidden=!(D.out&&D.out.mb);
   const sync=()=>{ const f=expSegV('expFmt'), still=f==='png'||f==='svg'; $('#expAudioRow').hidden=f!=='mp4'; $('#expRange').parentElement.hidden=still; $('#expSize').parentElement.hidden=f==='svg'; $('#expMbRow').hidden=!(D.out&&D.out.mb)||f==='svg';
+    $('#expCentreRow').hidden=!still||!D.look.rulesOn; if(still&&D.look.rulesOn){ const rc=ruleCentring(Math.round(U.t||0)); $('#expCentreNote').textContent=rc?`→ ${Math.round(rc.margin)} px from each edge to the first rule · rules every ${Math.round(rc.spacing)} px`:''; }
     if(still){ $('#expInfo').innerHTML=f==='png'?`The frame at the playhead (f${Math.round(U.t||0)}) as a PNG — untick <b>Background</b> for transparency.`:`The frame at the playhead (f${Math.round(U.t||0)}) as an SVG — blocks, grid, rules and text as vectors (editable in Illustrator / Figma); media as embedded pictures.`; $('#expGo').disabled=false; $('#expGo').textContent='Export'; return; }
     $('#expGo').textContent='Export'; const ok=f==='mov'||typeof VideoEncoder!=='undefined';
     $('#expInfo').innerHTML=f==='mov'?'QuickTime with alpha (PNG frames): big files, but every pixel and the transparency come through. Unticked layers are left out — untick <b>Background</b> for a clear background.':(ok?'H.264 MP4, '+(D.comp.w)+'×'+(D.comp.h)+' at the chosen size.':'<span style="color:#F5A524">This browser / After Effects version can’t encode MP4 — use MOV with alpha, or the web app in Chrome.</span>');
@@ -11332,7 +11335,8 @@ function expOpen(){ const M=$('#expModal'); if(!M) return; const pr=expPrefs(), 
     const b=e.target.closest('[data-exp]'); if(e.target===M&&!U.exporting){ M.hidden=true; return; } if(!b) return;
     if(b.dataset.exp==='cancel'){ if(U.exporting){ U.expCancel=true; return; } M.hidden=true; return; }
     if(b.dataset.exp==='go'&&!U.exporting){ const lay={}; $$('#expLayers [data-expl]').forEach(c=>lay[c.dataset.expl]=c.checked); const f=expSegV('expFmt');
-      const o={fmt:f,layers:lay,range:expSegV('expRange')||'all',size:expSegV('expSize')||'1',audio:$('#expAudio').checked,mb:$('#expMb').checked};
+      const o={fmt:f,layers:lay,range:expSegV('expRange')||'all',size:expSegV('expSize')||'1',audio:$('#expAudio').checked,mb:$('#expMb').checked,centreRules:$('#expCentre').checked};
+      try{ localStorage.setItem('gb.expCentre',o.centreRules?'1':'0'); }catch(x){}
       try{ const pr2=expPrefs(); pr2.fmt=f; pr2.layers=Object.assign({},pr2.layers||{},{[f]:lay}); pr2.range=o.range; pr2.size=o.size; pr2.audio=o.audio; pr2.mb=o.mb; localStorage.setItem('gb.expPrefs',JSON.stringify(pr2)); }catch(x){}
       exportVideo(o); } };
   sync(); $('#expBar').hidden=true; $('#expGo').hidden=false; $('#expCancel').textContent='Cancel'; M.hidden=false; }
@@ -11355,10 +11359,20 @@ async function expSink(name){
       close:async()=>{ const blob=new Blob(parts), b64=await new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); }); const w=window.cep.fs.writeFile(path,b64,window.cep.encoding.Base64); if(w&&w.err) throw new Error('could not write the file (error '+w.err+')'); }}; }
   const parts=[]; return {path:name,write:b=>parts.push(b),patch:(at,b)=>{ let off=0; for(const p of parts){ if(at<off+p.length){ p.set(b,at-off); return; } off+=p.length; } },
     close:()=>{ const url=URL.createObjectURL(new Blob(parts,{type:({mov:'video/quicktime',mp4:'video/mp4',png:'image/png',svg:'image/svg+xml',txt:'text/plain'})[name.split('.').pop()]||'application/octet-stream'})); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),60000); }}; }
+/* centre the column rules: how far to slide everything sideways (in world px) so the gap between the frame edge and the first rule
+   is the same on the left and right; also returns that margin and the rule spacing on screen */
+function ruleCentring(t){ const L=D.look; if(!L.rulesOn) return null; const G=geom(); let P=null; try{ P=withLayer('main',()=>animOn()?plan(geom()):null); }catch(e){}
+  const off=P&&P.cam&&P.cam.length?ev(P.cam,t,[0,0]):[0,0], s=P&&P.zs&&P.zs.length?ev(P.zs,t,100)/100:1, zc=P&&P.zc&&P.zc.length?ev(P.zc,t,[G.W/2,G.H/2]):[G.W/2,G.H/2], pan=P&&P.pan&&P.pan.length?ev(P.pan,t,[0,0]):[0,0];
+  const N=Math.max(1,Math.round(L.ruleEvery)||1), S=Math.round(L.ruleStart||1)-1, d=N*G.p*s; if(!(d>1)) return null;
+  const kp=clamp((+L.ruleParallax||100)/100,0,4)||1, lag=Math.max(0,+L.ruleLag||0), oR=lag&&P&&P.cam?ev(P.cam,t-lag,[0,0]):off;   /* rules can drift / lag behind the camera */
+  const sx=x=>zc[0]+s*(x+oR[0]*kp-zc[0])+pan[0], x0=sx(G.x0+S*G.p-G.gut/2); let r0=((x0%d)+d)%d;   /* first rule inside the frame */
+  const k=Math.floor((G.W-r0)/d), span=Math.floor(G.W/d)*d, want=(G.W-(Math.floor(G.W/d))*d)/2; let dx=want-r0; if(dx>d/2) dx-=d; if(dx<-d/2) dx+=d;
+  return {shiftX:dx/(s*kp), margin:want, spacing:d, count:Math.floor(G.W/d)+1}; }
 /* the frame at the playhead as a PNG (pixels, transparent background when Background is off) or an SVG (vector) */
 async function exportStill(o){ const G=geom(), fmt=o.fmt, k=fmt==='svg'?1:(+o.size||1), W=Math.max(1,Math.round(G.W*k)), H=Math.max(1,Math.round(G.H*k)), f=Math.round(U.t||0);
   const L=o.layers||{}, look=Object.assign({},D.look); if(!L.bg) D.look.bgOn=false; if(!L.cells){ D.look.cellsMode='none'; D.look.linesOn=false; } if(!L.rules) D.look.rulesOn=false;
   EXP={hide:{main:L.main===false,l2:L.l2===false},noContent:!L.content,noMedia:!L.media,noEcho:!L.echo,noTrans:!L.trans,noRef:!L.ref};
+  if(o.centreRules){ const rc=ruleCentring(f); if(rc) EXP.shiftX=rc.shiftX; }
   const name=projFile('frame'+f,fmt);
   try{ let bytes;
     if(fmt==='svg'){ const g=GBSvgCtx(W,H); const fake={width:W,height:H,getContext:()=>g}; expDraw(fake,f,1,1); bytes=new TextEncoder().encode(g.toSVG()); }
