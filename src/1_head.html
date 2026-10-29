@@ -1200,11 +1200,8 @@ body.nohelp .qm{display:none}
               <div><div class="ln">Fill empty grid areas</div><div class="ls">Log lines, tags, barcodes &amp; dots in the gaps</div></div>
               <span></span>
               <div class="extra" data-show="fill.gap.on=true">
-                <label class="check" title="Style the text between blocks with every Text HUD control — what appears, mix, density, font, size and colour — separately from the text in the blocks"><input type="checkbox" data-bind="fill.gap.ownLook"> <b>Own look</b> — the full Text HUD controls</label>
-                <div class="note" data-show="fill.gap.ownLook=true">Its look is set below — the same controls as Text HUD, just for the text between blocks on this layer.</div>
-                <div class="checkgrid" id="modGridGap" data-show="fill.gap.ownLook=false"></div>
+                <div class="note">Its look is set below — the same controls as Text HUD, just for the text between blocks on this layer.</div>
                 <div class="field"><span class="lbl scrub" title="Items per 10 columns">Amount</span><div class="num"><button data-d="-1">−</button><input type="number" data-bind="fill.gap.amount" min="0" max="30" step="1"><button data-d="1">+</button></div></div>
-                <div class="field stack" data-show="fill.gap.ownLook=false"><span class="lbl">Colour</span><div class="swatches" data-pal="fill.gap.color"></div></div>
                 <button class="btn" id="btnGapShuffle">Shuffle placement</button>
               </div>
             </div>
@@ -1232,7 +1229,6 @@ body.nohelp .qm{display:none}
               <div class="note">On the timeline (amber row): drag the left knob to move the start, the right knob to change the hold.</div>
             </div>
           </div>
-          <div class="group" data-ctab="gaps" data-show="fill.on=false&fill.gap.ownLook=false"><div class="note">Works on its own — Text HUD in the blocks can stay off. Font comes from the Text HUD settings.</div></div>
           <div class="group" data-ctab="numbers">
             <div class="group-h">Block numbers<label class="switch hswitch" title="A number in the top-right corner of every block"><input type="checkbox" data-bind="num.on"><span></span></label></div>
             <div data-show="num.on=true" style="display:grid;gap:9px">
