@@ -1,0 +1,15 @@
+module.exports=async(T)=>{ try{ const fs=require('fs');
+ const rec=()=>{ const st={font:'',fillStyle:''}; const calls=[]; const p=new Proxy(st,{get(o,k){ if(k==='fillText') return (t)=>calls.push(o.font+' '+o.fillStyle); if(k==='calls') return calls; if(k==='measureText') return t=>({width:String(t).length*5}); if(k==='getTransform') return undefined; if(k in o) return o[k]; return ()=>{}; }, set(o,k,v){o[k]=v;return true;}}); return p; };
+ const shot=(lbl,t)=>{ const G=T.geom(); const g=rec(); const sv=Object.assign({},T.V); Object.assign(T.V,{sc:1,ox:0,oy:0,dpr:1,cw:G.W,ch:G.H}); T.tlSetT(t); T.U.preview=true; try{T.renderFrame(g,false);}catch(e){console.log('rf err',e.message);} Object.assign(T.V,sv);
+   const by={}; g.calls.forEach(c=>by[c]=(by[c]||0)+1); console.log(lbl,'f'+t,JSON.stringify(by)); };
+ T.setDocX(JSON.parse(fs.readFileSync('mnt/uploads/GridBlocks_1920x1080 (52).json','utf8')).doc); T.refresh();
+ const D=()=>T.D; const both=f=>{ T.withLayer('main',f); T.withLayer('l2',f); T.refresh(); };
+ both(()=>{ D().fill.gap.on=true; D().fill.gap.color='#FF00FF'; });
+ T.withLayer('main',()=>{ D().fill.gap.color='#00FFFF'; }); T.refresh();
+ for(const t of [100,800]) shot('default L2cur',t); T.U.fillEdit='block';
+ both(()=>{ D().fill.gap.ownLook=true; }); T.payload();
+ T.withLayer('main',()=>{ const s=D().fill.gap.style; s.size=22; s.textColor='#00FF00'; });
+ T.withLayer('l2',()=>{ const s=D().fill.gap.style; s.size=15; s.textColor='#FFFF00'; }); T.refresh();
+ for(const t of [100,800]) shot('own L2cur',t);
+ T.U.fillEdit='gap'; T.refresh(); shot('own L2cur editing gap',250); T.D.L2&&0; T.U.fillEdit='block';
+}catch(e){console.log('ERR',e.stack);} process.exit(0);};
