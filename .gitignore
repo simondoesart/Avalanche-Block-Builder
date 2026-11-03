@@ -3,3 +3,7 @@ dist/
 GridBlocks-AE-* (with fonts).zip
 v3.60/*.zip
 v4.0/*.zip
+
+# zips live locally + on GitHub Releases, never in git
+*.zip
+downloads/
